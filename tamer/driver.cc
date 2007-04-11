@@ -199,7 +199,9 @@ void driver::once()
 
     // determine timeout
     struct timeval to, *toptr;
-    if (_nasap > 0 || (_nt > 0 && !timercmp(&_t[0]->expiry, &now, >))) {
+    if (_nasap > 0
+	|| (_nt > 0 && !timercmp(&_t[0]->expiry, &now, >))
+	|| sig_any_active) {
 	timerclear(&to);
 	toptr = &to;
     } else if (_nt == 0)
@@ -221,7 +223,13 @@ void driver::once()
     // select!
     fd_set rfds = _readfds;
     fd_set wfds = _writefds;
-    int nfds = select(_nfds, &rfds, &wfds, 0, toptr);
+    int nfds = _nfds;
+    if (sig_pipe[0] >= 0) {
+	FD_SET(sig_pipe[0], &rfds);
+	if (sig_pipe[0] > nfds)
+	    nfds = sig_pipe[0] + 1;
+    }
+    nfds = select(nfds, &rfds, &wfds, 0, toptr);
 
     // run signals
     if (sig_any_active) {
@@ -244,8 +252,13 @@ void driver::once()
 	// now that the signal responders have potentially reinstalled signal
 	// handlers, unblock the signals
 	sigprocmask(SIG_UNBLOCK, &sigs_unblock, 0);
+
+	// kill crap data written to pipe
+	char crap[64];
+	while (read(sig_pipe[0], crap, 64) > 0)
+	    /* do nothing */;
     }
-    
+
     // run asaps
     while (_nasap > 0) {
 	--_nasap;
