@@ -17,6 +17,8 @@ class driver { public:
     inline void at_delay(timeval delay, const event<> &trigger);
     inline void at_delay(int delay_msec, const event<> &trigger);
 
+    static void at_signal(int signal, const event<> &trigger);
+
     void once();
 
     timeval now;
@@ -146,6 +148,11 @@ inline void at_fd_read(int fd, const event<> &trigger)
 inline void at_fd_write(int fd, const event<> &trigger)
 {
     driver::main.at_fd_write(fd, trigger);
+}
+
+inline void at_signal(int sig, const event<> &trigger)
+{
+    driver::at_signal(sig, trigger);
 }
 
 }

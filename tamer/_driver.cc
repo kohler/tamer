@@ -1,6 +1,7 @@
 #include "tame_driver.hh"
 #include <sys/select.h>
 #include <stdio.h>
+#include <signal.h>
 
 namespace tame {
 
@@ -12,6 +13,12 @@ _rendezvous_base *_rendezvous_base::unblocked_tail;
 rendezvous<> rendezvous<>::dead;
 _event_superbase _event_superbase::dead(&rendezvous<>::dead, 0);
 
+// signal handling inspired by sfslite.
+#define NSIGNALS 32
+static int sig_pipe[2] = { -1, -1 };
+static volatile unsigned sig_any_active;
+static volatile unsigned sig_active[NSIGNALS];
+static event<> sig_handlers[NSIGNALS];
 
 driver::driver()
     : _t(0), _nt(0),
@@ -146,6 +153,38 @@ void driver::at_fd(int fd, bool write, const event<> &trigger)
 	FD_CLR(fd, fset);
 }
 
+extern "C" {
+static void tame_signal_handler(int signal) {
+    sig_any_active = sig_active[signal] = 1;
+    // ensure select wakes up, even if we get a signal in between setting the
+    // timeout and calling select!
+    write(sig_pipe[1], "", 1);
+
+    // block signal until we trigger the event, giving the unblocked
+    // rendezvous a chance to maybe install another handler
+    sigset_t sigset;
+    sigemptyset(&sigset);
+    sigaddset(&sigset, signal);
+    sigprocmask(SIG_BLOCK, &sigset, NULL);
+}
+}
+
+void driver::at_signal(int signal, const event<> &trigger)
+{
+    assert(signal < NSIGNALS);
+    
+    if (trigger && sig_pipe[0] < 0)
+	pipe(sig_pipe);
+
+    sig_handlers[signal] = trigger;
+    
+    struct sigaction sa;
+    sa.sa_handler = (trigger ? tame_signal_handler : SIG_DFL);
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESETHAND;
+    sigaction(signal, &sa, 0);
+}
+
 void driver::once()
 {
     // get rid of initial cancelled timers
@@ -184,8 +223,38 @@ void driver::once()
     fd_set wfds = _writefds;
     int nfds = select(_nfds, &rfds, &wfds, 0, toptr);
 
+    // run signals
+    if (sig_any_active) {
+	sig_any_active = 0;
+	sigset_t sigs_unblock;
+	sigemptyset(&sigs_unblock);
+
+	// check signals
+	for (int sig = 0; sig < NSIGNALS; sig++)
+	    if (sig_active[sig]) {
+		sig_active[sig] = 0;
+		sig_handlers[sig].trigger();
+		sigaddset(&sigs_unblock, sig);
+	    }
+
+	// run closures activated by signals (plus maybe some others)
+	while (_rendezvous_base *r = _rendezvous_base::unblocked)
+	    r->_run();
+
+	// now that the signal responders have potentially reinstalled signal
+	// handlers, unblock the signals
+	sigprocmask(SIG_UNBLOCK, &sigs_unblock, 0);
+    }
+    
+    // run asaps
+    while (_nasap > 0) {
+	--_nasap;
+	_asap[_nasap].trigger();
+	_asap[_nasap].~event();
+    }
+
     // run the file descriptors
-    if (nfds) {
+    if (nfds >= 0) {
 	for (int fd = 0; fd < _nfds; fd++) {
 	    if (FD_ISSET(fd, &rfds)) {
 		FD_CLR(fd, &_readfds);
@@ -196,13 +265,6 @@ void driver::once()
 		_fd[fd*2+1].trigger();
 	    }
 	}
-    }
-
-    // run asaps
-    while (_nasap > 0) {
-	--_nasap;
-	_asap[_nasap].trigger();
-	_asap[_nasap].~event();
     }
 
     // run the timers that worked
