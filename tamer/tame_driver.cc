@@ -44,7 +44,7 @@ driver::~driver()
     delete[] reinterpret_cast<unsigned char *>(_fd);
 
     // free asap
-    for (int i = 0; i < _asapcap; i++)
+    for (int i = 0; i < _nasap; i++)
 	_asap[i].~event();
     delete[] reinterpret_cast<unsigned char *>(_asap);
 }
@@ -125,8 +125,6 @@ void driver::expand_asap()
     int ncap = (_asapcap ? _asapcap * 2 : 16);
     event<> *nasap = reinterpret_cast<event<> *>(new unsigned char[sizeof(event<>) * ncap]);
     memcpy(nasap, _asap, sizeof(event<>) * _asapcap);
-    for (int i = _asapcap; i < ncap; i++)
-	(void) new(static_cast<void *>(&nasap[i])) event<>();
     
     delete[] reinterpret_cast<unsigned char *>(_asap);
     _asap = nasap;
@@ -162,12 +160,12 @@ void driver::once()
 
     // determine timeout
     struct timeval to, *toptr;
-    if (_nt == 0)
-	toptr = 0;
-    else if (!timercmp(&_t[0]->expiry, &now, >)) {
+    if (_nasap > 0 || (_nt > 0 && !timercmp(&_t[0]->expiry, &now, >))) {
 	timerclear(&to);
 	toptr = &to;
-    } else {
+    } else if (_nt == 0)
+	toptr = 0;
+    else {
 #if 1
 	for (int i = 0; i < _nt; i++)
 	    fprintf(stderr, "%d.%06d ; ", _t[i]->expiry.tv_sec, _t[i]->expiry.tv_usec);
@@ -198,6 +196,13 @@ void driver::once()
 		_fd[fd*2+1].trigger();
 	    }
 	}
+    }
+
+    // run asaps
+    while (_nasap > 0) {
+	--_nasap;
+	_asap[_nasap].trigger();
+	_asap[_nasap].~event();
     }
 
     // run the timers that worked
