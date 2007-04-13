@@ -772,7 +772,7 @@ tame_block_ev_t::output (outputter_t *o)
 
   output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
 
-  b << "  do {\n";
+  b << "  { {\n";
 
   o->output_str(b.str());
   b.str(str());
@@ -787,14 +787,14 @@ tame_block_ev_t::output (outputter_t *o)
   }
 
   om = o->switch_to_mode (OUTPUT_TREADMILL);
-  b << "\n"
+  b << " }\n"
     << _fn->label(_id) << ":\n"
     << "  while (" << TAME_CLOSURE_NAME << "._closure__block.npassive()) {\n"
     << "      " << TAME_CLOSURE_NAME << "._closure__block._block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n"
     << "      "
     << _fn->return_expr ()
     << "; }\n"
-    << "  } while (0);\n"
+    << "  }\n"
     ;
 
 
@@ -873,26 +873,26 @@ tame_join_t::output_blocked (strbuf &b, const str &jgn)
 void
 tame_wait_t::output (outputter_t *o)
 {
-  strbuf tmp;
-  tmp << "(" << join_group ().name () << ")";
-  str jgn = tmp.str();
+    strbuf tmp;
+    tmp << "(" << join_group ().name () << ")";
+    str jgn = tmp.str();
 
-  output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
-  strbuf b;
-  b << _fn->label (_id) << ":\n";
-  b << "do {\n"
-    << "  if (!" << jgn << ".join (";
-  for (size_t i = 0; i < n_args (); i++) {
-    if (i > 0) b << ", ";
-    b << "" << arg (i).name () << "";
-  }
-  b << ")) {\n";
-  output_blocked (b, jgn);
-  b << "  }\n"
-    << "} while (0);\n";
-  
-  o->output_str(b.str());
-  o->switch_to_mode (om);
+    output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
+    strbuf b;
+    b << _fn->label(_id) << ":\n";
+    b << "do {\n"
+      << "  if (!" << jgn << ".join (";
+    for (size_t i = 0; i < n_args (); i++) {
+	if (i > 0) b << ", ";
+	b << "" << arg (i).name () << "";
+    }
+    b << ")) {\n";
+    output_blocked (b, jgn);
+    b << "  }\n"
+      << "} while (0);\n";
+    
+    o->output_str(b.str());
+    o->switch_to_mode (om);
 }
 
 //

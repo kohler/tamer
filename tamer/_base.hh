@@ -15,13 +15,14 @@ class driver;
 
 class _event_superbase { public:
 
-    template <typename W1, typename W2, typename X1, typename X2>
-    _event_superbase(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2);
+    template <typename R, typename X1, typename X2>
+    inline _event_superbase(R &r, const X1 &w1, const X2 &w2);
 
-    template <typename W1, typename X1>
-    _event_superbase(rendezvous<W1> &r, const X1 &w1);
+    template <typename R, typename X1>
+    inline _event_superbase(R &r, const X1 &w1);
 
-    inline _event_superbase(rendezvous<> &r);
+    template <typename R>
+    inline _event_superbase(R &r);
 
     inline ~_event_superbase();
 
@@ -42,7 +43,7 @@ class _event_superbase { public:
 	return _r_name;
     }
     
-    inline void setcancel(const event<> &c);
+    inline void at_cancel(const event<> &c);
 
     inline bool complete(bool success);
 
@@ -153,8 +154,13 @@ inline _event_superbase::~_event_superbase()
 
 inline _rendezvous_base::~_rendezvous_base()
 {
+    // first take all events off this rendezvous, so they don't call back
+    for (_event_superbase *e = _events; e; e = e->_r_next)
+	e->_r = 0;
+    // then complete events, calling their cancellers
     while (_events)
 	_events->complete(false);
+    
     if (_unblocked_prev)
 	_unblocked_prev->_unblocked_next = _unblocked_next;
     else if (unblocked == this)
@@ -181,25 +187,27 @@ inline void _rendezvous_base::_add_event(_event_superbase *e, uintptr_t name)
 
 inline bool _event_superbase::complete(bool success)
 {
-    if (_rendezvous_superbase *r = _r) {
-	_r = 0;
-	if (_r_pprev)
-	    *_r_pprev = _r_next;
-	if (_r_next)
-	    _r_next->_r_pprev = _r_pprev;
+    _rendezvous_superbase *r = _r;
+    _event_superbase *canceller = _canceller;
 
-	_event_superbase *canceller = _canceller;
-	_canceller = 0;
+    if (_r_pprev)
+	*_r_pprev = _r_next;
+    if (_r_next)
+	_r_next->_r_pprev = _r_pprev;
+    
+    _r = 0;
+    _canceller = 0;
+    _r_pprev = 0;
+    _r_next = 0;
 
+    if (r)
 	r->_complete(_r_name, success);
-	if (canceller && !success)
-	    canceller->complete(true);
-	if (canceller)
-	    canceller->unuse();
+    if (canceller && !success)
+	canceller->complete(true);
+    if (canceller)
+	canceller->unuse();
 
-	return true;
-    } else
-	return false;
+    return r != 0;
 }
 
 inline void _rendezvous_base::_block(_closure_base &c, unsigned where)
@@ -213,7 +221,6 @@ inline void _rendezvous_base::_block(_closure_base &c, unsigned where)
 inline void _rendezvous_base::_unblock()
 {
     if (_blocked_closure && !_unblocked_prev && unblocked != this) {
-	fprintf(stderr, "UNBLOCK ");
 	_unblocked_next = 0;
 	_unblocked_prev = unblocked_tail;
 	if (unblocked_tail)

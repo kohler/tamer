@@ -3,21 +3,22 @@
 #include "tame_rendezvous.hh"
 namespace tame {
 
-template <typename W1, typename W2, typename X1, typename X2>
-_event_superbase::_event_superbase(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2)
+template <typename R, typename X1, typename X2>
+_event_superbase::_event_superbase(R &r, const X1 &w1, const X2 &w2)
     : _refcount(1), _canceller(0)
 {
     r.add_event(this, w1, w2);
 }
 
-template <typename W1, typename X1>
-_event_superbase::_event_superbase(rendezvous<W1> &r, const X1 &w1)
+template <typename R, typename X1>
+_event_superbase::_event_superbase(R &r, const X1 &w1)
     : _refcount(1), _canceller(0)
 {
     r.add_event(this, w1);
 }
 
-_event_superbase::_event_superbase(rendezvous<> &r)
+template <typename R>
+inline _event_superbase::_event_superbase(R &r)
     : _refcount(1), _canceller(0)
 {
     r.add_event(this);
@@ -33,17 +34,18 @@ _event_superbase::_event_superbase(_rendezvous_superbase *r, uintptr_t rname)
 template <typename T1, typename T2, typename T3, typename T4>
 class _event_base : public _event_superbase { public:
 
-    template <typename W1, typename W2, typename X1, typename X2>
-    _event_base(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+    template <typename R, typename X1, typename X2>
+    _event_base(R &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 	: _event_superbase(r, w1, w2), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
     }
 
-    template <typename W1, typename X1>
-    _event_base(rendezvous<W1> &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+    template <typename R, typename X1>
+    _event_base(R &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 	: _event_superbase(r, w1), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
     }
 
-    _event_base(rendezvous<> &r, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+    template <typename R>
+    _event_base(R &r, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 	: _event_superbase(r), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
     }
 
@@ -57,6 +59,13 @@ class _event_base : public _event_superbase { public:
 	    if (_t4) *_t4 = t4;
 	}
     }
+
+    void unbind() {
+	_t1 = 0;
+	_t2 = 0;
+	_t3 = 0;
+	_t4 = 0;
+    }
     
   private:
 
@@ -64,6 +73,8 @@ class _event_base : public _event_superbase { public:
     T2 *_t2;
     T3 *_t3;
     T4 *_t4;
+
+    friend class event<T1, T2, T3, T4>;
     
 };
 
@@ -71,17 +82,18 @@ class _event_base : public _event_superbase { public:
 template <typename T1, typename T2, typename T3>
 class _event_base<T1, T2, T3, void> : public _event_superbase { public:
 
-    template <typename W1, typename W2, typename X1, typename X2>
-    _event_base(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3)
+    template <typename R, typename X1, typename X2>
+    _event_base(R &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3)
 	: _event_superbase(r, w1, w2), _t1(&t1), _t2(&t2), _t3(&t3) {
     }
 
-    template <typename W1, typename X1>
-    _event_base(rendezvous<W1> &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3)
+    template <typename R, typename X1>
+    _event_base(R &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3)
 	: _event_superbase(r, w1), _t1(&t1), _t2(&t2), _t3(&t3) {
     }
 
-    _event_base(rendezvous<> &r, T1 &t1, T2 &t2, T3 &t3)
+    template <typename R>
+    _event_base(R &r, T1 &t1, T2 &t2, T3 &t3)
 	: _event_superbase(r), _t1(&t1), _t2(&t2), _t3(&t3) {
     }
 
@@ -94,12 +106,20 @@ class _event_base<T1, T2, T3, void> : public _event_superbase { public:
 	    if (_t3) *_t3 = t3;
 	}
     }
+
+    void unbind() {
+	_t1 = 0;
+	_t2 = 0;
+	_t3 = 0;
+    }
     
   private:
 
     T1 *_t1;
     T2 *_t2;
     T3 *_t3;
+
+    friend class event<T1, T2, T3>;
     
 };
 
@@ -108,17 +128,18 @@ class _event_base<T1, T2, T3, void> : public _event_superbase { public:
 template <typename T1, typename T2>
 class _event_base<T1, T2, void, void> : public _event_superbase { public:
 
-    template <typename W1, typename W2, typename X1, typename X2>
-    _event_base(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2)
+    template <typename R, typename X1, typename X2>
+    _event_base(R &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2)
 	: _event_superbase(r, w1, w2), _t1(&t1), _t2(&t2) {
     }
 
-    template <typename W1, typename X1>
-    _event_base(rendezvous<W1> &r, const X1 &w1, T1 &t1, T2 &t2)
+    template <typename R, typename X1>
+    _event_base(R &r, const X1 &w1, T1 &t1, T2 &t2)
 	: _event_superbase(r, w1), _t1(&t1), _t2(&t2) {
     }
 
-    _event_base(rendezvous<> &r, T1 &t1, T2 &t2)
+    template <typename R>
+    _event_base(R &r, T1 &t1, T2 &t2)
 	: _event_superbase(r), _t1(&t1), _t2(&t2) {
     }
 
@@ -130,11 +151,18 @@ class _event_base<T1, T2, void, void> : public _event_superbase { public:
 	    if (_t2) *_t2 = t2;
 	}
     }
+
+    void unbind() {
+	_t1 = 0;
+	_t2 = 0;
+    }
     
   private:
 
     T1 *_t1;
     T2 *_t2;
+
+    friend class event<T1, T2>;
     
 };
 
@@ -142,17 +170,18 @@ class _event_base<T1, T2, void, void> : public _event_superbase { public:
 template <typename T1>
 class _event_base<T1, void, void, void> : public _event_superbase { public:
 
-    template <typename W1, typename W2, typename X1, typename X2>
-    _event_base(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2, T1 &t1)
+    template <typename R, typename X1, typename X2>
+    _event_base(R &r, const X1 &w1, const X2 &w2, T1 &t1)
 	: _event_superbase(r, w1, w2), _t1(&t1) {
     }
 
-    template <typename W1, typename X1>
-    _event_base(rendezvous<W1> &r, const X1 &w1, T1 &t1)
+    template <typename R, typename X1>
+    _event_base(R &r, const X1 &w1, T1 &t1)
 	: _event_superbase(r, w1), _t1(&t1) {
     }
 
-    _event_base(rendezvous<> &r, T1 &t1)
+    template <typename R>
+    _event_base(R &r, T1 &t1)
 	: _event_superbase(r), _t1(&t1) {
     }
 
@@ -162,6 +191,10 @@ class _event_base<T1, void, void, void> : public _event_superbase { public:
 	if (_event_superbase::complete(true)) {
 	    if (_t1) *_t1 = t1;
 	}
+    }
+
+    void unbind() {
+	_t1 = 0;
     }
     
   private:
@@ -180,17 +213,18 @@ class _event_base<T1, void, void, void> : public _event_superbase { public:
 template <typename T1, typename T2, typename T3, typename T4>
 class event { public:
 
-    template <typename W1, typename W2, typename X1, typename X2>
-    event(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+    template <typename R, typename X1, typename X2>
+    event(R &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 	: _e(new _event_base<T1, T2, T3, T4>(r, w1, w2, t1, t2, t3, t4)) {
     }
 
-    template <typename W1, typename X1>
-    event(rendezvous<W1> &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+    template <typename R, typename X1>
+    event(R &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 	: _e(new _event_base<T1, T2, T3, T4>(r, w1, t1, t2, t3, t4)) {
     }
 
-    event(rendezvous<> &r, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+    template <typename R>
+    event(R &r, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 	: _e(new _event_base<T1, T2, T3, T4>(r, t1, t2, t3, t4)) {
     }
 
@@ -201,8 +235,8 @@ class event { public:
     
     ~event() { _e->unuse(); }
 
-    void setcancel(const event<> &e) {
-	_e->setcancel(e);
+    void at_cancel(const event<> &e) {
+	_e->at_cancel(e);
     }
 
     void trigger(const T1 &t1, const T2 &t2, const T3 &t3, const T4 &t4) {
@@ -212,12 +246,37 @@ class event { public:
     void cancel() {
 	_e->cancel();
     }
+
+    template <typename R, typename X1, typename X2>
+    event<T1, T2, T3, T4> rebind(R &r, const X1 &w1, const X2 &w2) {
+	event<T1, T2, T3, T4> e(r, w1, w2, *_e->_t1, *_e->_t2, *_e->_t3, *_e->_t4);
+	_e->unbind();
+	return e;
+    }
+
+    template <typename R, typename X1>
+    event<T1, T2, T3, T4> rebind(R &r, const X1 &w1) {
+	event<T1, T2, T3, T4> e(r, w1, *_e->_t1, *_e->_t2, *_e->_t3, *_e->_t4);
+	_e->unbind();
+	return e;
+    }
+
+    template <typename R>
+    event<T1, T2, T3, T4> rebind(R &r) {
+	event<T1, T2, T3, T4> e(r, *_e->_t1, *_e->_t2, *_e->_t3, *_e->_t4);
+	_e->unbind();
+	return e;
+    }
     
     event<T1, T2, T3, T4> &operator=(const event<T1, T2, T3, T4> &e) {
 	e._e->use();
 	_e->unuse();
 	_e = e._e;
 	return *this;
+    }
+    
+    _event_superbase *__superbase() const {
+	return _e;
     }
     
   private:
@@ -230,17 +289,18 @@ class event { public:
 template <typename T1, typename T2, typename T3>
 class event<T1, T2, T3, void> { public:
 
-    template <typename W1, typename W2, typename X1, typename X2>
-    event(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3)
+    template <typename R, typename X1, typename X2>
+    event(R &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3)
 	: _e(new _event_base<T1, T2, T3, void>(r, w1, w2, t1, t2, t3)) {
     }
 
-    template <typename W1, typename X1>
-    event(rendezvous<W1> &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3)
+    template <typename R, typename X1>
+    event(R &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3)
 	: _e(new _event_base<T1, T2, T3, void>(r, w1, t1, t2, t3)) {
     }
 
-    event(rendezvous<> &r, T1 &t1, T2 &t2, T3 &t3)
+    template <typename R>
+    event(R &r, T1 &t1, T2 &t2, T3 &t3)
 	: _e(new _event_base<T1, T2, T3, void>(r, t1, t2, t3)) {
     }
 
@@ -251,12 +311,33 @@ class event<T1, T2, T3, void> { public:
     
     ~event() { _e->unuse(); }
 
-    void setcancel(const event<> &e) {
-	_e->setcancel(e);
+    void at_cancel(const event<> &e) {
+	_e->at_cancel(e);
     }
 
     void trigger(const T1 &t1, const T2 &t2, const T3 &t3) {
 	_e->trigger(t1, t2, t3);
+    }
+
+    template <typename R, typename X1, typename X2>
+    event<T1, T2, T3> rebind(R &r, const X1 &w1, const X2 &w2) {
+	event<T1, T2, T3> e(r, w1, w2, *_e->_t1, *_e->_t2, *_e->_t3);
+	_e->unbind();
+	return e;
+    }
+
+    template <typename R, typename X1>
+    event<T1, T2, T3> rebind(R &r, const X1 &w1) {
+	event<T1, T2, T3> e(r, w1, *_e->_t1, *_e->_t2, *_e->_t3);
+	_e->unbind();
+	return e;
+    }
+
+    template <typename R>
+    event<T1, T2, T3> rebind(R &r) {
+	event<T1, T2, T3> e(r, *_e->_t1, *_e->_t2, *_e->_t3);
+	_e->unbind();
+	return e;
     }
 
     event<T1, T2, T3> &operator=(const event<T1, T2, T3> &e) {
@@ -264,6 +345,10 @@ class event<T1, T2, T3, void> { public:
 	_e->unuse();
 	_e = e._e;
 	return *this;
+    }
+    
+    _event_superbase *__superbase() const {
+	return _e;
     }
     
   private:
@@ -276,17 +361,18 @@ class event<T1, T2, T3, void> { public:
 template <typename T1, typename T2>
 class event<T1, T2, void, void> { public:
 
-    template <typename W1, typename W2, typename X1, typename X2>
-    event(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2)
+    template <typename R, typename X1, typename X2>
+    event(R &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2)
 	: _e(new _event_base<T1, T2, void, void>(r, w1, w2, t1, t2)) {
     }
 
-    template <typename W1, typename X1>
-    event(rendezvous<W1> &r, const X1 &w1, T1 &t1, T2 &t2)
+    template <typename R, typename X1>
+    event(R &r, const X1 &w1, T1 &t1, T2 &t2)
 	: _e(new _event_base<T1, T2, void, void>(r, w1, t1, t2)) {
     }
 
-    event(rendezvous<> &r, T1 &t1, T2 &t2)
+    template <typename R>
+    event(R &r, T1 &t1, T2 &t2)
 	: _e(new _event_base<T1, T2, void, void>(r, t1, t2)) {
     }
 
@@ -297,12 +383,33 @@ class event<T1, T2, void, void> { public:
     
     ~event() { _e->unuse(); }
 
-    void setcancel(const event<> &e) {
-	_e->setcancel(e);
+    void at_cancel(const event<> &e) {
+	_e->at_cancel(e);
     }
 
     void trigger(const T1 &t1, const T2 &t2) {
 	_e->trigger(t1, t2);
+    }
+
+    template <typename R, typename X1, typename X2>
+    event<T1, T2> rebind(R &r, const X1 &w1, const X2 &w2) {
+	event<T1, T2> e(r, w1, w2, *_e->_t1, *_e->_t2);
+	_e->unbind();
+	return e;
+    }
+
+    template <typename R, typename X1>
+    event<T1, T2> rebind(R &r, const X1 &w1) {
+	event<T1, T2> e(r, w1, *_e->_t1, *_e->_t2);
+	_e->unbind();
+	return e;
+    }
+
+    template <typename R>
+    event<T1, T2> rebind(R &r) {
+	event<T1, T2> e(r, *_e->_t1, *_e->_t2);
+	_e->unbind();
+	return e;
     }
 
     event<T1, T2> &operator=(const event<T1, T2> &e) {
@@ -310,6 +417,10 @@ class event<T1, T2, void, void> { public:
 	_e->unuse();
 	_e = e._e;
 	return *this;
+    }
+    
+    _event_superbase *__superbase() const {
+	return _e;
     }
     
   private:
@@ -322,17 +433,18 @@ class event<T1, T2, void, void> { public:
 template <typename T1>
 class event<T1, void, void, void> { public:
 
-    template <typename W1, typename W2, typename X1, typename X2>
-    event(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2, T1 &t1)
+    template <typename R, typename X1, typename X2>
+    event(R &r, const X1 &w1, const X2 &w2, T1 &t1)
 	: _e(new _event_base<T1, void, void, void>(r, w1, w2, t1)) {
     }
 
-    template <typename W1, typename X1>
-    event(rendezvous<W1> &r, const X1 &w1, T1 &t1)
+    template <typename R, typename X1>
+    event(R &r, const X1 &w1, T1 &t1)
 	: _e(new _event_base<T1, void, void, void>(r, w1, t1)) {
     }
 
-    event(rendezvous<> &r, T1 &t1)
+    template <typename R>
+    event(R &r, T1 &t1)
 	: _e(new _event_base<T1, void, void, void>(r, t1)) {
     }
 
@@ -343,12 +455,33 @@ class event<T1, void, void, void> { public:
     
     ~event() { _e->unuse(); }
 
-    void setcancel(const event<> &e) {
-	_e->setcancel(e);
+    void at_cancel(const event<> &e) {
+	_e->at_cancel(e);
     }
 
     void trigger(const T1 &t1) {
 	_e->trigger(t1);
+    }
+
+    template <typename R, typename X1, typename X2>
+    event<T1> rebind(R &r, const X1 &w1, const X2 &w2) {
+	event<T1> e(r, w1, w2, *_e->_t1);
+	_e->unbind();
+	return e;
+    }
+
+    template <typename R, typename X1>
+    event<T1> rebind(R &r, const X1 &w1) {
+	event<T1> e(r, w1, *_e->_t1);
+	_e->unbind();
+	return e;
+    }
+
+    template <typename R>
+    event<T1> rebind(R &r) {
+	event<T1> e(r, *_e->_t1);
+	_e->unbind();
+	return e;
     }
 
     event<T1> &operator=(const event<T1> &e) {
@@ -356,6 +489,10 @@ class event<T1, void, void, void> { public:
 	_e->unuse();
 	_e = e._e;
 	return *this;
+    }
+    
+    _event_superbase *__superbase() const {
+	return _e;
     }
     
   private:
@@ -374,17 +511,18 @@ class event<T1, void, void, void> { public:
 template <>
 class event<void, void, void, void> { public:
 
-    template <typename W1, typename W2, typename X1, typename X2>
-    event(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2)
+    template <typename R, typename X1, typename X2>
+    event(R &r, const X1 &w1, const X2 &w2)
 	: _e(new _event_superbase(r, w1, w2)) {
     }
 
-    template <typename W1, typename X1>
-    event(rendezvous<W1> &r, const X1 &w1)
+    template <typename R, typename X1>
+    event(R &r, const X1 &w1)
 	: _e(new _event_superbase(r, w1)) {
     }
 
-    event(rendezvous<> &r)
+    template <typename R>
+    event(R &r)
 	: _e(new _event_superbase(r)) {
     }
 
@@ -398,6 +536,11 @@ class event<void, void, void, void> { public:
 	_e->use();
     }
     
+    event(event<> &e)
+	: _e(e._e) {
+	_e->use();
+    }
+    
     ~event() {
 	_e->unuse();
     }
@@ -406,8 +549,8 @@ class event<void, void, void, void> { public:
 	return (bool) *_e;
     }
     
-    void setcancel(const event<> &e) {
-	_e->setcancel(e);
+    void at_cancel(const event<> &e) {
+	_e->at_cancel(e);
     }
 
     void trigger() {
@@ -418,11 +561,30 @@ class event<void, void, void, void> { public:
 	_e->complete(false);
     }
 
+    template <typename R, typename X1, typename X2>
+    event<> rebind(R &r, const X1 &w1, const X2 &w2) {
+	return event<>(r, w1, w2);
+    }
+
+    template <typename R, typename X1>
+    event<> rebind(R &r, const X1 &w1) {
+	return event<>(r, w1);
+    }
+
+    template <typename R>
+    event<> rebind(R &r) {
+	return event<>(r);
+    }
+
     event<> &operator=(const event<> &e) {
 	e._e->use();
 	_e->unuse();
 	_e = e._e;
 	return *this;
+    }
+
+    _event_superbase *__superbase() const {
+	return _e;
     }
     
   private:
@@ -440,7 +602,7 @@ class event<void, void, void, void> { public:
 };
 
 
-inline void _event_superbase::setcancel(const event<> &e)
+inline void _event_superbase::at_cancel(const event<> &e)
 {
     assert(_r && !_canceller);
     _canceller = e._e;
@@ -448,123 +610,123 @@ inline void _event_superbase::setcancel(const event<> &e)
 }
 
 
-template <typename W1, typename T1, typename T2, typename T3, typename T4>
-inline event<T1, T2, T3, T4> make_event(rendezvous<W1> &r, const W1 &w1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+template <typename R, typename W1, typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> make_event(R &r, const W1 &w1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 {
     return event<T1, T2, T3, T4>(r, w1, t1, t2, t3, t4);
 }
 
-template <typename T1, typename T2, typename T3, typename T4>
-inline event<T1, T2, T3, T4> make_event(rendezvous<> &r, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+template <typename R, typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> make_event(R &r, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 {
     return event<T1, T2, T3, T4>(r, t1, t2, t3, t4);
 }
 
-template <typename W1, typename T1, typename T2, typename T3>
-inline event<T1, T2, T3> make_event(rendezvous<W1> &r, const W1 &w1, T1 &t1, T2 &t2, T3 &t3)
+template <typename R, typename W1, typename T1, typename T2, typename T3>
+inline event<T1, T2, T3> make_event(R &r, const W1 &w1, T1 &t1, T2 &t2, T3 &t3)
 {
     return event<T1, T2, T3>(r, w1, t1, t2, t3);
 }
 
-template <typename T1, typename T2, typename T3>
-inline event<T1, T2, T3> make_event(rendezvous<> &r, T1 &t1, T2 &t2, T3 &t3)
+template <typename R, typename T1, typename T2, typename T3>
+inline event<T1, T2, T3> make_event(R &r, T1 &t1, T2 &t2, T3 &t3)
 {
     return event<T1, T2, T3>(r, t1, t2, t3);
 }
 
-template <typename W1, typename T1, typename T2>
-inline event<T1, T2> make_event(rendezvous<W1> &r, const W1 &w1, T1 &t1, T2 &t2)
+template <typename R, typename W1, typename T1, typename T2>
+inline event<T1, T2> make_event(R &r, const W1 &w1, T1 &t1, T2 &t2)
 {
     return event<T1, T2>(r, w1, t1, t2);
 }
 
-template <typename T1, typename T2>
-inline event<T1, T2> make_event(rendezvous<> &r, T1 &t1, T2 &t2)
+template <typename R, typename T1, typename T2>
+inline event<T1, T2> make_event(R &r, T1 &t1, T2 &t2)
 {
     return event<T1, T2>(r, t1, t2);
 }
 
-template <typename W1, typename T1>
-inline event<T1> make_event(rendezvous<W1> &r, const W1 &w1, T1 &t1)
+template <typename R, typename W1, typename T1>
+inline event<T1> make_event(R &r, const W1 &w1, T1 &t1)
 {
     return event<T1>(r, w1, t1);
 }
 
-template <typename T1>
-inline event<T1> make_event(rendezvous<> &r, T1 &t1)
+template <typename R, typename T1>
+inline event<T1> make_event(R &r, T1 &t1)
 {
     return event<T1>(r, t1);
 }
 
-template <typename W1>
-inline event<> make_event(rendezvous<W1> &r, const W1 &w1)
+template <typename R, typename W1>
+inline event<> make_event(R &r, const W1 &w1)
 {
     return event<>(r, w1);
 }
 
-inline event<>
-make_event(rendezvous<> &r)
+template <typename R>
+inline event<> make_event(R &r)
 {
     return event<>(r);
 }
 
 
-template <typename W1, typename T1, typename T2, typename T3, typename T4>
-inline event<T1, T2, T3, T4> make_event(rendezvous<> &, rendezvous<W1> &r, const W1 &w1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+template <typename R, typename W1, typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> make_event(rendezvous<> &, R &r, const W1 &w1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 {
     return event<T1, T2, T3, T4>(r, w1, t1, t2, t3, t4);
 }
 
-template <typename T1, typename T2, typename T3, typename T4>
-inline event<T1, T2, T3, T4> make_event(rendezvous<> &, rendezvous<> &r, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+template <typename R, typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> make_event(rendezvous<> &, R &r, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 {
     return event<T1, T2, T3, T4>(r, t1, t2, t3, t4);
 }
 
-template <typename W1, typename T1, typename T2, typename T3>
-inline event<T1, T2, T3> make_event(rendezvous<> &, rendezvous<W1> &r, const W1 &w1, T1 &t1, T2 &t2, T3 &t3)
+template <typename R, typename W1, typename T1, typename T2, typename T3>
+inline event<T1, T2, T3> make_event(rendezvous<> &, R &r, const W1 &w1, T1 &t1, T2 &t2, T3 &t3)
 {
     return event<T1, T2, T3>(r, w1, t1, t2, t3);
 }
 
-template <typename T1, typename T2, typename T3>
-inline event<T1, T2, T3> make_event(rendezvous<> &, rendezvous<> &r, T1 &t1, T2 &t2, T3 &t3)
+template <typename R, typename T1, typename T2, typename T3>
+inline event<T1, T2, T3> make_event(rendezvous<> &, R &r, T1 &t1, T2 &t2, T3 &t3)
 {
     return event<T1, T2, T3>(r, t1, t2, t3);
 }
 
-template <typename W1, typename T1, typename T2>
-inline event<T1, T2> make_event(rendezvous<> &, rendezvous<W1> &r, const W1 &w1, T1 &t1, T2 &t2)
+template <typename R, typename W1, typename T1, typename T2>
+inline event<T1, T2> make_event(rendezvous<> &, R &r, const W1 &w1, T1 &t1, T2 &t2)
 {
     return event<T1, T2>(r, w1, t1, t2);
 }
 
-template <typename T1, typename T2>
-inline event<T1, T2> make_event(rendezvous<> &, rendezvous<> &r, T1 &t1, T2 &t2)
+template <typename R, typename T1, typename T2>
+inline event<T1, T2> make_event(rendezvous<> &, R &r, T1 &t1, T2 &t2)
 {
     return event<T1, T2>(r, t1, t2);
 }
 
-template <typename W1, typename T1>
-inline event<T1> make_event(rendezvous<> &, rendezvous<W1> &r, const W1 &w1, T1 &t1)
+template <typename R, typename W1, typename T1>
+inline event<T1> make_event(rendezvous<> &, R &r, const W1 &w1, T1 &t1)
 {
     return event<T1>(r, w1, t1);
 }
 
-template <typename T1>
-inline event<T1> make_event(rendezvous<> &, rendezvous<> &r, T1 &t1)
+template <typename R, typename T1>
+inline event<T1> make_event(rendezvous<> &, R &r, T1 &t1)
 {
     return event<T1>(r, t1);
 }
 
-template <typename W1>
-inline event<> make_event(rendezvous<> &, rendezvous<W1> &r, const W1 &w1)
+template <typename R, typename W1>
+inline event<> make_event(rendezvous<> &, R &r, const W1 &w1)
 {
     return event<>(r, w1);
 }
 
-inline event<>
-make_event(rendezvous<> &, rendezvous<> &r)
+template <typename R>
+inline event<> make_event(rendezvous<> &, R &r)
 {
     return event<>(r);
 }

@@ -2,6 +2,8 @@
 #include <sys/select.h>
 #include <stdio.h>
 #include <signal.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 namespace tame {
 
@@ -14,21 +16,52 @@ rendezvous<> rendezvous<>::dead;
 _event_superbase _event_superbase::dead(&rendezvous<>::dead, 0);
 
 // signal handling inspired by sfslite.
+namespace {
+
 #define NSIGNALS 32
-static int sig_pipe[2] = { -1, -1 };
-static volatile unsigned sig_any_active;
-static volatile unsigned sig_active[NSIGNALS];
-static event<> sig_handlers[NSIGNALS];
+int sig_pipe[2] = { -1, -1 };
+volatile unsigned sig_any_active;
+volatile unsigned sig_active[NSIGNALS];
+volatile int sig_installing = -1;
+event<> sig_handlers[NSIGNALS];
+
+class sigcancel_rendezvous : public rendezvous<> { public:
+
+    sigcancel_rendezvous() {
+    }
+
+    inline void add_event(_event_superbase *e) throw () {
+	_npassive++;
+	_add_event(e, sig_installing);
+    }
+    
+    void _complete(uintptr_t rname, bool success) {
+	if (rname != sig_installing) {
+	    struct sigaction sa;
+	    sa.sa_handler = SIG_DFL;
+	    sigemptyset(&sa.sa_mask);
+	    sa.sa_flags = SA_RESETHAND;
+	    sigaction(rname, &sa, 0);
+	}
+    }
+    
+};
+
+sigcancel_rendezvous sigcancelr;
+
+}
+
 
 driver::driver()
     : _t(0), _nt(0),
       _fd(0), _fdcap(0), _nfds(0),
-      _asap(0), _nasap(0), _asapcap(0),
+      _asap_head(0), _asap_tail(0), _asapcap(16),
       _tcap(0), _tgroup(0), _tfree(0)
 {
     expand_timers();
     FD_ZERO(&_readfds);
     FD_ZERO(&_writefds);
+    _asap = reinterpret_cast<event<> *>(new unsigned char[sizeof(event<>) * _asapcap]);
 }
 
 driver::~driver()
@@ -51,8 +84,8 @@ driver::~driver()
     delete[] reinterpret_cast<unsigned char *>(_fd);
 
     // free asap
-    for (int i = 0; i < _nasap; i++)
-	_asap[i].~event();
+    for (unsigned a = _asap_head; a != _asap_tail; a++)
+	_asap[a & (_asapcap - 1)].~event();
     delete[] reinterpret_cast<unsigned char *>(_asap);
 }
 
@@ -129,10 +162,18 @@ void driver::expand_fds(int fd)
 
 void driver::expand_asap()
 {
-    int ncap = (_asapcap ? _asapcap * 2 : 16);
+    int ncap = _asapcap * 2;
     event<> *nasap = reinterpret_cast<event<> *>(new unsigned char[sizeof(event<>) * ncap]);
-    memcpy(nasap, _asap, sizeof(event<>) * _asapcap);
-    
+    unsigned headoff = (_asap_head & (_asapcap - 1));
+    unsigned tailoff = (_asap_tail & (_asapcap - 1));
+    if (headoff <= tailoff)
+	memcpy(nasap, _asap + headoff, sizeof(event<>) * (_asap_tail - _asap_head));
+    else {
+	memcpy(nasap, _asap + headoff, sizeof(event<>) * (_asapcap - headoff));
+	memcpy(nasap + headoff, _asap, sizeof(event<>) * tailoff);
+    }
+    _asap_tail = _asap_tail - _asap_head;
+    _asap_head = 0;
     delete[] reinterpret_cast<unsigned char *>(_asap);
     _asap = nasap;
     _asapcap = ncap;
@@ -173,16 +214,25 @@ void driver::at_signal(int signal, const event<> &trigger)
 {
     assert(signal < NSIGNALS);
     
-    if (trigger && sig_pipe[0] < 0)
+    if (trigger && sig_pipe[0] < 0) {
 	pipe(sig_pipe);
+	fcntl(sig_pipe[0], F_SETFL, O_NONBLOCK);
+	fcntl(sig_pipe[0], F_SETFD, FD_CLOEXEC);
+	fcntl(sig_pipe[1], F_SETFD, FD_CLOEXEC);
+    }
 
+    sig_installing = signal;
+    
     sig_handlers[signal] = trigger;
+    sig_handlers[signal].at_cancel(make_event(sigcancelr));
     
     struct sigaction sa;
     sa.sa_handler = (trigger ? tame_signal_handler : SIG_DFL);
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESETHAND;
     sigaction(signal, &sa, 0);
+
+    sig_installing = -1;
 }
 
 void driver::once()
@@ -199,7 +249,7 @@ void driver::once()
 
     // determine timeout
     struct timeval to, *toptr;
-    if (_nasap > 0
+    if (_asap_head != _asap_tail
 	|| (_nt > 0 && !timercmp(&_t[0]->expiry, &now, >))
 	|| sig_any_active) {
 	timerclear(&to);
@@ -207,7 +257,7 @@ void driver::once()
     } else if (_nt == 0)
 	toptr = 0;
     else {
-#if 1
+#if 0
 	for (int i = 0; i < _nt; i++)
 	    fprintf(stderr, "%d.%06d ; ", _t[i]->expiry.tv_sec, _t[i]->expiry.tv_usec);
 	fprintf(stderr, "(%d.%06d) \n", now.tv_sec, now.tv_usec);
@@ -260,10 +310,10 @@ void driver::once()
     }
 
     // run asaps
-    while (_nasap > 0) {
-	--_nasap;
-	_asap[_nasap].trigger();
-	_asap[_nasap].~event();
+    while (_asap_head != _asap_tail) {
+	_asap[_asap_head & (_asapcap - 1)].trigger();
+	_asap[_asap_head & (_asapcap - 1)].~event();
+	_asap_head++;
     }
 
     // run the file descriptors

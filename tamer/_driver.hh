@@ -50,7 +50,8 @@ class driver { public:
     int _fdcap;
 
     event<> *_asap;
-    int _nasap;
+    unsigned _asap_head;
+    unsigned _asap_tail;
     int _asapcap;
 
     fd_set _readfds;
@@ -97,9 +98,10 @@ inline void driver::at_fd_write(int fd, const event<> &trigger)
 
 inline void driver::at_asap(const event<> &trigger)
 {
-    if (_nasap >= _asapcap)
+    if (_asap_tail - _asap_head == _asapcap)
 	expand_asap();
-    _asap[_nasap++] = trigger;
+    _asap[_asap_tail & (_asapcap - 1)] = trigger;
+    _asap_tail++;
 }
 
 inline void driver::at_delay(timeval tv, const event<> &trigger)
