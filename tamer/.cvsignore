@@ -1,1 +1,3 @@
-config.h.in config.h stamp-h1
+Makefile Makefile.in config.h config.h.in stamp-h1
+.deps .libs
+*.la *.lo

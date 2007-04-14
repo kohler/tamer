@@ -35,8 +35,8 @@ class sigcancel_rendezvous : public rendezvous<> { public:
 	_add_event(e, sig_installing);
     }
     
-    void _complete(uintptr_t rname, bool success) {
-	if (rname != sig_installing) {
+    void _complete(uintptr_t rname, bool) {
+	if ((int) rname != sig_installing) {
 	    struct sigaction sa;
 	    sa.sa_handler = SIG_DFL;
 	    sigemptyset(&sa.sa_mask);

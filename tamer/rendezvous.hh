@@ -258,7 +258,7 @@ class rendezvous<void> : public _rendezvous_base { public:
 	_add_event(e, 1);
     }
     
-    inline void _complete(uintptr_t rname, bool success) {
+    inline void _complete(uintptr_t, bool success) {
 	_npassive--;
 	if (success) {
 	    _nactive++;
@@ -293,7 +293,7 @@ class gather_rendezvous : public rendezvous<> { public:
     gather_rendezvous() {
     }
 
-    inline void _complete(uintptr_t rname, bool success) {
+    inline void _complete(uintptr_t, bool success) {
 	_npassive--;
 	if (success)
 	    _nactive++;

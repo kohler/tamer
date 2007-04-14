@@ -48,15 +48,15 @@ class driver { public:
 
     event<> *_fd;
     int _fdcap;
+    int _nfds;
 
     event<> *_asap;
     unsigned _asap_head;
     unsigned _asap_tail;
-    int _asapcap;
+    unsigned _asapcap;
 
     fd_set _readfds;
     fd_set _writefds;
-    int _nfds;
     
     int _tcap;
     ttimer_group *_tgroup;

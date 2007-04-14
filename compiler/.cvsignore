@@ -1,3 +1,3 @@
-Makefile.in Makefile .deps
+Makefile.in Makefile .deps .libs
 parse.cc parse.hh scan.cc
 tamer

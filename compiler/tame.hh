@@ -1,5 +1,5 @@
 // -*-c++-*-
-/* $Id: tame.hh,v 1.1 2007-04-11 06:00:39 kohler Exp $ */
+/* $Id: tame.hh,v 1.2 2007-04-14 00:41:01 kohler Exp $ */
 
 /*
  *
@@ -117,7 +117,6 @@ struct type_qualifier_t {
 
     void add_str (const str &s) { _v.push_back (s); }
     void add_lstr (const lstr &s) { add_str (s); _lineno = s.lineno (); }
-    void add_flag (unsigned f) { _flags = _flags | HOLDVAR_FLAG; }
 
     type_qualifier_t &concat (const type_qualifier_t &m);
 
@@ -188,7 +187,7 @@ class tame_el_t {
 public:
   tame_el_t () {}
   virtual ~tame_el_t () {}
-  virtual bool append (const str &s) { return false; }
+  virtual bool append (const str &) { return false; }
   virtual void output(outputter_t *o) = 0;
   virtual bool goes_after_vars () const { return true; }
 };
@@ -203,7 +202,7 @@ class element_list_t : public tame_el_t {
 	    _lst.push_back(e);
 	}
     }
-    virtual void push_hook (tame_el_t *e) {}
+    virtual void push_hook (tame_el_t *) {}
   protected:
     std::list<tame_el_t *> _lst;
 };
@@ -212,7 +211,7 @@ class tame_env_t : public element_list_t {
 public:
   virtual void output(outputter_t *o) { element_list_t::output(o); }
   virtual bool is_jumpto () const { return false; }
-  virtual void set_id (int id) {}
+  virtual void set_id (int) {}
   virtual int id () const { return 0; }
   virtual bool needs_counter () const { return false; }
 };
@@ -586,7 +585,7 @@ public:
   virtual ~tame_unblock_t () {}
   void output(outputter_t *o);
   virtual str macro_name () const { return "SIGNAL"; }
-  virtual void do_return_statement (strbuf &b) const {}
+  virtual void do_return_statement (strbuf &) const {}
 };
 
 class tame_resume_t : public tame_unblock_t {

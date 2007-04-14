@@ -12,14 +12,13 @@ AC_PROG_CXX
 AC_PROG_CXXCPP
 AM_PROG_LEX
 AC_PROG_YACC
+AC_PROG_LIBTOOL
 if test -n "$GCC" ; then CC="$CC -W -Wall" ; CXX="$CXX -W -Wall" ; fi
 
 dnl AN_MAKEVAR([AR], [AC_PROG_AR])
 dnl AN_PROGRAM([ar], [AC_PROG_AR])
 dnl AC_DEFUN([AC_PROG_AR], [AC_CHECK_TOOL(AR, ar, :)])
 dnl AC_PROG_AR
-
-AC_PROG_RANLIB
 
 
 dnl Available from the GNU Autoconf Macro Archive at:
@@ -328,4 +327,4 @@ dnl
 dnl Output
 dnl
 
-AC_OUTPUT(Makefile compiler/Makefile)
+AC_OUTPUT(Makefile compiler/Makefile tamer/Makefile)
