@@ -515,7 +515,7 @@ tame_fn_t::output_closure (outputter_t *o)
   }
 
   b << "class " << _closure.type ().base_type () 
-    << " : public tame::_closure_base "
+    << " : public tamer::_closure_base "
     << "{\n"
     << "public:\n"
     << "  " << _closure.type ().base_type () 
@@ -531,7 +531,7 @@ tame_fn_t::output_closure (outputter_t *o)
       _args->paramlist (b, DECLARATIONS);
   }
 
-  b << ") : tame::_closure_base ("
+  b << ") : tamer::_closure_base ("
       // << "\"" << state->infile_name () << "\", \"" << _name << "\""
     << ")"
       ;
@@ -575,7 +575,7 @@ tame_fn_t::output_closure (outputter_t *o)
   if (_args)  _args->declarations (b, "    ");
   _stack_vars.declarations (b, "    ");
 
-  b << "  tame::gather_rendezvous _closure__block;\n";
+  b << "  tamer::gather_rendezvous _closure__block;\n";
 
   b << "};\n\n";
 
@@ -627,7 +627,7 @@ tame_fn_t::output_jump_tab (strbuf &b)
     }
   }
   b << "  default:\n"
-    << "    throw tame::tame_error(\"bad closure unblock\");\n"
+    << "    throw tamer::tamer_error(\"bad closure unblock\");\n"
     << "  }\n";
 }
 
@@ -909,8 +909,8 @@ tame_ret_t::output (outputter_t *o)
   strbuf b;
 
   // always do end of scope checks
-  b << "  do { " << TAME_CLOSURE_NAME << "->end_of_scope_checks (" 
-    << _line_number << ");\n";
+  b << "  do { /*" << TAME_CLOSURE_NAME << "->end_of_scope_checks (" 
+    << _line_number << ");*/\n";
   o->output_str(b.str());
   b.str(str());
 
@@ -963,8 +963,8 @@ tame_fn_return_t::output (outputter_t *o)
 
   b << "  do {\n";
 
-  //b << "  " << TAME_CLOSURE_NAME << "->end_of_scope_checks (" 
-  //  << _line_number << ");\n";
+  b << "  /*" << TAME_CLOSURE_NAME << "->end_of_scope_checks (" 
+    << _line_number << ");*/\n";
   b << "  " << _fn->return_expr () << ";\n";
   b << "  } while (0);\n";
   o->output_str (b.str());

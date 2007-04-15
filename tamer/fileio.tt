@@ -1,0 +1,83 @@
+#include <tamer/fileio.hh>
+#include <sys/select.h>
+#include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+
+namespace tamer {
+namespace fileio {
+
+int make_nonblocking(int fd)
+{
+    int flags = ::fcntl(fd, F_GETFL);
+    if (flags < 0)
+	return flags;
+    return ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+void open(const char *filename, int flags, mode_t mode, event<int> done)
+{
+    int fd = ::open(filename, flags | O_NONBLOCK, mode);
+    done.trigger(fd);
+}
+
+tamed void read(int fd, void *buf, size_t size, ssize_t &size_out, event<int> done)
+{
+    tvars {
+	size_t pos(0);
+	ssize_t amt;
+	rendezvous<> r;
+    }
+    done.at_cancel(make_event(r));
+    while (pos != size && done) {
+	amt = ::read(fd, static_cast<char *>(buf) + pos, size - pos);
+	if (amt != 0 && amt != (ssize_t) -1) {
+	    pos += amt;
+	    size_out = pos;
+	} else if (amt == 0)
+	    break;
+	else if (errno == EAGAIN) {
+	    tamer::at_fd_read(fd, make_event(r));
+	    twait(r);
+	} else if (errno != EINTR) {
+	    done.trigger(-errno);
+	    return;
+	}
+    }
+    done.trigger(0);
+}
+
+tamed void write(int fd, const void *buf, size_t size, ssize_t &size_out, event<int> done)
+{
+    tvars {
+	size_t pos(0);
+	ssize_t amt;
+	rendezvous<> r;
+    }
+    done.at_cancel(make_event(r));
+    while (pos != size && done) {
+	amt = ::write(fd, static_cast<const char *>(buf) + pos, size - pos);
+	if (amt != 0 && amt != (ssize_t) -1) {
+	    pos += amt;
+	    size_out = pos;
+	} else if (amt == 0)
+	    break;
+	else if (errno == EAGAIN) {
+	    tamer::at_fd_write(fd, make_event(r));
+	    twait(r);
+	} else if (errno != EINTR) {
+	    done.trigger(-errno);
+	    return;
+	}
+    }
+    done.trigger(0);
+}
+
+tamed void close(int fd)
+{
+    ::close(fd);
+}
+
+}}

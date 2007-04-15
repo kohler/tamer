@@ -1,8 +1,8 @@
-#ifndef TAMER_TAME_DRIVER_HH
-#define TAMER_TAME_DRIVER_HH 1
-#include "tame_event.hh"
+#ifndef TAMER__DRIVER_HH
+#define TAMER__DRIVER_HH 1
+#include <tamer/_event.hh>
 #include <sys/time.h>
-namespace tame {
+namespace tamer {
 
 class driver { public:
 
@@ -15,7 +15,8 @@ class driver { public:
     inline void at_time(const timeval &expiry, const event<> &trigger);
     inline void at_asap(const event<> &trigger);
     inline void at_delay(timeval delay, const event<> &trigger);
-    inline void at_delay(int delay_msec, const event<> &trigger);
+    inline void at_delay_sec(int delay, const event<> &trigger);
+    inline void at_delay_msec(int delay, const event<> &trigger);
 
     static void at_signal(int signal, const event<> &trigger);
 
@@ -110,14 +111,26 @@ inline void driver::at_delay(timeval tv, const event<> &trigger)
     at_time(tv, trigger);
 }
 
-inline void driver::at_delay(int delay_msec, const event<> &trigger)
+inline void driver::at_delay_sec(int delay, const event<> &trigger)
 {
-    if (delay_msec <= 0)
+    if (delay <= 0)
 	at_asap(trigger);
     else {
 	timeval tv;
-	tv.tv_sec = delay_msec / 1000;
-	tv.tv_usec = (delay_msec % 1000) * 1000;
+	tv.tv_sec = delay;
+	tv.tv_usec = 0;
+	at_delay(tv, trigger);
+    }
+}
+
+inline void driver::at_delay_msec(int delay, const event<> &trigger)
+{
+    if (delay <= 0)
+	at_asap(trigger);
+    else {
+	timeval tv;
+	tv.tv_sec = delay / 1000;
+	tv.tv_usec = (delay % 1000) * 1000;
 	at_delay(tv, trigger);
     }
 }
@@ -137,9 +150,14 @@ inline void at_delay(const timeval &delay, const event<> &trigger)
     driver::main.at_delay(delay, trigger);
 }
 
-inline void at_delay(int delay_msec, const event<> &trigger)
+inline void at_delay_sec(int delay, const event<> &trigger)
 {
-    driver::main.at_delay(delay_msec, trigger);
+    driver::main.at_delay_sec(delay, trigger);
+}
+
+inline void at_delay_msec(int delay, const event<> &trigger)
+{
+    driver::main.at_delay_msec(delay, trigger);
 }
 
 inline void at_fd_read(int fd, const event<> &trigger)
@@ -158,4 +176,4 @@ inline void at_signal(int sig, const event<> &trigger)
 }
 
 }
-#endif /* TAMER_TAME_DRIVER_HH */
+#endif /* TAMER__DRIVER_HH */

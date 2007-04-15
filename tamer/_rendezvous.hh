@@ -1,8 +1,8 @@
-#ifndef TAMER_TAME_RENDEZVOUS_HH
-#define TAMER_TAME_RENDEZVOUS_HH
-#include "tame_util.hh"
-#include "tame_base.hh"
-namespace tame {
+#ifndef TAMER__RENDEZVOUS_HH
+#define TAMER__RENDEZVOUS_HH
+#include <tamer/_util.hh>
+#include <tamer/_base.hh>
+namespace tamer {
 
 template <typename W1, typename W2>
 class rendezvous : public _rendezvous_base { public:
@@ -304,4 +304,4 @@ class gather_rendezvous : public rendezvous<> { public:
 };
 
 }
-#endif /* TAMER_TAME_RENDEZVOUS_HH */
+#endif /* TAMER__RENDEZVOUS_HH */

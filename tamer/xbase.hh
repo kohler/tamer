@@ -1,7 +1,7 @@
-#ifndef TAMER_TAME_BASE_HH
-#define TAMER_TAME_BASE_HH 1
+#ifndef TAMER__BASE_HH
+#define TAMER__BASE_HH 1
 #include <stdexcept>
-namespace tame {
+namespace tamer {
 
 class _event_superbase;
 class _rendezvous_superbase;
@@ -136,9 +136,9 @@ struct _closure_base {
 };
 
 
-class tame_error : public std::runtime_error { public:
+class tamer_error : public std::runtime_error { public:
 
-    explicit tame_error(const std::string &arg)
+    explicit tamer_error(const std::string &arg)
 	: runtime_error(arg) {
     }
 
@@ -249,4 +249,4 @@ inline void _rendezvous_base::_run()
 }
 
 }
-#endif /* TAMER_TAME_BASE_HH */
+#endif /* TAMER__BASE_HH */

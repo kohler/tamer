@@ -1,11 +1,11 @@
-#include "tame_driver.hh"
+#include <tamer/_driver.hh>
 #include <sys/select.h>
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
 
-namespace tame {
+namespace tamer {
 
 driver driver::main;
 

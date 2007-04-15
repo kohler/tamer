@@ -1,8 +1,8 @@
-#ifndef TAMER_TAME_UTIL_HH
-#define TAMER_TAME_UTIL_HH
+#ifndef TAMER__UTIL_HH
+#define TAMER__UTIL_HH
 #include <memory>
 #include <cassert>
-namespace tame {
+namespace tamer {
 
 template <typename T, typename A = std::allocator<T> > class blockset { public:
 
@@ -218,4 +218,4 @@ inline void debuffer<T, A>::pop_front()
 }
 
 }
-#endif /* TAMER_TAME_UTIL_HH */
+#endif /* TAMER__UTIL_HH */

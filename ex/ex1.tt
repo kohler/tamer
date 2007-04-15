@@ -1,0 +1,68 @@
+// -*- mode: c++ -*-
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <tamer.hh>
+#include <tamer/adapter.hh>
+
+int n;
+
+tamed void delay1(int x, tamer::event<> e) {
+    n++;
+    twait { tamer::at_delay_msec(x, make_event()); }
+    fprintf(stderr, "%d.%06d: %d!\n", tamer::driver::main.now.tv_sec, tamer::driver::main.now.tv_usec, x);
+    n--;
+    e.trigger();
+}
+
+tamed void stdiny() {
+    tvars { int fail (-1); }
+    n++;
+    twait {
+	//tamer::at_fd_read(0, with_timeout(t, make_event(), fail));
+	tamer::at_fd_read(0, with_signal(SIGINT, make_event(), fail));
+	//tamer::at_fd_read(0, make_event());
+    }
+    fprintf(stderr, "====stdin result %d\n", fail);
+    n--;
+}
+
+tamed void waitr(tamer::rendezvous<int> &r) {
+    tvars { int x (); }
+    n++;
+    fprintf(stderr, "====waitr %d\n", x);
+    twait(r, x);
+    fprintf(stderr, "====waitr %d\n", x);
+    n--;
+}
+
+tamed void waitsig() {
+    tvars { int i (0); }
+    while (i < 3) {
+	n++;
+	twait {
+	    tamer::at_signal(SIGINT, make_event());
+	}
+	n--;
+	fprintf(stderr, "== sig %d\n", i);
+	i++;
+    }
+    fprintf(stderr, "== exit\n");
+}
+
+int main(int c, char **v) {
+    tamer::rendezvous<int> r;
+    fprintf(stderr, "???????? *** %d\n\n", getpid());
+    tamer::driver::main.set_now();
+    waitr(r);
+    delay1(100, tamer::event<>());
+    delay1(1000, tamer::make_event(r, 10));
+    delay1(250, tamer::event<>());
+    delay1(400, tamer::event<>());
+    fcntl(0, F_SETFD, O_NONBLOCK);
+    stdiny();
+    //waitsig();
+    while (n > 0)
+	tamer::driver::main.once();
+}

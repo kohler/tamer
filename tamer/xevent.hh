@@ -1,7 +1,7 @@
-#ifndef TAMER_TAME_EVENT_HH
-#define TAMER_TAME_EVENT_HH 1
-#include "tame_rendezvous.hh"
-namespace tame {
+#ifndef TAMER__EVENT_HH
+#define TAMER__EVENT_HH 1
+#include <tamer/_rendezvous.hh>
+namespace tamer {
 
 template <typename R, typename X1, typename X2>
 _event_superbase::_event_superbase(R &r, const X1 &w1, const X2 &w2)
@@ -233,7 +233,13 @@ class event { public:
 	_e->use();
     }
     
-    ~event() { _e->unuse(); }
+    ~event() {
+	_e->unuse();
+    }
+    
+    operator bool() const {
+	return (bool) *_e;
+    }
 
     void at_cancel(const event<> &e) {
 	_e->at_cancel(e);
@@ -309,7 +315,13 @@ class event<T1, T2, T3, void> { public:
 	_e->use();
     }
     
-    ~event() { _e->unuse(); }
+    ~event() {
+	_e->unuse();
+    }
+
+    operator bool() const {
+	return (bool) *_e;
+    }
 
     void at_cancel(const event<> &e) {
 	_e->at_cancel(e);
@@ -381,7 +393,13 @@ class event<T1, T2, void, void> { public:
 	_e->use();
     }
     
-    ~event() { _e->unuse(); }
+    ~event() {
+	_e->unuse();
+    }
+
+    operator bool() const {
+	return (bool) *_e;
+    }
 
     void at_cancel(const event<> &e) {
 	_e->at_cancel(e);
@@ -453,7 +471,13 @@ class event<T1, void, void, void> { public:
 	_e->use();
     }
     
-    ~event() { _e->unuse(); }
+    ~event() {
+	_e->unuse();
+    }
+
+    operator bool() const {
+	return (bool) *_e;
+    }
 
     void at_cancel(const event<> &e) {
 	_e->at_cancel(e);
@@ -732,4 +756,4 @@ inline event<> make_event(rendezvous<> &, R &r)
 }
 
 }
-#endif /* TAMER_TAME_EVENT_HH */
+#endif /* TAMER__EVENT_HH */

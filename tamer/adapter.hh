@@ -1,9 +1,9 @@
-#ifndef TAMER_TAME_ADAPTER_HH
-#define TAMER_TAME_ADAPTER_HH 1
-#include "tame_event.hh"
-#include "tame_driver.hh"
+#ifndef TAMER_ADAPTER_HH
+#define TAMER_ADAPTER_HH 1
+#include <tamer/_event.hh>
+#include <tamer/_driver.hh>
 #include <vector>
-namespace tame {
+namespace tamer {
 
 template <typename T> class _unbind_rendezvous : public _rendezvous_superbase { public:
 

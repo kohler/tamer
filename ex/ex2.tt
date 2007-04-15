@@ -1,0 +1,26 @@
+// -*- mode: c++ -*-
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <tamer.hh>
+#include <tamer/fileio.hh>
+
+int n;
+
+tamed void read_sucka(int fd) {
+    tvars {
+	int result;
+	char buf[40];
+	ssize_t amt;
+    }
+    //tamer::fileio::read(fd, buf, 40, amt, ..);
+}
+
+
+int main(int c, char **v) {
+    tamer::fileio::make_nonblocking(0);
+    read_sucka(0);
+    while (n > 0)
+	tamer::driver::main.once();
+}

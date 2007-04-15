@@ -1,16 +1,24 @@
 lib_LTLIBRARIES = libtamer.la
 libtamer_la_SOURCES = \
-	tame_adapter.hh \
-	tame_base.hh \
-	tame_driver.cc tame_driver.hh \
-	tame_event.hh \
-	tame_rendezvous.hh \
-	tame_util.hh \
+	_base.hh \
+	_driver.cc _driver.hh \
+	_event.hh \
+	_rendezvous.hh \
+	_util.hh \
+	adapter.hh \
+	fileio.tt fileio.hh \
 	tamer.hh
 include_HEADERS = tamer.hh
-pkginclude_HEADERS = tame_adapter.hh \
-	tame_base.hh \
-	tame_driver.hh \
-	tame_event.hh \
-	tame_rendezvous.hh \
-	tame_util.hh
+pkginclude_HEADERS = _base.hh \
+	_driver.hh \
+	_event.hh \
+	_rendezvous.hh \
+	_util.hh \
+	adapter.hh \
+	fileio.hh
+INCLUDES = -I..
+
+TAMER = ../compiler/tamer
+.tt.cc:
+	$(TAMER) -c $<
+fileio.cc: $(TAMER) fileio.tt
