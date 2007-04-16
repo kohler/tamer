@@ -1,4 +1,5 @@
 #include <tamer/_driver.hh>
+#include <tamer/adapter.hh>
 #include <sys/select.h>
 #include <stdio.h>
 #include <signal.h>
@@ -8,12 +9,6 @@
 namespace tamer {
 
 driver driver::main;
-
-_rendezvous_base *_rendezvous_base::unblocked;
-_rendezvous_base *_rendezvous_base::unblocked_tail;
-
-rendezvous<> rendezvous<>::dead;
-_event_superbase _event_superbase::dead(&rendezvous<>::dead, 0);
 
 // signal handling inspired by sfslite.
 namespace {
@@ -32,7 +27,7 @@ class sigcancel_rendezvous : public rendezvous<> { public:
 
     inline void add_event(_event_superbase *e) throw () {
 	_npassive++;
-	_add_event(e, sig_installing);
+	e->initialize(this, sig_installing);
     }
     
     void _complete(uintptr_t rname, bool) {

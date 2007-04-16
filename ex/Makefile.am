@@ -10,4 +10,7 @@ TAMER = ../compiler/tamer
 .tt.cc: $(TAMER)
 	$(TAMER) -c $<
 
+ex1.cc: ex1.tt $(TAMER)
+ex2.cc: ex2.tt $(TAMER)
+
 INCLUDES = -I../tamer -I..

@@ -1,3 +1,4 @@
+// -*- mode: c++ -*-
 #include <tamer/fileio.hh>
 #include <sys/select.h>
 #include <stdio.h>

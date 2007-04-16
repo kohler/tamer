@@ -1,6 +1,6 @@
 lib_LTLIBRARIES = libtamer.la
 libtamer_la_SOURCES = \
-	_base.hh \
+	_base.cc _base.hh \
 	_driver.cc _driver.hh \
 	_event.hh \
 	_rendezvous.hh \

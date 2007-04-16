@@ -21,8 +21,8 @@ tamed void stdiny() {
     n++;
     twait {
 	//tamer::at_fd_read(0, with_timeout(t, make_event(), fail));
-	tamer::at_fd_read(0, with_signal(SIGINT, make_event(), fail));
-	//tamer::at_fd_read(0, make_event());
+	//tamer::at_fd_read(0, with_signal(SIGINT, make_event(), fail));
+	tamer::at_fd_read(0, make_event());
     }
     fprintf(stderr, "====stdin result %d\n", fail);
     n--;
@@ -51,7 +51,18 @@ tamed void waitsig() {
     fprintf(stderr, "== exit\n");
 }
 
-int main(int c, char **v) {
+tamed void scatter() {
+    tvars { int i; tamer::rendezvous<int> r; }
+    n++;
+    tamer::at_delay_msec(500, tamer::scatter(tamer::make_event(r, 1), tamer::make_event(r, 2)));
+    while (r.nevents()) {
+	twait(r, i);
+	fprintf(stderr, "=== scattered %d\n", i);
+    }
+    n--;
+}
+
+int main(int, char **) {
     tamer::rendezvous<int> r;
     fprintf(stderr, "???????? *** %d\n\n", getpid());
     tamer::driver::main.set_now();
@@ -60,8 +71,9 @@ int main(int c, char **v) {
     delay1(1000, tamer::make_event(r, 10));
     delay1(250, tamer::event<>());
     delay1(400, tamer::event<>());
-    fcntl(0, F_SETFD, O_NONBLOCK);
-    stdiny();
+    scatter();
+    //fcntl(0, F_SETFD, O_NONBLOCK);
+    //stdiny();
     //waitsig();
     while (n > 0)
 	tamer::driver::main.once();

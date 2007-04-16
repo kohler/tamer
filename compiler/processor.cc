@@ -712,7 +712,7 @@ tame_fn_t::output_fn (outputter_t *o)
 
   output_mode_t om = o->switch_to_mode (OUTPUT_PASSTHROUGH);
   b << closure_signature (false, TAME_PREFIX)  << "\n"
-    << "{\n#define make_event(e, ...) make_event(__cls._closure__block, ## __VA_ARGS__)\n";
+    << "{\n";
 
   o->output_str(b.str());
 
@@ -722,7 +722,7 @@ tame_fn_t::output_fn (outputter_t *o)
 
   element_list_t::output (o);
 
-  o->output_str("\n#undef make_event\n");
+  o->output_str("\n");
   o->switch_to_mode (om);
 }
 
@@ -770,11 +770,10 @@ tame_block_ev_t::output (outputter_t *o)
   strbuf b;
   str tmp;
 
-  output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
-
-  b << "  { {\n";
-
+  b << "  { {\n#define make_event(...) make_event(__cls._closure__block, ## __VA_ARGS__)\n";
   o->output_str(b.str());
+
+  output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
   b.str(str());
   assert(b.str() == str());
   o->switch_to_mode (om);
@@ -786,9 +785,9 @@ tame_block_ev_t::output (outputter_t *o)
       (*el)->output (o);
   }
 
+  o->output_str(" }\n#undef make_event\n");
   om = o->switch_to_mode (OUTPUT_TREADMILL);
-  b << " }\n"
-    << _fn->label(_id) << ":\n"
+  b << _fn->label(_id) << ":\n"
     << "  while (" << TAME_CLOSURE_NAME << "._closure__block.npassive()) {\n"
     << "      " << TAME_CLOSURE_NAME << "._closure__block._block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n"
     << "      "

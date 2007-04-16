@@ -24,12 +24,6 @@ inline _event_superbase::_event_superbase(R &r)
     r.add_event(this);
 }
 
-_event_superbase::_event_superbase(_rendezvous_superbase *r, uintptr_t rname)
-    : _refcount(1), _r(r), _r_name(rname), _r_next(0), _r_pprev(0),
-      _canceller(0)
-{
-}
-
 
 template <typename T1, typename T2, typename T3, typename T4>
 class _event_base : public _event_superbase { public:
@@ -535,6 +529,13 @@ class event<T1, void, void, void> { public:
 template <>
 class event<void, void, void, void> { public:
 
+    event() {
+	if (!_event_superbase::dead)
+	    _event_superbase::make_dead();
+	_e = _event_superbase::dead;
+	_e->use();
+    }
+
     template <typename R, typename X1, typename X2>
     event(R &r, const X1 &w1, const X2 &w2)
 	: _e(new _event_superbase(r, w1, w2)) {
@@ -548,11 +549,6 @@ class event<void, void, void, void> { public:
     template <typename R>
     event(R &r)
 	: _e(new _event_superbase(r)) {
-    }
-
-    event()
-	: _e(&_event_superbase::dead) {
-	_e->use();
     }
 
     event(const event<> &e)
@@ -610,27 +606,39 @@ class event<void, void, void, void> { public:
     _event_superbase *__superbase() const {
 	return _e;
     }
-    
+
+    static inline event<> __wrap(_event_superbase *e) {
+	return event<>(marker(), e);
+    }
+
   private:
 
     _event_superbase *_e;
 
-    friend class _event_superbase;
-    
-    event(_rendezvous_superbase *r, uintptr_t rname)
-	: _e(new _event_superbase(r, rname)) {
+    struct marker { };
+    inline event(const marker &, _event_superbase *e)
+	: _e(e) {
+	_e->use();
     }
     
-    template <typename T1> friend class _bind_rendezvous;
+    friend class _event_superbase;
+    friend event<> _hard_scatter(const event<> &, const event<> &);
     
 };
 
 
 inline void _event_superbase::at_cancel(const event<> &e)
 {
-    assert(_r && !_canceller);
-    _canceller = e._e;
-    _canceller->use();
+    assert(_r);
+    if (!_canceller) {
+	_canceller = e._e;
+	_canceller->use();
+    } else {
+	event<> comb = tamer::scatter(event<>::__wrap(_canceller), e);
+	_canceller->unuse();
+	_canceller = comb._e;
+	_canceller->use();
+    }
 }
 
 
@@ -694,7 +702,7 @@ inline event<> make_event(R &r)
     return event<>(r);
 }
 
-
+#if 0
 template <typename R, typename W1, typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> make_event(rendezvous<> &, R &r, const W1 &w1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 {
@@ -753,6 +761,16 @@ template <typename R>
 inline event<> make_event(rendezvous<> &, R &r)
 {
     return event<>(r);
+}
+#endif
+
+inline event<> scatter(const event<> &e1, const event<> &e2) {
+    if (!e1)
+	return e2;
+    else if (!e2)
+	return e1;
+    else
+	return _hard_scatter(e1, e2);
 }
 
 }

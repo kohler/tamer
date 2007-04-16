@@ -8,11 +8,15 @@ namespace tamer {
 template <typename T> class _unbind_rendezvous : public _rendezvous_superbase { public:
 
     _unbind_rendezvous(const event<> &ein)
-	: _ein(ein), _eout(this, ubtrigger)
+	: _ein(ein), _eout(*this, ubtrigger)
     {
-	_ein.at_cancel(event<>(this, ubcancel));
+	_ein.at_cancel(event<>(*this, ubcancel));
     }
 
+    void add_event(_event_superbase *e, uintptr_t what) {
+	e->simple_initialize(this, what);
+    }
+    
     void _complete(uintptr_t rname, bool success) {
 	if (success) {
 	    if (rname == ubcancel)
@@ -48,6 +52,10 @@ template <typename T1> class _bind_rendezvous : public _rendezvous_superbase { p
     ~_bind_rendezvous() {
     }
 
+    void add_event(_event_superbase *e, uintptr_t what) {
+	e->simple_initialize(this, what);
+    }
+    
     void _complete(uintptr_t rname, bool success) {
 	if (success) {
 	    if (rname == ubcancel)
@@ -72,11 +80,49 @@ template <typename T1> class _bind_rendezvous : public _rendezvous_superbase { p
     
 };
 
+
+class _scatter_rendezvous : public _rendezvous_superbase { public:
+
+    _scatter_rendezvous() {
+    }
+
+    ~_scatter_rendezvous() {
+    }
+
+    void add_event(_event_superbase *e) {
+	e->simple_initialize(this, 0);
+    }
+
+    bool is_scatter() const {
+	return true;
+    }
+
+    void add_scatter(const event<> &e) {
+	if (e)
+	    _es.push_back(e);
+    }
+    
+    void _complete(uintptr_t, bool success) {
+	if (success) {
+	    for (std::vector<event<> >::iterator i = _es.begin(); i != _es.end(); i++)
+		i->trigger();
+	}
+	delete this;
+    }
+    
+  private:
+
+    std::vector<event<> > _es;
+    
+};
+
+
 template <typename T1>
 const event<T1> &unbind(const event<> &e) {
     _unbind_rendezvous<T1> *ur = new _unbind_rendezvous<T1>(e);
     return ur->eout();
 }
+
 
 template <typename T1, typename X1>
 const event<> &bind(const event<T1> &e, const X1 &t1) {
@@ -85,6 +131,12 @@ const event<> &bind(const event<T1> &e, const X1 &t1) {
 }
 
 
+namespace outcome {
+const int success = 0;
+const int cancel = -1;
+const int timeout = -2;
+const int signal = -3;
+}
 
 
 class _connector_closure : public _closure_base { public:
@@ -105,8 +157,8 @@ class _connector_closure : public _closure_base { public:
 	    _r._block(*this, 0);
 	    return;
 	}
-	_e->complete(x == 1);
-	if (_result)
+	_e->complete(x == outcome::success);
+	if (_result && x != outcome::success)
 	    *_result = x;
     }
 
@@ -120,9 +172,9 @@ class _connector_closure : public _closure_base { public:
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_timeout(const timeval &delay, event<T1, T2, T3, T4> e) {
     _connector_closure *c = new _connector_closure(e, 0);
-    event<T1, T2, T3, T4> ret_e = e.rebind(c->_r, 1);
-    ret_e.at_cancel(make_event(c->_r, 0));
-    at_delay(delay, make_event(c->_r, 0));
+    event<T1, T2, T3, T4> ret_e = e.rebind(c->_r, outcome::success);
+    ret_e.at_cancel(make_event(c->_r, outcome::cancel));
+    at_delay(delay, make_event(c->_r, outcome::timeout));
     c->_closure__activate(0);
     c->unuse();
     return ret_e;
@@ -130,21 +182,55 @@ inline event<T1, T2, T3, T4> with_timeout(const timeval &delay, event<T1, T2, T3
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_timeout(const timeval &delay, event<T1, T2, T3, T4> e, int &result) {
+    result = outcome::success;
     _connector_closure *c = new _connector_closure(e, &result);
-    event<T1, T2, T3, T4> ret_e = e.rebind(c->_r, 1);
-    ret_e.at_cancel(make_event(c->_r, 0));
-    at_delay(delay, make_event(c->_r, 0));
+    event<T1, T2, T3, T4> ret_e = e.rebind(c->_r, outcome::success);
+    ret_e.at_cancel(make_event(c->_r, outcome::cancel));
+    at_delay(delay, make_event(c->_r, outcome::timeout));
     c->_closure__activate(0);
     c->unuse();
     return ret_e;
 }
 
 template <typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> with_timeout_sec(int delay, event<T1, T2, T3, T4> e) {
+    timeval tv;
+    tv.tv_sec = delay;
+    tv.tv_usec = 0;
+    return with_timeout(tv, e);
+}
+
+template <typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> with_timeout_sec(int delay, event<T1, T2, T3, T4> e, int &result) {
+    timeval tv;
+    tv.tv_sec = delay;
+    tv.tv_usec = 0;
+    return with_timeout(tv, e, result);
+}
+
+template <typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> with_timeout_msec(int delay, event<T1, T2, T3, T4> e) {
+    timeval tv;
+    tv.tv_sec = delay / 1000;
+    tv.tv_usec = delay % 1000;
+    return with_timeout(tv, e);
+}
+
+template <typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> with_timeout_msec(int delay, event<T1, T2, T3, T4> e, int &result) {
+    timeval tv;
+    tv.tv_sec = delay / 1000;
+    tv.tv_usec = delay % 1000;
+    return with_timeout(tv, e, result);
+}
+
+
+template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e) {
     _connector_closure *c = new _connector_closure(e, 0);
-    event<T1, T2, T3, T4> ret_e = e.rebind(c->_r, 1);
-    ret_e.at_cancel(make_event(c->_r, 0));
-    at_signal(sig, make_event(c->_r, 0));
+    event<T1, T2, T3, T4> ret_e = e.rebind(c->_r, outcome::success);
+    ret_e.at_cancel(make_event(c->_r, outcome::cancel));
+    at_signal(sig, make_event(c->_r, outcome::signal));
     c->_closure__activate(0);
     c->unuse();
     return ret_e;
@@ -152,10 +238,11 @@ inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e) {
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e, int &result) {
+    result = outcome::success;
     _connector_closure *c = new _connector_closure(e, &result);
-    event<T1, T2, T3, T4> ret_e = e.rebind(c->_r, 1);
-    ret_e.at_cancel(make_event(c->_r, 0));
-    at_signal(sig, make_event(c->_r, 0));
+    event<T1, T2, T3, T4> ret_e = e.rebind(c->_r, outcome::success);
+    ret_e.at_cancel(make_event(c->_r, outcome::cancel));
+    at_signal(sig, make_event(c->_r, outcome::signal));
     c->_closure__activate(0);
     c->unuse();
     return ret_e;
@@ -164,10 +251,10 @@ inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e, int &
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, T2, T3, T4> e) {
     _connector_closure *c = new _connector_closure(e, 0);
-    event<T1, T2, T3, T4> ret_e = e.rebind(c->_r, 1);
-    ret_e.at_cancel(make_event(c->_r, 0));
+    event<T1, T2, T3, T4> ret_e = e.rebind(c->_r, outcome::success);
+    ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
-	at_signal(*i, make_event(c->_r, 0));
+	at_signal(*i, make_event(c->_r, outcome::signal));
     c->_closure__activate(0);
     c->unuse();
     return ret_e;
@@ -175,11 +262,12 @@ inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, 
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, T2, T3, T4> e, int &result) {
+    result = outcome::success;
     _connector_closure *c = new _connector_closure(e, &result);
-    event<T1, T2, T3, T4> ret_e = e.rebind(c->_r, 1);
-    ret_e.at_cancel(make_event(c->_r, 0));
+    event<T1, T2, T3, T4> ret_e = e.rebind(c->_r, outcome::success);
+    ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
-	at_signal(*i, make_event(c->_r, 0));
+	at_signal(*i, make_event(c->_r, outcome::signal));
     c->_closure__activate(0);
     c->unuse();
     return ret_e;

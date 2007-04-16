@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <tamer.hh>
+#include <tamer/adapter.hh>
 #include <tamer/fileio.hh>
 
 int n;
@@ -14,13 +15,26 @@ tamed void read_sucka(int fd) {
 	char buf[40];
 	ssize_t amt;
     }
-    //tamer::fileio::read(fd, buf, 40, amt, ..);
+    n++;
+    twait {
+	tamer::event<int> e = make_event(result);
+	tamer::fileio::read(fd, buf, 40, amt, tamer::with_timeout_sec(2, make_event(result)));
+    }
+    fprintf(stderr, "got %d: %d: %.*s\n", result, amt, amt, buf);
+    n--;
+}
+
+tamed void time_sucka() {
+    n++;
+    twait { tamer::at_delay_sec(5, make_event()); }
+    n--;
 }
 
 
-int main(int c, char **v) {
+int main(int, char **) {
     tamer::fileio::make_nonblocking(0);
     read_sucka(0);
+    time_sucka();
     while (n > 0)
 	tamer::driver::main.once();
 }

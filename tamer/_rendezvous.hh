@@ -41,7 +41,7 @@ void rendezvous<W1, W2>::add_event(_event_superbase *e, const W1 &w1, const W2 &
     evtrec &ew = _bs.allocate_passive(u);
     (void) new(static_cast<void *>(&ew.w1)) W1(w1);
     (void) new(static_cast<void *>(&ew.w2)) W2(w2);
-    _add_event(e, u);
+    e->initialize(this, u);
 }
 
 template <typename W1, typename W2>
@@ -102,7 +102,7 @@ void rendezvous<W1, void>::add_event(_event_superbase *e, const W1 &w1)
     uintptr_t u;
     evtrec &erec = _bs.allocate_passive(u);
     (void) new(static_cast<void *>(&erec.w1)) W1(w1);
-    _add_event(e, u);
+    e->initialize(this, u);
 }
 
 template <typename W1>
@@ -155,7 +155,7 @@ inline rendezvous<uintptr_t>::rendezvous()
 inline void rendezvous<uintptr_t>::add_event(_event_superbase *e, uintptr_t w1) throw ()
 {
     _npassive++;
-    _add_event(e, w1);
+    e->initialize(this, w1);
 }
 
 inline void rendezvous<uintptr_t>::_complete(uintptr_t rname, bool success)
@@ -255,7 +255,7 @@ class rendezvous<void> : public _rendezvous_base { public:
 
     inline void add_event(_event_superbase *e) throw () {
 	_npassive++;
-	_add_event(e, 1);
+	e->initialize(this, 1);
     }
     
     inline void _complete(uintptr_t, bool success) {
@@ -278,8 +278,6 @@ class rendezvous<void> : public _rendezvous_base { public:
     unsigned npassive() const	{ return _npassive; }
     unsigned nevents() const	{ return nactive() + npassive(); }
 
-    static rendezvous<> dead;
-    
   protected:
 
     unsigned _npassive;

@@ -11,6 +11,9 @@ template <typename W1=void, typename W2=void> class rendezvous;
 template <typename T1=void, typename T2=void, typename T3=void, typename T4=void> class event;
 template <typename T1> class _unbind_rendezvous;
 template <typename T1> class _bind_rendezvous;
+class _scatter_rendezvous;
+inline event<> scatter(const event<> &, const event<> &);
+event<> _hard_scatter(const event<> &e1, const event<> &e2);
 class driver;
 
 class _event_superbase { public:
@@ -38,6 +41,18 @@ class _event_superbase { public:
     operator bool() const {
 	return _r != 0;
     }
+
+    inline bool is_scatterer() const;
+
+    inline void simple_initialize(_rendezvous_superbase *r, uintptr_t rname) {
+	assert(!_r);
+	_r = r;
+	_r_name = rname;
+	_r_next = 0;
+	_r_pprev = 0;
+    }
+
+    inline void initialize(_rendezvous_base *r, uintptr_t rname);
     
     uintptr_t rname() const {
 	return _r_name;
@@ -56,11 +71,19 @@ class _event_superbase { public:
     _event_superbase **_r_pprev;
     _event_superbase *_canceller;
 
-    inline _event_superbase(_rendezvous_superbase *r, uintptr_t rname);
-    static _event_superbase dead;
-        
+    inline _event_superbase()
+	: _refcount(1), _r(0), _r_name(0), _r_next(0), _r_pprev(0), _canceller(0) {
+    }
+
+    static _event_superbase *dead;
+
+    static void make_dead();
+    class initializer;
+    static initializer the_initializer;
+    
     friend class _rendezvous_base;
     friend class event<void, void, void, void>;
+    friend event<> _hard_scatter(const event<> &, const event<> &);
     
 };
 
@@ -73,6 +96,10 @@ class _rendezvous_superbase { public:
     virtual inline ~_rendezvous_superbase() {
     }
 
+    virtual bool is_scatter() const {
+	return false;
+    }
+    
     virtual void _complete(uintptr_t rname, bool success) = 0;
 
 };
@@ -87,7 +114,6 @@ class _rendezvous_base : public _rendezvous_superbase { public:
     
     virtual inline ~_rendezvous_base();
 
-    inline void _add_event(_event_superbase *e, uintptr_t name);
     inline void _block(_closure_base &c, unsigned where);
     inline void _unblock();
     inline void _run();
@@ -103,6 +129,7 @@ class _rendezvous_base : public _rendezvous_superbase { public:
     _closure_base *_blocked_closure;
     unsigned _blocked_closure_blockid;
 
+    friend class _event_superbase;
     friend class driver;
     
 };
@@ -151,6 +178,10 @@ inline _event_superbase::~_event_superbase()
 	complete(false);
 }
 
+inline bool _event_superbase::is_scatterer() const
+{
+    return _r && _r->is_scatter();
+}
 
 inline _rendezvous_base::~_rendezvous_base()
 {
@@ -173,16 +204,16 @@ inline _rendezvous_base::~_rendezvous_base()
 	_blocked_closure->unuse();
 }
 
-inline void _rendezvous_base::_add_event(_event_superbase *e, uintptr_t name)
+inline void _event_superbase::initialize(_rendezvous_base *r, uintptr_t rname)
 {
     // NB this can be called before e has been fully initialized.
-    e->_r = this;
-    e->_r_name = name;
-    e->_r_pprev = &_events;
-    if (_events)
-	_events->_r_pprev = &e->_r_next;
-    e->_r_next = _events;
-    _events = e;
+    _r = r;
+    _r_name = rname;
+    _r_pprev = &r->_events;
+    if (r->_events)
+	r->_events->_r_pprev = &_r_next;
+    _r_next = r->_events;
+    r->_events = this;
 }
 
 inline bool _event_superbase::complete(bool success)
