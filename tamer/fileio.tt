@@ -39,7 +39,7 @@ tamed void read(int fd, void *buf, size_t size, ssize_t &size_out, event<int> do
 	    size_out = pos;
 	} else if (amt == 0)
 	    break;
-	else if (errno == EAGAIN) {
+	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
 	    tamer::at_fd_read(fd, make_event(r));
 	    twait(r);
 	} else if (errno != EINTR) {
@@ -65,7 +65,7 @@ tamed void write(int fd, const void *buf, size_t size, ssize_t &size_out, event<
 	    size_out = pos;
 	} else if (amt == 0)
 	    break;
-	else if (errno == EAGAIN) {
+	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
 	    tamer::at_fd_write(fd, make_event(r));
 	    twait(r);
 	} else if (errno != EINTR) {
@@ -79,6 +79,44 @@ tamed void write(int fd, const void *buf, size_t size, ssize_t &size_out, event<
 tamed void close(int fd)
 {
     ::close(fd);
+}
+
+tamed void fstat(int fd, struct stat &stat_out, event<int> done)
+{
+    int r = ::fstat(fd, &stat_out);
+    done.trigger(r);
+}
+
+tamed void pipe(int fd_out[2], event<int> done)
+{
+    int r = ::pipe(fd_out);
+    done.trigger(r);
+}
+
+tamed void accept(int listenfd, struct sockaddr *name_out, socklen_t *namelen_out, event<int> done)
+{
+    tvars {
+	int fd(-1);
+	rendezvous<> r;
+    }
+    done.at_cancel(make_event(r));
+    while (done) {
+	fd = ::accept(listenfd, name_out, namelen_out);
+	if (fd >= 0)
+	    break;
+	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+	    tamer::at_fd_read(fd, make_event(r));
+	    twait(r);
+	} else if (errno != EINTR) {
+	    done.trigger(-errno);
+	    return;
+	}
+    }
+    done.trigger(fd >= 0 ? fd : -errno);
+}
+
+tamed void connect(int fd, const struct sockaddr *name, socklen_t namelen, event<int> done)
+{
 }
 
 }}
