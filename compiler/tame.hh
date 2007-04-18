@@ -1,5 +1,5 @@
 // -*-c++-*-
-/* $Id: tame.hh,v 1.2 2007-04-14 00:41:01 kohler Exp $ */
+/* $Id: tame.hh,v 1.3 2007-04-18 00:54:24 kohler Exp $ */
 
 /*
  *
@@ -81,21 +81,25 @@ typedef enum { NONE = 0, ARG = 1, STACK = 2, CLASS = 3, EXPR = 4 } vartyp_t ;
 str ws_strip (str s);
 str template_args (str s);
 
-class lstr : public str {
+class lstr {
 public:
-    lstr() : str (), _lineno (0) {}
-    lstr(const char *c) : str (c), _lineno (0) {}
-    lstr(unsigned ln, const str &s) : str (s), _lineno (ln) {}
-    lstr(unsigned ln, const strbuf &s) : str (s.str()), _lineno (ln) {}
+    lstr() : _s(), _lineno(0) {}
+    explicit lstr(const char *c) : _s(c), _lineno(0) {}
+    explicit lstr(const std::string &s) : _s(s), _lineno(0) {}
+    lstr(unsigned ln, const std::string &s) : _s(s), _lineno(ln) {}
+    lstr(unsigned ln, const strbuf &s) : _s(s.str()), _lineno(ln) {}
+    const std::string &str() const { return _s; }
+    std::string::size_type length() const { return _s.length(); }
     void set_lineno (unsigned l) { _lineno = l; }
     unsigned lineno () const { return _lineno; }
   private:
+    std::string _s;
     unsigned _lineno;
 };
 
 inline strbuf &operator<<(strbuf &ostr, const lstr &l)
 {
-    ostr << (const str &) l;
+    ostr << l.str();
     return ostr;
 }
 
@@ -115,8 +119,8 @@ struct type_qualifier_t {
     type_qualifier_t (const lstr &s, unsigned f = 0) 
 	: _flags (f) { if (s.length()) add_lstr (s); }
 
-    void add_str (const str &s) { _v.push_back (s); }
-    void add_lstr (const lstr &s) { add_str (s); _lineno = s.lineno (); }
+    void add_str(const str &s) { _v.push_back(s); }
+    void add_lstr(const lstr &s) { add_str(s.str()); _lineno = s.lineno(); }
 
     type_qualifier_t &concat (const type_qualifier_t &m);
 
@@ -244,27 +248,30 @@ class tame_passthrough_t : public tame_el_t {
 };
 
 class type_t {
-public:
-  type_t () {}
-  type_t (const str &t, const str &p)
-    : _base_type (t), _pointer (p) {}
-  type_t (const str &t, const str &p, const str &ta)
-    : _base_type (t), _pointer (p), _template_args (ta) {}
-  str base_type () const { return _base_type; }
-  str pointer () const { return _pointer; }
-  str to_str () const;
-  str to_str_w_template_args (bool p = true) const;
-  str mk_ptr () const;
-  str alloc_ptr (const str &nm, const str &args) const;
-  str type_without_pointer () const;
-  void set_base_type (const str &t) { _base_type = t; }
-  void set_pointer (const str &p) { _pointer = p; }
-    bool is_complete () const { return _base_type.length(); }
-    bool is_void () const 
-    { return (_base_type == "void" && _pointer.length() == 0); }
-    bool is_ref () const { return _pointer.find('&') != str::npos; }
+  public:
+    type_t() {}
+    type_t(const str &t, const str &p)
+	: _base_type(t), _pointer(p) {}
+    type_t(const str &t, const str &p, const str &ta)
+	: _base_type(t), _pointer(p), _template_args(ta) {}
+    str base_type() const { return _base_type; }
+    str pointer() const { return _pointer; }
+    str arrays() const { return _arrays; }
+    str to_str() const;
+    str to_str_w_template_args(bool p = true) const;
+    str mk_ptr() const;
+    str alloc_ptr(const str &nm, const str &args) const;
+    str type_without_pointer() const;
+    void set_base_type(const str &t) { _base_type = t; }
+    void set_pointer(const str &p) { _pointer = p; }
+    void set_arrays(const str &a) { _arrays = a; }
+    bool is_complete() const { return _base_type.length(); }
+    bool is_void() const {
+	return (_base_type == "void" && _pointer.length() == 0);
+    }
+    bool is_ref() const { return _pointer.find('&') != str::npos; }
 private:
-  str _base_type, _pointer, _template_args;
+    str _base_type, _pointer, _arrays, _template_args;
 };
 
 class initializer_t {
@@ -297,41 +304,43 @@ public:
 class declarator_t;
 class var_t {
 public:
-    var_t () : _initializer(0) {}
-    var_t (const str &n, vartyp_t a = NONE) : _name (n), _asc (a), _initializer(0), _flags (0) {}
-    var_t (const type_qualifier_t &m, declarator_t *d, vartyp_t a = NONE);
-    var_t (const str &t, const str &p, const str &n, vartyp_t a = NONE)
-	: _name (n), _type (t, p), _asc (a), _initializer(0), _flags (0) {}
-    var_t (const type_t &t, const str &n, vartyp_t a = NONE)
-	: _name (n), _type (t), _asc (a), _initializer(0), _flags (0) {}
-    var_t (const str &t, const str &p, const str &n, vartyp_t a, const str &ta)
-	: _name (n), _type (t, p, ta), _asc (a), _initializer(0), _flags (0) {}
+    var_t() : _initializer(0) {}
+    var_t(const str &n, vartyp_t a = NONE) : _name (n), _asc (a), _initializer(0), _flags (0) {}
+    var_t(const type_qualifier_t &m, declarator_t *d, const lstr &arrays, vartyp_t a = NONE);
+    var_t(const str &t, const str &p, const str &n, vartyp_t a = NONE)
+	: _name(n), _type(t, p), _asc(a), _initializer(0), _flags(0) {}
+    var_t(const type_t &t, const str &n, vartyp_t a = NONE)
+	: _name(n), _type(t), _asc(a), _initializer(0), _flags(0) {}
+    var_t(const str &t, const str &p, const str &n, vartyp_t a, const str &ta)
+	: _name(n), _type(t, p, ta), _asc(a), _initializer(0), _flags(0) {}
 
-    const type_t &type () const { return _type; }
-    const str &name () const { return _name; }
-    type_t *get_type () { return &_type; }
-    const type_t * get_type_const () const { return &_type; }
-    bool is_complete () const { return _type.is_complete (); }
+    const type_t &type() const { return _type; }
+    const str &name() const { return _name; }
+    type_t *get_type() { return &_type; }
+    const type_t *get_type_const() const { return &_type; }
+    bool is_complete() const { return _type.is_complete (); }
 
-  // ASC = Args, Stack or Class
-  void set_asc (vartyp_t a) { _asc = a; }
-  vartyp_t get_asc () const { return _asc; }
+    // ASC = Args, Stack or Class
+    void set_asc(vartyp_t a) { _asc = a; }
+    vartyp_t get_asc() const { return _asc; }
 
-  void set_type (const type_t &t) { _type = t; }
-  initializer_t *initializer () const { return _initializer; }
-  bool do_output () const;
+    void set_type(const type_t &t) { _type = t; }
+    initializer_t *initializer() const { return _initializer; }
+    bool do_output() const;
 
-  str decl () const;
-  str decl (const str &prfx, int n) const;
-  str decl (const str &prfx) const;
-  str ref_decl () const;
-  str _name;
+    str param_decl(const str &prfx) const;
+    str decl() const;
+    str decl(const str &prfx, int n) const;
+    str decl(const str &prfx) const;
+    str ref_decl() const;
+    str _name;
 
 protected:
-  type_t _type;
-  vartyp_t _asc;
-  initializer_t *_initializer;
-  unsigned _flags;
+    type_t _type;
+    vartyp_t _asc;
+    initializer_t *_initializer;
+    unsigned _flags;
+    str _arrays;
 };
 
 class expr_list_t : public std::vector<var_t>

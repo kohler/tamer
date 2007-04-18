@@ -31,9 +31,11 @@ void generic_mk_cv_declare (unsigned a, unsigned b)
 //-----------------------------------------------------------------------
 
 
-var_t::var_t (const type_qualifier_t &t, declarator_t *d, vartyp_t a)
-    : _name(d->name()), _type (t.to_str (), d->pointer ()), _asc (a), 
-      _initializer (d->initializer ()), _flags (t.flags ()) {}
+var_t::var_t(const type_qualifier_t &t, declarator_t *d, const lstr &arrays, vartyp_t a)
+    : _name(d->name()), _type(t.to_str(), d->pointer()), _asc(a), 
+      _initializer(d->initializer ()), _flags(t.flags()), _arrays(arrays.str())
+{
+}
 
 str ws_strip (str s)
 {
@@ -89,7 +91,7 @@ type_t::mk_ptr () const
 }
 
 str
-type_t::alloc_ptr (const str &n, const str &args) const
+type_t::alloc_ptr(const str &n, const str &args) const
 {
   strbuf b;
   b << mk_ptr() << " " << n << " = new refcounted<"
@@ -98,7 +100,7 @@ type_t::alloc_ptr (const str &n, const str &args) const
 }
 
 const var_t *
-vartab_t::lookup (const str &n) const
+vartab_t::lookup(const str &n) const
 {
     std::map<str, unsigned>::const_iterator i = _tab.find(n);
     if (i == _tab.end())
@@ -108,7 +110,7 @@ vartab_t::lookup (const str &n) const
 }
 
 str
-type_t::to_str () const
+type_t::to_str() const
 {
   strbuf b;
   b << _base_type << " ";
@@ -118,7 +120,7 @@ type_t::to_str () const
 }
 
 str
-type_t::to_str_w_template_args (bool p) const
+type_t::to_str_w_template_args(bool p) const
 {
   strbuf b;
   b << _base_type;
@@ -132,50 +134,62 @@ type_t::to_str_w_template_args (bool p) const
   return b.str();
 }
 
-str
-var_t::decl () const
+str var_t::decl() const
 {
-  strbuf b;
-  b << _type.to_str_w_template_args () << _name;
-  if (_initializer) {
-    b << _initializer->output_in_declaration ();
-  }
-  return b.str();
+    strbuf b;
+    b << _type.to_str_w_template_args();
+    if (_arrays.length() && _arrays[0] == '[') {
+	b << "(*" << _name << ")";
+	str::size_type rbrace = _arrays.find(']');
+	if (rbrace != str::npos)
+	    b << _arrays.substr(rbrace + 1);
+    } else
+	b << _name;
+    if (_initializer)
+	b << _initializer->output_in_declaration ();
+    return b.str();
 }
 
-str
-var_t::decl (const str &p, int n) const
+str var_t::param_decl(const str &p) const
 {
-  strbuf b;
-  b << _type.to_str () << p << n;
-  return b.str();
+    strbuf b;
+    b << _type.to_str() << p << _name << _arrays;
+    return b.str();
 }
 
-str
-var_t::decl (const str &p) const
+str var_t::decl(const str &p, int n) const
 {
-  strbuf b;
-  b << _type.to_str ();
-  if (p.length())
-    b << p;
-  b << _name;
-  return b.str();
+    strbuf b;
+    b << _type.to_str() << p << n;
+    return b.str();
 }
 
-str
-var_t::ref_decl () const
+str var_t::decl(const str &p) const
 {
-  strbuf b;
-  b << _type.to_str();
-  if (!_type.is_ref ()) {
-    if (_initializer) {
-	b << _initializer->ref_prefix ();
-    } else {
-      b << "&";
-    }
-  }
-  b << _name;
-  return b.str();
+    strbuf b;
+    b << _type.to_str() << p << _name;
+    return b.str();
+}
+
+str var_t::ref_decl() const
+{
+    strbuf b;
+    str refit;
+    if (_type.is_ref())
+	refit = "";
+    else if (_initializer)
+	refit = _initializer->ref_prefix();
+    else
+	refit = "&";
+    b << _type.to_str();
+    if (_arrays.length() && _arrays[0] == '[') {
+	b << "(*" << refit << _name << ")";
+	str::size_type rbrace = _arrays.find(']');
+	if (rbrace != str::npos)
+	    b << _arrays.substr(rbrace + 1);
+    } else
+	b << refit << _name;
+    return b.str();
 }
 
 str
@@ -257,10 +271,10 @@ declarator_t::dump () const
 }
 
 void
-element_list_t::passthrough (const lstr &s)
+element_list_t::passthrough(const lstr &s)
 {
-    if (_lst.empty() || !_lst.back()->append (s))
-	_lst.push_back(new tame_passthrough_t (s));
+    if (_lst.empty() || !_lst.back()->append(s.str()))
+	_lst.push_back(new tame_passthrough_t(s));
 
 }
 
@@ -297,7 +311,7 @@ str
 cpp_initializer_t::output_in_constructor () const
 {
   strbuf b;
-  b << "(" << _value << ")";
+  b << "(" << _value.str() << ")";
   return b.str();
 }
 
@@ -305,7 +319,7 @@ str
 array_initializer_t::output_in_declaration () const 
 {
   strbuf b;
-  b << "[" << _value << "]";
+  b << "[" << _value.str() << "]";
   return b.str();
 }
 
@@ -340,7 +354,7 @@ tame_fn_t::decl_casted_closure (bool do_lhs) const
 {
   strbuf b;
   if (do_lhs) {
-    b << "  " << _closure.decl ()  << " =\n";
+    b << "  " << _closure.decl()  << " =\n";
   }
   b << "    reinterpret_cast<" << _closure.type ().to_str_w_template_args () 
     << "> (static_cast<closure_t *> (" << closure_generic ().name () << "));";
@@ -368,7 +382,7 @@ void
 vartab_t::declarations (strbuf &b, const str &padding) const
 {
   for (unsigned i = 0; i < size (); i++) {
-    b << padding << _vars[i].decl () << ";\n";
+    b << padding << _vars[i].decl() << ";\n";
   }
 }
 
@@ -400,7 +414,7 @@ vartab_t::paramlist (strbuf &b, list_mode_t list_mode, str prfx) const
     if (i != 0) b << ", ";
     switch (list_mode) {
     case DECLARATIONS:
-      b << _vars[i].decl (prfx);
+      b << _vars[i].param_decl(prfx);
       break;
     case NAMES:
       b << prfx << _vars[i].name ();
@@ -522,13 +536,13 @@ tame_fn_t::output_closure (outputter_t *o)
     << " (";
 
   if (need_self ()) {
-      b << _self.decl ();
+      b << _self.decl();
       if (_args)
 	  b << ", ";
   }
 
   if (_args) {
-      _args->paramlist (b, DECLARATIONS);
+      _args->paramlist(b, DECLARATIONS);
   }
 
   b << ") : tamer::_closure_base ("
@@ -572,7 +586,8 @@ tame_fn_t::output_closure (outputter_t *o)
   
   //output_is_onstack (b);
 
-  if (_args)  _args->declarations (b, "    ");
+  if (_args)
+      _args->declarations (b, "    ");
   _stack_vars.declarations (b, "    ");
 
   b << "  tamer::gather_rendezvous _closure__block;\n";
@@ -595,7 +610,7 @@ tame_fn_t::output_stack_vars (strbuf &b)
   for (unsigned i = 0; i < _stack_vars.size (); i++) {
     const var_t &v = _stack_vars._vars[i];
     if (v.do_output ()) {
-      b << "  " << v.ref_decl () << " = " 
+      b << "  " << v.ref_decl() << " = " 
 	<< closure_nm () << "." << v.name () << ";\n" ;
     }
   } 
@@ -606,7 +621,7 @@ tame_fn_t::output_arg_references (strbuf &b)
 {
   for (unsigned i = 0; _args && i < _args->size (); i++) {
     const var_t &v = _args->_vars[i];
-    b << "  " << v.ref_decl () << " __attribute__((unused)) = "
+    b << "  " << v.ref_decl() << " __attribute__((unused)) = "
       << closure_nm () << "." << v.name () << ";\n";
   }
 }
@@ -634,22 +649,19 @@ tame_fn_t::output_jump_tab (strbuf &b)
 str
 tame_fn_t::signature (bool d, str prfx, bool static_flag) const
 {
-  strbuf b;
-  if (_template.length())
-      b << template_str () << "\n";
-  if (static_flag)
-    b << "static ";
-
-  b << _ret_type.to_str () << "\n"
-    << _name << "(";
-  if (_args) {
-    _args->paramlist (b, DECLARATIONS, prfx);
-  }
-  b << ")";
-  if (_isconst) 
-    b << " const";
-
-  return b.str();
+    strbuf b;
+    if (_template.length())
+	b << template_str () << "\n";
+    if (static_flag)
+	b << "static ";
+    b << _ret_type.to_str () << "\n"
+      << _name << "(";
+    if (_args)
+	_args->paramlist(b, DECLARATIONS, prfx);
+    b << ")";
+    if (_isconst) 
+	b << " const";
+    return b.str();
 }
 
 str
@@ -938,7 +950,7 @@ tame_unblock_t::output (outputter_t *o)
   str n = macro_name ();
   b << n << " (\"" << loc << "\", " << tmp;
   if (_params.length()) {
-    b << ", " << _params;
+      b << ", " << _params.str();
   }
   b << "); ";
   do_return_statement (b);

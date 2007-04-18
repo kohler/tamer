@@ -1,5 +1,5 @@
 /* -*-fundamental-*- */
-/* $Id: scan.ll,v 1.1 2007-04-11 06:00:39 kohler Exp $ */
+/* $Id: scan.ll,v 1.2 2007-04-18 00:54:24 kohler Exp $ */
 
 /*
  *
@@ -119,6 +119,7 @@ template	{ yy_push_state (TEMPLATE_ENTER); return T_TEMPLATE; }
 
 <SIG_PARSE>{
 [()]		{ return yytext[0]; }
+[[]		{ yy_push_state(PP_BASE); return yytext[0]; }
 [{]		{ switch_to_state (TAME_BASE); return yytext[0]; }
 }
 
@@ -144,11 +145,11 @@ template	{ yy_push_state (TEMPLATE_ENTER); return T_TEMPLATE; }
 }
 
 <HALF_PARSE>{
-[([]		{ yy_push_state (PP_BASE); return yytext[0]; }
+[([]		{ yy_push_state(PP_BASE); return yytext[0]; }
 }
 
 <FULL_PARSE>{
-[({]		{ yy_push_state (FULL_PARSE); return yytext[0]; }
+[({]		{ yy_push_state(FULL_PARSE); return yytext[0]; }
 }
 
 <FULL_PARSE,HALF_PARSE,SIG_PARSE>{
@@ -289,11 +290,11 @@ return/[ \t\n(;]	{ return yyerror ("cannot return withint twait{..}"); }
 }
 
 <TAME,TAME_BASE>{
-\n		{ yylval.str = yytext; ++lineno; return T_PASSTHROUGH; }
+\n		{ yylval.str = lstr(lineno, yytext); ++lineno; return T_PASSTHROUGH; }
 
-[^ \t{}"\n/trD_]+|[ \t/trD_] { yylval.str = yytext; return T_PASSTHROUGH; }
+[^ \t{}"\n/trD_]+|[ \t/trD_] { yylval.str = lstr(lineno, yytext); return T_PASSTHROUGH; }
 
-[{]		{ yylval.str = yytext; yy_push_state (TAME); 
+[{]		{ yylval.str = lstr(lineno, yytext); yy_push_state (TAME); 
 		  return T_PASSTHROUGH; }
 
 tvars/[ \t\n{/]	    { return tame_ret (VARS_ENTER, T_VARS); }
@@ -315,7 +316,7 @@ twait/[ \t\n({/]           { return tame_ret (TWAIT_ENTER, T_TWAIT); }
 }
 
 <TAME>{
-[}]		{ yylval.str = yytext; yy_pop_state ();
+[}]		{ yylval.str = lstr(lineno, yytext); yy_pop_state ();
 	    	  return T_PASSTHROUGH; }
 }
 
@@ -333,8 +334,8 @@ twait/[ \t\n({/]           { return tame_ret (TWAIT_ENTER, T_TWAIT); }
 
 <INITIAL>{
 tamed/[ \t\n/]   { return tame_ret (SIG_PARSE, T_TAMED); }
-[^t\n"/]+|[t/]   { yylval.str = yytext; return T_PASSTHROUGH ; }
-\n		 { ++lineno; yylval.str = yytext; return T_PASSTHROUGH; }
+[^t\n"/]+|[t/]   { yylval.str = lstr(lineno, yytext); return T_PASSTHROUGH ; }
+\n		 { ++lineno; yylval.str = lstr(lineno, yytext); return T_PASSTHROUGH; }
 \"		 { yy_push_state (QUOTE); return std_ret (T_PASSTHROUGH); }
 }
 
@@ -360,7 +361,7 @@ TAME_OFF	{ tame_on = 0; GOBBLE_RET; }
 TAME_ON		{ tame_on = 1; GOBBLE_RET; }
 "*/"		{ yy_pop_state (); GOBBLE_RET; }
 [^*\nT]+|[*T]	{ GOBBLE_RET; }
-\n		{ ++lineno; yylval.str = yytext; GOBBLE_RET; }
+\n		{ ++lineno; yylval.str = lstr(lineno, yytext); GOBBLE_RET; }
 }
 
 
@@ -397,7 +398,7 @@ yywarn (str msg)
 int
 std_ret (int i)
 {
-  yylval.str = yytext;
+  yylval.str = lstr(lineno, yytext);
   return i;
 }
 

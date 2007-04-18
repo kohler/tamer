@@ -1,5 +1,5 @@
 /* -*-fundamental-*- */
-/* $Id: parse.yy,v 1.1 2007-04-11 06:00:39 kohler Exp $ */
+/* $Id: parse.yy,v 1.2 2007-04-18 00:54:24 kohler Exp $ */
 
 /*
  *
@@ -68,7 +68,7 @@ int vars_lineno;
 %type <str> template_instantiation_list template_instantiation
 %type <str> template_instantiation_opt typedef_name_single
 %type <str> template_instantiation_list_opt identifier
-%type <str> typedef_name
+%type <str> typedef_name arrays_opt
 %type <str> type_specifier 
 %type <str> passthrough 
 %type <typ_mod> type_modifier type_modifier_list declaration_specifiers 
@@ -110,7 +110,7 @@ passthrough: /* empty */	    { $$ = lstr(get_yy_lineno(), ""); }
 	{
 	   strbuf b;
 	   b << $1 << $2;
-	   $$ = lstr ($1.lineno (), b);
+	   $$ = lstr($1.lineno(), b);
 	}
 	;
 
@@ -145,7 +145,7 @@ fn_specifiers:	template_decl { $$ = $1; }
 
 template_decl: T_TEMPLATE '<' passthrough '>' static_opt
 	{
-	   $$ = fn_specifier_t ($5, $3);
+	   $$ = fn_specifier_t ($5, $3.str());
 	}
 	;
 
@@ -187,7 +187,7 @@ default_return: T_DEFAULT_RETURN '{' passthrough '}'
 	  // this thing will not be output anywhere near where
 	  // it's being input, so don't associate it in the 
 	  // element list as usual.
-	  if (!state->function ()->set_default_return ($3)) {
+	  if (!state->function ()->set_default_return($3.str())) {
 	    yyerror ("DEFAULT_RETURN specified more than once");
 	  }
 	  $$ = NULL;
@@ -255,12 +255,12 @@ id_list_opt: /* empty */  { $$ = NULL; }
 id_list:  ',' identifier
 	{
 	  $$ = new expr_list_t ();
-	  $$->push_back (var_t ()); // reserve 1 empty spot!
-	  $$->push_back (var_t ($2, STACK));
+	  $$->push_back(var_t()); // reserve 1 empty spot!
+	  $$->push_back(var_t($2.str(), STACK));
 	}
 	| id_list ',' identifier
 	{
-	  $1->push_back (var_t ($3, STACK));
+	  $1->push_back(var_t($3.str(), STACK));
 	  $$ = $1;
 	}
 	;
@@ -268,11 +268,11 @@ id_list:  ',' identifier
 join_list: passthrough id_list_opt
 	{
 	  if ($2) {
-	    (*$2)[0] = var_t ($1, EXPR);
+	    (*$2)[0] = var_t($1.str(), EXPR);
 	    $$ = $2;
 	  } else {
 	    $$ = new expr_list_t ();
-	    $$->push_back (var_t ($1, EXPR));
+	    $$->push_back(var_t($1.str(), EXPR));
 	  }
 	}
 	;
@@ -345,12 +345,11 @@ parameter_list: parameter_declaration
 
 /* missing: abstract declarators
  */
-parameter_declaration: declaration_specifiers declarator
+parameter_declaration: declaration_specifiers declarator arrays_opt
 	{
-	  if ($2->params ()) {
+	  if ($2->params())
 	    warn << "parameters found when not expected\n";
-	  }
-	  $$ = var_t ($1, $2, ARG);
+	  $$ = var_t($1, $2, $3, ARG);
 	}
 	;
 
@@ -378,7 +377,7 @@ init_declarator: declarator_cpp cpp_initializer_opt
 
 	  vartab_t *t = state->stack_vars ();
 
-	  var_t v (state->decl_specifier (), $1, STACK);
+	  var_t v(state->decl_specifier(), $1, lstr(), STACK);
 	  if (state->args () &&
               state->args ()->exists (v.name ())) {
 	    strbuf b;
@@ -396,37 +395,31 @@ init_declarator: declarator_cpp cpp_initializer_opt
 declarator: pointer_opt direct_declarator
 	{
 	  if ($1.length() > 0) 
-	    $2->set_pointer ($1);
+	    $2->set_pointer($1.str());
   	  $$ = $2;
+	}
+	;
+
+arrays_opt: /* empty */			{ $$ = lstr(get_yy_lineno(), ""); }
+	| arrays_opt '[' passthrough ']' {
+		$$ = lstr(get_yy_lineno(), $1.str() + "[" + $3.str() + "]");
 	}
 	;
 
 declarator_cpp: pointer_opt direct_declarator_cpp
 	{
 	  if ($1.length() > 0) 
-	    $2->set_pointer ($1);
+	    $2->set_pointer($1.str());
   	  $$ = $2;
 	}
 	;
 
-cpp_initializer_opt: /* empty */ 
-	{ 
-	  $$ = new initializer_t (); 
-	}
-	| '(' passthrough ')'
-	{
-	  $$ = new cpp_initializer_t ($2); 
-	}
-	| '[' passthrough ']'
-	{
-	  $$ = new array_initializer_t ($2);
-	}
+cpp_initializer_opt: /* empty */	{ $$ = new initializer_t(); }
+	| '(' passthrough ')'		{ $$ = new cpp_initializer_t($2); }
+	| '[' passthrough ']'		{ $$ = new array_initializer_t($2); }
 	;
 
-direct_declarator_cpp:	identifier 
-	{
-	  $$ = new declarator_t ($1);
-	}
+direct_declarator_cpp: identifier	{ $$ = new declarator_t($1.str()); }
 	;
 
 /* 
@@ -436,11 +429,11 @@ direct_declarator_cpp:	identifier
  */
 direct_declarator: typedef_name
 	{
-	   $$ = new declarator_t ($1);
+	   $$ = new declarator_t($1.str());
 	}
 	| typedef_name '(' parameter_type_list_opt ')'
 	{
-	   $$ = new declarator_t ($1, $3);
+	   $$ = new declarator_t($1.str(), $3);
 	}
 	;
 
@@ -463,11 +456,11 @@ declaration_specifiers: type_modifier_list type_specifier
  * new rule to eliminate s/r conflicts
  */
 type_modifier:  type_qualifier
-	| T_SIGNED		{ $$ = type_qualifier_t ("signed"); }
-	| T_UNSIGNED		{ $$ = type_qualifier_t ("unsigned"); }
+	| T_SIGNED		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "signed")); }
+	| T_UNSIGNED		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "unsigned")); }
 	;
 
-type_modifier_list: /* empty */ { $$ = type_qualifier_t (""); }
+type_modifier_list: /* empty */ { $$ = type_qualifier_t(lstr("")); }
 	| type_modifier_list type_modifier
 	{
 	  $$ = $1.concat ($2);
@@ -479,24 +472,24 @@ type_modifier_list: /* empty */ { $$ = type_qualifier_t (""); }
  *	| struct_or_union_specifier
  *	| enum_specifier
  */
-type_specifier: T_VOID		{ $$ = "void" ; }
-	| T_CHAR 		{ $$ = "char";  }
-	| T_SHORT		{ $$ = "short"; }
-	| T_INT			{ $$ = "int" ; }
-	| T_LONG		{ $$ = "long" ; }
-	| T_LONG_LONG		{ $$ = "long long"; }
-	| T_FLOAT		{ $$ = "float"; }
-	| T_DOUBLE		{ $$ = "double" ; }
+type_specifier: T_VOID		{ $$ = lstr(get_yy_lineno(), "void"); }
+	| T_CHAR 		{ $$ = lstr(get_yy_lineno(), "char");  }
+	| T_SHORT		{ $$ = lstr(get_yy_lineno(), "short"); }
+	| T_INT			{ $$ = lstr(get_yy_lineno(), "int"); }
+	| T_LONG		{ $$ = lstr(get_yy_lineno(), "long"); }
+	| T_LONG_LONG		{ $$ = lstr(get_yy_lineno(), "long long"); }
+	| T_FLOAT		{ $$ = lstr(get_yy_lineno(), "float"); }
+	| T_DOUBLE		{ $$ = lstr(get_yy_lineno(), "double"); }
 	| typedef_name
 	;
 
 /*
  * hack for now -- not real C syntax
  */
-type_qualifier:	T_CONST	{ $$ = type_qualifier_t ("const", CONST_FLAG); }
-	| T_STRUCT	{ $$ = type_qualifier_t ("struct"); }
-	| T_TYPENAME	{ $$ = type_qualifier_t ("typename"); }
-	| T_HOLDVAR	{ $$ = type_qualifier_t (lstr (), HOLDVAR_FLAG); }
+type_qualifier:	T_CONST	{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "const"), CONST_FLAG); }
+	| T_STRUCT	{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "struct")); }
+	| T_TYPENAME	{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "typename")); }
+	| T_HOLDVAR	{ $$ = type_qualifier_t(lstr(), HOLDVAR_FLAG); }
 	;
 
 type_qualifier_list: type_qualifier
@@ -506,7 +499,7 @@ type_qualifier_list: type_qualifier
 	}
 	;
 
-type_qualifier_list_opt: /* empty */ { $$ = type_qualifier_t (""); }
+type_qualifier_list_opt: /* empty */ { $$ = type_qualifier_t(lstr()); }
 	| type_qualifier_list        { $$ = $1; }
 	;
 
@@ -517,55 +510,55 @@ type_qualifier_list_opt: /* empty */ { $$ = type_qualifier_t (""); }
 typedef_name:  typedef_name_single
 	| typedef_name T_2COLON typedef_name_single
 	{
-	   CONCAT($1.lineno (), $1 << "::" << $3, $$);
+	   CONCAT($1.lineno(), $1 << "::" << $3.str(), $$);
 	}
 	;
 
 typedef_name_single: identifier template_instantiation_opt
 	{
-          CONCAT($1.lineno (), $1 << $2, $$);
+           CONCAT($1.lineno(), $1 << $2, $$);
 	}
 	;
 
-template_instantiation_opt: /* empty */ 	{ $$ = ""; }
+template_instantiation_opt: /* empty */ 	{ $$ = lstr(""); }
 	| template_instantiation	
 	;
 
 template_instantiation: '<' template_instantiation_list_opt '>'
 	{
-	  CONCAT($2.lineno (), "<" << $2 << ">", $$);
+	  CONCAT($2.lineno(), "<" << $2.str() << ">", $$);
 	}
 	;
 
-template_instantiation_list_opt: /* empty */   { $$ = "" ; }
+template_instantiation_list_opt: /* empty */   { $$ = lstr(""); }
 	| template_instantiation_list
 	;
 
 template_instantiation_list: template_instantiation_arg
 	| template_instantiation_list ',' template_instantiation_arg
 	{
-	  CONCAT($1.lineno (), $1 << " , " << $3, $$);
+	  CONCAT($1.lineno(), $1 << " , " << $3.str(), $$);
 	}
 	;
 
 template_instantiation_arg: declaration_specifiers pointer_opt
 	{
-	  CONCAT($1.lineno (), $1.to_str () << " " << $2, $$);
+	  CONCAT($1.lineno(), $1.to_str() << " " << $2.str(), $$);
 	}
 	;
 
-pointer_opt: /* empty */	{ $$ = ""; }
+pointer_opt: /* empty */	{ $$ = lstr(get_yy_lineno(), ""); }
 	| pointer
 	;
 
-pointer_or_ref:	'*'		{ $$ = "*"; }
-	| '&'			{ $$ = "&"; }
+pointer_or_ref:	'*'		{ $$ = lstr(get_yy_lineno(), "*"); }
+	| '&'			{ $$ = lstr(get_yy_lineno(), "&"); }
 	;
 
 pointer: pointer_or_ref		{ $$ = $1; }
 	| pointer_or_ref type_qualifier_list_opt pointer
 	{
-	  CONCAT($2.lineno (), " " << $1 << " " << $2.to_str () << $3, $$);
+	  CONCAT($2.lineno(), " " << $1.str() << " " << $2.to_str() << $3.str(), $$);
 	}
 	;
 
