@@ -1,0 +1,674 @@
+// -*-c++-*-
+
+#include "cache2.hh"       
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <iostream>
+#include <stdarg.h>
+#include <signal.h>
+
+#include "http.hh"
+#include "httphdrs.h"
+
+#include <syscall.h>
+#include <tamer/fileio.hh>
+#include <fcntl.h>
+#include <errno.h>
+
+#define pthread_mutex_lock(a) 
+#define pthread_mutex_unlock(a) 
+#define pthread_create(...) -1
+
+std::ostream &warn = std::cerr;
+
+
+// FIXME: kludge - to print stats from capriccio w/o causing the scheduler to hang
+#ifdef _CAPRICCIO_PTHREAD_H_
+extern double open_rate;
+extern double close_rate;
+extern double avg_socket_lifetime;
+void print_cap_stats() {
+    printf("capstats:  opens %5.0f    closes %5.0f   lifetime %.0f ms\n", 
+           open_rate, close_rate, avg_socket_lifetime);
+}
+#else
+#define print_cap_stats() printf("\n");
+#endif
+
+//#include "blocking_graph.h"
+
+#ifndef DEBUG_knot_c
+#undef debug
+#define debug(...)
+#undef tdebug
+#define tdebug(...)
+#endif
+
+#define ALLOW_CHARS "/._"
+
+#define USE_SENDFILE 0
+
+#ifdef USE_CCURED
+#define __START __attribute__((start))
+#define __EXPAND __attribute__((expand))
+#else
+#define __START
+#define __EXPAND
+#endif
+
+int g_use_timer = 1;
+int g_spawn_on_demand = 0;
+static int g_use_cache = 1;
+static int g_force_thrashing = 0;
+
+static int g_conn_open=0;
+static int g_conn_fail=0;
+static int g_conn_succeed=0;
+static int g_conn_active=0;
+int g_cache_hits=0;
+int g_cache_misses=0;
+
+long long g_bytes_sent = 0;
+static unsigned int g_timer_interval = 5; // in seconds
+
+
+void fatal(const char *format, ...) {
+    va_list val;
+    va_start(val, format);
+    vfprintf(stderr, format, val);
+    va_end(val);
+    exit(1);
+}
+
+void panic(const char *format, ...) {
+    va_list val;
+    va_start(val, format);
+    fprintf(stderr, "panic: ");
+    vfprintf(stderr, format, val);
+    va_end(val);
+    abort();
+}
+
+
+int
+allow_file(char *file)
+{
+    // behold my feeble attempt at security
+
+    char *p = file;
+    int allow = 1;
+
+    if (file[0] != '/')
+    {
+        allow = 0;
+    }
+    
+    while (allow && *p != 0)
+    {
+        if (!(('a' <= *p && *p <= 'z') ||
+              ('A' <= *p && *p <= 'Z') ||
+              ('0' <= *p && *p <= '9') ||
+              (strchr(ALLOW_CHARS, *p) != NULL)))
+        {
+            allow = 0;
+        }
+
+        p++;
+    }
+
+    if (allow)
+    {
+        if (strstr(file, "/.") != NULL)
+        {
+            allow = 0;
+        }
+    }
+
+    return allow;
+}
+
+tamed static void 
+get_request_filename(http_request *request, tamer::event<char *> ev)
+{
+    tvars {
+	char *result (NULL);
+	int rc;
+    }
+
+    twait {
+	http_parse(request, make_event(rc));
+    }
+
+    if (rc && !request->closed) {
+	assert(request->url[0] == '.');
+	
+	if (allow_file(request->url + 1)) {
+	    result = request->url;
+	}
+    }
+    ev.trigger (result);
+}
+
+tamed static void
+get_request_fd(http_request *request, tamer::event<int> ev)
+{
+    tvars {
+	char *filename (NULL);
+	int rc;
+    }
+
+    twait { get_request_filename(request, make_event(filename)); }
+    if (filename != NULL) {
+	twait { tamer::fileio::open(filename, O_RDONLY, 0, make_event(rc)); }
+	if (rc < 0)
+	    warn << "Error opening file " << filename << ": " << strerror(-rc) << "\n";
+    } else
+	rc = -EINVAL;
+    
+    ev.trigger(rc);
+}
+
+#define BUFSZ 8192
+
+tamed static void
+process_client_nocache(http_request *request, int client, tamer::event<int> ev)
+{
+    tvars {
+	int fd;
+	int success (1);
+        int written (0);
+	ssize_t n;
+	int rc;
+	char buf[BUFSZ];
+    }
+
+    twait { get_request_fd (request, make_event(fd)); }
+
+    if (fd >= 0) 
+    {
+#if USE_SENDFILE > 0
+
+NOTE-- this code is probably broken
+        char buf[HEADER_200_BUF_SIZE];
+        int buflen = 0;
+
+        struct stat fd_stat;
+        ssize_t size = 0;
+        off_t offset = 0;
+
+        if (fstat(fd, &fd_stat) < 0)
+        {
+            perror("fstat");
+            exit(1);
+        }
+
+        size = fd_stat.st_size;
+
+        buflen = snprintf(buf, HEADER_200_BUF_SIZE, HEADER_200,
+                          "text/html", size);
+
+        if (buflen < 0 || buflen >= HEADER_200_BUF_SIZE)
+        {
+            fprintf(stderr, "header buffer exceeded\n");
+            exit(1);
+        }
+
+        if (write(client, buf, buflen) != buflen)
+        {
+            perror("write");
+            exit(1);
+        } else {
+            pthread_mutex_lock(&g_cache_mutex);
+            g_bytes_sent += buflen;
+            pthread_mutex_unlock(&g_cache_mutex);
+        }
+
+        if (sendfile(client, fd, &offset, size) != size)
+        {
+            perror("sendfile");
+            exit(1);
+        }
+#else
+        while (1)
+        {
+	    twait { tamer::fileio::read(fd, buf, BUFSZ, n, make_event(rc)); }
+	    if (n < 0) {
+                perror("read");
+                success = 0;
+                break;
+            } else if (n == 0)
+		break;
+
+	    twait { tamer::fileio::write(client, buf, n, n, make_event(rc)); }
+	    if (rc < 0) {
+		perror("write");
+		success = 0;
+		break;
+	    }
+	    
+	    written += n;
+        }
+
+        if (g_use_timer)
+        {
+            pthread_mutex_lock(&g_cache_mutex);
+            g_bytes_sent += written;
+            pthread_mutex_unlock(&g_cache_mutex);
+        }
+#endif
+
+    }
+    ev.trigger(success);
+}
+
+tamed static void 
+get_request_entry(http_request *request, tamer::event<refptr<cache_entry> > ev)
+{
+    tvars {
+	char *filename;
+	refptr<cache_entry> ret;
+    }
+    twait { get_request_filename(request, make_event(filename)); }
+    if (filename) {
+	twait { cache_get(filename, make_event(ret)); }
+    }
+    ev.trigger(ret);
+}
+
+tamed static void
+process_client_cache(http_request *request, int client, tamer::event<int> ev)
+{
+    tvars {
+	int success (0);
+	refptr<cache_entry> entry;
+        ssize_t written (0);
+        int rc(0);
+        char *p (NULL); 
+	char *bigstuff (NULL);
+    }
+
+    //make_node();
+
+    twait { get_request_entry(request, make_event(entry)); }
+
+    if (entry.value() != NULL)
+    {
+        
+        // touch data on the stack, to force out other pages
+#define BIGSIZE 1024*1024*700
+        if( g_force_thrashing ) {
+            bigstuff = (char *) malloc(BIGSIZE);  if( !bigstuff ) panic("memory!\n");
+            p = bigstuff + BIGSIZE - 3;
+            while( p > bigstuff ) {
+                *p = 10;
+                p -= (4*1024); // presumably, pages are no smaller than 4k
+            }
+            free(bigstuff);
+            bigstuff = NULL;
+        }
+
+
+	twait { tamer::fileio::write(client, entry->data(), entry->size(), written, make_event(rc)); }
+
+	pthread_mutex_lock(&g_cache_mutex);
+	g_bytes_sent += written;
+	pthread_mutex_unlock(&g_cache_mutex);
+        //make_node();
+
+        // TODO: this needs work
+        if (rc < 0  &&  rc != -EPIPE  &&  rc != -ECONNRESET)
+        {
+            perror("warning: write");
+        }
+
+        if( g_force_thrashing ) {
+            if(bigstuff) free(bigstuff);
+        }
+
+
+        success = 1;
+    }
+
+    //make_node();
+
+    ev.trigger (success);
+}
+
+tamed static void
+process_client(int client)
+{
+    tvars {
+	http_request request;
+	int done (0);
+	int numrequests (0);
+	int success;
+    }
+
+    // don't send out partial frames
+    /*
+    { 
+        int val = 1;
+        if (setsockopt(c, SOL_TCP, TCP_CORK, (void *) &val, sizeof(val)) < 0)
+        {
+            perror("setsockopt");
+            close(c);
+            return;
+        }
+    }
+    */
+
+    http_init(&request, client);
+    
+    while (!done)
+    {
+	if (g_use_cache) {
+	    twait { 
+		process_client_cache(&request, client, make_event(success)); 
+	    }
+	} else {
+	    twait { 
+		process_client_nocache(&request, client, make_event(success));
+	    }
+	}
+
+        pthread_mutex_lock(&g_cache_mutex);
+        if( success ) {
+            g_conn_succeed++;
+        } else {
+            //output("bad connection.  url='%s'\n",request.url);
+            g_conn_fail++;
+        }
+        pthread_mutex_unlock(&g_cache_mutex);
+
+        numrequests++;
+        
+        if (!success && !request.closed)
+        {
+            int len = strlen(HEADER_404);
+            if (::write(client, HEADER_404, len) != len)
+            {
+                ;
+            } else {
+                pthread_mutex_lock(&g_cache_mutex);
+                g_bytes_sent += len;
+                pthread_mutex_unlock(&g_cache_mutex);
+            }
+
+        }
+
+        if (!success || request.version == HTTP_VERSION_1_0)
+        {
+            done = 1;
+        }
+    }
+
+    // kludge.  subtract one failure for HTTP/1.1 requests, since the
+    // last one always counts as failure.
+    if( numrequests > 1 ) {
+        pthread_mutex_lock(&g_cache_mutex);
+        g_conn_fail--;
+        pthread_mutex_unlock(&g_cache_mutex);
+    }
+
+    tamer::fileio::close (client);
+    g_conn_active --;
+   // warn ("'thread' exiting...\n");
+}
+
+tamed static void
+accept_loop(int s)
+{
+    tvars {
+	socklen_t socklen;
+	int c;
+	int i (0);
+    }
+
+    tamer::fileio::make_nonblocking(s);
+
+    /*
+      twait { delaycb (0, 0, mkevent ()); }
+      sfs_set_clock (SFS_CLOCK_MMAP, "/var/tmp/mmcd.clock");
+    */
+    
+    
+    //make_node();
+    while (1)
+    {
+	if (i > 500) {
+	    twait { tamer::at_asap(make_event()); }
+	    i = 0;
+	}
+	
+        struct sockaddr_in caddr;
+        socklen = sizeof(caddr);
+
+        debug("thread %d waiting\n", id);
+
+	twait { tamer::fileio::accept(s, (struct sockaddr *) &caddr, &socklen, make_event(c)); }
+	i++;
+
+	if (c < 0) {
+	    perror("accept");
+	    //exit(1);
+	    continue;
+	}
+	
+        debug("thread %d done w/ accept\n", id);
+        //make_node();
+        
+        pthread_mutex_lock(&g_cache_mutex);
+        g_conn_open++;
+        pthread_mutex_unlock(&g_cache_mutex);
+
+        // turn off Nagle, so pipelined requests don't wait unnecessarily.
+        if( 1 ) {
+            int optval = 1;
+            //if (setsockopt (sock, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof (optval)) < 0)
+            if (setsockopt (c, SOL_TCP, TCP_NODELAY, &optval, sizeof (optval)) < 0)
+            {
+                perror("setsockopt");
+                continue;
+            }
+        }
+
+
+        debug("thread %d accepted connection\n", id);
+        //make_node();
+
+	g_conn_active ++;
+	if (tamer::fileio::make_nonblocking(c) < 0)
+	    fatal("can't set fd %d to nonblocking IO!!\n", c);
+	process_client (c);
+
+    }
+}
+
+static unsigned long long
+timenow_usec ()
+{
+    return tamer::driver::main.now.tv_usec + tamer::driver::main.now.tv_sec * 1000000ULL;
+}
+
+static int 
+per_ival (unsigned long long n, long long i)
+{
+    n *= 1000000;
+    long long x = n / i;
+    return x;
+}
+
+tamed static void 
+runloop (int s)
+{
+    tvars {
+	long long ival ;
+        unsigned long long start, now;
+	long long bytes_sent;
+	int conn_open, conn_succeed, conn_fail, conn_active, 
+	    cache_hits, cache_misses;
+    }
+
+    start = 0;
+    if (g_use_timer)
+    {
+	twait { tamer::at_asap(make_event()); }
+        start = timenow_usec ();
+	twait { tamer::at_delay_sec(g_timer_interval, make_event()); }
+
+        while (1)
+        {
+
+            now = timenow_usec ();
+            
+            pthread_mutex_lock(&g_cache_mutex);
+            bytes_sent   = g_bytes_sent;      g_bytes_sent = 0;
+            conn_open    = g_conn_open;       g_conn_open = 0;
+            conn_succeed = g_conn_succeed;    g_conn_succeed = 0; 
+            conn_fail    = g_conn_fail;       g_conn_fail = 0;
+            conn_active  = g_conn_active;
+            cache_hits   = g_cache_hits;      g_cache_hits = 0;
+            cache_misses = g_cache_misses;    g_cache_misses = 0;
+            pthread_mutex_unlock(&g_cache_mutex);
+
+	    ival = now - start;
+
+	    if (ival > 0 && cache_hits + cache_misses > 0) {
+
+            
+		printf("rate: %lld Mbits/sec   "
+		       "%d open/sec   "
+		       "%d succ/sec   "
+		       "%d fail/sec   "
+		       "active: %d   misses: %d   hitrate: %d%%   ",
+		       (bytes_sent * 8 * 1000000) / 
+		       ((now-start) * (1024 * 1024)),
+		       per_ival (conn_open, ival),
+		       per_ival (conn_succeed, ival),
+		       per_ival (conn_fail, ival),
+		       conn_active,
+		       cache_misses,
+		       (100 *cache_hits)/(cache_hits+cache_misses)
+		       );
+		print_cap_stats();
+	    }
+
+	    warn << "Interval time: " << now - start << "\n";
+
+
+            start = now;
+            
+            twait { tamer::at_delay_sec(g_timer_interval, make_event()); }
+        }
+    }
+}
+
+tamed static void
+exitloop(int s)
+{
+    twait { tamer::at_signal(SIGINT, make_event()); }
+    printf ("Got shutdown signal...\n");
+    close(s);
+    clear_cache ();
+    exit(0);
+}
+
+static void
+main2 (int argc, char **argv)
+{	
+    struct sockaddr_in saddr;
+    int s = 0;
+    char *endstr;
+
+    int val = 1;
+    int ch;
+    int port = 5000;
+    int tmp;
+
+    while ((ch = getopt(argc, argv, "rp:c:")) != -1) {
+	switch (ch) {
+	case 'p':
+	    port = strtol(optarg, &endstr, 0);
+	    if (!isdigit(optarg[0]) || *endstr || port <= 0 || port > 65535) {
+		warn << "cannot decode port: " << optarg << "\n";
+		exit (1);
+	    }
+	    break;
+	case 'c':
+	    tmp = strtol(optarg, &endstr, 0);
+	    if (!isdigit(optarg[0]) || *endstr || tmp <= 0) {
+		warn << "cannot decode cache size: " <<  optarg << "\n";
+		exit (1);
+	    }
+	    warn << "cachesz=" << tmp << "MB\n";
+	    g_cache_max = tmp * 1024 * 1024;
+	    break;
+	default:
+	    warn << "bad option\n";
+	    exit (1);
+	}
+    }
+
+    warn << "port=" << port << "\n";
+    warn << "cachesz=" << g_cache_max << "b\n";
+
+    argc -= optind;
+    argv += optind;
+
+    if (argc != 0) {
+	warn << "usage: knot.tamer [-p<port>] [-c<cachesz]\n";
+        exit(1);
+    }
+    
+    if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        perror("socket");
+        exit(1);
+    }
+
+    val = 1;
+    if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)) < 0)
+    {
+        perror("setsockopt");
+        exit(1);
+    }
+
+    saddr.sin_family = PF_INET;
+    saddr.sin_port = htons(port);
+    saddr.sin_addr.s_addr = INADDR_ANY;
+    if (bind(s, (struct sockaddr *) &saddr, sizeof(saddr)) < 0)
+    {
+        perror("bind");
+        exit(1);
+    }
+
+    if (listen(s, 50000) < 0)
+    {
+        perror("listen");
+        exit(1);
+    }
+
+    accept_loop(s);
+    runloop(s);
+    exitloop(s);
+}
+
+
+int
+main(int argc, char **argv)
+{
+    tamer::driver::main.set_now();
+    main2 (argc, argv);
+    while (1)
+	tamer::driver::main.once();
+}
+
+//////////////////////////////////////////////////
+// Set the emacs indentation offset
+// Local Variables: ***
+// c-basic-offset:4 ***
+// End: ***
+//////////////////////////////////////////////////

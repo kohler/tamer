@@ -235,4 +235,4 @@ dnl
 dnl Output
 dnl
 
-AC_OUTPUT(Makefile compiler/Makefile tamer/Makefile ex/Makefile)
+AC_OUTPUT(Makefile compiler/Makefile tamer/Makefile ex/Makefile knot/Makefile)

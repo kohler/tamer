@@ -1,0 +1,223 @@
+// -*-c++-*-
+
+#include "cache2.hh"
+#include "httphdrs.h"
+#include <tamer.hh>
+#include <tamer/fileio.hh>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+#ifndef DEBUG_cache_c
+#undef debug
+#define debug(...)
+#undef tdebug
+#define tdebug(...)
+#endif
+
+#define pthread_mutex_lock(...)
+#define pthread_mutex_unlock(...)
+#define pthread_mutex_init(...)
+
+
+extern int g_use_timer;
+extern int g_cache_hits;
+extern int g_cache_misses;
+
+ssize_t g_cache_max = 256 * 1024 * 1024;
+
+cache *g_cache;
+#if LOCKS > 0
+tame::lock_table_t<str> *g_locks;
+#endif
+
+cache *the_cache()
+{
+    if (!g_cache)
+	g_cache = new cache(g_cache_max);
+    return g_cache;
+}
+
+#if LOCKS > 0
+tame::lock_table_t<str> *
+locks()
+{
+    if (!g_locks) {
+	g_locks = new tame::lock_table_t<str>();
+    }
+    return g_locks;
+}
+#endif
+
+tamed static void
+cache_new(const std::string &filename, tamer::event<refptr<cache_entry> > ev)
+{
+    tvars {
+	refptr<cache_entry> result;
+	int fd;
+        struct stat fd_stat;
+        size_t length(0);
+        int hdrlen(0);
+	ssize_t ssrc;
+	int rc(0);
+	char *data;
+	//#if LOCKS > 0
+	//	ptr<tame::lock_handle_t<str> > lh;
+	//#endif
+    }
+
+    //#if LOCKS > 0
+    //    twait { 
+    //        locks ()->acquire (&lh, filename, tame::lock_t::EXCLUSIVE, mkevent ()); 
+    //    }
+    //#endif
+    
+    twait {
+	tamer::fileio::open(filename.c_str(), O_RDONLY, make_event(fd));
+    }
+
+    if (fd >= 0) {
+	// warn ("open %s\n", filename.cstr ());
+	twait {
+	    tamer::fileio::fstat(fd, fd_stat, make_event(rc));
+	}
+
+	if (rc < 0) {
+            perror("fstat");
+	    // make sure we have a regular file 
+
+	} else if (S_ISREG(fd_stat.st_mode)) {
+	    length = fd_stat.st_size;
+	    data = new char[HEADER_200_BUF_SIZE + length];
+
+	    hdrlen = snprintf(data, HEADER_200_BUF_SIZE, 
+			      HEADER_200, "text/html", length);
+	    
+	    if (hdrlen < 0 || hdrlen >= HEADER_200_BUF_SIZE) {
+		fprintf(stderr, "header buffer exceeded\n");
+		exit(1);
+	    }
+
+	    twait {
+		tamer::fileio::read(fd, data + hdrlen, length, ssrc, make_event(rc));
+	    }
+
+	    if (rc >= 0)
+		result = new cache_entry(filename, data, hdrlen + ssrc);
+	    else
+		fprintf(stderr, "read failed on %s (%s)\n",
+			filename.c_str(), strerror(-rc));
+
+	    twait {
+		tamer::fileio::close(fd);
+	    }
+	}
+    } else {
+	fprintf(stderr, "warning: error opening file %s: %s\n", filename.c_str(), strerror(-fd));
+    }
+    ev.trigger(result);
+}
+
+void
+clear_cache()
+{
+    the_cache()->empty();
+}
+
+tamed void
+cache_get(const char *filename, tamer::event<refptr<cache_entry> > ev)
+{
+    tvars {
+	refptr<cache_entry> result;
+    }
+    result = the_cache()->get(filename);
+
+    if (result.value() != NULL) {
+	g_cache_hits++;
+    } else {
+	g_cache_misses++;
+    }
+    
+    if (result.value() == NULL) {
+	debug("file [%s] not in cache; adding\n", filename);
+	
+	twait {
+	    cache_new(filename, make_event(result));
+	}
+    
+	if (result.value() != NULL) {
+	    the_cache()->insert(result);
+	}
+    } else {
+	debug("file [%s] in cache\n", filename);
+    }
+    ev.trigger(result);
+}
+
+void
+cache::insert(refptr<cache_entry> e)
+{
+    assert(!e->_next && !e->_prev);
+
+    for (cache_entry *ee = _head; ee; ee = ee->_next)
+	if (e->_filename == ee->_filename) {
+	    remove(ee);
+	    break;
+	}
+
+    _load += e->size();
+    e->_next = _head;
+    if (_head)
+	_head->_prev = e.value();
+    _head = e.value();
+    if (!_tail)
+	_tail = e.value();
+
+    evict();
+}
+
+refptr<cache_entry>
+cache::get(const std::string &fn)
+{
+    for (cache_entry *e = _head; e; e = e->_next)
+	if (fn == e->_filename)
+	    return e;
+    return NULL;
+}
+
+void
+cache::remove(cache_entry *e)
+{
+    _load -= e->size();
+    if (e->_prev)
+	e->_prev->_next = e->_next;
+    else
+	_head = e->_next;
+    if (e->_next)
+	e->_next->_prev = e->_prev;
+    else
+	_tail = e->_prev;
+    e->_next = e->_prev = 0;
+    e->unuse();
+}
+
+void
+cache::evict()
+{
+    while (_load > _capacity && _head)
+	remove(_head);
+}
+
+void
+cache::empty()
+{
+    while (_head)
+	remove(_head);
+}
+
+//////////////////////////////////////////////////
+// Set the emacs indentation offset
+// Local Variables: ***
+// c-basic-offset:4 ***
+// End: ***
+//////////////////////////////////////////////////

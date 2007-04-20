@@ -1,0 +1,16 @@
+noinst_PROGRAMS = knot.tamer
+
+knot_tamer_SOURCES = cache2.tt cache2.hh http.tt http.hh httphdrs.h \
+	input.tt input.hh knot.tt refptr.hh
+knot_tamer_LDADD = ../tamer/libtamer.la
+
+TAMER = ../compiler/tamer
+.tt.cc: $(TAMER)
+	$(TAMER) -c $<
+
+cache2.cc: cache2.tt $(TAMER)
+http.cc: http.tt $(TAMER)
+input.cc: input.tt $(TAMER)
+knot.cc: knot.tt $(TAMER)
+
+INCLUDES = -I../tamer -I..

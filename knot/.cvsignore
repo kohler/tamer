@@ -1,0 +1,2 @@
+.deps .libs knot.tamer Makefile.in Makefile
+knot.cc input.cc cache2.cc http.cc
