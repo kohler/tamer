@@ -16,9 +16,11 @@ pkginclude_HEADERS = _base.hh \
 	_util.hh \
 	adapter.hh \
 	fileio.hh
-INCLUDES = -I..
 
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/tamer
 TAMER = ../compiler/tamer
+
 .tt.cc:
-	$(TAMER) -c $<
+	$(TAMER) -o $@ -c $< || (rm $@ && false)
+
 fileio.cc: $(TAMER) fileio.tt

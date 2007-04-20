@@ -6,11 +6,11 @@ knot_tamer_LDADD = ../tamer/libtamer.la
 
 TAMER = ../compiler/tamer
 .tt.cc: $(TAMER)
-	$(TAMER) -c $<
+	$(TAMER) -o $@ -c $< || (rm $@ && false)
 
 cache2.cc: cache2.tt $(TAMER)
 http.cc: http.tt $(TAMER)
 input.cc: input.tt $(TAMER)
 knot.cc: knot.tt $(TAMER)
 
-INCLUDES = -I../tamer -I..
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/tamer
