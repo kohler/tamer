@@ -1,6 +1,7 @@
 // -*- mode: c++ -*-
 #include <tamer/fileio.hh>
 #include <sys/select.h>
+#include <sys/ioctl.h>
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
@@ -12,7 +13,10 @@ namespace fileio {
 
 int make_nonblocking(int fd)
 {
-    int flags = ::fcntl(fd, F_GETFL);
+    int flags = 1;
+    if (::ioctl(fd, FIONBIO, &flags) == 0)
+	return 0;
+    flags = ::fcntl(fd, F_GETFL);
     if (flags < 0)
 	return flags;
     return ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
@@ -117,7 +121,7 @@ tamed void accept(int listenfd, struct sockaddr *name_out, socklen_t *namelen_ou
 	if (fd >= 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    tamer::at_fd_read(fd, make_event(r));
+	    tamer::at_fd_read(listenfd, make_event(r));
 	    twait(r);
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);

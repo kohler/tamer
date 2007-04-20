@@ -13,7 +13,7 @@ void open(const char *filename, int flags, event<int> done);
 void open(const char *filename, int flags, mode_t mode, event<int> done);
 void fstat(int fd, struct stat &stat_out, event<int> done);
 void read(int fd, void *buf, size_t size, ssize_t &size_out, event<int> done);
-void write(int fd, void *buf, size_t size, ssize_t &size_out, event<int> done);
+void write(int fd, const void *buf, size_t size, ssize_t &size_out, event<int> done);
 void close(int fd);
 void pipe(int fd_out[2], event<int> done);
 void socket(int domain, int type, int protocol, event<int> done);

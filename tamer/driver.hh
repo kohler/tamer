@@ -101,7 +101,7 @@ inline void driver::at_asap(const event<> &trigger)
 {
     if (_asap_tail - _asap_head == _asapcap)
 	expand_asap();
-    _asap[_asap_tail & (_asapcap - 1)] = trigger;
+    (void) new((void *) &_asap[_asap_tail & (_asapcap - 1)]) event<>(trigger);
     _asap_tail++;
 }
 
