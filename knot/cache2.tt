@@ -172,6 +172,7 @@ cache::insert(refptr<cache_entry> e)
     _head = e.value();
     if (!_tail)
 	_tail = e.value();
+    e->use();
 
     evict();
 }

@@ -618,10 +618,15 @@ main2 (int argc, char **argv)
     argc -= optind;
     argv += optind;
 
-    if (argc != 0) {
-	warn << "usage: knot.tamer [-p<port>] [-c<cachesz]\n";
+    if (argc != 0 && argc != 1) {
+	warn << "usage: knot.tamer [-p<port>] [-c<cachesz] [root]\n";
         exit(1);
     }
+    if (argc == 1)
+	if (chdir(argv[0]) < 0) {
+	    warn << argv[0] << ": " << strerror(errno);
+	    exit(1);
+	}
     
     if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
     {
