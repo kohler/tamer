@@ -612,8 +612,8 @@ main2 (int argc, char **argv)
 	}
     }
 
-    warn << "port=" << port << "\n";
-    warn << "cachesz=" << g_cache_max << "b\n";
+    warn << "tamer.port=" << port << "\n";
+    warn << "tamer.cachesz=" << g_cache_max << "b\n";
 
     argc -= optind;
     argv += optind;
