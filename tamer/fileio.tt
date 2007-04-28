@@ -106,7 +106,7 @@ void socket(int domain, int type, int protocol, event<int> done)
     int fd = ::socket(domain, type, protocol);
     if (fd >= 0)
 	make_nonblocking(fd);
-    done.trigger(fd >= 0 ? fd : -errno);
+    done.trigger(fd == -1 ? -errno : fd);
 }
 
 tamed void accept(int listenfd, struct sockaddr *name_out, socklen_t *namelen_out, event<int> done)
@@ -128,7 +128,7 @@ tamed void accept(int listenfd, struct sockaddr *name_out, socklen_t *namelen_ou
 	    return;
 	}
     }
-    done.trigger(fd >= 0 ? fd : -errno);
+    done.trigger(fd == -1 ? -ECANCELED : fd);
 }
 
 tamed void connect(int fd, const struct sockaddr *name, socklen_t namelen, event<int> done)
@@ -153,7 +153,7 @@ tamed void connect(int fd, const struct sockaddr *name, socklen_t namelen, event
 	    return;
 	}
     }
-    done.trigger(ret >= 0 ? 0 : -errno);
+    done.trigger(ret == -1 ? -errno : 0);
 }
 
 }}
