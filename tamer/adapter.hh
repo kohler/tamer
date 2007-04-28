@@ -3,6 +3,7 @@
 #include <tamer/_event.hh>
 #include <tamer/_driver.hh>
 #include <vector>
+#include <errno.h>
 namespace tamer {
 
 template <typename T> class _unbind_rendezvous : public _rendezvous_superbase { public:
@@ -133,9 +134,9 @@ const event<> &bind(const event<T1> &e, const X1 &t1) {
 
 namespace outcome {
 const int success = 0;
-const int cancel = -1;
-const int timeout = -2;
-const int signal = -3;
+const int cancel = -ECANCELED;
+const int timeout = -ETIMEDOUT;
+const int signal = -EINTR;
 }
 
 
