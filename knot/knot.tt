@@ -554,6 +554,7 @@ runloop (int s)
 		       (100 *cache_hits)/(cache_hits+cache_misses)
 		       );
 		print_cap_stats();
+		fflush(stdout);
 	    }
 
 	    warn << "Interval time: " << now - start << "\n";
@@ -574,6 +575,12 @@ exitloop(int s)
     close(s);
     clear_cache ();
     exit(0);
+}
+
+tamed static void wakeloop()
+{
+    while (1)
+	twait {	tamer::at_asap(make_event()); }
 }
 
 static void
@@ -659,6 +666,7 @@ main2 (int argc, char **argv)
     accept_loop(s);
     runloop(s);
     exitloop(s);
+    wakeloop();
 }
 
 
