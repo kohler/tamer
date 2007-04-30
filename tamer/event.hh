@@ -3,39 +3,39 @@
 #include <tamer/_rendezvous.hh>
 namespace tamer {
 
-template <typename R, typename X1, typename X2>
-_event_superbase::_event_superbase(R &r, const X1 &w1, const X2 &w2)
+template <typename R, typename I1, typename I2>
+_event_superbase::_event_superbase(R &r, const I1 &i1, const I2 &i2)
     : _refcount(1), _canceller(0)
 {
-    r.add_event(this, w1, w2);
+    r.add(this, i1, i2);
 }
 
-template <typename R, typename X1>
-_event_superbase::_event_superbase(R &r, const X1 &w1)
+template <typename R, typename I1>
+_event_superbase::_event_superbase(R &r, const I1 &i1)
     : _refcount(1), _canceller(0)
 {
-    r.add_event(this, w1);
+    r.add(this, i1);
 }
 
 template <typename R>
 inline _event_superbase::_event_superbase(R &r)
     : _refcount(1), _canceller(0)
 {
-    r.add_event(this);
+    r.add(this);
 }
 
 
 template <typename T1, typename T2, typename T3, typename T4>
 class _event_base : public _event_superbase { public:
 
-    template <typename R, typename X1, typename X2>
-    _event_base(R &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
-	: _event_superbase(r, w1, w2), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
+    template <typename R, typename I1, typename I2>
+    _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+	: _event_superbase(r, i1, i2), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
     }
 
-    template <typename R, typename X1>
-    _event_base(R &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
-	: _event_superbase(r, w1), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
+    template <typename R, typename I1>
+    _event_base(R &r, const I1 &i1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+	: _event_superbase(r, i1), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
     }
 
     template <typename R>
@@ -76,14 +76,14 @@ class _event_base : public _event_superbase { public:
 template <typename T1, typename T2, typename T3>
 class _event_base<T1, T2, T3, void> : public _event_superbase { public:
 
-    template <typename R, typename X1, typename X2>
-    _event_base(R &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3)
-	: _event_superbase(r, w1, w2), _t1(&t1), _t2(&t2), _t3(&t3) {
+    template <typename R, typename I1, typename I2>
+    _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3)
+	: _event_superbase(r, i1, i2), _t1(&t1), _t2(&t2), _t3(&t3) {
     }
 
-    template <typename R, typename X1>
-    _event_base(R &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3)
-	: _event_superbase(r, w1), _t1(&t1), _t2(&t2), _t3(&t3) {
+    template <typename R, typename I1>
+    _event_base(R &r, const I1 &i1, T1 &t1, T2 &t2, T3 &t3)
+	: _event_superbase(r, i1), _t1(&t1), _t2(&t2), _t3(&t3) {
     }
 
     template <typename R>
@@ -122,14 +122,14 @@ class _event_base<T1, T2, T3, void> : public _event_superbase { public:
 template <typename T1, typename T2>
 class _event_base<T1, T2, void, void> : public _event_superbase { public:
 
-    template <typename R, typename X1, typename X2>
-    _event_base(R &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2)
-	: _event_superbase(r, w1, w2), _t1(&t1), _t2(&t2) {
+    template <typename R, typename I1, typename I2>
+    _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2)
+	: _event_superbase(r, i1, i2), _t1(&t1), _t2(&t2) {
     }
 
-    template <typename R, typename X1>
-    _event_base(R &r, const X1 &w1, T1 &t1, T2 &t2)
-	: _event_superbase(r, w1), _t1(&t1), _t2(&t2) {
+    template <typename R, typename I1>
+    _event_base(R &r, const I1 &i1, T1 &t1, T2 &t2)
+	: _event_superbase(r, i1), _t1(&t1), _t2(&t2) {
     }
 
     template <typename R>
@@ -164,14 +164,14 @@ class _event_base<T1, T2, void, void> : public _event_superbase { public:
 template <typename T1>
 class _event_base<T1, void, void, void> : public _event_superbase { public:
 
-    template <typename R, typename X1, typename X2>
-    _event_base(R &r, const X1 &w1, const X2 &w2, T1 &t1)
-	: _event_superbase(r, w1, w2), _t1(&t1) {
+    template <typename R, typename I1, typename I2>
+    _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1)
+	: _event_superbase(r, i1, i2), _t1(&t1) {
     }
 
-    template <typename R, typename X1>
-    _event_base(R &r, const X1 &w1, T1 &t1)
-	: _event_superbase(r, w1), _t1(&t1) {
+    template <typename R, typename I1>
+    _event_base(R &r, const I1 &i1, T1 &t1)
+	: _event_superbase(r, i1), _t1(&t1) {
     }
 
     template <typename R>
@@ -207,14 +207,14 @@ class _event_base<T1, void, void, void> : public _event_superbase { public:
 template <typename T1, typename T2, typename T3, typename T4>
 class event { public:
 
-    template <typename R, typename X1, typename X2>
-    event(R &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
-	: _e(new _event_base<T1, T2, T3, T4>(r, w1, w2, t1, t2, t3, t4)) {
+    template <typename R, typename I1, typename I2>
+    event(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+	: _e(new _event_base<T1, T2, T3, T4>(r, i1, i2, t1, t2, t3, t4)) {
     }
 
-    template <typename R, typename X1>
-    event(R &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
-	: _e(new _event_base<T1, T2, T3, T4>(r, w1, t1, t2, t3, t4)) {
+    template <typename R, typename I1>
+    event(R &r, const I1 &i1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+	: _e(new _event_base<T1, T2, T3, T4>(r, i1, t1, t2, t3, t4)) {
     }
 
     template <typename R>
@@ -232,11 +232,11 @@ class event { public:
     }
     
     operator bool() const {
-	return _e->active();
+	return _e->live();
     }
     
-    bool active() const {
-	return _e->active();
+    bool live() const {
+	return _e->live();
     }
 
     void at_cancel(const event<> &e) {
@@ -251,16 +251,16 @@ class event { public:
 	_e->cancel();
     }
 
-    template <typename R, typename X1, typename X2>
-    event<T1, T2, T3, T4> make_rebind(R &r, const X1 &w1, const X2 &w2) {
-	event<T1, T2, T3, T4> e(r, w1, w2, *_e->_t1, *_e->_t2, *_e->_t3, *_e->_t4);
+    template <typename R, typename I1, typename I2>
+    event<T1, T2, T3, T4> make_rebind(R &r, const I1 &i1, const I2 &i2) {
+	event<T1, T2, T3, T4> e(r, i1, i2, *_e->_t1, *_e->_t2, *_e->_t3, *_e->_t4);
 	_e->unbind();
 	return e;
     }
 
-    template <typename R, typename X1>
-    event<T1, T2, T3, T4> make_rebind(R &r, const X1 &w1) {
-	event<T1, T2, T3, T4> e(r, w1, *_e->_t1, *_e->_t2, *_e->_t3, *_e->_t4);
+    template <typename R, typename I1>
+    event<T1, T2, T3, T4> make_rebind(R &r, const I1 &i1) {
+	event<T1, T2, T3, T4> e(r, i1, *_e->_t1, *_e->_t2, *_e->_t3, *_e->_t4);
 	_e->unbind();
 	return e;
     }
@@ -293,14 +293,14 @@ class event { public:
 template <typename T1, typename T2, typename T3>
 class event<T1, T2, T3, void> { public:
 
-    template <typename R, typename X1, typename X2>
-    event(R &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3)
-	: _e(new _event_base<T1, T2, T3, void>(r, w1, w2, t1, t2, t3)) {
+    template <typename R, typename I1, typename I2>
+    event(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3)
+	: _e(new _event_base<T1, T2, T3, void>(r, i1, i2, t1, t2, t3)) {
     }
 
-    template <typename R, typename X1>
-    event(R &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3)
-	: _e(new _event_base<T1, T2, T3, void>(r, w1, t1, t2, t3)) {
+    template <typename R, typename I1>
+    event(R &r, const I1 &i1, T1 &t1, T2 &t2, T3 &t3)
+	: _e(new _event_base<T1, T2, T3, void>(r, i1, t1, t2, t3)) {
     }
 
     template <typename R>
@@ -318,11 +318,11 @@ class event<T1, T2, T3, void> { public:
     }
 
     operator bool() const {
-	return _e->active();
+	return _e->live();
     }
     
-    bool active() const {
-	return _e->active();
+    bool live() const {
+	return _e->live();
     }
 
     void at_cancel(const event<> &e) {
@@ -333,16 +333,16 @@ class event<T1, T2, T3, void> { public:
 	_e->trigger(t1, t2, t3);
     }
 
-    template <typename R, typename X1, typename X2>
-    event<T1, T2, T3> make_rebind(R &r, const X1 &w1, const X2 &w2) {
-	event<T1, T2, T3> e(r, w1, w2, *_e->_t1, *_e->_t2, *_e->_t3);
+    template <typename R, typename I1, typename I2>
+    event<T1, T2, T3> make_rebind(R &r, const I1 &i1, const I2 &i2) {
+	event<T1, T2, T3> e(r, i1, i2, *_e->_t1, *_e->_t2, *_e->_t3);
 	_e->unbind();
 	return e;
     }
 
-    template <typename R, typename X1>
-    event<T1, T2, T3> make_rebind(R &r, const X1 &w1) {
-	event<T1, T2, T3> e(r, w1, *_e->_t1, *_e->_t2, *_e->_t3);
+    template <typename R, typename I1>
+    event<T1, T2, T3> make_rebind(R &r, const I1 &i1) {
+	event<T1, T2, T3> e(r, i1, *_e->_t1, *_e->_t2, *_e->_t3);
 	_e->unbind();
 	return e;
     }
@@ -375,14 +375,14 @@ class event<T1, T2, T3, void> { public:
 template <typename T1, typename T2>
 class event<T1, T2, void, void> { public:
 
-    template <typename R, typename X1, typename X2>
-    event(R &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2)
-	: _e(new _event_base<T1, T2, void, void>(r, w1, w2, t1, t2)) {
+    template <typename R, typename I1, typename I2>
+    event(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2)
+	: _e(new _event_base<T1, T2, void, void>(r, i1, i2, t1, t2)) {
     }
 
-    template <typename R, typename X1>
-    event(R &r, const X1 &w1, T1 &t1, T2 &t2)
-	: _e(new _event_base<T1, T2, void, void>(r, w1, t1, t2)) {
+    template <typename R, typename I1>
+    event(R &r, const I1 &i1, T1 &t1, T2 &t2)
+	: _e(new _event_base<T1, T2, void, void>(r, i1, t1, t2)) {
     }
 
     template <typename R>
@@ -400,11 +400,11 @@ class event<T1, T2, void, void> { public:
     }
 
     operator bool() const {
-	return _e->active();
+	return _e->live();
     }
     
-    bool active() const {
-	return _e->active();
+    bool live() const {
+	return _e->live();
     }
 
     void at_cancel(const event<> &e) {
@@ -415,16 +415,16 @@ class event<T1, T2, void, void> { public:
 	_e->trigger(t1, t2);
     }
 
-    template <typename R, typename X1, typename X2>
-    event<T1, T2> make_rebind(R &r, const X1 &w1, const X2 &w2) {
-	event<T1, T2> e(r, w1, w2, *_e->_t1, *_e->_t2);
+    template <typename R, typename I1, typename I2>
+    event<T1, T2> make_rebind(R &r, const I1 &i1, const I2 &i2) {
+	event<T1, T2> e(r, i1, i2, *_e->_t1, *_e->_t2);
 	_e->unbind();
 	return e;
     }
 
-    template <typename R, typename X1>
-    event<T1, T2> make_rebind(R &r, const X1 &w1) {
-	event<T1, T2> e(r, w1, *_e->_t1, *_e->_t2);
+    template <typename R, typename I1>
+    event<T1, T2> make_rebind(R &r, const I1 &i1) {
+	event<T1, T2> e(r, i1, *_e->_t1, *_e->_t2);
 	_e->unbind();
 	return e;
     }
@@ -457,14 +457,14 @@ class event<T1, T2, void, void> { public:
 template <typename T1>
 class event<T1, void, void, void> { public:
 
-    template <typename R, typename X1, typename X2>
-    event(R &r, const X1 &w1, const X2 &w2, T1 &t1)
-	: _e(new _event_base<T1, void, void, void>(r, w1, w2, t1)) {
+    template <typename R, typename I1, typename I2>
+    event(R &r, const I1 &i1, const I2 &i2, T1 &t1)
+	: _e(new _event_base<T1, void, void, void>(r, i1, i2, t1)) {
     }
 
-    template <typename R, typename X1>
-    event(R &r, const X1 &w1, T1 &t1)
-	: _e(new _event_base<T1, void, void, void>(r, w1, t1)) {
+    template <typename R, typename I1>
+    event(R &r, const I1 &i1, T1 &t1)
+	: _e(new _event_base<T1, void, void, void>(r, i1, t1)) {
     }
 
     template <typename R>
@@ -482,11 +482,11 @@ class event<T1, void, void, void> { public:
     }
 
     operator bool() const {
-	return _e->active();
+	return _e->live();
     }
     
-    bool active() const {
-	return _e->active();
+    bool live() const {
+	return _e->live();
     }
 
     void at_cancel(const event<> &e) {
@@ -497,16 +497,16 @@ class event<T1, void, void, void> { public:
 	_e->trigger(t1);
     }
 
-    template <typename R, typename X1, typename X2>
-    event<T1> make_rebind(R &r, const X1 &w1, const X2 &w2) {
-	event<T1> e(r, w1, w2, *_e->_t1);
+    template <typename R, typename I1, typename I2>
+    event<T1> make_rebind(R &r, const I1 &i1, const I2 &i2) {
+	event<T1> e(r, i1, i2, *_e->_t1);
 	_e->unbind();
 	return e;
     }
 
-    template <typename R, typename X1>
-    event<T1> make_rebind(R &r, const X1 &w1) {
-	event<T1> e(r, w1, *_e->_t1);
+    template <typename R, typename I1>
+    event<T1> make_rebind(R &r, const I1 &i1) {
+	event<T1> e(r, i1, *_e->_t1);
 	_e->unbind();
 	return e;
     }
@@ -552,14 +552,14 @@ class event<void, void, void, void> { public:
 	_e->use();
     }
 
-    template <typename R, typename X1, typename X2>
-    event(R &r, const X1 &w1, const X2 &w2)
-	: _e(new _event_superbase(r, w1, w2)) {
+    template <typename R, typename I1, typename I2>
+    event(R &r, const I1 &i1, const I2 &i2)
+	: _e(new _event_superbase(r, i1, i2)) {
     }
 
-    template <typename R, typename X1>
-    event(R &r, const X1 &w1)
-	: _e(new _event_superbase(r, w1)) {
+    template <typename R, typename I1>
+    event(R &r, const I1 &i1)
+	: _e(new _event_superbase(r, i1)) {
     }
 
     template <typename R>
@@ -582,11 +582,11 @@ class event<void, void, void, void> { public:
     }
 
     operator bool() const {
-	return _e->active();
+	return _e->live();
     }
     
-    bool active() const {
-	return _e->active();
+    bool live() const {
+	return _e->live();
     }
 
     void at_cancel(const event<> &e) {
@@ -601,14 +601,14 @@ class event<void, void, void, void> { public:
 	_e->complete(false);
     }
 
-    template <typename R, typename X1, typename X2>
-    event<> make_rebind(R &r, const X1 &w1, const X2 &w2) {
-	return event<>(r, w1, w2);
+    template <typename R, typename I1, typename I2>
+    event<> make_rebind(R &r, const I1 &i1, const I2 &i2) {
+	return event<>(r, i1, i2);
     }
 
-    template <typename R, typename X1>
-    event<> make_rebind(R &r, const X1 &w1) {
-	return event<>(r, w1);
+    template <typename R, typename I1>
+    event<> make_rebind(R &r, const I1 &i1) {
+	return event<>(r, i1);
     }
 
     template <typename R>
@@ -662,16 +662,16 @@ inline void _event_superbase::at_cancel(const event<> &e)
 }
 
 
-template <typename W1, typename W2, typename X1, typename X2, typename T1, typename T2, typename T3, typename T4>
-inline event<T1, T2, T3, T4> make_event(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+template <typename I1, typename I2, typename J1, typename J2, typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> make_event(rendezvous<I1, I2> &r, const J1 &i1, const J2 &i2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 {
-    return event<T1, T2, T3, T4>(r, w1, w2, t1, t2, t3, t4);
+    return event<T1, T2, T3, T4>(r, i1, i2, t1, t2, t3, t4);
 }
 
-template <typename W1, typename X1, typename T1, typename T2, typename T3, typename T4>
-inline event<T1, T2, T3, T4> make_event(rendezvous<W1> &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+template <typename I1, typename J1, typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> make_event(rendezvous<I1> &r, const J1 &i1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 {
-    return event<T1, T2, T3, T4>(r, w1, t1, t2, t3, t4);
+    return event<T1, T2, T3, T4>(r, i1, t1, t2, t3, t4);
 }
 
 template <typename T1, typename T2, typename T3, typename T4>
@@ -680,16 +680,16 @@ inline event<T1, T2, T3, T4> make_event(rendezvous<> &r, T1 &t1, T2 &t2, T3 &t3,
     return event<T1, T2, T3, T4>(r, t1, t2, t3, t4);
 }
 
-template <typename W1, typename W2, typename X1, typename X2, typename T1, typename T2, typename T3>
-inline event<T1, T2, T3> make_event(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2, T3 &t3)
+template <typename I1, typename I2, typename J1, typename J2, typename T1, typename T2, typename T3>
+inline event<T1, T2, T3> make_event(rendezvous<I1, I2> &r, const J1 &i1, const J2 &i2, T1 &t1, T2 &t2, T3 &t3)
 {
-    return event<T1, T2, T3>(r, w1, w2, t1, t2, t3);
+    return event<T1, T2, T3>(r, i1, i2, t1, t2, t3);
 }
 
-template <typename W1, typename X1, typename T1, typename T2, typename T3>
-inline event<T1, T2, T3> make_event(rendezvous<W1> &r, const X1 &w1, T1 &t1, T2 &t2, T3 &t3)
+template <typename I1, typename J1, typename T1, typename T2, typename T3>
+inline event<T1, T2, T3> make_event(rendezvous<I1> &r, const J1 &i1, T1 &t1, T2 &t2, T3 &t3)
 {
-    return event<T1, T2, T3>(r, w1, t1, t2, t3);
+    return event<T1, T2, T3>(r, i1, t1, t2, t3);
 }
 
 template <typename T1, typename T2, typename T3>
@@ -698,16 +698,16 @@ inline event<T1, T2, T3> make_event(rendezvous<> &r, T1 &t1, T2 &t2, T3 &t3)
     return event<T1, T2, T3>(r, t1, t2, t3);
 }
 
-template <typename W1, typename W2, typename X1, typename X2, typename T1, typename T2>
-inline event<T1, T2> make_event(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2, T1 &t1, T2 &t2)
+template <typename I1, typename I2, typename J1, typename J2, typename T1, typename T2>
+inline event<T1, T2> make_event(rendezvous<I1, I2> &r, const J1 &i1, const J2 &i2, T1 &t1, T2 &t2)
 {
-    return event<T1, T2>(r, w1, w2, t1, t2);
+    return event<T1, T2>(r, i1, i2, t1, t2);
 }
 
-template <typename W1, typename X1, typename T1, typename T2>
-inline event<T1, T2> make_event(rendezvous<W1> &r, const X1 &w1, T1 &t1, T2 &t2)
+template <typename I1, typename J1, typename T1, typename T2>
+inline event<T1, T2> make_event(rendezvous<I1> &r, const J1 &i1, T1 &t1, T2 &t2)
 {
-    return event<T1, T2>(r, w1, t1, t2);
+    return event<T1, T2>(r, i1, t1, t2);
 }
 
 template <typename T1, typename T2>
@@ -716,16 +716,16 @@ inline event<T1, T2> make_event(rendezvous<> &r, T1 &t1, T2 &t2)
     return event<T1, T2>(r, t1, t2);
 }
 
-template <typename W1, typename W2, typename X1, typename X2, typename T1>
-inline event<T1> make_event(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2, T1 &t1)
+template <typename I1, typename I2, typename J1, typename J2, typename T1>
+inline event<T1> make_event(rendezvous<I1, I2> &r, const J1 &i1, const J2 &i2, T1 &t1)
 {
-    return event<T1>(r, w1, w2, t1);
+    return event<T1>(r, i1, i2, t1);
 }
 
-template <typename W1, typename X1, typename T1>
-inline event<T1> make_event(rendezvous<W1> &r, const X1 &w1, T1 &t1)
+template <typename I1, typename J1, typename T1>
+inline event<T1> make_event(rendezvous<I1> &r, const J1 &i1, T1 &t1)
 {
-    return event<T1>(r, w1, t1);
+    return event<T1>(r, i1, t1);
 }
 
 template <typename T1>
@@ -734,16 +734,16 @@ inline event<T1> make_event(rendezvous<> &r, T1 &t1)
     return event<T1>(r, t1);
 }
 
-template <typename W1, typename W2, typename X1, typename X2>
-inline event<> make_event(rendezvous<W1, W2> &r, const X1 &w1, const X2 &w2)
+template <typename I1, typename I2, typename J1, typename J2>
+inline event<> make_event(rendezvous<I1, I2> &r, const J1 &i1, const J2 &i2)
 {
-    return event<>(r, w1, w2);
+    return event<>(r, i1, i2);
 }
 
-template <typename W1, typename X1>
-inline event<> make_event(rendezvous<W1> &r, const X1 &w1)
+template <typename I1, typename J1>
+inline event<> make_event(rendezvous<I1> &r, const J1 &i1)
 {
-    return event<>(r, w1);
+    return event<>(r, i1);
 }
 
 inline event<> make_event(rendezvous<> &r)
@@ -752,9 +752,9 @@ inline event<> make_event(rendezvous<> &r)
 }
 
 inline event<> scatter(const event<> &e1, const event<> &e2) {
-    if (!e1.active())
+    if (!e1.live())
 	return e2;
-    else if (!e2.active())
+    else if (!e2.live())
 	return e1;
     else
 	return _hard_scatter(e1, e2);

@@ -1,0 +1,302 @@
+.TH TAMER 3 2007-04-30 Tamer "Tamer Manual"
+.ds E \-\-\-
+.if t .ds E \(em
+.SH NAME
+tamer \- C++ extensions for event-driven programming
+.SH SYNOPSIS
+.nf
+.B #include <tamer.hh>
+.sp
+\fBclass event<T1, T2, T3, T4> { ...
+    void trigger(const T1 &\fIv1\fB, const T2 &\fIv2\fB,
+                 const T3 &\fIv3\fB, const T4 &\fIv4\fB);
+    void cancel();
+    void at_cancel(const event<> &\fIcancel_evt\fB);
+    bool active() const;
+}
+.sp
+class rendezvous<I1, I2> { ...
+    rendezvous();
+    unsigned nevents() const;
+    unsigned nready() const;
+    unsigned nwaiting() const;
+    bool join(I1 &\fIi1\fB, I2 &\fIi2\fB);
+}
+.sp
+event<T1, T2, T3, T4> make_event(rendezvous<I1, I2> &\fIrendezvous\fB,
+                                 const I1 &\fIi1\fB, const I2 &\fIi2\fB,
+                                 T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB, T4 &\fIs4\fB);
+event<T1, T2, T3, T4> make_event(rendezvous<I1> &\fIrendezvous\fB,
+                                 const I1 &\fIi1\fB,
+                                 T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB, T4 &\fIs4\fB);
+event<T1, T2, T3, T4> make_event(rendezvous<> &\fIrendezvous\fB,
+                                 T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB, T4 &\fIs4\fB);
+\&...
+event<> make_event(rendezvous<I1, I2> &\fIrendezvous\fB, 
+                   const I1 &\fIi1\fB, const I2 &\fIi2\fB);
+event<> make_event(rendezvous<I1> &\fIrendezvous\fB, const I1 &\fIi1\fB);
+event<> make_event(rendezvous<> &\fIrendezvous\fB);
+.sp
+tamed void user_function(...) {
+    tvars { ... };
+}
+.sp
+twait { ... }
+.sp
+twait(rendezvous<I1, I2> &\fIrendezvous\fB, I1 &\fIi1\fB, I2 &\fIi2\fB);
+twait(rendezvous<I1> &\fIrendezvous\fB, I1 &\fIi1\fB);
+twait(rendezvous<> &\fIrendezvous\fB);
+.fi
+.SH DESCRIPTION
+.B Tamer
+is a set of libraries and C++ language extensions designed to simplify the
+practice of event-driven programming.
+.LP
+.B Tamer
+introduces four related abstractions for handling concurrency:
+.IR events ,
+.IR "wait points" ,
+.IR rendezvous ", and"
+.IR "safe local variables" .
+.LP
+Each 
+.B event 
+object represents a future occurrence, such as the completion of a network
+read.  When the expected occurrence actually happens\*Efor instance, a
+packet arrives\*Ethe programmer 
+.I triggers
+the event by calling its
+.B trigger
+method.
+.LP
+The
+.B make_event
+function allocates an event of type
+.BR event<T*> , 
+where
+.B T*
+is a sequence of zero to four types determined by
+.BR make_event 's
+arguments.  This event's 
+.B trigger
+method has the signature
+.B void trigger(T*).
+Calling
+.B trigger(\fIv*\fB)
+marks the event as having occurred, and
+passes zero to four results
+.IR v* ,
+which are called
+.IR "trigger values" ,
+to whomever is expecting the event.  The types of
+.I v*
+must match the event's types
+.BR T* .
+For example:
+.nf
+.sp
+\fB  rendezvous<> \fIr\fB;  int \fIi\fB = 0;
+  event<int> \fIe\fB = make_event(\fIr\fB, \fIi\fB);
+  \fIe\fB.trigger(100);
+  assert(\fIi\fB == 100);               // \fRassertion will succeed
+.sp
+.fi
+When triggered, 
+.IR e 's
+.B int
+trigger value is stored in
+.IR i ,
+the
+.I trigger slot
+passed to
+.BR make_event
+when the event was created.
+The type of
+.I i
+is echoed in
+.IR e 's
+type
+.BR event<int> .
+.LP
+.B event
+objects may be freely assigned, passed as arguments, and copied via copy
+constructors\*Eessentially, treated as primitive values.  They are
+automatically reference counted.  Each
+.B event
+may be triggered at most once; second and subsequent trigger attempts have
+no effect.
+.LP
+An event may be explicitly canceled by calling its
+.B cancel()
+method.  Alternately, an event is automatically canceled when the last
+reference to the event goes out of scope.  The
+.B trigger
+method has no effect on a canceled event.  It is possible to detect when an
+event is canceled using the
+.B event<T*>::at_cancel()
+method.  Consider the call
+.BR \fIe\fB.at_cancel(\fIe2\fB) ,
+where
+.I e2
+is an
+.BR event<> .
+If \fIe\fR is canceled before it is triggered,  then
+.B Tamer
+will automatically trigger
+.IR e2 .
+If, on the other hand, 
+.I e
+is triggered first, then
+.B Tamer
+will automatically cancel
+.IR e2 .
+.LP
+The
+.B wait point
+language extension, written
+.BR twait ,
+blocks the calling function until one or more events are triggered.
+Blocking causes a function to return to its caller, but the function does
+not complete: its execution point and safe local variables are preserved in
+memory.  When an expected event occurs, the function \*(lqunblocks\*(rq and
+resumes processing at the wait point.  By that time, of course, the
+function's original caller may have returned.  Any function containing a
+wait point is marked with the
+.B tamed
+keyword, which informs the caller that the function can block.
+.LP
+The first, and more common, form of wait point is written
+\*(lq\fBtwait\~{ \fIstatements\fB; }\fR\*(rq.
+This executes the
+.IR statements ,
+then blocks until
+.I all
+events created by
+.B make_event 
+calls in the
+.I statements
+have triggered.
+For example, code like \*(lq\fBtwait { tamer::at_delay_sec(\fR10\fB, make_event()); }\fR\*(rq
+should be read as \*(lqexecute \fBtamer::at_delay_sec(\fR10\fB, make_event())\fR,
+then block until the created event has triggered\*(rq\*Eor,
+since
+.B tamer::at_delay_sec
+triggers its event argument after the given number of seconds has passed, simply as \*(lqblock for 10 seconds\*(rq.
+.LP
+The second, more flexible form of wait point explicitly names a
+.B rendezvous
+object, which specifies the set of expected events relevant to the wait
+point.  Every 
+.B event
+object associates with one 
+.BR rendezvous .  
+A wait point
+.B twait(\fIr\fB)
+unblocks when 
+.I any one
+of
+.B rendezvous<>
+.IR r 's
+events occurs.  Unblocking consumes the event and restarts the blocked
+function.
+.\" The first form of wait point is actually syntactic sugar for
+.\" the second: code like \*(lq\fBtwait\~{ \fIstatements\fB; }\fR\*(rq
+.\" expands into something like
+.\" .nf
+.\" .sp
+.\" \fB  rendezvous<> \fI__r\fB;
+.\"   \fIstatements\fB;      // \fRwhere \fBmake_event\fR calls create events on \fI__r\fB
+.\"   while (\fI__r\fB.nevents())
+.\"       twait(\fI__r\fB);\fR
+.\" .sp
+.\" .fi
+The 
+.B twait()
+form can also return information about
+.I which
+event occurred.  A rendezvous of type
+.BR rendezvous<I*> , 
+where 
+.B I*
+is zero to two types, associates
+.I event IDs
+of type(s)
+.BR I*
+with events.  The
+.B make_event
+function specifies event IDs as well as trigger slots.  A 
+.B twait(\fIr\fB, \fIi*\fB)
+statement sets the variable(s)
+.I i*
+to the ID(s) of the unblocking event.  The type(s) of
+.I i*
+must match the type(s) of the
+.BR rendezvous .
+.LP
+.B rendezvous
+objects may not be treated as primitive values.  Their copy constructors
+and assignment operators are private.
+.LP
+A
+.B tamed
+function's caller resumes when the called function
+.IR "either returns or blocks" .
+To allow its caller to distinguish returning from blocking, a 
+.B tamed
+function will often accept an event argument, which it triggers when it
+returns.  This trigger signals the function's completion.  Here is a
+.B tamed
+function that blocks, then returns an integer:
+.nf
+.sp
+  \fBtamed blockf(event<int> \fIdone\fB) {
+     \&\fR... block ...\fB
+     done.trigger(\fR200\fB);
+  }\fR
+.sp
+.fi
+A caller will most likely use
+.B twait
+to wait for
+.B blockf
+to return, and so become
+.B tamed
+itself.
+Waiting for events thus trickles up the call stack until a caller
+doesn't care whether its callee returns or blocks.
+.LP
+When an event
+.I e
+is triggered, 
+.B Tamer
+enqueues a
+.I trigger notification
+for 
+.IR e 's
+event ID on
+.IR e 's
+rendezvous
+.IR r .
+This step also unblocks any function blocked on
+.BR twait(\fIr\fB) .
+Conversely,
+.B twait(\fIr\fB)
+checks for any queued trigger notifications
+.IR r .
+If one exists, it is dequeued and returned.  Otherwise, the function blocks
+at that wait point; it will unblock and recheck the rendezvous once someone
+triggers a corresponding event.  The top-level event loop cycles through
+unblocked functions, calling them in some order.
+.LP
+Multiple functions cannot simultaneously block on the same rendezvous.
+.LP
+Finally, 
+.B safe local variables
+are variables whose values are preserved across wait points.  The
+programmer marks local variables as safe by enclosing them in a
+.B tvars{}
+block, which preserves their values in a heap-allocated closure.  Function
+parameters are always safe.  Unsafe local variables have indeterminate
+values after a wait point; if you need to mark a variable as safe, the C++
+compiler will often give you an uninitialized-variable warning for that
+variable.

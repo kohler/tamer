@@ -14,11 +14,11 @@ template <typename T> class _unbind_rendezvous : public _rendezvous_superbase { 
 	_ein.at_cancel(event<>(*this, ubcancel));
     }
 
-    void add_event(_event_superbase *e, uintptr_t what) {
+    void add(_event_superbase *e, uintptr_t what) {
 	e->simple_initialize(this, what);
     }
     
-    void _complete(uintptr_t rname, bool success) {
+    void complete(uintptr_t rname, bool success) {
 	if (success) {
 	    if (rname == ubcancel)
 		_eout.cancel();
@@ -53,11 +53,11 @@ template <typename T1> class _bind_rendezvous : public _rendezvous_superbase { p
     ~_bind_rendezvous() {
     }
 
-    void add_event(_event_superbase *e, uintptr_t what) {
+    void add(_event_superbase *e, uintptr_t what) {
 	e->simple_initialize(this, what);
     }
     
-    void _complete(uintptr_t rname, bool success) {
+    void complete(uintptr_t rname, bool success) {
 	if (success) {
 	    if (rname == ubcancel)
 		_eout.cancel();
@@ -90,7 +90,7 @@ class _scatter_rendezvous : public _rendezvous_superbase { public:
     ~_scatter_rendezvous() {
     }
 
-    void add_event(_event_superbase *e) {
+    void add(_event_superbase *e) {
 	e->simple_initialize(this, 0);
     }
 
@@ -103,7 +103,7 @@ class _scatter_rendezvous : public _rendezvous_superbase { public:
 	    _es.push_back(e);
     }
     
-    void _complete(uintptr_t, bool success) {
+    void complete(uintptr_t, bool success) {
 	if (success) {
 	    for (std::vector<event<> >::iterator i = _es.begin(); i != _es.end(); i++)
 		i->trigger();

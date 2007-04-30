@@ -7,7 +7,7 @@ class _event_superbase;
 class _rendezvous_superbase;
 class _rendezvous_base;
 class _closure_base;
-template <typename W1=void, typename W2=void> class rendezvous;
+template <typename I1=void, typename I2=void> class rendezvous;
 template <typename T1=void, typename T2=void, typename T3=void, typename T4=void> class event;
 template <typename T1> class _unbind_rendezvous;
 template <typename T1> class _bind_rendezvous;
@@ -18,11 +18,11 @@ class driver;
 
 class _event_superbase { public:
 
-    template <typename R, typename X1, typename X2>
-    inline _event_superbase(R &r, const X1 &w1, const X2 &w2);
+    template <typename R, typename I1, typename I2>
+    inline _event_superbase(R &r, const I1 &i1, const I2 &i2);
 
-    template <typename R, typename X1>
-    inline _event_superbase(R &r, const X1 &w1);
+    template <typename R, typename I1>
+    inline _event_superbase(R &r, const I1 &i1);
 
     template <typename R>
     inline _event_superbase(R &r);
@@ -38,7 +38,7 @@ class _event_superbase { public:
 	    delete this;
     }
 
-    bool active() const {
+    bool live() const {
 	return _r != 0;
     }
 
@@ -100,7 +100,7 @@ class _rendezvous_superbase { public:
 	return false;
     }
     
-    virtual void _complete(uintptr_t rname, bool success) = 0;
+    virtual void complete(uintptr_t rname, bool success) = 0;
 
 };
 
@@ -128,6 +128,9 @@ class _rendezvous_base : public _rendezvous_superbase { public:
     _rendezvous_base *_unblocked_prev;
     _closure_base *_blocked_closure;
     unsigned _blocked_closure_blockid;
+
+    _rendezvous_base(const _rendezvous_base &);
+    _rendezvous_base &operator=(const _rendezvous_base &);
 
     friend class _event_superbase;
     friend class driver;
@@ -232,7 +235,7 @@ inline bool _event_superbase::complete(bool success)
     _r_next = 0;
 
     if (r)
-	r->_complete(_r_name, success);
+	r->complete(_r_name, success);
     if (canceller && !success)
 	canceller->complete(true);
     if (canceller)

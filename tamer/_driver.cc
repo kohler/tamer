@@ -26,11 +26,11 @@ class sigcancel_rendezvous : public rendezvous<> { public:
     }
 
     inline void add_event(_event_superbase *e) throw () {
-	_npassive++;
+	_nwaiting++;
 	e->initialize(this, sig_installing);
     }
     
-    void _complete(uintptr_t rname, bool) {
+    void complete(uintptr_t rname, bool success) {
 	if ((int) rname != sig_installing) {
 	    struct sigaction sa;
 	    sa.sa_handler = SIG_DFL;
@@ -38,6 +38,7 @@ class sigcancel_rendezvous : public rendezvous<> { public:
 	    sa.sa_flags = SA_RESETHAND;
 	    sigaction(rname, &sa, 0);
 	}
+	rendezvous<>::complete(rname, success);
     }
     
 };

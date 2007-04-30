@@ -800,7 +800,7 @@ tame_block_ev_t::output (outputter_t *o)
   o->output_str(" }\n#undef make_event\n");
   om = o->switch_to_mode (OUTPUT_TREADMILL);
   b << _fn->label(_id) << ":\n"
-    << "  while (" << TAME_CLOSURE_NAME << "._closure__block.npassive()) {\n"
+    << "  while (" << TAME_CLOSURE_NAME << "._closure__block.nwaiting()) {\n"
     << "      " << TAME_CLOSURE_NAME << "._closure__block._block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n"
     << "      "
     << _fn->return_expr ()
