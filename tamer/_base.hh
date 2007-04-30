@@ -38,7 +38,7 @@ class _event_superbase { public:
 	    delete this;
     }
 
-    operator bool() const {
+    bool active() const {
 	return _r != 0;
     }
 
