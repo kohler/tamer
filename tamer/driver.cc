@@ -25,7 +25,7 @@ class sigcancel_rendezvous : public rendezvous<> { public:
     sigcancel_rendezvous() {
     }
 
-    inline void add(simple_event *e) throw () {
+    inline void add(tamerpriv::simple_event *e) throw () {
 	_nwaiting++;
 	e->initialize(this, sig_installing);
     }
@@ -304,7 +304,7 @@ void driver::once()
 	    }
 
 	// run closures activated by signals (plus maybe some others)
-	while (blockable_rendezvous *r = blockable_rendezvous::unblocked)
+	while (tamerpriv::blockable_rendezvous *r = tamerpriv::blockable_rendezvous::unblocked)
 	    r->run();
 
 	// now that the signal responders have potentially reinstalled signal
@@ -350,7 +350,7 @@ void driver::once()
     }
 
     // run active closures
-    while (blockable_rendezvous *r = blockable_rendezvous::unblocked)
+    while (tamerpriv::blockable_rendezvous *r = tamerpriv::blockable_rendezvous::unblocked)
 	r->run();
 }
 

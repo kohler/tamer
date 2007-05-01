@@ -3,6 +3,7 @@
 #include <memory>
 #include <cassert>
 namespace tamer {
+namespace tamerpriv {
 
 template <typename T, typename A = std::allocator<T> > class blockset { public:
 
@@ -217,5 +218,5 @@ inline void debuffer<T, A>::pop_front()
     _head++;
 }
 
-}
+}}
 #endif /* TAMER__UTIL_HH */

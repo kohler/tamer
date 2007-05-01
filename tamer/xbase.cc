@@ -2,6 +2,7 @@
 #include <tamer/adapter.hh>
 
 namespace tamer {
+namespace tamerpriv {
 
 blockable_rendezvous *blockable_rendezvous::unblocked;
 blockable_rendezvous *blockable_rendezvous::unblocked_tail;
@@ -45,4 +46,4 @@ event<> _hard_scatter(const event<> &e1, const event<> &e2) {
     }
 }
 
-}
+}}

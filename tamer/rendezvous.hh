@@ -5,11 +5,11 @@
 namespace tamer {
 
 template <typename I1, typename I2>
-class rendezvous : public blockable_rendezvous { public:
+class rendezvous : public tamerpriv::blockable_rendezvous { public:
 
     rendezvous();
 
-    void add(simple_event *e, const I1 &i1, const I2 &i2);
+    void add(tamerpriv::simple_event *e, const I1 &i1, const I2 &i2);
     void complete(uintptr_t rname, bool success);
     bool join(I1 &, I2 &);
 
@@ -25,7 +25,7 @@ class rendezvous : public blockable_rendezvous { public:
 	I2 i2;
     };
 
-    blockset<evtrec> _bs;
+    tamerpriv::blockset<evtrec> _bs;
     
 };
 
@@ -35,7 +35,7 @@ rendezvous<I1, I2>::rendezvous()
 }
 
 template <typename I1, typename I2>
-void rendezvous<I1, I2>::add(simple_event *e, const I1 &i1, const I2 &i2)
+void rendezvous<I1, I2>::add(tamerpriv::simple_event *e, const I1 &i1, const I2 &i2)
 {
     uintptr_t u;
     evtrec &ew = _bs.allocate_passive(u);
@@ -68,11 +68,11 @@ bool rendezvous<I1, I2>::join(I1 &i1, I2 &i2)
 
 
 template <typename I1>
-class rendezvous<I1, void> : public blockable_rendezvous { public:
+class rendezvous<I1, void> : public tamerpriv::blockable_rendezvous { public:
 
     rendezvous();
 
-    void add(simple_event *e, const I1 &i1);
+    void add(tamerpriv::simple_event *e, const I1 &i1);
     void complete(uintptr_t rname, bool success);
     bool join(I1 &);
 
@@ -87,7 +87,7 @@ class rendezvous<I1, void> : public blockable_rendezvous { public:
 	I1 i1;
     };
 
-    blockset<evtrec> _bs;
+    tamerpriv::blockset<evtrec> _bs;
     
 };
 
@@ -97,7 +97,7 @@ rendezvous<I1, void>::rendezvous()
 }
 
 template <typename I1>
-void rendezvous<I1, void>::add(simple_event *e, const I1 &i1)
+void rendezvous<I1, void>::add(tamerpriv::simple_event *e, const I1 &i1)
 {
     uintptr_t u;
     evtrec &erec = _bs.allocate_passive(u);
@@ -128,11 +128,11 @@ bool rendezvous<I1, void>::join(I1 &i1)
 
 
 template <>
-class rendezvous<uintptr_t> : public blockable_rendezvous { public:
+class rendezvous<uintptr_t> : public tamerpriv::blockable_rendezvous { public:
 
     inline rendezvous();
 
-    inline void add(simple_event *e, uintptr_t i1) throw ();
+    inline void add(tamerpriv::simple_event *e, uintptr_t i1) throw ();
     inline void complete(uintptr_t rname, bool success);
     inline bool join(uintptr_t &);
 
@@ -142,7 +142,7 @@ class rendezvous<uintptr_t> : public blockable_rendezvous { public:
 
   private:
 
-    debuffer<uintptr_t> _buf;
+    tamerpriv::debuffer<uintptr_t> _buf;
     size_t _nwaiting;
     
 };
@@ -152,7 +152,7 @@ inline rendezvous<uintptr_t>::rendezvous()
 {
 }
 
-inline void rendezvous<uintptr_t>::add(simple_event *e, uintptr_t i1) throw ()
+inline void rendezvous<uintptr_t>::add(tamerpriv::simple_event *e, uintptr_t i1) throw ()
 {
     _nwaiting++;
     e->initialize(this, i1);
@@ -186,7 +186,7 @@ class rendezvous<T *> : public rendezvous<uintptr_t> { public:
 
     rendezvous() { }
 
-    inline void add(simple_event *e, T *i1) throw () {
+    inline void add(tamerpriv::simple_event *e, T *i1) throw () {
 	inherited::add(e, reinterpret_cast<uintptr_t>(i1));
     }
     
@@ -209,7 +209,7 @@ class rendezvous<int> : public rendezvous<uintptr_t> { public:
 
     rendezvous() { }
 
-    inline void add(simple_event *e, int i1) throw () {
+    inline void add(tamerpriv::simple_event *e, int i1) throw () {
 	inherited::add(e, static_cast<uintptr_t>(i1));
     }
     
@@ -232,7 +232,7 @@ class rendezvous<bool> : public rendezvous<uintptr_t> { public:
 
     rendezvous() { }
 
-    inline void add(simple_event *e, bool i1) throw () {
+    inline void add(tamerpriv::simple_event *e, bool i1) throw () {
 	inherited::add(e, static_cast<uintptr_t>(i1));
     }
     
@@ -249,11 +249,11 @@ class rendezvous<bool> : public rendezvous<uintptr_t> { public:
 
 
 template <>
-class rendezvous<void> : public blockable_rendezvous { public:
+class rendezvous<void> : public tamerpriv::blockable_rendezvous { public:
 
     rendezvous() : _nwaiting(0), _nready(0) { }
 
-    inline void add(simple_event *e) throw () {
+    inline void add(tamerpriv::simple_event *e) throw () {
 	_nwaiting++;
 	e->initialize(this, 1);
     }

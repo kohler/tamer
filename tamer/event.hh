@@ -2,6 +2,7 @@
 #define TAMER__EVENT_HH 1
 #include <tamer/rendezvous.hh>
 namespace tamer {
+namespace tamerpriv {
 
 template <typename R, typename I1, typename I2>
 simple_event::simple_event(R &r, const I1 &i1, const I2 &i2)
@@ -26,24 +27,24 @@ inline simple_event::simple_event(R &r)
 
 
 template <typename T1, typename T2, typename T3, typename T4>
-class _event_base : public simple_event { public:
+class eventx : public simple_event { public:
 
-    _event_base()
+    eventx()
 	: simple_event(), _t1(0), _t2(0), _t3(0), _t4(0) {
     }
     
     template <typename R, typename I1, typename I2>
-    _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+    eventx(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 	: simple_event(r, i1, i2), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
     }
 
     template <typename R, typename I1>
-    _event_base(R &r, const I1 &i1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+    eventx(R &r, const I1 &i1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 	: simple_event(r, i1), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
     }
 
     template <typename R>
-    _event_base(R &r, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
+    eventx(R &r, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 	: simple_event(r), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
     }
 
@@ -78,24 +79,24 @@ class _event_base : public simple_event { public:
 
 
 template <typename T1, typename T2, typename T3>
-class _event_base<T1, T2, T3, void> : public simple_event { public:
+class eventx<T1, T2, T3, void> : public simple_event { public:
 
-    _event_base()
+    eventx()
 	: simple_event(), _t1(0), _t2(0), _t3(0) {
     }
     
     template <typename R, typename I1, typename I2>
-    _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3)
+    eventx(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3)
 	: simple_event(r, i1, i2), _t1(&t1), _t2(&t2), _t3(&t3) {
     }
 
     template <typename R, typename I1>
-    _event_base(R &r, const I1 &i1, T1 &t1, T2 &t2, T3 &t3)
+    eventx(R &r, const I1 &i1, T1 &t1, T2 &t2, T3 &t3)
 	: simple_event(r, i1), _t1(&t1), _t2(&t2), _t3(&t3) {
     }
 
     template <typename R>
-    _event_base(R &r, T1 &t1, T2 &t2, T3 &t3)
+    eventx(R &r, T1 &t1, T2 &t2, T3 &t3)
 	: simple_event(r), _t1(&t1), _t2(&t2), _t3(&t3) {
     }
 
@@ -128,24 +129,24 @@ class _event_base<T1, T2, T3, void> : public simple_event { public:
 
 
 template <typename T1, typename T2>
-class _event_base<T1, T2, void, void> : public simple_event { public:
+class eventx<T1, T2, void, void> : public simple_event { public:
 
-    _event_base()
+    eventx()
 	: simple_event(), _t1(0), _t2(0) {
     }
     
     template <typename R, typename I1, typename I2>
-    _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2)
+    eventx(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2)
 	: simple_event(r, i1, i2), _t1(&t1), _t2(&t2) {
     }
 
     template <typename R, typename I1>
-    _event_base(R &r, const I1 &i1, T1 &t1, T2 &t2)
+    eventx(R &r, const I1 &i1, T1 &t1, T2 &t2)
 	: simple_event(r, i1), _t1(&t1), _t2(&t2) {
     }
 
     template <typename R>
-    _event_base(R &r, T1 &t1, T2 &t2)
+    eventx(R &r, T1 &t1, T2 &t2)
 	: simple_event(r), _t1(&t1), _t2(&t2) {
     }
 
@@ -174,24 +175,24 @@ class _event_base<T1, T2, void, void> : public simple_event { public:
 
 
 template <typename T1>
-class _event_base<T1, void, void, void> : public simple_event { public:
+class eventx<T1, void, void, void> : public simple_event { public:
 
-    _event_base()
+    eventx()
 	: simple_event(), _t1(0) {
     }
     
     template <typename R, typename I1, typename I2>
-    _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1)
+    eventx(R &r, const I1 &i1, const I2 &i2, T1 &t1)
 	: simple_event(r, i1, i2), _t1(&t1) {
     }
 
     template <typename R, typename I1>
-    _event_base(R &r, const I1 &i1, T1 &t1)
+    eventx(R &r, const I1 &i1, T1 &t1)
 	: simple_event(r, i1), _t1(&t1) {
     }
 
     template <typename R>
-    _event_base(R &r, T1 &t1)
+    eventx(R &r, T1 &t1)
 	: simple_event(r), _t1(&t1) {
     }
 
@@ -215,27 +216,29 @@ class _event_base<T1, void, void, void> : public simple_event { public:
     
 };
 
+} /* namespace tamerpriv */
+
 
 template <typename T1, typename T2, typename T3, typename T4>
 class event { public:
 
     event()
-	: _e(new _event_base<T1, T2, T3, T4>()) {
+	: _e(new tamerpriv::eventx<T1, T2, T3, T4>()) {
     }
     
     template <typename R, typename I1, typename I2>
     event(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
-	: _e(new _event_base<T1, T2, T3, T4>(r, i1, i2, t1, t2, t3, t4)) {
+	: _e(new tamerpriv::eventx<T1, T2, T3, T4>(r, i1, i2, t1, t2, t3, t4)) {
     }
 
     template <typename R, typename I1>
     event(R &r, const I1 &i1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
-	: _e(new _event_base<T1, T2, T3, T4>(r, i1, t1, t2, t3, t4)) {
+	: _e(new tamerpriv::eventx<T1, T2, T3, T4>(r, i1, t1, t2, t3, t4)) {
     }
 
     template <typename R>
     event(R &r, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
-	: _e(new _event_base<T1, T2, T3, T4>(r, t1, t2, t3, t4)) {
+	: _e(new tamerpriv::eventx<T1, T2, T3, T4>(r, t1, t2, t3, t4)) {
     }
 
     event(const event<T1, T2, T3, T4> &e)
@@ -247,7 +250,7 @@ class event { public:
 	_e->unuse();
     }
 
-    typedef simple_event::unspecified_bool_type unspecified_bool_type;
+    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
     
     operator unspecified_bool_type() const {
 	return *_e;
@@ -301,13 +304,13 @@ class event { public:
 	return *this;
     }
     
-    simple_event *__get_simple() const {
+    tamerpriv::simple_event *__get_simple() const {
 	return _e;
     }
     
   private:
 
-    _event_base<T1, T2, T3, T4> *_e;
+    tamerpriv::eventx<T1, T2, T3, T4> *_e;
     
 };
 
@@ -316,22 +319,22 @@ template <typename T1, typename T2, typename T3>
 class event<T1, T2, T3, void> { public:
 
     event()
-	: _e(new _event_base<T1, T2, T3, void>()) {
+	: _e(new tamerpriv::eventx<T1, T2, T3, void>()) {
     }
 
     template <typename R, typename I1, typename I2>
     event(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3)
-	: _e(new _event_base<T1, T2, T3, void>(r, i1, i2, t1, t2, t3)) {
+	: _e(new tamerpriv::eventx<T1, T2, T3, void>(r, i1, i2, t1, t2, t3)) {
     }
 
     template <typename R, typename I1>
     event(R &r, const I1 &i1, T1 &t1, T2 &t2, T3 &t3)
-	: _e(new _event_base<T1, T2, T3, void>(r, i1, t1, t2, t3)) {
+	: _e(new tamerpriv::eventx<T1, T2, T3, void>(r, i1, t1, t2, t3)) {
     }
 
     template <typename R>
     event(R &r, T1 &t1, T2 &t2, T3 &t3)
-	: _e(new _event_base<T1, T2, T3, void>(r, t1, t2, t3)) {
+	: _e(new tamerpriv::eventx<T1, T2, T3, void>(r, t1, t2, t3)) {
     }
 
     event(const event<T1, T2, T3> &e)
@@ -343,7 +346,7 @@ class event<T1, T2, T3, void> { public:
 	_e->unuse();
     }
 
-    typedef simple_event::unspecified_bool_type unspecified_bool_type;
+    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
     
     operator unspecified_bool_type() const {
 	return *_e;
@@ -393,13 +396,13 @@ class event<T1, T2, T3, void> { public:
 	return *this;
     }
     
-    simple_event *__get_simple() const {
+    tamerpriv::simple_event *__get_simple() const {
 	return _e;
     }
     
   private:
 
-    _event_base<T1, T2, T3, void> *_e;
+    tamerpriv::eventx<T1, T2, T3, void> *_e;
     
 };
 
@@ -408,22 +411,22 @@ template <typename T1, typename T2>
 class event<T1, T2, void, void> { public:
 
     event()
-	: _e(new _event_base<T1, T2, void, void>()) {
+	: _e(new tamerpriv::eventx<T1, T2, void, void>()) {
     }
 
     template <typename R, typename I1, typename I2>
     event(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2)
-	: _e(new _event_base<T1, T2, void, void>(r, i1, i2, t1, t2)) {
+	: _e(new tamerpriv::eventx<T1, T2, void, void>(r, i1, i2, t1, t2)) {
     }
 
     template <typename R, typename I1>
     event(R &r, const I1 &i1, T1 &t1, T2 &t2)
-	: _e(new _event_base<T1, T2, void, void>(r, i1, t1, t2)) {
+	: _e(new tamerpriv::eventx<T1, T2, void, void>(r, i1, t1, t2)) {
     }
 
     template <typename R>
     event(R &r, T1 &t1, T2 &t2)
-	: _e(new _event_base<T1, T2, void, void>(r, t1, t2)) {
+	: _e(new tamerpriv::eventx<T1, T2, void, void>(r, t1, t2)) {
     }
 
     event(const event<T1, T2> &e)
@@ -435,7 +438,7 @@ class event<T1, T2, void, void> { public:
 	_e->unuse();
     }
 
-    typedef simple_event::unspecified_bool_type unspecified_bool_type;
+    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
     
     operator unspecified_bool_type() const {
 	return *_e;
@@ -485,13 +488,13 @@ class event<T1, T2, void, void> { public:
 	return *this;
     }
     
-    simple_event *__get_simple() const {
+    tamerpriv::simple_event *__get_simple() const {
 	return _e;
     }
     
   private:
 
-    _event_base<T1, T2, void, void> *_e;
+    tamerpriv::eventx<T1, T2, void, void> *_e;
     
 };
 
@@ -500,22 +503,22 @@ template <typename T1>
 class event<T1, void, void, void> { public:
 
     event()
-	: _e(new _event_base<T1, void, void, void>()) {
+	: _e(new tamerpriv::eventx<T1, void, void, void>()) {
     }
 
     template <typename R, typename I1, typename I2>
     event(R &r, const I1 &i1, const I2 &i2, T1 &t1)
-	: _e(new _event_base<T1, void, void, void>(r, i1, i2, t1)) {
+	: _e(new tamerpriv::eventx<T1, void, void, void>(r, i1, i2, t1)) {
     }
 
     template <typename R, typename I1>
     event(R &r, const I1 &i1, T1 &t1)
-	: _e(new _event_base<T1, void, void, void>(r, i1, t1)) {
+	: _e(new tamerpriv::eventx<T1, void, void, void>(r, i1, t1)) {
     }
 
     template <typename R>
     event(R &r, T1 &t1)
-	: _e(new _event_base<T1, void, void, void>(r, t1)) {
+	: _e(new tamerpriv::eventx<T1, void, void, void>(r, t1)) {
     }
 
     event(const event<T1> &e)
@@ -527,7 +530,7 @@ class event<T1, void, void, void> { public:
 	_e->unuse();
     }
 
-    typedef simple_event::unspecified_bool_type unspecified_bool_type;
+    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
     
     operator unspecified_bool_type() const {
 	return *_e;
@@ -577,15 +580,15 @@ class event<T1, void, void, void> { public:
 	return *this;
     }
     
-    simple_event *__get_simple() const {
+    tamerpriv::simple_event *__get_simple() const {
 	return _e;
     }
     
   private:
 
-    _event_base<T1, void, void, void> *_e;
+    tamerpriv::eventx<T1, void, void, void> *_e;
     
-    friend class _unbind_rendezvous<T1>;
+    friend class tamerpriv::_unbind_rendezvous<T1>;
     
 };
 
@@ -594,25 +597,25 @@ template <>
 class event<void, void, void, void> { public:
 
     event() {
-	if (!simple_event::dead)
-	    simple_event::make_dead();
-	_e = simple_event::dead;
+	if (!tamerpriv::simple_event::dead)
+	    tamerpriv::simple_event::make_dead();
+	_e = tamerpriv::simple_event::dead;
 	_e->use();
     }
 
     template <typename R, typename I1, typename I2>
     event(R &r, const I1 &i1, const I2 &i2)
-	: _e(new simple_event(r, i1, i2)) {
+	: _e(new tamerpriv::simple_event(r, i1, i2)) {
     }
 
     template <typename R, typename I1>
     event(R &r, const I1 &i1)
-	: _e(new simple_event(r, i1)) {
+	: _e(new tamerpriv::simple_event(r, i1)) {
     }
 
     template <typename R>
-    event(R &r)
-	: _e(new simple_event(r)) {
+    explicit event(R &r)
+	: _e(new tamerpriv::simple_event(r)) {
     }
 
     event(const event<> &e)
@@ -629,7 +632,7 @@ class event<void, void, void, void> { public:
 	_e->unuse();
     }
 
-    typedef simple_event::unspecified_bool_type unspecified_bool_type;
+    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
     
     operator unspecified_bool_type() const {
 	return *_e;
@@ -677,34 +680,36 @@ class event<void, void, void, void> { public:
 	return *this;
     }
 
-    simple_event *__get_simple() const {
+    tamerpriv::simple_event *__get_simple() const {
 	return _e;
     }
 
-    static inline event<> __wrap(simple_event *e) {
+    static inline event<> __wrap(tamerpriv::simple_event *e) {
 	return event<>(marker(), e);
     }
 
   private:
 
-    simple_event *_e;
+    tamerpriv::simple_event *_e;
 
     struct marker { };
-    inline event(const marker &, simple_event *e)
+    inline event(const marker &, tamerpriv::simple_event *e)
 	: _e(e) {
 	_e->use();
     }
     
-    friend class simple_event;
-    friend event<> _hard_scatter(const event<> &, const event<> &);
+    friend class tamerpriv::simple_event;
+    friend event<> tamerpriv::_hard_scatter(const event<> &, const event<> &);
     
 };
 
 
+namespace tamerpriv {
 inline void simple_event::at_cancel(const event<> &e)
 {
-    assert(_r);
-    if (!_canceller) {
+    if (!_r)
+	e._e->complete(true);
+    else if (!_canceller) {
 	_canceller = e._e;
 	_canceller->use();
     } else {
@@ -713,6 +718,7 @@ inline void simple_event::at_cancel(const event<> &e)
 	_canceller = comb._e;
 	_canceller->use();
     }
+}
 }
 
 
@@ -811,7 +817,7 @@ inline event<> scatter(const event<> &e1, const event<> &e2) {
     else if (e2.empty())
 	return e1;
     else
-	return _hard_scatter(e1, e2);
+	return tamerpriv::_hard_scatter(e1, e2);
 }
 
 }

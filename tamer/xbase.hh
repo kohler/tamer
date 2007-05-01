@@ -3,18 +3,27 @@
 #include <stdexcept>
 namespace tamer {
 
+template <typename I1=void, typename I2=void> class rendezvous;
+template <typename T1=void, typename T2=void, typename T3=void, typename T4=void> class event;
+inline event<> scatter(const event<> &, const event<> &);
+class driver;
+
+class tamer_error : public std::runtime_error { public:
+    explicit tamer_error(const std::string &arg)
+	: runtime_error(arg) {
+    }
+};
+
+namespace tamerpriv {
+
 class simple_event;
 class abstract_rendezvous;
 class blockable_rendezvous;
 class _closure_base;
-template <typename I1=void, typename I2=void> class rendezvous;
-template <typename T1=void, typename T2=void, typename T3=void, typename T4=void> class event;
 template <typename T1> class _unbind_rendezvous;
 template <typename T1> class _bind_rendezvous;
 class _scatter_rendezvous;
-inline event<> scatter(const event<> &, const event<> &);
 event<> _hard_scatter(const event<> &e1, const event<> &e2);
-class driver;
 
 class simple_event { public:
 
@@ -174,15 +183,6 @@ struct _closure_base {
 };
 
 
-class tamer_error : public std::runtime_error { public:
-
-    explicit tamer_error(const std::string &arg)
-	: runtime_error(arg) {
-    }
-
-};
-
-
 inline simple_event::~simple_event()
 {
     if (_r)
@@ -290,5 +290,5 @@ inline void blockable_rendezvous::run()
     c->unuse();
 }
 
-}
+}}
 #endif /* TAMER__BASE_HH */

@@ -5,6 +5,7 @@
 #include <vector>
 #include <errno.h>
 namespace tamer {
+namespace tamerpriv {
 
 template <typename T> class _unbind_rendezvous : public abstract_rendezvous { public:
 
@@ -117,17 +118,19 @@ class _scatter_rendezvous : public abstract_rendezvous { public:
     
 };
 
+} /* namespace tamerpriv */
+
 
 template <typename T1>
 const event<T1> &unbind(const event<> &e) {
-    _unbind_rendezvous<T1> *ur = new _unbind_rendezvous<T1>(e);
+    tamerpriv::_unbind_rendezvous<T1> *ur = new tamerpriv::_unbind_rendezvous<T1>(e);
     return ur->eout();
 }
 
 
 template <typename T1, typename X1>
 const event<> &bind(const event<T1> &e, const X1 &t1) {
-    _bind_rendezvous<T1> *ur = new _bind_rendezvous<T1>(e, t1);
+    tamerpriv::_bind_rendezvous<T1> *ur = new tamerpriv::_bind_rendezvous<T1>(e, t1);
     return ur->eout();
 }
 
@@ -139,6 +142,8 @@ const int timeout = -ETIMEDOUT;
 const int signal = -EINTR;
 }
 
+
+namespace tamerpriv {
 
 class _connector_closure : public _closure_base { public:
 
@@ -169,10 +174,12 @@ class _connector_closure : public _closure_base { public:
 
 };
 
+}
+
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_timeout(const timeval &delay, event<T1, T2, T3, T4> e) {
-    _connector_closure *c = new _connector_closure(e, 0);
+    tamerpriv::_connector_closure *c = new tamerpriv::_connector_closure(e, 0);
     event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
     ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     at_delay(delay, make_event(c->_r, outcome::timeout));
@@ -184,7 +191,7 @@ inline event<T1, T2, T3, T4> with_timeout(const timeval &delay, event<T1, T2, T3
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_timeout(const timeval &delay, event<T1, T2, T3, T4> e, int &result) {
     result = outcome::success;
-    _connector_closure *c = new _connector_closure(e, &result);
+    tamerpriv::_connector_closure *c = new tamerpriv::_connector_closure(e, &result);
     event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
     ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     at_delay(delay, make_event(c->_r, outcome::timeout));
@@ -228,7 +235,7 @@ inline event<T1, T2, T3, T4> with_timeout_msec(int delay, event<T1, T2, T3, T4> 
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e) {
-    _connector_closure *c = new _connector_closure(e, 0);
+    tamerpriv::_connector_closure *c = new tamerpriv::_connector_closure(e, 0);
     event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
     ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     at_signal(sig, make_event(c->_r, outcome::signal));
@@ -240,7 +247,7 @@ inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e) {
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e, int &result) {
     result = outcome::success;
-    _connector_closure *c = new _connector_closure(e, &result);
+    tamerpriv::_connector_closure *c = new tamerpriv::_connector_closure(e, &result);
     event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
     ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     at_signal(sig, make_event(c->_r, outcome::signal));
@@ -251,7 +258,7 @@ inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e, int &
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, T2, T3, T4> e) {
-    _connector_closure *c = new _connector_closure(e, 0);
+    tamerpriv::_connector_closure *c = new tamerpriv::_connector_closure(e, 0);
     event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
     ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
@@ -264,7 +271,7 @@ inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, T2, T3, T4> e, int &result) {
     result = outcome::success;
-    _connector_closure *c = new _connector_closure(e, &result);
+    tamerpriv::_connector_closure *c = new tamerpriv::_connector_closure(e, &result);
     event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
     ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
@@ -274,5 +281,5 @@ inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, 
     return ret_e;
 }
 
-}
+} /* namespace tamer */
 #endif /* TAMER_TAME_ADAPTER_HH */

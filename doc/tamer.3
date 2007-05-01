@@ -6,6 +6,7 @@ tamer \- C++ extensions for event-driven programming
 .SH SYNOPSIS
 .nf
 .B #include <tamer.hh>
+.B using namespace tamer;
 .sp
 \fBclass event<T1, T2, T3, T4> { public:
     event();
@@ -315,6 +316,164 @@ The
 template class represents future occurrences.  The template takes zero to
 four type arguments, which represent the types of the
 .BR event 's
-trigger values.
-.TP 5
-.B 
+trigger values.  In the following,
+.B T1-T4
+are the template arguments of the
+.B event
+type.
+.sp
+.nf
+.B event<T*>::event()
+.fi
+.RS 5
+Creates an empty event.  Trigger attempts on the event are ignored;
+.B \fIe\fB.empty()
+returns true.
+.RE
+.sp
+.nf
+.B template <typename R, [typename I1, typename I2]>
+.B event<T1, T2, T3, T4>::event(R &\fIr\fB, [const I1 &\fIi1\fB, const I2 &\fIi2\fB,]
+.B "                             T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB, T4 &\fIs4\fB)"
+.B ... event<>::event(R &\fIr\fB, [const I1 &\fIi1\fB, const I2 &\fIi2\fB])
+.fi
+.RS 5
+Creates an event on
+.B rendezvous
+.IR r
+with optional event IDs
+.IR i1 " and " i2
+and trigger slots
+.IR s1 ... s4 .
+Each 
+.B event
+type has similar constructors whose slot arguments
+.I s*
+match the template arguments.
+.RE
+.sp
+.nf
+.B event<T*>::event(const event<T*> &\fIe\fR)
+.B event<T*> &event<T*>::operator=(const event<T*> &\fIe\fR)
+.fi
+.RS 5
+Events may be safely copied and assigned.  After an assignment
+\fIe1\fB\~=\~\fIe2\fR, the event objects
+.IR e1 " and " e2
+refer to the same underlying event; for example, triggering either causes
+both to become empty.
+.RE
+.sp
+.nf
+.B event<T*>::operator bool() const
+.fi
+.RS 5
+Returns true if the event is ready to be triggered.  Canceled events, empty
+events, and events that have already been triggered return false.
+.RE
+.sp
+.nf
+.B bool event<T*>::empty() const
+.fi
+.RS 5
+Returns true if the event is empty, meaning it was created empty, it has
+been canceled, or it has already been triggered.
+\*(lq\fIe\fB.empty()\fR\*(rq is equivalent to \*(lq\fB!(bool)\fIe\fR\*(rq.
+.RE
+.sp
+.nf
+.B void event<T1, T2, T3, T4>::trigger(const T1 &\fIv1\fB, const T2 &\fIv2\fB,
+.B "                                    const T3 &\fIv3\fB, const T4 &\fIv4\fB)"
+.B ... void event<>::trigger()
+.fi
+.RS 5
+Triggers the event.  If the event is empty, this does nothing; otherwise,
+it assigns the event's trigger slots (defined at creation time) to the
+trigger values
+.IR v1 ... v4
+and wakes the relevant blocked closure, if any.  Events become empty after
+they are triggered.  Each
+.B event
+type has a similar
+.B trigger
+method whose value arguments
+.I v*
+match the template arguments.
+.RE
+.sp
+.nf
+.B void event<T*>::cancel()
+.fi
+.RS 5
+Explicitly cancels the event.  If the event is empty (it has already
+triggered or been canceled), this does nothing; otherwise, it informs the
+event's
+.B rendezvous 
+that the event will never complete, and triggers any cancel notifications
+previously attached with
+.BR at_cancel .
+.RE
+.sp
+.nf
+.B void event<T*>::at_cancel(const event<> &\fIcancel_evt\fB)
+.fi
+.RS 5
+Registers
+.I cancel_evt
+for cancel notification.  If this event is already empty,
+.I cancel_evt
+is triggered immediately.  Otherwise,
+.I cancel_evt
+is triggered when this event is canceled, and canceled when this event is
+triggered.
+.RE
+'
+.SH "RENDEZVOUS OBJECT"
+The
+.B rendezvous
+template class groups related events.  The template takes zero to
+two type arguments, which represent the types of the
+.BR rendezvous 's
+event IDs.  In the following,
+.BR I1 " and " I2
+are the template arguments of the
+.B rendezvous
+type.
+.sp
+.nf
+.B rendezvous<I*>::rendezvous()
+.fi
+.RS 5
+Creates a new rendezvous with no outstanding events.
+.RE
+.sp
+.nf
+.B unsigned rendezvous<I*>::nevents() const
+.fi
+.RS 5
+Returns the count of outstanding events.  This includes events created on
+the rendezvous, events that haven't been on the rendezvous that haven't
+been triggered or canceled yet, and events created on the rendezvous that
+have been triggered, but whose trigger notifications haven't been
+collected.
+.RE
+.sp
+.nf
+.B unsigned rendezvous<I*>::nready() const
+.fi
+.RS 5
+Returns the count of ready events.  An event is ready if it has been
+triggered, but the trigger notification has not been collected yet.  The
+.B rendezvous<I*>::join
+method will return true only if
+.B nready()
+is greater than 0.
+.RE
+.sp
+.B unsigned rendezvous<I*>::nwaiting() const
+.fi
+.RS 5
+Returns the count of waiting events.  An event is waiting if it has not yet
+been triggered or canceled.
+.RE
+
