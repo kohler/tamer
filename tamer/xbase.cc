@@ -29,19 +29,19 @@ class simple_event::initializer { public:
 simple_event::initializer simple_event::the_initializer; 
 
 
-event<> _hard_scatter(const event<> &e1, const event<> &e2) {
+event<> hard_distribute(const event<> &e1, const event<> &e2) {
     if (e1.empty())
 	return e2;
     else if (e2.empty())
 	return e1;
-    else if (e1._e->is_scatterer()) {
-	_scatter_rendezvous *r = static_cast<_scatter_rendezvous *>(e1._e->_r);
-	r->add_scatter(e2);
+    else if (e1.__get_simple()->is_distributor()) {
+	distribute_rendezvous *r = static_cast<distribute_rendezvous *>(e1.__get_simple()->rendezvous());
+	r->add_distribute(e2);
 	return e1;
     } else {
-	_scatter_rendezvous *r = new _scatter_rendezvous;
-	r->add_scatter(e1);
-	r->add_scatter(e2);
+	distribute_rendezvous *r = new distribute_rendezvous;
+	r->add_distribute(e1);
+	r->add_distribute(e2);
 	return event<>(*r);
     }
 }

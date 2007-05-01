@@ -699,7 +699,6 @@ class event<void, void, void, void> { public:
     }
     
     friend class tamerpriv::simple_event;
-    friend event<> tamerpriv::_hard_scatter(const event<> &, const event<> &);
     
 };
 
@@ -713,7 +712,7 @@ inline void simple_event::at_cancel(const event<> &e)
 	_canceller = e._e;
 	_canceller->use();
     } else {
-	event<> comb = tamer::scatter(event<>::__wrap(_canceller), e);
+	event<> comb = tamer::distribute(event<>::__wrap(_canceller), e);
 	_canceller->unuse();
 	_canceller = comb._e;
 	_canceller->use();
@@ -811,13 +810,13 @@ inline event<> make_event(rendezvous<> &r)
     return event<>(r);
 }
 
-inline event<> scatter(const event<> &e1, const event<> &e2) {
+inline event<> distribute(const event<> &e1, const event<> &e2) {
     if (e1.empty())
 	return e2;
     else if (e2.empty())
 	return e1;
     else
-	return tamerpriv::_hard_scatter(e1, e2);
+	return tamerpriv::hard_distribute(e1, e2);
 }
 
 }

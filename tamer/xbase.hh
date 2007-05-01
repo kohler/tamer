@@ -5,7 +5,7 @@ namespace tamer {
 
 template <typename I1=void, typename I2=void> class rendezvous;
 template <typename T1=void, typename T2=void, typename T3=void, typename T4=void> class event;
-inline event<> scatter(const event<> &, const event<> &);
+inline event<> distribute(const event<> &, const event<> &);
 class driver;
 
 class tamer_error : public std::runtime_error { public:
@@ -22,8 +22,8 @@ class blockable_rendezvous;
 class closure;
 template <typename T1> class _unbind_rendezvous;
 template <typename T1> class _bind_rendezvous;
-class _scatter_rendezvous;
-event<> _hard_scatter(const event<> &e1, const event<> &e2);
+class distribute_rendezvous;
+event<> hard_distribute(const event<> &e1, const event<> &e2);
 
 class simple_event { public:
 
@@ -61,7 +61,11 @@ class simple_event { public:
 	return _r == 0;
     }
 
-    inline bool is_scatterer() const;
+    inline bool is_distributor() const;
+
+    abstract_rendezvous *rendezvous() const {
+	return _r;
+    }
 
     inline void simple_initialize(abstract_rendezvous *r, uintptr_t rname) {
 	assert(!_r);
@@ -98,7 +102,6 @@ class simple_event { public:
     
     friend class blockable_rendezvous;
     friend class event<void, void, void, void>;
-    friend event<> _hard_scatter(const event<> &, const event<> &);
     
 };
 
@@ -111,7 +114,7 @@ class abstract_rendezvous { public:
     virtual inline ~abstract_rendezvous() {
     }
 
-    virtual bool is_scatter() const {
+    virtual bool is_distribute() const {
 	return false;
     }
     
@@ -189,9 +192,9 @@ inline simple_event::~simple_event()
 	complete(false);
 }
 
-inline bool simple_event::is_scatterer() const
+inline bool simple_event::is_distributor() const
 {
-    return _r && _r->is_scatter();
+    return _r && _r->is_distribute();
 }
 
 inline blockable_rendezvous::~blockable_rendezvous()

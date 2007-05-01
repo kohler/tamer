@@ -83,23 +83,23 @@ template <typename T1> class _bind_rendezvous : public abstract_rendezvous { pub
 };
 
 
-class _scatter_rendezvous : public abstract_rendezvous { public:
+class distribute_rendezvous : public abstract_rendezvous { public:
 
-    _scatter_rendezvous() {
+    distribute_rendezvous() {
     }
 
-    ~_scatter_rendezvous() {
+    ~distribute_rendezvous() {
     }
 
     void add(simple_event *e) {
 	e->simple_initialize(this, 0);
     }
 
-    bool is_scatter() const {
+    bool is_distribute() const {
 	return true;
     }
 
-    void add_scatter(const event<> &e) {
+    void add_distribute(const event<> &e) {
 	if (e)
 	    _es.push_back(e);
     }

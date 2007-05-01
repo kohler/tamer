@@ -221,7 +221,7 @@ void driver::at_signal(int signal, const event<> &trigger)
     }
 
     if (sig_handlers[signal])
-	sig_handlers[signal] = scatter(sig_handlers[signal], trigger);
+	sig_handlers[signal] = distribute(sig_handlers[signal], trigger);
     else {
 	sig_installing = signal;
     

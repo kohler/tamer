@@ -54,10 +54,10 @@ tamed void waitsig() {
 tamed void scatter() {
     tvars { int i(1); tamer::rendezvous<int> r; }
     n++;
-    tamer::at_delay_msec(500, tamer::scatter(tamer::make_event(r, i), tamer::make_event(r, 2)));
+    tamer::at_delay_msec(500, tamer::distribute(tamer::make_event(r, i), tamer::make_event(r, 2)));
     while (r.nevents()) {
 	twait(r, i);
-	fprintf(stderr, "=== scattered %d\n", i);
+	fprintf(stderr, "=== distributed %d\n", i);
     }
     n--;
 }
