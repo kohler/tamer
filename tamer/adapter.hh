@@ -7,95 +7,78 @@
 namespace tamer {
 namespace tamerpriv {
 
-template <typename T> class _unbind_rendezvous : public abstract_rendezvous { public:
+template <typename T> class unbind_rendezvous : public abstract_rendezvous { public:
 
-    _unbind_rendezvous(const event<> &ein)
-	: _ein(ein), _eout(*this, ubtrigger)
+    unbind_rendezvous(const event<> &ein)
+	: _ein(ein)
     {
-	_ein.at_cancel(event<>(*this, ubcancel));
+	_ein.at_cancel(event<>(*this, 0));
     }
 
     void add(simple_event *e, uintptr_t what) {
-	e->simple_initialize(this, what);
+	e->initialize(this, what);
     }
     
     void complete(uintptr_t rname, bool success) {
-	if (success) {
-	    if (rname == ubcancel)
-		_eout.cancel();
-	    else
-		_ein.trigger();
+	if (success && rname)
+	    _ein.trigger();
+	else
+	    _ein.cancel();
+	if (success)
 	    delete this;
-	}
-    }
-
-    const event<T> &eout() const {
-	return _eout;
     }
 
   private:
 
     event<> _ein;
-    event<T> _eout;
-    
-    enum { ubcancel = 0, ubtrigger = 1 };
     
 };
 
-template <typename T1> class _bind_rendezvous : public abstract_rendezvous { public:
+template <typename T1> class bind_rendezvous : public abstract_rendezvous { public:
 
     template <typename X1>
-    _bind_rendezvous(const event<T1> &ein, const X1 &t1)
-	: _ein(ein), _eout(this, ubtrigger), _t1(t1)
+    bind_rendezvous(const event<T1> &ein, const X1 &t1)
+	: _ein(ein), _t1(t1)
     {
-	_ein.at_cancel(event<>(this, ubcancel));
+	_ein.at_cancel(event<>(*this, 0));
     }
 
-    ~_bind_rendezvous() {
+    ~bind_rendezvous() {
     }
 
     void add(simple_event *e, uintptr_t what) {
-	e->simple_initialize(this, what);
+	e->initialize(this, what);
     }
     
     void complete(uintptr_t rname, bool success) {
-	if (success) {
-	    if (rname == ubcancel)
-		_eout.cancel();
-	    else
-		_ein.trigger(_t1);
+	if (success && rname)
+	    _ein.trigger(_t1);
+	else
+	    _ein.cancel();
+	if (success)
 	    delete this;
-	}
-    }
-
-    const event<> &eout() const {
-	return _eout;
     }
     
   private:
 
     event<T1> _ein;
-    event<> _eout;
     T1 _t1;
 
-    enum { ubcancel = 0, ubtrigger = 1 };
-    
 };
 
 } /* namespace tamerpriv */
 
 
 template <typename T1>
-const event<T1> &unbind(const event<> &e) {
-    tamerpriv::_unbind_rendezvous<T1> *ur = new tamerpriv::_unbind_rendezvous<T1>(e);
-    return ur->eout();
+event<T1> unbind(const event<> &e) {
+    tamerpriv::unbind_rendezvous<T1> *ur = new tamerpriv::unbind_rendezvous<T1>(e);
+    return event<T1>(*ur, 1, *((T1 *) 0));
 }
 
-
 template <typename T1, typename X1>
-const event<> &bind(const event<T1> &e, const X1 &t1) {
-    tamerpriv::_bind_rendezvous<T1> *ur = new tamerpriv::_bind_rendezvous<T1>(e, t1);
-    return ur->eout();
+event<> bind(const event<T1> &e, const X1 &t1) {
+    tamerpriv::bind_rendezvous<T1> *ur = new tamerpriv::bind_rendezvous<T1>(e, t1);
+    return event<>(*ur, 1);
 }
 
 

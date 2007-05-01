@@ -6,6 +6,7 @@ namespace tamer {
 template <typename I1=void, typename I2=void> class rendezvous;
 template <typename T1=void, typename T2=void, typename T3=void, typename T4=void> class event;
 inline event<> distribute(const event<> &, const event<> &);
+inline event<> distribute(const event<> &, const event<> &, const event<> &);
 class driver;
 
 class tamer_error : public std::runtime_error { public:
@@ -18,10 +19,7 @@ namespace tamerpriv {
 
 class simple_event;
 class abstract_rendezvous;
-class blockable_rendezvous;
 class closure;
-template <typename T1> class _unbind_rendezvous;
-template <typename T1> class _bind_rendezvous;
 class distribute_rendezvous;
 event<> hard_distribute(const event<> &e1, const event<> &e2);
 
@@ -69,15 +67,7 @@ class simple_event { public:
 	return _r;
     }
 
-    inline void simple_initialize(abstract_rendezvous *r, uintptr_t rname) {
-	// NB this can be called before e has been fully initialized.
-	_r = r;
-	_r_name = rname;
-	_r_next = 0;
-	_r_pprev = 0;
-    }
-
-    inline void initialize(blockable_rendezvous *r, uintptr_t rname);
+    inline void initialize(abstract_rendezvous *r, uintptr_t rname);
     
     uintptr_t rname() const {
 	return _r_name;
@@ -102,7 +92,7 @@ class simple_event { public:
     class initializer;
     static initializer the_initializer;
     
-    friend class blockable_rendezvous;
+    friend class abstract_rendezvous;
     friend class event<void, void, void, void>;
     
 };
@@ -110,11 +100,12 @@ class simple_event { public:
 
 class abstract_rendezvous { public:
 
-    abstract_rendezvous() {
+    abstract_rendezvous()
+	: _events(0), _unblocked_next(0), _unblocked_prev(0),
+	  _blocked_closure(0) {
     }
-
-    virtual inline ~abstract_rendezvous() {
-    }
+    
+    virtual inline ~abstract_rendezvous();
 
     virtual bool is_distribute() const {
 	return false;
@@ -122,37 +113,23 @@ class abstract_rendezvous { public:
     
     virtual void complete(uintptr_t rname, bool success) = 0;
 
-  private:
-
-    abstract_rendezvous(const abstract_rendezvous &);
-    abstract_rendezvous &operator=(const abstract_rendezvous &);
-    
-};
-
-
-class blockable_rendezvous : public abstract_rendezvous { public:
-
-    blockable_rendezvous()
-	: _events(0), _unblocked_next(0), _unblocked_prev(0),
-	  _blocked_closure(0) {
-    }
-    
-    virtual inline ~blockable_rendezvous();
-
     inline void block(closure &c, unsigned where);
     inline void unblock();
     inline void run();
     
-    static blockable_rendezvous *unblocked;
-    static blockable_rendezvous *unblocked_tail;
-    
+    static abstract_rendezvous *unblocked;
+    static abstract_rendezvous *unblocked_tail;
+
   private:
 
     simple_event *_events;
-    blockable_rendezvous *_unblocked_next;
-    blockable_rendezvous *_unblocked_prev;
+    abstract_rendezvous *_unblocked_next;
+    abstract_rendezvous *_unblocked_prev;
     closure *_blocked_closure;
     unsigned _blocked_closure_blockid;
+
+    abstract_rendezvous(const abstract_rendezvous &);
+    abstract_rendezvous &operator=(const abstract_rendezvous &);
 
     friend class simple_event;
     friend class driver;
@@ -194,7 +171,7 @@ inline simple_event::~simple_event()
 	complete(false);
 }
 
-inline blockable_rendezvous::~blockable_rendezvous()
+inline abstract_rendezvous::~abstract_rendezvous()
 {
     // first take all events off this rendezvous, so they don't call back
     for (simple_event *e = _events; e; e = e->_r_next)
@@ -215,7 +192,7 @@ inline blockable_rendezvous::~blockable_rendezvous()
 	_blocked_closure->unuse();
 }
 
-inline void simple_event::initialize(blockable_rendezvous *r, uintptr_t rname)
+inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rname)
 {
     // NB this can be called before e has been fully initialized.
     _r = r;
@@ -252,7 +229,7 @@ inline bool simple_event::complete(bool success)
     return r != 0;
 }
 
-inline void blockable_rendezvous::block(closure &c, unsigned where)
+inline void abstract_rendezvous::block(closure &c, unsigned where)
 {
     assert(!_blocked_closure && &c);
     c.use();
@@ -260,7 +237,7 @@ inline void blockable_rendezvous::block(closure &c, unsigned where)
     _blocked_closure_blockid = where;
 }
 
-inline void blockable_rendezvous::unblock()
+inline void abstract_rendezvous::unblock()
 {
     if (_blocked_closure && !_unblocked_prev && unblocked != this) {
 	_unblocked_next = 0;
@@ -273,7 +250,7 @@ inline void blockable_rendezvous::unblock()
     }
 }
 
-inline void blockable_rendezvous::run()
+inline void abstract_rendezvous::run()
 {
     closure *c = _blocked_closure;
     _blocked_closure = 0;

@@ -5,7 +5,7 @@
 namespace tamer {
 
 template <typename I1, typename I2>
-class rendezvous : public tamerpriv::blockable_rendezvous { public:
+class rendezvous : public tamerpriv::abstract_rendezvous { public:
 
     rendezvous();
 
@@ -68,7 +68,7 @@ bool rendezvous<I1, I2>::join(I1 &i1, I2 &i2)
 
 
 template <typename I1>
-class rendezvous<I1, void> : public tamerpriv::blockable_rendezvous { public:
+class rendezvous<I1, void> : public tamerpriv::abstract_rendezvous { public:
 
     rendezvous();
 
@@ -128,7 +128,7 @@ bool rendezvous<I1, void>::join(I1 &i1)
 
 
 template <>
-class rendezvous<uintptr_t> : public tamerpriv::blockable_rendezvous { public:
+class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
 
     inline rendezvous();
 
@@ -249,7 +249,7 @@ class rendezvous<bool> : public rendezvous<uintptr_t> { public:
 
 
 template <>
-class rendezvous<void> : public tamerpriv::blockable_rendezvous { public:
+class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 
     rendezvous() : _nwaiting(0), _nready(0) { }
 

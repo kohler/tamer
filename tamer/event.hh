@@ -48,7 +48,10 @@ class eventx : public simple_event { public:
 	: simple_event(r), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
     }
 
-    void unuse() { if (!--_refcount) delete this; }
+    void unuse() {
+	if (!--_refcount)
+	    delete this;
+    }
     
     void trigger(const T1 &t1, const T2 &t2, const T3 &t3, const T4 &t4) {
 	if (simple_event::complete(true)) {
@@ -100,7 +103,10 @@ class eventx<T1, T2, T3, void> : public simple_event { public:
 	: simple_event(r), _t1(&t1), _t2(&t2), _t3(&t3) {
     }
 
-    void unuse() { if (!--_refcount) delete this; }
+    void unuse() {
+	if (!--_refcount)
+	    delete this;
+    }
     
     void trigger(const T1 &t1, const T2 &t2, const T3 &t3) {
 	if (simple_event::complete(true)) {
@@ -150,7 +156,10 @@ class eventx<T1, T2, void, void> : public simple_event { public:
 	: simple_event(r), _t1(&t1), _t2(&t2) {
     }
 
-    void unuse() { if (!--_refcount) delete this; }
+    void unuse() {
+	if (!--_refcount)
+	    delete this;
+    }
     
     void trigger(const T1 &t1, const T2 &t2) {
 	if (simple_event::complete(true)) {
@@ -196,7 +205,10 @@ class eventx<T1, void, void, void> : public simple_event { public:
 	: simple_event(r), _t1(&t1) {
     }
 
-    void unuse() { if (!--_refcount) delete this; }
+    void unuse() {
+	if (!--_refcount)
+	    delete this;
+    }
     
     void trigger(const T1 &t1) {
 	if (simple_event::complete(true)) {
@@ -273,7 +285,7 @@ class event { public:
     }
 
     void cancel() {
-	_e->cancel();
+	_e->complete(false);
     }
 
     template <typename R, typename I1, typename I2>
@@ -368,6 +380,10 @@ class event<T1, T2, T3, void> { public:
 	_e->trigger(t1, t2, t3);
     }
 
+    void cancel() {
+	_e->complete(false);
+    }
+
     template <typename R, typename I1, typename I2>
     event<T1, T2, T3> make_rebind(R &r, const I1 &i1, const I2 &i2) {
 	event<T1, T2, T3> e(r, i1, i2, *_e->_t1, *_e->_t2, *_e->_t3);
@@ -458,6 +474,10 @@ class event<T1, T2, void, void> { public:
 
     void trigger(const T1 &t1, const T2 &t2) {
 	_e->trigger(t1, t2);
+    }
+
+    void cancel() {
+	_e->complete(false);
     }
 
     template <typename R, typename I1, typename I2>
@@ -552,6 +572,10 @@ class event<T1, void, void, void> { public:
 	_e->trigger(t1);
     }
 
+    void cancel() {
+	_e->complete(false);
+    }
+
     template <typename R, typename I1, typename I2>
     event<T1> make_rebind(R &r, const I1 &i1, const I2 &i2) {
 	event<T1> e(r, i1, i2, *_e->_t1);
@@ -587,8 +611,6 @@ class event<T1, void, void, void> { public:
   private:
 
     tamerpriv::eventx<T1, void, void, void> *_e;
-    
-    friend class tamerpriv::_unbind_rendezvous<T1>;
     
 };
 
@@ -815,6 +837,10 @@ inline event<> distribute(const event<> &e1, const event<> &e2) {
 	return e1;
     else
 	return tamerpriv::hard_distribute(e1, e2);
+}
+
+inline event<> distribute(const event<> &e1, const event<> &e2, const event<> &e3) {
+    return distribute(distribute(e1, e2), e3);
 }
 
 }

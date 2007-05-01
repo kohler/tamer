@@ -4,8 +4,8 @@
 namespace tamer {
 namespace tamerpriv {
 
-blockable_rendezvous *blockable_rendezvous::unblocked;
-blockable_rendezvous *blockable_rendezvous::unblocked_tail;
+abstract_rendezvous *abstract_rendezvous::unblocked;
+abstract_rendezvous *abstract_rendezvous::unblocked_tail;
 
 simple_event *simple_event::dead;
 
@@ -38,8 +38,8 @@ class distribute_rendezvous : public abstract_rendezvous { public:
     ~distribute_rendezvous() {
     }
 
-    void add(simple_event *e) {
-	e->simple_initialize(this, 0);
+    void add(simple_event *e, uintptr_t rname) {
+	e->initialize(this, rname);
     }
 
     bool is_distribute() const {
@@ -47,15 +47,22 @@ class distribute_rendezvous : public abstract_rendezvous { public:
     }
 
     void add_distribute(const event<> &e) {
-	if (e)
+	if (e) {
 	    _es.push_back(e);
+	    _es.back().at_cancel(event<>(*this, 1));
+	}
     }
     
-    void complete(uintptr_t, bool success) {
-	if (success)
+    void complete(uintptr_t rname, bool success) {
+	if (success && rname) {
+	    while (_es.size() && !_es.back())
+		_es.pop_back();
+	} else if (success) {
 	    for (std::vector<event<> >::iterator i = _es.begin(); i != _es.end(); i++)
 		i->trigger();
-	delete this;
+	}
+	if (!rname || !_es.size())
+	    delete this;
     }
     
   private:
@@ -81,7 +88,7 @@ event<> hard_distribute(const event<> &e1, const event<> &e2) {
 	    distribute_rendezvous *d = new distribute_rendezvous;
 	    d->add_distribute(e1);
 	    d->add_distribute(e2);
-	    return event<>(*d);
+	    return event<>(*d, 0);
 	}
     }
 }

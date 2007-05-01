@@ -492,7 +492,10 @@ special forms are built around calls to
 .BR rendezvous<I*>::join .
 .RE
 '
-.SH "EVENT CONNECTORS"
+.SH "GENERIC CONNECTORS"
+These operations manipulate events generically, for example by returning
+one event that triggers two others.
+.sp
 .nf
 .B event<> distribute(const event<> &\fIe1\fB, const event<> &\fIe2\fB)
 .fi
@@ -501,7 +504,7 @@ Returns an event that distributes trigger operations over
 .IR e1 " and " e2 .
 When the returned event is triggered, both
 .IR e1 " and " e2
-are triggered automatically.  Cancel operations are not automatically
+will be triggered automatically.  Cancel operations are not automatically
 distributed over
 .IR e1 " and " e2 .
 However, canceling the returned event will release its references to
@@ -509,4 +512,5 @@ However, canceling the returned event will release its references to
 if those were the only references remaining, the events will be canceled as
 usual.
 .RE
-
+.sp
+.nf

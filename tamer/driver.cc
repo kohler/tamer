@@ -304,7 +304,7 @@ void driver::once()
 	    }
 
 	// run closures activated by signals (plus maybe some others)
-	while (tamerpriv::blockable_rendezvous *r = tamerpriv::blockable_rendezvous::unblocked)
+	while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::unblocked)
 	    r->run();
 
 	// now that the signal responders have potentially reinstalled signal
@@ -350,7 +350,7 @@ void driver::once()
     }
 
     // run active closures
-    while (tamerpriv::blockable_rendezvous *r = tamerpriv::blockable_rendezvous::unblocked)
+    while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::unblocked)
 	r->run();
 }
 
