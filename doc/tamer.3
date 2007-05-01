@@ -56,7 +56,9 @@ practice of event-driven programming.
 .LP
 This manual page gives an overview of the
 .B Tamer
-abstractions
+abstractions, and describes the user-accessible
+.B Tamer
+methods and functions.
 '
 .SH OVERVIEW
 .B Tamer
@@ -306,3 +308,13 @@ parameters are always safe.  Unsafe local variables have indeterminate
 values after a wait point; if you need to mark a variable as safe, the C++
 compiler will often give you an uninitialized-variable warning for that
 variable.
+'
+.SH EVENT OBJECT
+The
+.B event
+template class represents future occurrences.  The template takes zero to
+four type arguments, which represent the types of the
+.BR event 's
+trigger values.
+.TP 5
+.B 

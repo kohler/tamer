@@ -28,6 +28,10 @@ inline _event_superbase::_event_superbase(R &r)
 template <typename T1, typename T2, typename T3, typename T4>
 class _event_base : public _event_superbase { public:
 
+    _event_base()
+	: _event_superbase(), _t1(0), _t2(0), _t3(0), _t4(0) {
+    }
+    
     template <typename R, typename I1, typename I2>
     _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 	: _event_superbase(r, i1, i2), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
@@ -76,6 +80,10 @@ class _event_base : public _event_superbase { public:
 template <typename T1, typename T2, typename T3>
 class _event_base<T1, T2, T3, void> : public _event_superbase { public:
 
+    _event_base()
+	: _event_superbase(), _t1(0), _t2(0), _t3(0) {
+    }
+    
     template <typename R, typename I1, typename I2>
     _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3)
 	: _event_superbase(r, i1, i2), _t1(&t1), _t2(&t2), _t3(&t3) {
@@ -122,6 +130,10 @@ class _event_base<T1, T2, T3, void> : public _event_superbase { public:
 template <typename T1, typename T2>
 class _event_base<T1, T2, void, void> : public _event_superbase { public:
 
+    _event_base()
+	: _event_superbase(), _t1(0), _t2(0) {
+    }
+    
     template <typename R, typename I1, typename I2>
     _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2)
 	: _event_superbase(r, i1, i2), _t1(&t1), _t2(&t2) {
@@ -164,6 +176,10 @@ class _event_base<T1, T2, void, void> : public _event_superbase { public:
 template <typename T1>
 class _event_base<T1, void, void, void> : public _event_superbase { public:
 
+    _event_base()
+	: _event_superbase(), _t1(0) {
+    }
+    
     template <typename R, typename I1, typename I2>
     _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1)
 	: _event_superbase(r, i1, i2), _t1(&t1) {
@@ -194,10 +210,6 @@ class _event_base<T1, void, void, void> : public _event_superbase { public:
   private:
 
     T1 *_t1;
-
-    _event_base(_rendezvous_superbase *r)
-	: _event_superbase(r), _t1(0) {
-    }
     
     friend class event<T1>;
     
@@ -207,6 +219,10 @@ class _event_base<T1, void, void, void> : public _event_superbase { public:
 template <typename T1, typename T2, typename T3, typename T4>
 class event { public:
 
+    event()
+	: _e(new _event_base<T1, T2, T3, T4>()) {
+    }
+    
     template <typename R, typename I1, typename I2>
     event(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
 	: _e(new _event_base<T1, T2, T3, T4>(r, i1, i2, t1, t2, t3, t4)) {
@@ -299,6 +315,10 @@ class event { public:
 template <typename T1, typename T2, typename T3>
 class event<T1, T2, T3, void> { public:
 
+    event()
+	: _e(new _event_base<T1, T2, T3, void>()) {
+    }
+
     template <typename R, typename I1, typename I2>
     event(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3)
 	: _e(new _event_base<T1, T2, T3, void>(r, i1, i2, t1, t2, t3)) {
@@ -386,6 +406,10 @@ class event<T1, T2, T3, void> { public:
 
 template <typename T1, typename T2>
 class event<T1, T2, void, void> { public:
+
+    event()
+	: _e(new _event_base<T1, T2, void, void>()) {
+    }
 
     template <typename R, typename I1, typename I2>
     event(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2)
@@ -475,6 +499,10 @@ class event<T1, T2, void, void> { public:
 template <typename T1>
 class event<T1, void, void, void> { public:
 
+    event()
+	: _e(new _event_base<T1, void, void, void>()) {
+    }
+
     template <typename R, typename I1, typename I2>
     event(R &r, const I1 &i1, const I2 &i2, T1 &t1)
 	: _e(new _event_base<T1, void, void, void>(r, i1, i2, t1)) {
@@ -556,10 +584,6 @@ class event<T1, void, void, void> { public:
   private:
 
     _event_base<T1, void, void, void> *_e;
-
-    event(_rendezvous_superbase *r)
-	: _e(new _event_base<T1, void, void, void>(r)) {
-    }
     
     friend class _unbind_rendezvous<T1>;
     

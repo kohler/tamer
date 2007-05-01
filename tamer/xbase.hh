@@ -4,7 +4,7 @@
 namespace tamer {
 
 class _event_superbase;
-class _rendezvous_superbase;
+class abstract_rendezvous;
 class _rendezvous_base;
 class _closure_base;
 template <typename I1=void, typename I2=void> class rendezvous;
@@ -17,6 +17,10 @@ event<> _hard_scatter(const event<> &e1, const event<> &e2);
 class driver;
 
 class _event_superbase { public:
+
+    inline _event_superbase()
+	: _refcount(1), _r(0), _r_name(0), _r_next(0), _r_pprev(0), _canceller(0) {
+    }
 
     template <typename R, typename I1, typename I2>
     inline _event_superbase(R &r, const I1 &i1, const I2 &i2);
@@ -38,7 +42,7 @@ class _event_superbase { public:
 	    delete this;
     }
 
-    typedef _rendezvous_superbase *_event_superbase::*unspecified_bool_type;
+    typedef abstract_rendezvous *_event_superbase::*unspecified_bool_type;
 
     operator unspecified_bool_type() const {
 	return _r ? &_event_superbase::_r : 0;
@@ -50,7 +54,7 @@ class _event_superbase { public:
 
     inline bool is_scatterer() const;
 
-    inline void simple_initialize(_rendezvous_superbase *r, uintptr_t rname) {
+    inline void simple_initialize(abstract_rendezvous *r, uintptr_t rname) {
 	assert(!_r);
 	_r = r;
 	_r_name = rname;
@@ -71,15 +75,11 @@ class _event_superbase { public:
   protected:
 
     unsigned _refcount;
-    _rendezvous_superbase *_r;
+    abstract_rendezvous *_r;
     uintptr_t _r_name;
     _event_superbase *_r_next;
     _event_superbase **_r_pprev;
     _event_superbase *_canceller;
-
-    inline _event_superbase()
-	: _refcount(1), _r(0), _r_name(0), _r_next(0), _r_pprev(0), _canceller(0) {
-    }
 
     static _event_superbase *dead;
 
@@ -94,12 +94,12 @@ class _event_superbase { public:
 };
 
 
-class _rendezvous_superbase { public:
+class abstract_rendezvous { public:
 
-    _rendezvous_superbase() {
+    abstract_rendezvous() {
     }
 
-    virtual inline ~_rendezvous_superbase() {
+    virtual inline ~abstract_rendezvous() {
     }
 
     virtual bool is_scatter() const {
@@ -111,7 +111,7 @@ class _rendezvous_superbase { public:
 };
 
 
-class _rendezvous_base : public _rendezvous_superbase { public:
+class _rendezvous_base : public abstract_rendezvous { public:
 
     _rendezvous_base()
 	: _events(0), _unblocked_next(0), _unblocked_prev(0),
@@ -227,7 +227,7 @@ inline void _event_superbase::initialize(_rendezvous_base *r, uintptr_t rname)
 
 inline bool _event_superbase::complete(bool success)
 {
-    _rendezvous_superbase *r = _r;
+    abstract_rendezvous *r = _r;
     _event_superbase *canceller = _canceller;
 
     if (_r_pprev)

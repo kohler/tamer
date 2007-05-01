@@ -6,7 +6,7 @@
 #include <errno.h>
 namespace tamer {
 
-template <typename T> class _unbind_rendezvous : public _rendezvous_superbase { public:
+template <typename T> class _unbind_rendezvous : public abstract_rendezvous { public:
 
     _unbind_rendezvous(const event<> &ein)
 	: _ein(ein), _eout(*this, ubtrigger)
@@ -41,7 +41,7 @@ template <typename T> class _unbind_rendezvous : public _rendezvous_superbase { 
     
 };
 
-template <typename T1> class _bind_rendezvous : public _rendezvous_superbase { public:
+template <typename T1> class _bind_rendezvous : public abstract_rendezvous { public:
 
     template <typename X1>
     _bind_rendezvous(const event<T1> &ein, const X1 &t1)
@@ -82,7 +82,7 @@ template <typename T1> class _bind_rendezvous : public _rendezvous_superbase { p
 };
 
 
-class _scatter_rendezvous : public _rendezvous_superbase { public:
+class _scatter_rendezvous : public abstract_rendezvous { public:
 
     _scatter_rendezvous() {
     }
