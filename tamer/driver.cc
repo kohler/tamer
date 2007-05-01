@@ -304,8 +304,8 @@ void driver::once()
 	    }
 
 	// run closures activated by signals (plus maybe some others)
-	while (_rendezvous_base *r = _rendezvous_base::unblocked)
-	    r->_run();
+	while (blockable_rendezvous *r = blockable_rendezvous::unblocked)
+	    r->run();
 
 	// now that the signal responders have potentially reinstalled signal
 	// handlers, unblock the signals
@@ -350,8 +350,8 @@ void driver::once()
     }
 
     // run active closures
-    while (_rendezvous_base *r = _rendezvous_base::unblocked)
-	r->_run();
+    while (blockable_rendezvous *r = blockable_rendezvous::unblocked)
+	r->run();
 }
 
 void driver::loop()

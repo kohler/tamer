@@ -5,7 +5,7 @@
 namespace tamer {
 
 template <typename I1, typename I2>
-class rendezvous : public _rendezvous_base { public:
+class rendezvous : public blockable_rendezvous { public:
 
     rendezvous();
 
@@ -49,7 +49,7 @@ void rendezvous<I1, I2>::complete(uintptr_t rname, bool success)
 {
     if (success) {
 	_bs.activate(rname);
-	_unblock();
+	unblock();
     } else
 	_bs.kill(rname);
 }
@@ -68,7 +68,7 @@ bool rendezvous<I1, I2>::join(I1 &i1, I2 &i2)
 
 
 template <typename I1>
-class rendezvous<I1, void> : public _rendezvous_base { public:
+class rendezvous<I1, void> : public blockable_rendezvous { public:
 
     rendezvous();
 
@@ -110,7 +110,7 @@ void rendezvous<I1, void>::complete(uintptr_t rname, bool success)
 {
     if (success) {
 	_bs.activate(rname);
-	_unblock();
+	unblock();
     } else
 	_bs.cancel(rname);
 }
@@ -128,7 +128,7 @@ bool rendezvous<I1, void>::join(I1 &i1)
 
 
 template <>
-class rendezvous<uintptr_t> : public _rendezvous_base { public:
+class rendezvous<uintptr_t> : public blockable_rendezvous { public:
 
     inline rendezvous();
 
@@ -162,7 +162,7 @@ inline void rendezvous<uintptr_t>::complete(uintptr_t rname, bool success)
 {
     if (success) {
 	_buf.push_back(rname);
-	_unblock();
+	unblock();
     }
     _nwaiting--;
 }
@@ -249,7 +249,7 @@ class rendezvous<bool> : public rendezvous<uintptr_t> { public:
 
 
 template <>
-class rendezvous<void> : public _rendezvous_base { public:
+class rendezvous<void> : public blockable_rendezvous { public:
 
     rendezvous() : _nwaiting(0), _nready(0) { }
 
@@ -262,7 +262,7 @@ class rendezvous<void> : public _rendezvous_base { public:
 	_nwaiting--;
 	if (success) {
 	    _nready++;
-	    _unblock();
+	    unblock();
 	}
     }
     
@@ -296,7 +296,7 @@ class gather_rendezvous : public rendezvous<> { public:
 	if (success)
 	    _nready++;
 	if (_nwaiting == 0)
-	    _unblock();
+	    unblock();
     }
 
 };

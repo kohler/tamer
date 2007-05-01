@@ -3,8 +3,8 @@
 
 namespace tamer {
 
-_rendezvous_base *_rendezvous_base::unblocked;
-_rendezvous_base *_rendezvous_base::unblocked_tail;
+blockable_rendezvous *blockable_rendezvous::unblocked;
+blockable_rendezvous *blockable_rendezvous::unblocked_tail;
 
 _event_superbase *_event_superbase::dead;
 

@@ -155,7 +155,7 @@ class _connector_closure : public _closure_base { public:
     void _closure__activate(unsigned) {
 	int x;
 	if (!_r.join(x)) {
-	    _r._block(*this, 0);
+	    _r.block(*this, 0);
 	    return;
 	}
 	_e->complete(x == outcome::success);

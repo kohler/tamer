@@ -801,7 +801,7 @@ tame_block_ev_t::output (outputter_t *o)
   om = o->switch_to_mode (OUTPUT_TREADMILL);
   b << _fn->label(_id) << ":\n"
     << "  while (" << TAME_CLOSURE_NAME << "._closure__block.nwaiting()) {\n"
-    << "      " << TAME_CLOSURE_NAME << "._closure__block._block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n"
+    << "      " << TAME_CLOSURE_NAME << "._closure__block.block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n"
     << "      "
     << _fn->return_expr ()
     << "; }\n"
@@ -875,7 +875,7 @@ expr_list_t::output_vars (strbuf &b, bool first, const str &prfx,
 void
 tame_join_t::output_blocked (strbuf &b, const str &jgn)
 {
-    b << "    " << jgn << "._block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n"
+    b << "    " << jgn << ".block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n"
       << "    "
       << _fn->return_expr()
       << ";\n";
