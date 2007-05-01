@@ -451,11 +451,9 @@ Creates a new rendezvous with no outstanding events.
 .B unsigned rendezvous<I*>::nevents() const
 .fi
 .RS 5
-Returns the count of outstanding events.  This includes events created on
-the rendezvous, events that haven't been on the rendezvous that haven't
-been triggered or canceled yet, and events created on the rendezvous that
-have been triggered, but whose trigger notifications haven't been
-collected.
+Returns the count of outstanding events.  This includes events that have
+not yet been triggered or canceled, and events that have been triggered,
+but the trigger notification has not been collected yet.
 .RE
 .sp
 .nf
@@ -476,4 +474,20 @@ is greater than 0.
 Returns the count of waiting events.  An event is waiting if it has not yet
 been triggered or canceled.
 .RE
-
+.sp
+.nf
+.B bool rendezvous<I1, I2>::join(I1 &\fIi1\fB, I2 &\fIi2\fB)
+.B bool rendezvous<I1>::join(I1 &\fIi1\fB)
+.B bool rendezvous<>::join()
+.fi
+.RS 5
+Collects a trigger notification, if any events have triggered but have not
+yet been collected.  If a trigger notification is available, sets the event
+ID argument(s)
+.IR i1 " and " i2 ,
+if any, to the collected event's ID(s) and returns true.  Otherwise,
+returns false.  The
+.B twait
+special forms are built around calls to
+.BR rendezvous<I*>::join .
+.RE
