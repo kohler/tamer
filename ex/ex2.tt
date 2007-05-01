@@ -33,8 +33,9 @@ tamed void time_sucka() {
 
 int main(int, char **) {
     tamer::fileio::make_nonblocking(0);
+    tamer::initialize();
     read_sucka(0);
     time_sucka();
     while (n > 0)
-	tamer::driver::main.once();
+	tamer::once();
 }

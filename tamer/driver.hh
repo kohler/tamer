@@ -9,6 +9,8 @@ class driver { public:
     driver();
     ~driver();
 
+    void initialize();
+    
     inline void at_fd_read(int fd, const event<> &trigger);
     inline void at_fd_write(int fd, const event<> &trigger);
     
@@ -21,10 +23,11 @@ class driver { public:
     static void at_signal(int signal, const event<> &trigger);
 
     void once();
+    void loop();
 
     timeval now;
     inline void set_now();
-    
+
     static driver main;
 
   private:
@@ -133,6 +136,31 @@ inline void driver::at_delay_msec(int delay, const event<> &trigger)
 	tv.tv_usec = (delay % 1000) * 1000;
 	at_delay(tv, trigger);
     }
+}
+
+inline void initialize()
+{
+    driver::main.initialize();
+}
+
+inline struct timeval &now()
+{
+    return driver::main.now;
+}
+
+inline void set_now()
+{
+    driver::main.set_now();
+}
+
+inline void once()
+{
+    driver::main.once();
+}
+
+inline void loop()
+{
+    driver::main.loop();
 }
 
 inline void at_time(const timeval &expiry, const event<> &trigger)

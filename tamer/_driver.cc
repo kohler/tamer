@@ -10,7 +10,7 @@ namespace tamer {
 
 driver driver::main;
 
-// signal handling inspired by sfslite.
+// using the "self-pipe trick" recommended by select(3) and sfslite.
 namespace {
 
 #define NSIGNALS 32
@@ -25,13 +25,13 @@ class sigcancel_rendezvous : public rendezvous<> { public:
     sigcancel_rendezvous() {
     }
 
-    inline void add_event(_event_superbase *e) throw () {
+    inline void add(_event_superbase *e) throw () {
 	_nwaiting++;
 	e->initialize(this, sig_installing);
     }
     
     void complete(uintptr_t rname, bool success) {
-	if ((int) rname != sig_installing) {
+	if ((int) rname != sig_installing && success) {
 	    struct sigaction sa;
 	    sa.sa_handler = SIG_DFL;
 	    sigemptyset(&sa.sa_mask);
@@ -209,26 +209,38 @@ static void tame_signal_handler(int signal) {
 void driver::at_signal(int signal, const event<> &trigger)
 {
     assert(signal < NSIGNALS);
+
+    if (!trigger)
+	return;
     
-    if (trigger && sig_pipe[0] < 0) {
+    if (sig_pipe[0] < 0) {
 	pipe(sig_pipe);
 	fcntl(sig_pipe[0], F_SETFL, O_NONBLOCK);
 	fcntl(sig_pipe[0], F_SETFD, FD_CLOEXEC);
 	fcntl(sig_pipe[1], F_SETFD, FD_CLOEXEC);
     }
 
-    sig_installing = signal;
+    if (sig_handlers[signal])
+	sig_handlers[signal] = scatter(sig_handlers[signal], trigger);
+    else {
+	sig_installing = signal;
     
-    sig_handlers[signal] = trigger;
-    sig_handlers[signal].at_cancel(make_event(sigcancelr));
+	sig_handlers[signal] = trigger;
+	sig_handlers[signal].at_cancel(make_event(sigcancelr));
     
-    struct sigaction sa;
-    sa.sa_handler = (trigger ? tame_signal_handler : SIG_DFL);
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESETHAND;
-    sigaction(signal, &sa, 0);
+	struct sigaction sa;
+	sa.sa_handler = tame_signal_handler;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESETHAND;
+	sigaction(signal, &sa, 0);
 
-    sig_installing = -1;
+	sig_installing = -1;
+    }
+}
+
+void driver::initialize()
+{
+    set_now();
 }
 
 void driver::once()
@@ -340,6 +352,12 @@ void driver::once()
     // run active closures
     while (_rendezvous_base *r = _rendezvous_base::unblocked)
 	r->_run();
+}
+
+void driver::loop()
+{
+    while (1)
+	once();
 }
 
 }

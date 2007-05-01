@@ -7,15 +7,17 @@ tamer \- C++ extensions for event-driven programming
 .nf
 .B #include <tamer.hh>
 .sp
-\fBclass event<T1, T2, T3, T4> { ...
+\fBclass event<T1, T2, T3, T4> { public:
+    event();
+    operator bool() const;
+    bool empty() const;
     void trigger(const T1 &\fIv1\fB, const T2 &\fIv2\fB,
                  const T3 &\fIv3\fB, const T4 &\fIv4\fB);
     void cancel();
     void at_cancel(const event<> &\fIcancel_evt\fB);
-    bool empty() const;
 }
 .sp
-class rendezvous<I1, I2> { ...
+class rendezvous<I1, I2> { public:
     rendezvous();
     unsigned nevents() const;
     unsigned nready() const;
@@ -52,6 +54,11 @@ twait(rendezvous<> &\fIrendezvous\fB);
 is a set of libraries and C++ language extensions designed to simplify the
 practice of event-driven programming.
 .LP
+This manual page gives an overview of the
+.B Tamer
+abstractions
+'
+.SH OVERVIEW
 .B Tamer
 introduces four related abstractions for handling concurrency:
 .IR events ,
@@ -63,9 +70,9 @@ Each
 .B event 
 object represents a future occurrence, such as the completion of a network
 read.  When the expected occurrence actually happens\*Efor instance, a
-packet arrives\*Ethe programmer 
-.I triggers
-the event by calling its
+packet arrives\*Ethe event is 
+.I triggered
+via its
 .B trigger
 method.
 .LP
@@ -127,13 +134,13 @@ may be triggered at most once; second and subsequent trigger attempts have
 no effect.
 .LP
 An event may be explicitly canceled by calling its
-.B cancel()
+.B cancel
 method.  Alternately, an event is automatically canceled when the last
 reference to the event goes out of scope.  The
 .B trigger
 method has no effect on a canceled event.  It is possible to detect when an
 event is canceled using the
-.B event<T*>::at_cancel()
+.B event<T*>::at_cancel
 method.  Consider the call
 .BR \fIe\fB.at_cancel(\fIe2\fB) ,
 where
@@ -156,12 +163,11 @@ The
 language extension, written
 .BR twait ,
 blocks the calling function until one or more events are triggered.
-Blocking causes a function to return to its caller, but the function does
-not complete: its execution point and safe local variables are preserved in
-memory.  When an expected event occurs, the function \*(lqunblocks\*(rq and
-resumes processing at the wait point.  By that time, of course, the
-function's original caller may have returned.  Any function containing a
-wait point is marked with the
+Blocking causes a function to return to its caller, but its execution point
+and safe local variables are preserved in memory.  When an expected event
+occurs, the function \*(lqunblocks\*(rq and resumes processing at the wait
+point.  By that time, of course, the function's original caller may have
+returned.  Any function containing a wait point is marked with the
 .B tamed
 keyword, which informs the caller that the function can block.
 .LP
@@ -234,8 +240,8 @@ must match the type(s) of the
 .BR rendezvous .
 .LP
 .B rendezvous
-objects may not be treated as primitive values.  Their copy constructors
-and assignment operators are private.
+objects are noncopyable: their copy constructors and assignment operators
+are private.
 .LP
 A
 .B tamed
@@ -249,9 +255,9 @@ returns.  This trigger signals the function's completion.  Here is a
 function that blocks, then returns an integer:
 .nf
 .sp
-  \fBtamed blockf(event<int> \fIdone\fB) {
-     \&\fR... block ...\fB
-     done.trigger(\fR200\fB);
+  \fBtamed void blockf(event<int> \fIdone\fB) {
+      \&\fR... block ...\fB
+      done.trigger(\fR200\fB);
   }\fR
 .sp
 .fi

@@ -65,7 +65,7 @@ tamed void scatter() {
 int main(int, char **) {
     tamer::rendezvous<int> r;
     fprintf(stderr, "???????? *** %d\n\n", getpid());
-    tamer::driver::main.set_now();
+    tamer::set_now();
     waitr(r);
     delay1(100, tamer::event<>());
     delay1(1000, tamer::make_event(r, 10));
@@ -76,5 +76,5 @@ int main(int, char **) {
     //stdiny();
     //waitsig();
     while (n > 0)
-	tamer::driver::main.once();
+	tamer::once();
 }
