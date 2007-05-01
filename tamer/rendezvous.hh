@@ -9,7 +9,7 @@ class rendezvous : public blockable_rendezvous { public:
 
     rendezvous();
 
-    void add(_event_superbase *e, const I1 &i1, const I2 &i2);
+    void add(simple_event *e, const I1 &i1, const I2 &i2);
     void complete(uintptr_t rname, bool success);
     bool join(I1 &, I2 &);
 
@@ -35,7 +35,7 @@ rendezvous<I1, I2>::rendezvous()
 }
 
 template <typename I1, typename I2>
-void rendezvous<I1, I2>::add(_event_superbase *e, const I1 &i1, const I2 &i2)
+void rendezvous<I1, I2>::add(simple_event *e, const I1 &i1, const I2 &i2)
 {
     uintptr_t u;
     evtrec &ew = _bs.allocate_passive(u);
@@ -72,7 +72,7 @@ class rendezvous<I1, void> : public blockable_rendezvous { public:
 
     rendezvous();
 
-    void add(_event_superbase *e, const I1 &i1);
+    void add(simple_event *e, const I1 &i1);
     void complete(uintptr_t rname, bool success);
     bool join(I1 &);
 
@@ -97,7 +97,7 @@ rendezvous<I1, void>::rendezvous()
 }
 
 template <typename I1>
-void rendezvous<I1, void>::add(_event_superbase *e, const I1 &i1)
+void rendezvous<I1, void>::add(simple_event *e, const I1 &i1)
 {
     uintptr_t u;
     evtrec &erec = _bs.allocate_passive(u);
@@ -132,7 +132,7 @@ class rendezvous<uintptr_t> : public blockable_rendezvous { public:
 
     inline rendezvous();
 
-    inline void add(_event_superbase *e, uintptr_t i1) throw ();
+    inline void add(simple_event *e, uintptr_t i1) throw ();
     inline void complete(uintptr_t rname, bool success);
     inline bool join(uintptr_t &);
 
@@ -152,7 +152,7 @@ inline rendezvous<uintptr_t>::rendezvous()
 {
 }
 
-inline void rendezvous<uintptr_t>::add(_event_superbase *e, uintptr_t i1) throw ()
+inline void rendezvous<uintptr_t>::add(simple_event *e, uintptr_t i1) throw ()
 {
     _nwaiting++;
     e->initialize(this, i1);
@@ -186,7 +186,7 @@ class rendezvous<T *> : public rendezvous<uintptr_t> { public:
 
     rendezvous() { }
 
-    inline void add(_event_superbase *e, T *i1) throw () {
+    inline void add(simple_event *e, T *i1) throw () {
 	inherited::add(e, reinterpret_cast<uintptr_t>(i1));
     }
     
@@ -209,7 +209,7 @@ class rendezvous<int> : public rendezvous<uintptr_t> { public:
 
     rendezvous() { }
 
-    inline void add(_event_superbase *e, int i1) throw () {
+    inline void add(simple_event *e, int i1) throw () {
 	inherited::add(e, static_cast<uintptr_t>(i1));
     }
     
@@ -232,7 +232,7 @@ class rendezvous<bool> : public rendezvous<uintptr_t> { public:
 
     rendezvous() { }
 
-    inline void add(_event_superbase *e, bool i1) throw () {
+    inline void add(simple_event *e, bool i1) throw () {
 	inherited::add(e, static_cast<uintptr_t>(i1));
     }
     
@@ -253,7 +253,7 @@ class rendezvous<void> : public blockable_rendezvous { public:
 
     rendezvous() : _nwaiting(0), _nready(0) { }
 
-    inline void add(_event_superbase *e) throw () {
+    inline void add(simple_event *e) throw () {
 	_nwaiting++;
 	e->initialize(this, 1);
     }

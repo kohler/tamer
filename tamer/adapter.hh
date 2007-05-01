@@ -14,7 +14,7 @@ template <typename T> class _unbind_rendezvous : public abstract_rendezvous { pu
 	_ein.at_cancel(event<>(*this, ubcancel));
     }
 
-    void add(_event_superbase *e, uintptr_t what) {
+    void add(simple_event *e, uintptr_t what) {
 	e->simple_initialize(this, what);
     }
     
@@ -53,7 +53,7 @@ template <typename T1> class _bind_rendezvous : public abstract_rendezvous { pub
     ~_bind_rendezvous() {
     }
 
-    void add(_event_superbase *e, uintptr_t what) {
+    void add(simple_event *e, uintptr_t what) {
 	e->simple_initialize(this, what);
     }
     
@@ -90,7 +90,7 @@ class _scatter_rendezvous : public abstract_rendezvous { public:
     ~_scatter_rendezvous() {
     }
 
-    void add(_event_superbase *e) {
+    void add(simple_event *e) {
 	e->simple_initialize(this, 0);
     }
 
@@ -144,7 +144,7 @@ class _connector_closure : public _closure_base { public:
 
     template <typename T1, typename T2, typename T3, typename T4>
     _connector_closure(const event<T1, T2, T3, T4> &e, int *result = 0)
-	: _e(e.__superbase()), _result(result) {
+	: _e(e.__get_simple()), _result(result) {
 	_e->use();
     }
 
@@ -164,7 +164,7 @@ class _connector_closure : public _closure_base { public:
     }
 
     rendezvous<int> _r;
-    _event_superbase *_e;
+    simple_event *_e;
     int *_result; 
 
 };

@@ -6,14 +6,14 @@ namespace tamer {
 blockable_rendezvous *blockable_rendezvous::unblocked;
 blockable_rendezvous *blockable_rendezvous::unblocked_tail;
 
-_event_superbase *_event_superbase::dead;
+simple_event *simple_event::dead;
 
-void _event_superbase::make_dead() {
+void simple_event::make_dead() {
     if (!dead)
-	dead = new _event_superbase;
+	dead = new simple_event;
 }
 
-class _event_superbase::initializer { public:
+class simple_event::initializer { public:
 
     initializer() {
     }
@@ -25,7 +25,7 @@ class _event_superbase::initializer { public:
 
 };
 
-_event_superbase::initializer _event_superbase::the_initializer; 
+simple_event::initializer simple_event::the_initializer; 
 
 
 event<> _hard_scatter(const event<> &e1, const event<> &e2) {

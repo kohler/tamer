@@ -4,21 +4,21 @@
 namespace tamer {
 
 template <typename R, typename I1, typename I2>
-_event_superbase::_event_superbase(R &r, const I1 &i1, const I2 &i2)
+simple_event::simple_event(R &r, const I1 &i1, const I2 &i2)
     : _refcount(1), _canceller(0)
 {
     r.add(this, i1, i2);
 }
 
 template <typename R, typename I1>
-_event_superbase::_event_superbase(R &r, const I1 &i1)
+simple_event::simple_event(R &r, const I1 &i1)
     : _refcount(1), _canceller(0)
 {
     r.add(this, i1);
 }
 
 template <typename R>
-inline _event_superbase::_event_superbase(R &r)
+inline simple_event::simple_event(R &r)
     : _refcount(1), _canceller(0)
 {
     r.add(this);
@@ -26,31 +26,31 @@ inline _event_superbase::_event_superbase(R &r)
 
 
 template <typename T1, typename T2, typename T3, typename T4>
-class _event_base : public _event_superbase { public:
+class _event_base : public simple_event { public:
 
     _event_base()
-	: _event_superbase(), _t1(0), _t2(0), _t3(0), _t4(0) {
+	: simple_event(), _t1(0), _t2(0), _t3(0), _t4(0) {
     }
     
     template <typename R, typename I1, typename I2>
     _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
-	: _event_superbase(r, i1, i2), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
+	: simple_event(r, i1, i2), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
     }
 
     template <typename R, typename I1>
     _event_base(R &r, const I1 &i1, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
-	: _event_superbase(r, i1), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
+	: simple_event(r, i1), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
     }
 
     template <typename R>
     _event_base(R &r, T1 &t1, T2 &t2, T3 &t3, T4 &t4)
-	: _event_superbase(r), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
+	: simple_event(r), _t1(&t1), _t2(&t2), _t3(&t3), _t4(&t4) {
     }
 
     void unuse() { if (!--_refcount) delete this; }
     
     void trigger(const T1 &t1, const T2 &t2, const T3 &t3, const T4 &t4) {
-	if (_event_superbase::complete(true)) {
+	if (simple_event::complete(true)) {
 	    if (_t1) *_t1 = t1;
 	    if (_t2) *_t2 = t2;
 	    if (_t3) *_t3 = t3;
@@ -78,31 +78,31 @@ class _event_base : public _event_superbase { public:
 
 
 template <typename T1, typename T2, typename T3>
-class _event_base<T1, T2, T3, void> : public _event_superbase { public:
+class _event_base<T1, T2, T3, void> : public simple_event { public:
 
     _event_base()
-	: _event_superbase(), _t1(0), _t2(0), _t3(0) {
+	: simple_event(), _t1(0), _t2(0), _t3(0) {
     }
     
     template <typename R, typename I1, typename I2>
     _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2, T3 &t3)
-	: _event_superbase(r, i1, i2), _t1(&t1), _t2(&t2), _t3(&t3) {
+	: simple_event(r, i1, i2), _t1(&t1), _t2(&t2), _t3(&t3) {
     }
 
     template <typename R, typename I1>
     _event_base(R &r, const I1 &i1, T1 &t1, T2 &t2, T3 &t3)
-	: _event_superbase(r, i1), _t1(&t1), _t2(&t2), _t3(&t3) {
+	: simple_event(r, i1), _t1(&t1), _t2(&t2), _t3(&t3) {
     }
 
     template <typename R>
     _event_base(R &r, T1 &t1, T2 &t2, T3 &t3)
-	: _event_superbase(r), _t1(&t1), _t2(&t2), _t3(&t3) {
+	: simple_event(r), _t1(&t1), _t2(&t2), _t3(&t3) {
     }
 
     void unuse() { if (!--_refcount) delete this; }
     
     void trigger(const T1 &t1, const T2 &t2, const T3 &t3) {
-	if (_event_superbase::complete(true)) {
+	if (simple_event::complete(true)) {
 	    if (_t1) *_t1 = t1;
 	    if (_t2) *_t2 = t2;
 	    if (_t3) *_t3 = t3;
@@ -128,31 +128,31 @@ class _event_base<T1, T2, T3, void> : public _event_superbase { public:
 
 
 template <typename T1, typename T2>
-class _event_base<T1, T2, void, void> : public _event_superbase { public:
+class _event_base<T1, T2, void, void> : public simple_event { public:
 
     _event_base()
-	: _event_superbase(), _t1(0), _t2(0) {
+	: simple_event(), _t1(0), _t2(0) {
     }
     
     template <typename R, typename I1, typename I2>
     _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1, T2 &t2)
-	: _event_superbase(r, i1, i2), _t1(&t1), _t2(&t2) {
+	: simple_event(r, i1, i2), _t1(&t1), _t2(&t2) {
     }
 
     template <typename R, typename I1>
     _event_base(R &r, const I1 &i1, T1 &t1, T2 &t2)
-	: _event_superbase(r, i1), _t1(&t1), _t2(&t2) {
+	: simple_event(r, i1), _t1(&t1), _t2(&t2) {
     }
 
     template <typename R>
     _event_base(R &r, T1 &t1, T2 &t2)
-	: _event_superbase(r), _t1(&t1), _t2(&t2) {
+	: simple_event(r), _t1(&t1), _t2(&t2) {
     }
 
     void unuse() { if (!--_refcount) delete this; }
     
     void trigger(const T1 &t1, const T2 &t2) {
-	if (_event_superbase::complete(true)) {
+	if (simple_event::complete(true)) {
 	    if (_t1) *_t1 = t1;
 	    if (_t2) *_t2 = t2;
 	}
@@ -174,31 +174,31 @@ class _event_base<T1, T2, void, void> : public _event_superbase { public:
 
 
 template <typename T1>
-class _event_base<T1, void, void, void> : public _event_superbase { public:
+class _event_base<T1, void, void, void> : public simple_event { public:
 
     _event_base()
-	: _event_superbase(), _t1(0) {
+	: simple_event(), _t1(0) {
     }
     
     template <typename R, typename I1, typename I2>
     _event_base(R &r, const I1 &i1, const I2 &i2, T1 &t1)
-	: _event_superbase(r, i1, i2), _t1(&t1) {
+	: simple_event(r, i1, i2), _t1(&t1) {
     }
 
     template <typename R, typename I1>
     _event_base(R &r, const I1 &i1, T1 &t1)
-	: _event_superbase(r, i1), _t1(&t1) {
+	: simple_event(r, i1), _t1(&t1) {
     }
 
     template <typename R>
     _event_base(R &r, T1 &t1)
-	: _event_superbase(r), _t1(&t1) {
+	: simple_event(r), _t1(&t1) {
     }
 
     void unuse() { if (!--_refcount) delete this; }
     
     void trigger(const T1 &t1) {
-	if (_event_superbase::complete(true)) {
+	if (simple_event::complete(true)) {
 	    if (_t1) *_t1 = t1;
 	}
     }
@@ -247,7 +247,7 @@ class event { public:
 	_e->unuse();
     }
 
-    typedef _event_superbase::unspecified_bool_type unspecified_bool_type;
+    typedef simple_event::unspecified_bool_type unspecified_bool_type;
     
     operator unspecified_bool_type() const {
 	return *_e;
@@ -301,7 +301,7 @@ class event { public:
 	return *this;
     }
     
-    _event_superbase *__superbase() const {
+    simple_event *__get_simple() const {
 	return _e;
     }
     
@@ -343,7 +343,7 @@ class event<T1, T2, T3, void> { public:
 	_e->unuse();
     }
 
-    typedef _event_superbase::unspecified_bool_type unspecified_bool_type;
+    typedef simple_event::unspecified_bool_type unspecified_bool_type;
     
     operator unspecified_bool_type() const {
 	return *_e;
@@ -393,7 +393,7 @@ class event<T1, T2, T3, void> { public:
 	return *this;
     }
     
-    _event_superbase *__superbase() const {
+    simple_event *__get_simple() const {
 	return _e;
     }
     
@@ -435,7 +435,7 @@ class event<T1, T2, void, void> { public:
 	_e->unuse();
     }
 
-    typedef _event_superbase::unspecified_bool_type unspecified_bool_type;
+    typedef simple_event::unspecified_bool_type unspecified_bool_type;
     
     operator unspecified_bool_type() const {
 	return *_e;
@@ -485,7 +485,7 @@ class event<T1, T2, void, void> { public:
 	return *this;
     }
     
-    _event_superbase *__superbase() const {
+    simple_event *__get_simple() const {
 	return _e;
     }
     
@@ -527,7 +527,7 @@ class event<T1, void, void, void> { public:
 	_e->unuse();
     }
 
-    typedef _event_superbase::unspecified_bool_type unspecified_bool_type;
+    typedef simple_event::unspecified_bool_type unspecified_bool_type;
     
     operator unspecified_bool_type() const {
 	return *_e;
@@ -577,7 +577,7 @@ class event<T1, void, void, void> { public:
 	return *this;
     }
     
-    _event_superbase *__superbase() const {
+    simple_event *__get_simple() const {
 	return _e;
     }
     
@@ -594,25 +594,25 @@ template <>
 class event<void, void, void, void> { public:
 
     event() {
-	if (!_event_superbase::dead)
-	    _event_superbase::make_dead();
-	_e = _event_superbase::dead;
+	if (!simple_event::dead)
+	    simple_event::make_dead();
+	_e = simple_event::dead;
 	_e->use();
     }
 
     template <typename R, typename I1, typename I2>
     event(R &r, const I1 &i1, const I2 &i2)
-	: _e(new _event_superbase(r, i1, i2)) {
+	: _e(new simple_event(r, i1, i2)) {
     }
 
     template <typename R, typename I1>
     event(R &r, const I1 &i1)
-	: _e(new _event_superbase(r, i1)) {
+	: _e(new simple_event(r, i1)) {
     }
 
     template <typename R>
     event(R &r)
-	: _e(new _event_superbase(r)) {
+	: _e(new simple_event(r)) {
     }
 
     event(const event<> &e)
@@ -629,7 +629,7 @@ class event<void, void, void, void> { public:
 	_e->unuse();
     }
 
-    typedef _event_superbase::unspecified_bool_type unspecified_bool_type;
+    typedef simple_event::unspecified_bool_type unspecified_bool_type;
     
     operator unspecified_bool_type() const {
 	return *_e;
@@ -677,31 +677,31 @@ class event<void, void, void, void> { public:
 	return *this;
     }
 
-    _event_superbase *__superbase() const {
+    simple_event *__get_simple() const {
 	return _e;
     }
 
-    static inline event<> __wrap(_event_superbase *e) {
+    static inline event<> __wrap(simple_event *e) {
 	return event<>(marker(), e);
     }
 
   private:
 
-    _event_superbase *_e;
+    simple_event *_e;
 
     struct marker { };
-    inline event(const marker &, _event_superbase *e)
+    inline event(const marker &, simple_event *e)
 	: _e(e) {
 	_e->use();
     }
     
-    friend class _event_superbase;
+    friend class simple_event;
     friend event<> _hard_scatter(const event<> &, const event<> &);
     
 };
 
 
-inline void _event_superbase::at_cancel(const event<> &e)
+inline void simple_event::at_cancel(const event<> &e)
 {
     assert(_r);
     if (!_canceller) {

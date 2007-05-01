@@ -25,7 +25,7 @@ class sigcancel_rendezvous : public rendezvous<> { public:
     sigcancel_rendezvous() {
     }
 
-    inline void add(_event_superbase *e) throw () {
+    inline void add(simple_event *e) throw () {
 	_nwaiting++;
 	e->initialize(this, sig_installing);
     }

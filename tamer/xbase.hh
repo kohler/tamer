@@ -3,7 +3,7 @@
 #include <stdexcept>
 namespace tamer {
 
-class _event_superbase;
+class simple_event;
 class abstract_rendezvous;
 class blockable_rendezvous;
 class _closure_base;
@@ -16,22 +16,22 @@ inline event<> scatter(const event<> &, const event<> &);
 event<> _hard_scatter(const event<> &e1, const event<> &e2);
 class driver;
 
-class _event_superbase { public:
+class simple_event { public:
 
-    inline _event_superbase()
+    inline simple_event()
 	: _refcount(1), _r(0), _r_name(0), _r_next(0), _r_pprev(0), _canceller(0) {
     }
 
     template <typename R, typename I1, typename I2>
-    inline _event_superbase(R &r, const I1 &i1, const I2 &i2);
+    inline simple_event(R &r, const I1 &i1, const I2 &i2);
 
     template <typename R, typename I1>
-    inline _event_superbase(R &r, const I1 &i1);
+    inline simple_event(R &r, const I1 &i1);
 
     template <typename R>
-    inline _event_superbase(R &r);
+    inline simple_event(R &r);
 
-    inline ~_event_superbase();
+    inline ~simple_event();
 
     void use() {
 	_refcount++;
@@ -42,10 +42,10 @@ class _event_superbase { public:
 	    delete this;
     }
 
-    typedef abstract_rendezvous *_event_superbase::*unspecified_bool_type;
+    typedef abstract_rendezvous *simple_event::*unspecified_bool_type;
 
     operator unspecified_bool_type() const {
-	return _r ? &_event_superbase::_r : 0;
+	return _r ? &simple_event::_r : 0;
     }
     
     bool empty() const {
@@ -77,11 +77,11 @@ class _event_superbase { public:
     unsigned _refcount;
     abstract_rendezvous *_r;
     uintptr_t _r_name;
-    _event_superbase *_r_next;
-    _event_superbase **_r_pprev;
-    _event_superbase *_canceller;
+    simple_event *_r_next;
+    simple_event **_r_pprev;
+    simple_event *_canceller;
 
-    static _event_superbase *dead;
+    static simple_event *dead;
 
     static void make_dead();
     class initializer;
@@ -134,13 +134,13 @@ class blockable_rendezvous : public abstract_rendezvous { public:
     
   private:
 
-    _event_superbase *_events;
+    simple_event *_events;
     blockable_rendezvous *_unblocked_next;
     blockable_rendezvous *_unblocked_prev;
     _closure_base *_blocked_closure;
     unsigned _blocked_closure_blockid;
 
-    friend class _event_superbase;
+    friend class simple_event;
     friend class driver;
     
 };
@@ -183,13 +183,13 @@ class tamer_error : public std::runtime_error { public:
 };
 
 
-inline _event_superbase::~_event_superbase()
+inline simple_event::~simple_event()
 {
     if (_r)
 	complete(false);
 }
 
-inline bool _event_superbase::is_scatterer() const
+inline bool simple_event::is_scatterer() const
 {
     return _r && _r->is_scatter();
 }
@@ -197,7 +197,7 @@ inline bool _event_superbase::is_scatterer() const
 inline blockable_rendezvous::~blockable_rendezvous()
 {
     // first take all events off this rendezvous, so they don't call back
-    for (_event_superbase *e = _events; e; e = e->_r_next)
+    for (simple_event *e = _events; e; e = e->_r_next)
 	e->_r = 0;
     // then complete events, calling their cancellers
     while (_events)
@@ -215,7 +215,7 @@ inline blockable_rendezvous::~blockable_rendezvous()
 	_blocked_closure->unuse();
 }
 
-inline void _event_superbase::initialize(blockable_rendezvous *r, uintptr_t rname)
+inline void simple_event::initialize(blockable_rendezvous *r, uintptr_t rname)
 {
     // NB this can be called before e has been fully initialized.
     _r = r;
@@ -227,10 +227,10 @@ inline void _event_superbase::initialize(blockable_rendezvous *r, uintptr_t rnam
     r->_events = this;
 }
 
-inline bool _event_superbase::complete(bool success)
+inline bool simple_event::complete(bool success)
 {
     abstract_rendezvous *r = _r;
-    _event_superbase *canceller = _canceller;
+    simple_event *canceller = _canceller;
 
     if (_r_pprev)
 	*_r_pprev = _r_next;
