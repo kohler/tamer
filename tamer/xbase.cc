@@ -29,9 +29,9 @@ _event_superbase::initializer _event_superbase::the_initializer;
 
 
 event<> _hard_scatter(const event<> &e1, const event<> &e2) {
-    if (!e1)
+    if (e1.empty())
 	return e2;
-    else if (!e2)
+    else if (e2.empty())
 	return e1;
     else if (e1._e->is_scatterer()) {
 	_scatter_rendezvous *r = static_cast<_scatter_rendezvous *>(e1._e->_r);

@@ -38,8 +38,14 @@ class _event_superbase { public:
 	    delete this;
     }
 
-    bool live() const {
-	return _r != 0;
+    typedef _rendezvous_superbase *_event_superbase::*unspecified_bool_type;
+
+    operator unspecified_bool_type() const {
+	return _r ? &_event_superbase::_r : 0;
+    }
+    
+    bool empty() const {
+	return _r == 0;
     }
 
     inline bool is_scatterer() const;

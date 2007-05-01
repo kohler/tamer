@@ -230,13 +230,19 @@ class event { public:
     ~event() {
 	_e->unuse();
     }
+
+    typedef _event_superbase::unspecified_bool_type unspecified_bool_type;
     
-    operator bool() const {
-	return _e->live();
+    operator unspecified_bool_type() const {
+	return *_e;
+    }
+
+    bool operator!() const {
+	return _e->empty();
     }
     
-    bool live() const {
-	return _e->live();
+    bool empty() const {
+	return _e->empty();
     }
 
     void at_cancel(const event<> &e) {
@@ -317,12 +323,18 @@ class event<T1, T2, T3, void> { public:
 	_e->unuse();
     }
 
-    operator bool() const {
-	return _e->live();
+    typedef _event_superbase::unspecified_bool_type unspecified_bool_type;
+    
+    operator unspecified_bool_type() const {
+	return *_e;
+    }
+
+    bool operator!() const {
+	return _e->empty();
     }
     
-    bool live() const {
-	return _e->live();
+    bool empty() const {
+	return _e->empty();
     }
 
     void at_cancel(const event<> &e) {
@@ -399,12 +411,18 @@ class event<T1, T2, void, void> { public:
 	_e->unuse();
     }
 
-    operator bool() const {
-	return _e->live();
+    typedef _event_superbase::unspecified_bool_type unspecified_bool_type;
+    
+    operator unspecified_bool_type() const {
+	return *_e;
+    }
+
+    bool operator!() const {
+	return _e->empty();
     }
     
-    bool live() const {
-	return _e->live();
+    bool empty() const {
+	return _e->empty();
     }
 
     void at_cancel(const event<> &e) {
@@ -481,12 +499,18 @@ class event<T1, void, void, void> { public:
 	_e->unuse();
     }
 
-    operator bool() const {
-	return _e->live();
+    typedef _event_superbase::unspecified_bool_type unspecified_bool_type;
+    
+    operator unspecified_bool_type() const {
+	return *_e;
+    }
+
+    bool operator!() const {
+	return _e->empty();
     }
     
-    bool live() const {
-	return _e->live();
+    bool empty() const {
+	return _e->empty();
     }
 
     void at_cancel(const event<> &e) {
@@ -581,12 +605,18 @@ class event<void, void, void, void> { public:
 	_e->unuse();
     }
 
-    operator bool() const {
-	return _e->live();
+    typedef _event_superbase::unspecified_bool_type unspecified_bool_type;
+    
+    operator unspecified_bool_type() const {
+	return *_e;
+    }
+
+    bool operator!() const {
+	return _e->empty();
     }
     
-    bool live() const {
-	return _e->live();
+    bool empty() const {
+	return _e->empty();
     }
 
     void at_cancel(const event<> &e) {
@@ -752,9 +782,9 @@ inline event<> make_event(rendezvous<> &r)
 }
 
 inline event<> scatter(const event<> &e1, const event<> &e2) {
-    if (!e1.live())
+    if (e1.empty())
 	return e2;
-    else if (!e2.live())
+    else if (e2.empty())
 	return e1;
     else
 	return _hard_scatter(e1, e2);
