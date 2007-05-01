@@ -320,7 +320,8 @@ trigger values.  In the following,
 .B T1-T4
 are the template arguments of the
 .B event
-type.
+type.  If given, these type arguments must be copy-constructible and
+assignable.
 .sp
 .nf
 .B event<T*>::event()
@@ -438,7 +439,8 @@ event IDs.  In the following,
 .BR I1 " and " I2
 are the template arguments of the
 .B rendezvous
-type.
+type.  If given, these type arguments must be copy-constructible and
+assignable.
 .sp
 .nf
 .B rendezvous<I*>::rendezvous()
@@ -514,3 +516,25 @@ usual.
 .RE
 .sp
 .nf
+.B event<> bind(const event<T1> &\fIe\fB, const T1 &\fIv1\fB)
+.fi
+.RS 5
+Returns an event that, when triggered, will call
+.BR \fIe\fB.trigger(\fIv1\fB) .
+Additionally, if
+.I e
+is canceled, then the returned event will be canceled.
+.RE
+.sp
+.nf
+.B event<T1> ignore_slot(const event<> &\fIe\fB)
+.fi
+.RS 5
+Returns an event that, when triggered, will call
+.BR \fIe\fB.trigger() .
+The returned event's trigger value is ignored.  Additionally, if
+.I e
+is canceled, then the returned event will be canceled.
+.RE
+'
+.SH "DRIVER"

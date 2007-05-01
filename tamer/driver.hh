@@ -15,13 +15,14 @@ class driver { public:
     inline void at_fd_write(int fd, const event<> &e);
     
     inline void at_time(const timeval &expiry, const event<> &e);
-    inline void at_asap(const event<> &e);
     inline void at_delay(timeval delay, const event<> &e);
     inline void at_delay_sec(int delay, const event<> &e);
     inline void at_delay_msec(int delay, const event<> &e);
 
     static void at_signal(int signal, const event<> &e);
 
+    inline void at_asap(const event<> &e);
+    
     void once();
     void loop();
 

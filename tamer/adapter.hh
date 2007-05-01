@@ -70,7 +70,7 @@ template <typename T1> class bind_rendezvous : public abstract_rendezvous { publ
 
 
 template <typename T1>
-event<T1> unbind(const event<> &e) {
+event<T1> ignore_slot(const event<> &e) {
     tamerpriv::unbind_rendezvous<T1> *ur = new tamerpriv::unbind_rendezvous<T1>(e);
     return event<T1>(*ur, 1, *((T1 *) 0));
 }
