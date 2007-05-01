@@ -529,7 +529,7 @@ tame_fn_t::output_closure (outputter_t *o)
   }
 
   b << "class " << _closure.type ().base_type () 
-    << " : public tamer::tamerpriv::_closure_base "
+    << " : public tamer::tamerpriv::closure "
     << "{\n"
     << "public:\n"
     << "  " << _closure.type ().base_type () 
@@ -545,7 +545,7 @@ tame_fn_t::output_closure (outputter_t *o)
       _args->paramlist(b, DECLARATIONS);
   }
 
-  b << ") : tamer::tamerpriv::_closure_base ("
+  b << ") : tamer::tamerpriv::closure ("
       // << "\"" << state->infile_name () << "\", \"" << _name << "\""
     << ")"
       ;
@@ -709,7 +709,7 @@ tame_fn_t::output_firstfn (outputter_t *o)
   if (_args) {
       _args->paramlist (b, NAMES);
   }
-  b << ");\n  __cls->_closure__activate(0);\n  __cls->_closure_base::unuse();\n}\n";
+  b << ");\n  __cls->_closure__activate(0);\n  __cls->closure::unuse();\n}\n";
 
   o->output_str(b.str());
 

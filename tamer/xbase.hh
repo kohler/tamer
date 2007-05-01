@@ -19,7 +19,7 @@ namespace tamerpriv {
 class simple_event;
 class abstract_rendezvous;
 class blockable_rendezvous;
-class _closure_base;
+class closure;
 template <typename T1> class _unbind_rendezvous;
 template <typename T1> class _bind_rendezvous;
 class _scatter_rendezvous;
@@ -134,7 +134,7 @@ class blockable_rendezvous : public abstract_rendezvous { public:
     
     virtual inline ~blockable_rendezvous();
 
-    inline void block(_closure_base &c, unsigned where);
+    inline void block(closure &c, unsigned where);
     inline void unblock();
     inline void run();
     
@@ -146,7 +146,7 @@ class blockable_rendezvous : public abstract_rendezvous { public:
     simple_event *_events;
     blockable_rendezvous *_unblocked_next;
     blockable_rendezvous *_unblocked_prev;
-    _closure_base *_blocked_closure;
+    closure *_blocked_closure;
     unsigned _blocked_closure_blockid;
 
     friend class simple_event;
@@ -156,13 +156,13 @@ class blockable_rendezvous : public abstract_rendezvous { public:
 
 
 
-struct _closure_base {
+struct closure {
 
-    _closure_base()
+    closure()
 	: _refcount(1) {
     }
 
-    virtual ~_closure_base() {
+    virtual ~closure() {
     }
 
     void use() {
@@ -252,7 +252,7 @@ inline bool simple_event::complete(bool success)
     return r != 0;
 }
 
-inline void blockable_rendezvous::block(_closure_base &c, unsigned where)
+inline void blockable_rendezvous::block(closure &c, unsigned where)
 {
     assert(!_blocked_closure && &c);
     c.use();
@@ -275,7 +275,7 @@ inline void blockable_rendezvous::unblock()
 
 inline void blockable_rendezvous::run()
 {
-    _closure_base *c = _blocked_closure;
+    closure *c = _blocked_closure;
     _blocked_closure = 0;
     if (_unblocked_prev)
 	_unblocked_prev->_unblocked_next = _unblocked_next;
