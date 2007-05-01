@@ -1,6 +1,6 @@
 #ifndef TAMER__EVENT_HH
 #define TAMER__EVENT_HH 1
-#include <tamer/_rendezvous.hh>
+#include <tamer/rendezvous.hh>
 namespace tamer {
 
 template <typename R, typename I1, typename I2>

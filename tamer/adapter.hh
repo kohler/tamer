@@ -1,7 +1,7 @@
 #ifndef TAMER_ADAPTER_HH
 #define TAMER_ADAPTER_HH 1
-#include <tamer/_event.hh>
-#include <tamer/_driver.hh>
+#include <tamer/event.hh>
+#include <tamer/driver.hh>
 #include <vector>
 #include <errno.h>
 namespace tamer {

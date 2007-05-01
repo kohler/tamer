@@ -1,4 +1,4 @@
-#include <tamer/_driver.hh>
+#include <tamer/driver.hh>
 #include <tamer/adapter.hh>
 #include <sys/select.h>
 #include <stdio.h>

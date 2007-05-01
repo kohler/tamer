@@ -1,19 +1,19 @@
 lib_LTLIBRARIES = libtamer.la
 libtamer_la_SOURCES = \
-	_base.cc _base.hh \
-	_driver.cc _driver.hh \
-	_event.hh \
-	_rendezvous.hh \
-	_util.hh \
+	base.cc base.hh \
+	driver.cc driver.hh \
+	event.hh \
+	rendezvous.hh \
+	util.hh \
 	adapter.hh \
 	fileio.tt fileio.hh \
 	tamer.hh
 include_HEADERS = tamer.hh
-pkginclude_HEADERS = _base.hh \
-	_driver.hh \
-	_event.hh \
-	_rendezvous.hh \
-	_util.hh \
+pkginclude_HEADERS = base.hh \
+	driver.hh \
+	event.hh \
+	rendezvous.hh \
+	util.hh \
 	adapter.hh \
 	fileio.hh
 

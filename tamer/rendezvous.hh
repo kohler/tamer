@@ -1,7 +1,7 @@
 #ifndef TAMER__RENDEZVOUS_HH
 #define TAMER__RENDEZVOUS_HH
-#include <tamer/_util.hh>
-#include <tamer/_base.hh>
+#include <tamer/util.hh>
+#include <tamer/base.hh>
 namespace tamer {
 
 template <typename I1, typename I2>

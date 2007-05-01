@@ -1,6 +1,6 @@
 #ifndef TAMER__DRIVER_HH
 #define TAMER__DRIVER_HH 1
-#include <tamer/_event.hh>
+#include <tamer/event.hh>
 #include <sys/time.h>
 namespace tamer {
 
