@@ -52,12 +52,28 @@ tamed void waitsig() {
 }
 
 tamed void scatter() {
-    tvars { int i(1); tamer::rendezvous<int> r; }
+    tvars { int i(1); tamer::rendezvous<int> r; tamer::event<> e; }
     n++;
-    tamer::at_delay_msec(500, tamer::distribute(tamer::make_event(r, i), tamer::make_event(r, 2)));
+    tamer::at_delay_msec(500, e = tamer::distribute(tamer::distribute(tamer::make_event(r, i), tamer::make_event(r, 2)), tamer::make_event(r, 3)));
+    (void) tamer::distribute(e, tamer::make_event(r, 4));
     while (r.nevents()) {
 	twait(r, i);
 	fprintf(stderr, "=== distributed %d\n", i);
+    }
+    n--;
+}
+
+tamed void cancellina() {
+    tvars { int i(1); tamer::rendezvous<int> r; tamer::event<> e; }
+    n++;
+    tamer::at_delay_msec(500, e = tamer::make_event(r, 1));
+    e.at_cancel(tamer::make_event(r, 100));
+    e.at_cancel(tamer::make_event(r, 101));
+    e.at_cancel(tamer::make_event(r, 102));
+    e.cancel();
+    while (r.nevents()) {
+	twait(r, i);
+	fprintf(stderr, "=== cancelled %d\n", i);
     }
     n--;
 }
@@ -72,6 +88,7 @@ int main(int, char **) {
     delay1(250, tamer::event<>());
     delay1(400, tamer::event<>());
     scatter();
+    cancellina();
     //fcntl(0, F_SETFD, O_NONBLOCK);
     //stdiny();
     //waitsig();

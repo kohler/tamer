@@ -51,6 +51,10 @@ class simple_event { public:
 	    delete this;
     }
 
+    unsigned refcount() const {
+	return _refcount;
+    }
+
     typedef abstract_rendezvous *simple_event::*unspecified_bool_type;
 
     operator unspecified_bool_type() const {
@@ -61,14 +65,12 @@ class simple_event { public:
 	return _r == 0;
     }
 
-    inline bool is_distributor() const;
-
     abstract_rendezvous *rendezvous() const {
 	return _r;
     }
 
     inline void simple_initialize(abstract_rendezvous *r, uintptr_t rname) {
-	assert(!_r);
+	// NB this can be called before e has been fully initialized.
 	_r = r;
 	_r_name = rname;
 	_r_next = 0;
@@ -190,11 +192,6 @@ inline simple_event::~simple_event()
 {
     if (_r)
 	complete(false);
-}
-
-inline bool simple_event::is_distributor() const
-{
-    return _r && _r->is_distribute();
 }
 
 inline blockable_rendezvous::~blockable_rendezvous()

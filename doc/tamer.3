@@ -491,3 +491,22 @@ returns false.  The
 special forms are built around calls to
 .BR rendezvous<I*>::join .
 .RE
+'
+.SH "EVENT CONNECTORS"
+.nf
+.B event<> distribute(const event<> &\fIe1\fB, const event<> &\fIe2\fB)
+.fi
+.RS 5
+Returns an event that distributes trigger operations over
+.IR e1 " and " e2 .
+When the returned event is triggered, both
+.IR e1 " and " e2
+are triggered automatically.  Cancel operations are not automatically
+distributed over
+.IR e1 " and " e2 .
+However, canceling the returned event will release its references to
+.IR e1 " and " e2 ;
+if those were the only references remaining, the events will be canceled as
+usual.
+.RE
+

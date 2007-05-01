@@ -82,42 +82,6 @@ template <typename T1> class _bind_rendezvous : public abstract_rendezvous { pub
     
 };
 
-
-class distribute_rendezvous : public abstract_rendezvous { public:
-
-    distribute_rendezvous() {
-    }
-
-    ~distribute_rendezvous() {
-    }
-
-    void add(simple_event *e) {
-	e->simple_initialize(this, 0);
-    }
-
-    bool is_distribute() const {
-	return true;
-    }
-
-    void add_distribute(const event<> &e) {
-	if (e)
-	    _es.push_back(e);
-    }
-    
-    void complete(uintptr_t, bool success) {
-	if (success) {
-	    for (std::vector<event<> >::iterator i = _es.begin(); i != _es.end(); i++)
-		i->trigger();
-	}
-	delete this;
-    }
-    
-  private:
-
-    std::vector<event<> > _es;
-    
-};
-
 } /* namespace tamerpriv */
 
 

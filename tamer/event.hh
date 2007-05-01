@@ -684,18 +684,17 @@ class event<void, void, void, void> { public:
 	return _e;
     }
 
-    static inline event<> __wrap(tamerpriv::simple_event *e) {
-	return event<>(marker(), e);
+    static inline event<> __take(tamerpriv::simple_event *e) {
+	return event<>(take_marker(), e);
     }
 
   private:
 
     tamerpriv::simple_event *_e;
 
-    struct marker { };
-    inline event(const marker &, tamerpriv::simple_event *e)
+    struct take_marker { };
+    inline event(const take_marker &, tamerpriv::simple_event *e)
 	: _e(e) {
-	_e->use();
     }
     
     friend class tamerpriv::simple_event;
@@ -712,8 +711,7 @@ inline void simple_event::at_cancel(const event<> &e)
 	_canceller = e._e;
 	_canceller->use();
     } else {
-	event<> comb = tamer::distribute(event<>::__wrap(_canceller), e);
-	_canceller->unuse();
+	event<> comb = tamer::distribute(event<>::__take(_canceller), e);
 	_canceller = comb._e;
 	_canceller->use();
     }
