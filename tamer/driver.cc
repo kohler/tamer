@@ -50,14 +50,16 @@ sigcancel_rendezvous sigcancelr;
 
 driver::driver()
     : _t(0), _nt(0),
-      _fd(0), _fdcap(0), _nfds(0),
+      _fd(0), _nfds(0),
       _asap_head(0), _asap_tail(0), _asapcap(16),
-      _tcap(0), _tgroup(0), _tfree(0)
+      _tcap(0), _tgroup(0), _tfree(0),
+      _fdcap(0), _fdgroup(0), _fdfree(0)
 {
     expand_timers();
     FD_ZERO(&_readfds);
     FD_ZERO(&_writefds);
     _asap = reinterpret_cast<event<> *>(new unsigned char[sizeof(event<>) * _asapcap]);
+    set_now();
 }
 
 driver::~driver()
@@ -74,10 +76,18 @@ driver::~driver()
     }
     delete[] _t;
 
-    // free file descriptors
-    for (int i = 0; i < _fdcap; i++)
-	_fd[i].~event();
-    delete[] reinterpret_cast<unsigned char *>(_fd);
+    // destroy all active file descriptors
+    while (_fd) {
+	_fd->e.~event();
+	_fd = _fd->next;
+    }
+
+    // free file descriptor groups
+    while (_fdgroup) {
+	tfd_group *next = _fdgroup->next;
+	delete[] reinterpret_cast<unsigned char *>(_fdgroup);
+	_fdgroup = next;
+    }
 
     // free asap
     for (unsigned a = _asap_head; a != _asap_tail; a++)
@@ -106,7 +116,6 @@ void driver::expand_timers()
 
 void driver::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/)
 {
-    // MUST be called with timer lock held
     int npos;
     while (pos > 0
 	   && (npos = (pos-1) >> 1, timercmp(&_t[npos]->expiry, &t->expiry, >))) {
@@ -140,20 +149,17 @@ void driver::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/)
 #endif
 }
 
-void driver::expand_fds(int fd)
+void driver::expand_fds()
 {
     int ncap = (_fdcap ? _fdcap * 2 : 16);
-    while (fd*2 >= ncap)
-	ncap *= 2; // XXX integer overflow
 
-    event<> *nfd = reinterpret_cast<event<> *>(new unsigned char[sizeof(event<>) * ncap]);
-    memcpy(nfd, _fd, sizeof(event<>) * _fdcap);
-    for (int i = _fdcap; i < ncap; i++)
-	(void) new(static_cast<void *>(&nfd[i])) event<>();
-    
-    delete[] reinterpret_cast<unsigned char *>(_fd);
-    _fd = nfd;
-    _fdcap = ncap;
+    tfd_group *ngroup = reinterpret_cast<tfd_group *>(new unsigned char[sizeof(tfd_group) + sizeof(tfd) * (ncap - 1)]);
+    ngroup->next = _fdgroup;
+    _fdgroup = ngroup;
+    for (int i = 0; i < ncap; i++) {
+	ngroup->t[i].next = _fdfree;
+	_fdfree = &ngroup->t[i];
+    }
 }
 
 void driver::expand_asap()
@@ -177,17 +183,43 @@ void driver::expand_asap()
 
 void driver::at_fd(int fd, bool write, const event<> &trigger)
 {
-    if (fd*2 >= _fdcap)
-	expand_fds(fd);
-    _fd[fd*2+write] = trigger;
-    fd_set *fset = (write ? &_writefds : &_readfds);
+    if (!_fdfree)
+	expand_fds();
+    if (fd >= FD_SETSIZE)
+	throw tamer::tamer_error("file descriptor too large");
     if (trigger) {
-	//trigger.setcancel(event<>(_fdcancel, fd*2+write));
+	tfd *t = _fdfree;
+	_fdfree = t->next;
+	t->next = _fd;
+	_fd = t;
+	
+	t->fdaction = fd*2 + write;
+	(void) new(static_cast<void *>(&t->e)) event<>(trigger);
+	
+	fd_set *fset = (write ? &_writefds : &_readfds);
 	FD_SET(fd, fset);
 	if (fd >= _nfds)
 	    _nfds = fd + 1;
-    } else
-	FD_CLR(fd, fset);
+	
+	t->e.at_cancel(make_event(_fdcancelr));
+    }
+}
+
+void driver::at_delay(double delay, const event<> &e)
+{
+    if (delay <= 0)
+	at_asap(e);
+    else {
+	timeval tv = now;
+	long ldelay = (long) delay;
+	tv.tv_sec += ldelay;
+	tv.tv_usec += (long) ((delay - ldelay) * 1000000 + 0.5);
+	if (tv.tv_usec >= 1000000) {
+	    tv.tv_sec++;
+	    tv.tv_usec -= 1000000;
+	}
+	at_time(tv, e);
+    }
 }
 
 extern "C" {
@@ -238,11 +270,6 @@ void driver::at_signal(int signal, const event<> &trigger)
     }
 }
 
-void driver::initialize()
-{
-    set_now();
-}
-
 void driver::once()
 {
     // get rid of initial cancelled timers
@@ -274,9 +301,28 @@ void driver::once()
 	toptr = &to;
     }
 
-    // get rid of dead descriptors
-    while (_nfds && !_fd[_nfds*2 - 2] && !_fd[_nfds*2 - 1])
-	_nfds--;
+    // get rid of canceled descriptors, if any
+    if (_fdcancelr.nready()) {
+	while (_fdcancelr.join())
+	    /* nada */;
+	FD_ZERO(&_readfds);
+	FD_ZERO(&_writefds);
+	_nfds = 0;
+	tfd **pprev = &_fd, *t;
+	while ((t = *pprev))
+	    if (t->e) {
+		fd_set *fset = (t->fdaction & 1 ? &_writefds : &_readfds);
+		FD_SET(t->fdaction >> 1, fset);
+		pprev = &t->next;
+		if ((t->fdaction >> 1) >= _nfds)
+		    _nfds = (t->fdaction >> 1) + 1;
+	    } else {
+		t->e.~event();
+		*pprev = t->next;
+		t->next = _fdfree;
+		_fdfree = t;
+	    }
+    }
     
     // select!
     fd_set rfds = _readfds;
@@ -324,22 +370,26 @@ void driver::once()
 	_asap_head++;
     }
 
-    // run the file descriptors
+    // run file descriptors
     if (nfds >= 0) {
-	for (int fd = 0; fd < _nfds; fd++) {
-	    if (FD_ISSET(fd, &rfds)) {
-		FD_CLR(fd, &_readfds);
-		_fd[fd*2].trigger();
-	    }
-	    if (FD_ISSET(fd, &wfds)) {
-		FD_CLR(fd, &_writefds);
-		_fd[fd*2+1].trigger();
-	    }
+	tfd **pprev = &_fd, *t;
+	while ((t = *pprev)) {
+	    fd_set *fset = (t->fdaction & 1 ? &wfds : &rfds);
+	    if (FD_ISSET(t->fdaction >> 1, fset)) {
+		fset = (t->fdaction & 1 ? &_writefds : &_readfds);
+		FD_CLR(t->fdaction >> 1, fset);
+		t->e.trigger();
+		t->e.~event();
+		*pprev = t->next;
+		t->next = _fdfree;
+		_fdfree = t;
+	    } else
+		pprev = &t->next;
 	}
     }
 
     // run the timers that worked
-    gettimeofday(&now, 0);
+    set_now();
     while (_nt > 0 && (t = _t[0], !timercmp(&t->expiry, &now, >))) {
 	timer_reheapify_from(0, _t[_nt - 1], true);
 	_nt--;

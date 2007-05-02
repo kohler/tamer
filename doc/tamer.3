@@ -178,13 +178,16 @@ The first, and more common, form of wait point is written
 \*(lq\fBtwait\~{ \fIstatements\fB; }\fR\*(rq.
 This executes the
 .IR statements ,
-then blocks until
-.I all
-events created by
+then blocks until all events created by
 .B make_event 
 calls in the
 .I statements
-have triggered.
+have triggered.  (Within the
+.IR statements ,
+.B make_event
+is redefined to a macro that automatically supplies the initial
+.B rendezvous
+argument.)
 For example, code like \*(lq\fBtwait { tamer::at_delay_sec(\fR10\fB, make_event()); }\fR\*(rq
 should be read as \*(lqexecute \fBtamer::at_delay_sec(\fR10\fB, make_event())\fR,
 then block until the created event has triggered\*(rq\*Eor,
@@ -506,10 +509,8 @@ Returns an event that distributes trigger operations over
 .IR e1 " and " e2 .
 When the returned event is triggered, both
 .IR e1 " and " e2
-will be triggered automatically.  Cancel operations are not automatically
-distributed over
-.IR e1 " and " e2 .
-However, canceling the returned event will release its references to
+will be triggered automatically.  Canceling the returned event will release
+its references to
 .IR e1 " and " e2 ;
 if those were the only references remaining, the events will be canceled as
 usual.
@@ -538,3 +539,153 @@ is canceled, then the returned event will be canceled.
 .RE
 '
 .SH "DRIVER"
+The
+.B driver
+class handles
+.BR Tamer 's 
+fundamental events: timers, signals, and file descriptors.  Most programs
+will use the single
+.B driver::main
+object, which is accessed through top-level functions as follows.
+.sp
+.nf
+.B void at_fd_read(int \fIfd\fB, const event<> &\fIe\fB)
+.fi
+.RS 5
+Triggers event
+.I e
+when
+.I fd
+becomes readable.
+.I fd
+must be a valid file descriptor less than
+.BR FD_SETSIZE .
+.RE
+.sp
+.nf
+.B void at_fd_write(int \fIfd\fB, const event<> &\fIe\fB)
+.fi
+.RS 5
+Triggers event
+.I e
+when
+.I fd
+becomes writable.
+.I fd
+must be a valid file descriptor less than
+.BR FD_SETSIZE .
+.RE
+.sp
+.nf
+.B void at_time(const timeval &\fIexpiry\fB, const event<> &\fIe\fB)
+.fi
+.RS 5
+Triggers event
+.I e
+at time
+.IR expiry .
+(Actually, as with all timer events, the event is triggered on or after
+.IR expiry ;
+the system aims to trigger the event as soon as possible.)
+.RE
+.sp
+.nf
+.B void at_delay(const timeval &\fIdelay\fB, const event<> &\fIe\fB)
+.fi
+.RS 5
+Triggers event
+.I e
+after at least
+.I delay
+time has passed.  All delays are measured relative to the timestamp
+.BR now() .
+.RE
+.sp
+.nf
+.B void at_delay(double \fIdelay\fB, const event<> &\fIe\fB)
+.fi
+.RS 5
+Triggers event
+.I e
+after at least
+.I delay
+seconds have passed.
+.RE
+.sp
+.nf
+.B void at_delay_sec(double \fIdelay\fB, const event<> &\fIe\fB)
+.fi
+.RS 5
+Triggers event
+.I e
+after at least
+.I delay
+seconds have passed.
+.RE
+.sp
+.nf
+.B void at_delay_msec(double \fIdelay\fB, const event<> &\fIe\fB)
+.fi
+.RS 5
+Triggers event
+.I e
+after at least
+.I delay
+milliseconds have passed.
+.RE
+.sp
+.nf
+.B void at_signal(int \fIsignal\fB, const event<> &\fIe\fB)
+.fi
+.RS 5
+Triggers event
+.I e
+if the
+.I signal
+occurs.  The event is not triggered directly inside the signal handler.
+Rather, the signal handler marks the signal's occurrence, then blocks the
+signal from further delivery.  The signal remains blocked until
+.IR e
+has been triggered and any corresponding closure has run (and possibly
+registered another event to catch the signal).  Thus, programmers can
+safely catch signals without race conditions.
+.RE
+.sp
+.nf
+.B void at_asap(const event<> &\fIe\fB)
+.fi
+.RS 5
+Triggers event
+.I e
+on the next execution of
+.BR Tamer 's
+main loop.
+.RE
+.sp
+.nf
+.B const timeval &now()
+.fi
+.RS 5
+Returns the current cached timestamp.
+.RE
+.sp
+.nf
+.B void once()
+.fi
+.RS 5
+Runs through the driver's event loop once.  First, the driver removes any
+canceled timer and file descriptor events.  Then, the driver calls
+.BR select
+and possibly blocks, waiting for the next event.  Then, the driver triggers
+and runs the appropriate signal events, file descriptor events, timer
+events, and ASAP events.  Each path through the event loop resets
+.B now()
+to the correct current value.
+.RE
+.sp
+.nf
+.B void loop()
+.fi
+.RS 5
+Equivalent to \*(lq\fBwhile (1) once();\fR\*(rq.
+

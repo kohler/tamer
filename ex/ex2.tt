@@ -11,9 +11,9 @@ int n;
 
 tamed void read_sucka(int fd) {
     tvars {
-	int result;
+	int result(-1);
 	char buf[40];
-	ssize_t amt;
+	ssize_t amt(0);
     }
     n++;
     twait {
@@ -33,7 +33,6 @@ tamed void time_sucka() {
 
 int main(int, char **) {
     tamer::fileio::make_nonblocking(0);
-    tamer::initialize();
     read_sucka(0);
     time_sucka();
     while (n > 0)

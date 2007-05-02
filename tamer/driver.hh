@@ -9,13 +9,12 @@ class driver { public:
     driver();
     ~driver();
 
-    void initialize();
-    
     inline void at_fd_read(int fd, const event<> &e);
     inline void at_fd_write(int fd, const event<> &e);
     
     inline void at_time(const timeval &expiry, const event<> &e);
     inline void at_delay(timeval delay, const event<> &e);
+    void at_delay(double delay, const event<> &e);
     inline void at_delay_sec(int delay, const event<> &e);
     inline void at_delay_msec(int delay, const event<> &e);
 
@@ -23,11 +22,11 @@ class driver { public:
 
     inline void at_asap(const event<> &e);
     
-    void once();
-    void loop();
-
     timeval now;
     inline void set_now();
+
+    void once();
+    void loop();
 
     static driver main;
 
@@ -47,29 +46,43 @@ class driver { public:
 	ttimer_group *next;
 	ttimer t[1];
     };
+
+    struct tfd {
+	int fdaction;
+	event<> e;
+	tfd *next;
+    };
+
+    struct tfd_group {
+	tfd_group *next;
+	tfd t[1];
+    };
     
     ttimer **_t;
     int _nt;
 
-    event<> *_fd;
-    int _fdcap;
+    tfd *_fd;
     int _nfds;
-
+    fd_set _readfds;
+    fd_set _writefds;
+    
     event<> *_asap;
     unsigned _asap_head;
     unsigned _asap_tail;
     unsigned _asapcap;
 
-    fd_set _readfds;
-    fd_set _writefds;
-    
     int _tcap;
     ttimer_group *_tgroup;
     ttimer *_tfree;
 
+    int _fdcap;
+    tfd_group *_fdgroup;
+    tfd *_fdfree;
+    rendezvous<> _fdcancelr;
+    
     void expand_timers();
     void timer_reheapify_from(int pos, ttimer *t, bool will_delete);
-    void expand_fds(int fd);
+    void expand_fds();
     void expand_asap();
     void at_fd(int fd, bool write, const event<> &e);
     
@@ -78,6 +91,16 @@ class driver { public:
 inline void driver::set_now()
 {
     gettimeofday(&now, 0);
+}
+
+inline void driver::at_fd_read(int fd, const event<> &e)
+{
+    at_fd(fd, false, e);
+}
+
+inline void driver::at_fd_write(int fd, const event<> &e)
+{
+    at_fd(fd, true, e);
 }
 
 inline void driver::at_time(const timeval &expiry, const event<> &e)
@@ -91,28 +114,10 @@ inline void driver::at_time(const timeval &expiry, const event<> &e)
     timer_reheapify_from(_nt - 1, t, false);
 }
 
-inline void driver::at_fd_read(int fd, const event<> &e)
+inline void driver::at_delay(timeval delay, const event<> &e)
 {
-    at_fd(fd, false, e);
-}
-
-inline void driver::at_fd_write(int fd, const event<> &e)
-{
-    at_fd(fd, true, e);
-}
-
-inline void driver::at_asap(const event<> &e)
-{
-    if (_asap_tail - _asap_head == _asapcap)
-	expand_asap();
-    (void) new((void *) &_asap[_asap_tail & (_asapcap - 1)]) event<>(e);
-    _asap_tail++;
-}
-
-inline void driver::at_delay(timeval tv, const event<> &e)
-{
-    timeradd(&tv, &now, &tv);
-    at_time(tv, e);
+    timeradd(&delay, &now, &delay);
+    at_time(delay, e);
 }
 
 inline void driver::at_delay_sec(int delay, const event<> &e)
@@ -120,10 +125,9 @@ inline void driver::at_delay_sec(int delay, const event<> &e)
     if (delay <= 0)
 	at_asap(e);
     else {
-	timeval tv;
-	tv.tv_sec = delay;
-	tv.tv_usec = 0;
-	at_delay(tv, e);
+	timeval tv = now;
+	tv.tv_sec += delay;
+	at_time(tv, e);
     }
 }
 
@@ -139,9 +143,12 @@ inline void driver::at_delay_msec(int delay, const event<> &e)
     }
 }
 
-inline void initialize()
+inline void driver::at_asap(const event<> &e)
 {
-    driver::main.initialize();
+    if (_asap_tail - _asap_head == _asapcap)
+	expand_asap();
+    (void) new((void *) &_asap[_asap_tail & (_asapcap - 1)]) event<>(e);
+    _asap_tail++;
 }
 
 inline struct timeval &now()
@@ -164,17 +171,27 @@ inline void loop()
     driver::main.loop();
 }
 
+inline void at_fd_read(int fd, const event<> &e)
+{
+    driver::main.at_fd_read(fd, e);
+}
+
+inline void at_fd_write(int fd, const event<> &e)
+{
+    driver::main.at_fd_write(fd, e);
+}
+
 inline void at_time(const timeval &expiry, const event<> &e)
 {
     driver::main.at_time(expiry, e);
 }
 
-inline void at_asap(const event<> &e)
+inline void at_delay(const timeval &delay, const event<> &e)
 {
-    driver::main.at_asap(e);
+    driver::main.at_delay(delay, e);
 }
 
-inline void at_delay(const timeval &delay, const event<> &e)
+inline void at_delay(double delay, const event<> &e)
 {
     driver::main.at_delay(delay, e);
 }
@@ -189,19 +206,14 @@ inline void at_delay_msec(int delay, const event<> &e)
     driver::main.at_delay_msec(delay, e);
 }
 
-inline void at_fd_read(int fd, const event<> &e)
-{
-    driver::main.at_fd_read(fd, e);
-}
-
-inline void at_fd_write(int fd, const event<> &e)
-{
-    driver::main.at_fd_write(fd, e);
-}
-
 inline void at_signal(int sig, const event<> &e)
 {
     driver::at_signal(sig, e);
+}
+
+inline void at_asap(const event<> &e)
+{
+    driver::main.at_asap(e);
 }
 
 }
