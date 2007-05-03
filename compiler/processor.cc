@@ -344,7 +344,7 @@ var_t
 tame_fn_t::mk_closure (bool ref) const
 {
   strbuf b;
-  b << _name_mangled << "__closure";
+  b << _method_name << "__closure";
 
   return var_t (b.str(), (ref ? "&" : "*"), TAME_CLOSURE_NAME, NONE, _template_args);
 }
@@ -432,19 +432,27 @@ vartab_t::paramlist (strbuf &b, list_mode_t list_mode, str prfx) const
 str
 tame_fn_t::label (str s) const
 {
-  strbuf b;
-  b << _name_mangled << "__label_" << s;
-  return b.str();
+    strbuf b;
+    b << "__closure_label_" << s;
+    return b.str();
 }
 
 str
 tame_fn_t::label (unsigned id) const
 {
-  strbuf b;
-  b << id;
-  return label(b.str());
+    strbuf b;
+    b << id;
+    return label(b.str());
 }
 
+bool
+element_list_t::need_implicit_rendezvous() const
+{
+    for (std::list<tame_el_t *>::const_iterator i = _lst.begin(); i != _lst.end(); i++)
+	if ((*i)->need_implicit_rendezvous())
+	    return true;
+    return false;
+}
 
 //
 //
@@ -467,45 +475,14 @@ tame_passthrough_t::output(outputter_t *o)
 void
 tame_fn_t::output_reenter (strbuf &b)
 {
-  b << "  void _closure__activate(unsigned blockid)\n"
-    << "  {\n"
-    ;
-
-  b << "    ";
-  if (_class.length()) {
-    b << "(";
-    if (!(_opts & STATIC_DECL)) {
-      b << "(*_self).";
-    }
-    b << "*_method) ";
-  } else {
-    b << _name ;
-  }
-
-  b << " (*this, blockid);\n"
-    << "  }\n";
-}
-
-void
-tame_fn_t::output_set_method_pointer (strbuf &b)
-{
-  b << "  typedef "
-    << _ret_type.to_str () << " (";
-  if (!(_opts & STATIC_DECL)) {
-    b << _class << "::";
-  }
-  b << "*method_type_t) (";
-  if (_args) {
-    _args->paramlist (b, TYPES);
-    b << ", ";
-  }
-  b << "ptr<closure_t>)";
-  if (_isconst)
-    b << " const";
-  b << ";\n";
-
-  b << "  void set_method_pointer (method_type_t m) { _method = m; }\n\n";
-    
+    b << "  void _closure__activate(unsigned blockid)\n"
+      << "  {\n    ";
+    if (_class.length())
+	b << _self.name() << "->" << _method_name;
+    else
+	b << _name;
+    b << " (*this, blockid);\n"
+      << "  }\n";
 }
 
 static void
@@ -528,7 +505,10 @@ tame_fn_t::output_closure (outputter_t *o)
       b << template_str () << "\n";
   }
 
-  b << "class " << _closure.type ().base_type () 
+  b << "class ";
+  if (_class.length())
+      b << _class << "::";
+  b << _closure.type ().base_type () 
     << " : public tamer::tamerpriv::closure "
     << "{\n"
     << "public:\n"
@@ -574,15 +554,10 @@ tame_fn_t::output_closure (outputter_t *o)
   
   b << " {}\n\n";
 
-
-  if (_class.length()) {
-    output_set_method_pointer (b);
-  }
-
   output_reenter (b);
 
   if (_class.length())
-    b << "  method_type_t _method;\n";
+      b << "  " << _self.decl() << ";\n";
   
   //output_is_onstack (b);
 
@@ -590,7 +565,8 @@ tame_fn_t::output_closure (outputter_t *o)
       _args->declarations (b, "    ");
   _stack_vars.declarations (b, "    ");
 
-  b << "  tamer::gather_rendezvous _closure__block;\n";
+  if (need_implicit_rendezvous())
+      b << "  tamer::gather_rendezvous _closure__block;\n";
 
   b << "};\n\n";
 
@@ -696,28 +672,30 @@ tame_fn_t::output_static_decl (outputter_t *o)
 void
 tame_fn_t::output_firstfn (outputter_t *o)
 {
-  strbuf b;
-  state->set_fn (this);
+    strbuf b;
+    state->set_fn (this);
 
-  output_mode_t om = o->switch_to_mode (OUTPUT_PASSTHROUGH);
-  b << signature (false)  << "\n"
-    << "{\n";
-
-  // If no vars section was specified, do it now.
-  b << "  " << _closure.decl () << ";\n";
-  b << "  __cls = new " << _closure.type().base_type() << "(";
-  if (_args) {
-      _args->paramlist (b, NAMES);
-  }
-  b << ");\n  __cls->_closure__activate(0);\n  __cls->closure::unuse();\n}\n";
-
-  o->output_str(b.str());
-
-  o->switch_to_mode (om);
+    output_mode_t om = o->switch_to_mode (OUTPUT_PASSTHROUGH);
+    b << signature (false)  << "\n"
+      << "{\n";
+    
+    // If no vars section was specified, do it now.
+    b << "  " << _closure.decl () << ";\n";
+    b << "  __cls = new " << _closure.type().base_type() << "(";
+    if (_class.length())
+	b << "this" << (_args ? ", " : "");
+    if (_args)
+	_args->paramlist(b, NAMES);
+    b << ");\n"
+      << "  __cls->_closure__activate(0);\n"
+      << "  __cls->closure::unuse();\n}\n";
+    
+    o->output_str(b.str());
+    o->switch_to_mode(om);
 }
 
 void
-tame_fn_t::output_fn (outputter_t *o)
+tame_fn_t::output_fn(outputter_t *o)
 {
   strbuf b;
   state->set_fn (this);
@@ -766,14 +744,16 @@ tame_fn_t::output_vars (outputter_t *o, int ln)
 void 
 tame_fn_t::output (outputter_t *o)
 {
-    strbuf b;
-    b << "class " << _closure.type ().base_type () << ";\n";
-    o->output_str(b.str());
-    //if ((_opts & STATIC_DECL) && !_class)
-    output_static_decl (o);
-    output_closure (o);
-    output_firstfn (o);
-    output_fn (o);
+    if (!_class.length()) {
+	strbuf b;
+	b << "class " << _closure.type ().base_type () << ";\n";
+	o->output_str(b.str());
+    }
+    if (!_class.length())
+	output_static_decl(o);
+    output_closure(o);
+    output_firstfn(o);
+    output_fn(o);
 }
 
 void 

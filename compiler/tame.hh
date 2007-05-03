@@ -1,5 +1,5 @@
 // -*-c++-*-
-/* $Id: tame.hh,v 1.3 2007-04-18 00:54:24 kohler Exp $ */
+/* $Id: tame.hh,v 1.4 2007-05-03 16:00:34 kohler Exp $ */
 
 /*
  *
@@ -189,11 +189,12 @@ protected:
 
 class tame_el_t {
 public:
-  tame_el_t () {}
-  virtual ~tame_el_t () {}
-  virtual bool append (const str &) { return false; }
-  virtual void output(outputter_t *o) = 0;
-  virtual bool goes_after_vars () const { return true; }
+    tame_el_t () {}
+    virtual ~tame_el_t () {}
+    virtual bool append (const str &) { return false; }
+    virtual void output(outputter_t *o) = 0;
+    virtual bool goes_after_vars () const { return true; }
+    virtual bool need_implicit_rendezvous() const { return false; }
 };
 
 class element_list_t : public tame_el_t {
@@ -207,6 +208,7 @@ class element_list_t : public tame_el_t {
 	}
     }
     virtual void push_hook (tame_el_t *) {}
+    bool need_implicit_rendezvous() const;
   protected:
     std::list<tame_el_t *> _lst;
 };
@@ -436,10 +438,9 @@ public:
 	     bool c, unsigned l, str loc)
       : _ret_type (ws_strip (r), ws_strip(d->pointer())),
       _name (d->name ()),
-      _name_mangled (mangle (_name)), 
       _method_name (strip_to_method (_name)),
       _class (strip_off_method (_name)), 
-      _self (c ? str("const ") + _class : _class, "*", "_self"),
+      _self (c ? str("const ") + _class : _class, "*", "_closure__self"),
       _isconst (c),
       _template (fn._template),
       _template_args (_class.length() ? template_args (_class) : ""),
@@ -477,9 +478,10 @@ public:
       return ret;
   }
 
-  // if non-void return, then there must be a default return
-  bool check_return_type () const 
-    { return (_ret_type.is_void () || _default_return.length()); }
+    // if non-void return, then there must be a default return
+    bool check_return_type () const {
+	return (_ret_type.is_void () || _default_return.length());
+    }
 
   str classname () const { return _class; }
   str name () const { return _name; }
@@ -494,8 +496,6 @@ public:
   void output(outputter_t *o);
 
   void add_env (tame_env_t *g) ;
-
-  str fn_prefix () const { return _name_mangled; }
 
   static var_t closure_generic () ;
   str decl_casted_closure (bool do_lhs) const;
@@ -530,7 +530,6 @@ public:
 private:
   const type_t _ret_type;
   const str _name;
-  const str _name_mangled;
   const str _method_name;
   const str _class;
   const var_t _self;
@@ -555,7 +554,6 @@ private:
   void output_stack_vars (strbuf &b);
   void output_arg_references (strbuf &b);
   void output_jump_tab (strbuf &b);
-  void output_set_method_pointer (strbuf &b);
   void output_block_cb_switch (strbuf &b);
   
   int _opts;
@@ -674,10 +672,11 @@ protected:
 
 class tame_block_t : public tame_env_t {
 public:
-  tame_block_t (int l) : _lineno (l) {}
-  virtual ~tame_block_t () {}
+    tame_block_t (int l) : _lineno (l) {}
+    virtual ~tame_block_t () {}
+    bool need_implicit_rendezvous() const { return true; }
 protected:
-  int _lineno;
+    int _lineno;
 };
 
 class tame_block_thr_t : public tame_block_t {
