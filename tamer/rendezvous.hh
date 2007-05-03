@@ -140,7 +140,7 @@ class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
     unsigned nwaiting() const	{ return _nwaiting; }
     unsigned nevents() const	{ return nready() + nwaiting(); }
 
-  private:
+  protected:
 
     tamerpriv::debuffer<uintptr_t> _buf;
     size_t _nwaiting;
@@ -191,9 +191,9 @@ class rendezvous<T *> : public rendezvous<uintptr_t> { public:
     }
     
     inline bool join(T *&i1) {
-	uintptr_t u;
-	if (inherited::join(u)) {
-	    i1 = reinterpret_cast<T *>(u);
+	if (uintptr_t *x = _buf.front()) {
+	    i1 = reinterpret_cast<T *>(*x);
+	    _buf.pop_front();
 	    return true;
 	} else
 	    return false;
@@ -214,9 +214,9 @@ class rendezvous<int> : public rendezvous<uintptr_t> { public:
     }
     
     inline bool join(int &i1) {
-	uintptr_t u;
-	if (inherited::join(u)) {
-	    i1 = static_cast<int>(u);
+	if (uintptr_t *x = _buf.front()) {
+	    i1 = static_cast<int>(*x);
+	    _buf.pop_front();
 	    return true;
 	} else
 	    return false;
@@ -237,9 +237,9 @@ class rendezvous<bool> : public rendezvous<uintptr_t> { public:
     }
     
     inline bool join(bool &i1) {
-	uintptr_t u;
-	if (inherited::join(u)) {
-	    i1 = static_cast<bool>(u);
+	if (uintptr_t *x = _buf.front()) {
+	    i1 = static_cast<bool>(*x);
+	    _buf.pop_front();
 	    return true;
 	} else
 	    return false;
