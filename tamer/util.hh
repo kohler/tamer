@@ -1,5 +1,5 @@
-#ifndef TAMER__UTIL_HH
-#define TAMER__UTIL_HH
+#ifndef TAMER_UTIL_HH
+#define TAMER_UTIL_HH 1
 #include <memory>
 #include <cassert>
 namespace tamer {
@@ -145,6 +145,7 @@ template <typename T, typename A = std::allocator<T> > class debuffer { public:
     ~debuffer();
 
     inline void push_back(const T &);
+    inline void push_front(const T &);
 
     inline size_t size() const throw ()		{ return _tail - _head; }
 
@@ -216,6 +217,15 @@ inline void debuffer<T, A>::pop_front()
     assert(_head != _tail);
     _alloc.destroy(&_elts[_head & (_cap - 1)]);
     _head++;
+}
+
+template <typename T, typename A>
+inline void debuffer<T, A>::push_front(const T &t)
+{
+    if (_tail - _head == _cap)
+	expand();
+    _alloc.construct(&_elts[(_head - 1) & (_cap - 1)], t);
+    _head--;
 }
 
 }}

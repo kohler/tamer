@@ -1,5 +1,5 @@
-#ifndef TAMER__EVENT_HH
-#define TAMER__EVENT_HH 1
+#ifndef TAMER_EVENT_HH
+#define TAMER_EVENT_HH 1
 #include <tamer/rendezvous.hh>
 namespace tamer {
 namespace tamerpriv {

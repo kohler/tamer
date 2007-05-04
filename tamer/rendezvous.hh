@@ -1,5 +1,5 @@
-#ifndef TAMER__RENDEZVOUS_HH
-#define TAMER__RENDEZVOUS_HH
+#ifndef TAMER_RENDEZVOUS_HH
+#define TAMER_RENDEZVOUS_HH 1
 #include <tamer/util.hh>
 #include <tamer/base.hh>
 namespace tamer {
@@ -288,17 +288,26 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 
 class gather_rendezvous : public rendezvous<> { public:
 
-    gather_rendezvous() {
+    gather_rendezvous()
+	: _dead(false) {
     }
 
     inline void complete(uintptr_t, bool success) {
 	_nwaiting--;
-	if (success)
+	if (success) {
 	    _nready++;
-	if (_nwaiting == 0)
-	    unblock();
+	    if (_nwaiting == 0 && !_dead)
+		unblock();
+	} else if (!_dead) {
+	    _dead = true;
+	    printf("killing! death!\n");
+	}
     }
 
+  private:
+
+    bool _dead;
+    
 };
 
 }

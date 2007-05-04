@@ -1,3 +1,4 @@
 Makefile Makefile.in .deps .libs
 ex1 ex1.cc
 ex2 ex2.cc
+ex3 ex3.cc

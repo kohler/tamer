@@ -228,5 +228,23 @@ inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, 
     return ret_e;
 }
 
+template <typename R, typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> with_cancel(R &r, event<T1, T2, T3, T4> e) {
+    e.at_cancel(make_event(r));
+    return e;
+}
+
+template <typename R, typename I1, typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> with_cancel(R &r, const I1 &i1, event<T1, T2, T3, T4> e) {
+    e.at_cancel(make_event(r, i1));
+    return e;
+}
+
+template <typename R, typename I1, typename I2, typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> with_cancel(R &r, const I1 &i1, const I2 &i2, event<T1, T2, T3, T4> e) {
+    e.at_cancel(make_event(r, i1, i2));
+    return e;
+}
+
 } /* namespace tamer */
-#endif /* TAMER_TAME_ADAPTER_HH */
+#endif /* TAMER_ADAPTER_HH */

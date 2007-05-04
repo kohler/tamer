@@ -1,0 +1,59 @@
+// -*- mode: c++ -*-
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <tamer.hh>
+#include <tamer/lock.hh>
+
+static tamer::mutex m;
+
+tamed void f1() {
+    twait { m.acquire(make_event()); }
+    printf("A\n");
+    twait { tamer::at_delay_msec(100, make_event()); }
+    printf("A'\n");
+    m.release();
+}
+
+tamed void f2() {
+    twait { tamer::at_delay_msec(50, make_event()); }
+    twait { m.acquire_shared(make_event()); }
+    printf("B\n");
+    twait {
+	tamer::at_delay_msec(250, make_event());
+    }
+    m.release_shared();
+    printf("E\n");
+}
+
+tamed void f3() {
+    tvars { int outcome; }
+    twait { tamer::at_delay_msec(50, make_event()); }
+    twait { m.acquire_shared(tamer::with_timeout_msec(10, make_event(), outcome)); }
+    if (outcome < 0)
+	printf("BX\n");
+    else {
+	printf("B'\n");
+	twait { tamer::at_delay_msec(10, make_event()); }
+	printf("C\n");
+	m.release_shared();
+	printf("D\n");
+    }
+}
+
+tamed void f4() {
+    twait { tamer::at_delay_msec(100, make_event()); }
+    twait { m.acquire(make_event()); }
+    printf("F\n");
+    m.release();
+}
+
+int main(int, char **) {
+    f1();
+    f2();
+    f3();
+    f4();
+    while (!tamer::driver::main.empty())
+	tamer::once();
+}

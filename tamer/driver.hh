@@ -1,5 +1,5 @@
-#ifndef TAMER__DRIVER_HH
-#define TAMER__DRIVER_HH 1
+#ifndef TAMER_DRIVER_HH
+#define TAMER_DRIVER_HH 1
 #include <tamer/event.hh>
 #include <sys/time.h>
 namespace tamer {
@@ -25,6 +25,7 @@ class driver { public:
     timeval now;
     inline void set_now();
 
+    bool empty() const;
     void once();
     void loop();
 
@@ -65,11 +66,8 @@ class driver { public:
     int _nfds;
     fd_set _readfds;
     fd_set _writefds;
-    
-    event<> *_asap;
-    unsigned _asap_head;
-    unsigned _asap_tail;
-    unsigned _asapcap;
+
+    tamerpriv::debuffer<event<> > _asap;
 
     int _tcap;
     ttimer_group *_tgroup;
@@ -81,9 +79,9 @@ class driver { public:
     rendezvous<> _fdcancelr;
     
     void expand_timers();
+    void check_timers() const;
     void timer_reheapify_from(int pos, ttimer *t, bool will_delete);
     void expand_fds();
-    void expand_asap();
     void at_fd(int fd, bool write, const event<> &e);
     
 };
@@ -145,10 +143,7 @@ inline void driver::at_delay_msec(int delay, const event<> &e)
 
 inline void driver::at_asap(const event<> &e)
 {
-    if (_asap_tail - _asap_head == _asapcap)
-	expand_asap();
-    (void) new((void *) &_asap[_asap_tail & (_asapcap - 1)]) event<>(e);
-    _asap_tail++;
+    _asap.push_back(e);
 }
 
 inline struct timeval &now()

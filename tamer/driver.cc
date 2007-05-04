@@ -51,14 +51,12 @@ sigcancel_rendezvous sigcancelr;
 driver::driver()
     : _t(0), _nt(0),
       _fd(0), _nfds(0),
-      _asap_head(0), _asap_tail(0), _asapcap(16),
       _tcap(0), _tgroup(0), _tfree(0),
       _fdcap(0), _fdgroup(0), _fdfree(0)
 {
     expand_timers();
     FD_ZERO(&_readfds);
     FD_ZERO(&_writefds);
-    _asap = reinterpret_cast<event<> *>(new unsigned char[sizeof(event<>) * _asapcap]);
     set_now();
 }
 
@@ -88,11 +86,6 @@ driver::~driver()
 	delete[] reinterpret_cast<unsigned char *>(_fdgroup);
 	_fdgroup = next;
     }
-
-    // free asap
-    for (unsigned a = _asap_head; a != _asap_tail; a++)
-	_asap[a & (_asapcap - 1)].~event();
-    delete[] reinterpret_cast<unsigned char *>(_asap);
 }
 
 void driver::expand_timers()
@@ -124,14 +117,13 @@ void driver::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/)
 	pos = npos;
     }
 
-    ttimer **tend = _t + _nt;
     while (1) {
 	ttimer *smallest = t;
-	ttimer **tp = _t + 2*pos + 1;
-	if (tp < tend && !timercmp(&tp[0]->expiry, &smallest->expiry, >))
-	    smallest = tp[0];
-	if (tp + 1 < tend && !timercmp(&tp[1]->expiry, &smallest->expiry, >))
-	    smallest = tp[1], tp++;
+	npos = 2*pos + 1;
+	if (npos < _nt && !timercmp(&_t[npos]->expiry, &smallest->expiry, >))
+	    smallest = _t[npos];
+	if (npos + 1 < _nt && !timercmp(&_t[npos+1]->expiry, &smallest->expiry, >))
+	    smallest = _t[npos+1], npos++;
 
 	smallest->u.schedpos = pos;
 	_t[pos] = smallest;
@@ -139,7 +131,7 @@ void driver::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/)
 	if (smallest == t)
 	    break;
 
-	pos = tp - _t;
+	pos = npos;
     }
 #if 0
     if (_t + 1 < tend || !will_delete)
@@ -148,6 +140,26 @@ void driver::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/)
 	_timer_expiry = Timestamp();
 #endif
 }
+
+#if 0
+void driver::check_timers() const
+{
+    fprintf(stderr, "---");
+    for (int k = 0; k < _nt; k++)
+	fprintf(stderr, " %p/%d.%06d", _t[k], _t[k]->expiry.tv_sec, _t[k]->expiry.tv_usec);
+    fprintf(stderr, "\n");
+    
+    for (int i = 0; i < _nt / 2; i++)
+	for (int j = 2*i + 1; j < 2*i + 3; j++)
+	    if (j < _nt && timercmp(&_t[i]->expiry, &_t[j]->expiry, >)) {
+		fprintf(stderr, "***");
+		for (int k = 0; k < _nt; k++)
+		    fprintf(stderr, (k == i || k == j ? " **%d.%06d**" : " %d.%06d"), _t[k]->expiry.tv_sec, _t[k]->expiry.tv_usec);
+		fprintf(stderr, "\n");
+		assert(0);
+	    }
+}
+#endif
 
 void driver::expand_fds()
 {
@@ -160,25 +172,6 @@ void driver::expand_fds()
 	ngroup->t[i].next = _fdfree;
 	_fdfree = &ngroup->t[i];
     }
-}
-
-void driver::expand_asap()
-{
-    int ncap = _asapcap * 2;
-    event<> *nasap = reinterpret_cast<event<> *>(new unsigned char[sizeof(event<>) * ncap]);
-    unsigned headoff = (_asap_head & (_asapcap - 1));
-    unsigned tailoff = (_asap_tail & (_asapcap - 1));
-    if (headoff <= tailoff)
-	memcpy(nasap, _asap + headoff, sizeof(event<>) * (_asap_tail - _asap_head));
-    else {
-	memcpy(nasap, _asap + headoff, sizeof(event<>) * (_asapcap - headoff));
-	memcpy(nasap + headoff, _asap, sizeof(event<>) * tailoff);
-    }
-    _asap_tail = _asap_tail - _asap_head;
-    _asap_head = 0;
-    delete[] reinterpret_cast<unsigned char *>(_asap);
-    _asap = nasap;
-    _asapcap = ncap;
 }
 
 void driver::at_fd(int fd, bool write, const event<> &trigger)
@@ -270,6 +263,17 @@ void driver::at_signal(int signal, const event<> &trigger)
     }
 }
 
+bool driver::empty() const
+{
+    if (_nt != 0 || _nfds != 0 || _asap.size() != 0
+	|| sig_any_active || tamerpriv::abstract_rendezvous::unblocked)
+	return false;
+    for (int i = 0; i < NSIGNALS; i++)
+	if (sig_handlers[i])
+	    return false;
+    return true;
+}
+
 void driver::once()
 {
     // get rid of initial cancelled timers
@@ -284,7 +288,7 @@ void driver::once()
 
     // determine timeout
     struct timeval to, *toptr;
-    if (_asap_head != _asap_tail
+    if (_asap.size()
 	|| (_nt > 0 && !timercmp(&_t[0]->expiry, &now, >))
 	|| sig_any_active) {
 	timerclear(&to);
@@ -292,11 +296,6 @@ void driver::once()
     } else if (_nt == 0)
 	toptr = 0;
     else {
-#if 0
-	for (int i = 0; i < _nt; i++)
-	    fprintf(stderr, "%d.%06d ; ", _t[i]->expiry.tv_sec, _t[i]->expiry.tv_usec);
-	fprintf(stderr, "(%d.%06d) \n", now.tv_sec, now.tv_usec);
-#endif
 	timersub(&_t[0]->expiry, &now, &to);
 	toptr = &to;
     }
@@ -364,10 +363,9 @@ void driver::once()
     }
 
     // run asaps
-    while (_asap_head != _asap_tail) {
-	_asap[_asap_head & (_asapcap - 1)].trigger();
-	_asap[_asap_head & (_asapcap - 1)].~event();
-	_asap_head++;
+    while (event<> *e = _asap.front()) {
+	e->trigger();
+	_asap.pop_front();
     }
 
     // run file descriptors
