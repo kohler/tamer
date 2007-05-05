@@ -1,5 +1,5 @@
 // -*-c++-*-
-/* $Id: tame.hh,v 1.4 2007-05-03 16:00:34 kohler Exp $ */
+/* $Id: tame.hh,v 1.5 2007-05-05 17:12:28 kohler Exp $ */
 
 /*
  *
@@ -497,8 +497,6 @@ public:
 
   void add_env (tame_env_t *g) ;
 
-  static var_t closure_generic () ;
-  str decl_casted_closure (bool do_lhs) const;
   var_t closure () const { return _closure; }
   static var_t trig () ;
 
@@ -789,5 +787,7 @@ do {                                                      \
       b << in;                                            \
       out = lstr (ln, b.str());				  \
 } while (0)
+
+extern bool tamer_debug;
 
 #endif /* _TAME_TAME_H */

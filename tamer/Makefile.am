@@ -27,3 +27,6 @@ TAMER = ../compiler/tamer
 
 fileio.cc: $(TAMER) fileio.tt
 lock.cc: $(TAMER) lock.tt
+
+clean-local:
+	-rm -f fileio.cc lock.cc

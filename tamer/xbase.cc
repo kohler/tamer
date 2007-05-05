@@ -29,6 +29,22 @@ class simple_event::initializer { public:
 simple_event::initializer simple_event::the_initializer; 
 
 
+bool tamer_closure::block_landmark(const char *&file, unsigned &line) {
+    file = "<unknown>";
+    line = 0;
+    return false;
+}
+
+bool tamer_debug_closure::block_landmark(const char *&file, unsigned &line) {
+    if (!_block_file)
+	return tamer_closure::block_landmark(file, line);
+    else {
+	file = _block_file;
+	line = _block_line;
+	return true;
+    }
+}
+
 
 class distribute_rendezvous : public abstract_rendezvous { public:
 

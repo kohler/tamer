@@ -329,12 +329,6 @@ array_initializer_t::output_in_declaration () const
 //
 
 var_t
-tame_fn_t::closure_generic ()
-{
-  return var_t ("ptr<closure_t>", NULL, CLOSURE_GENERIC);
-}
-
-var_t
 tame_fn_t::trig ()
 {
   return var_t ("ptr<trig_t>", NULL, "trig");
@@ -350,23 +344,11 @@ tame_fn_t::mk_closure (bool ref) const
 }
 
 str
-tame_fn_t::decl_casted_closure (bool do_lhs) const
-{
-  strbuf b;
-  if (do_lhs) {
-    b << "  " << _closure.decl()  << " =\n";
-  }
-  b << "    reinterpret_cast<" << _closure.type ().to_str_w_template_args () 
-    << "> (static_cast<closure_t *> (" << closure_generic ().name () << "));";
-  return b.str();
-}
-
-str
 tame_fn_t::reenter_fn () const
 {
   strbuf b;
   b << closure ().type ().to_str_w_template_args (false)
-    << "::_closure__activate";
+    << "::tamer_closure_activate";
   return b.str();
 }
 
@@ -475,13 +457,14 @@ tame_passthrough_t::output(outputter_t *o)
 void
 tame_fn_t::output_reenter (strbuf &b)
 {
-    b << "  void _closure__activate(unsigned blockid)\n"
-      << "  {\n    ";
+    b << "  void tamer_closure_activate(unsigned blockid) {\n    ";
+    if (tamer_debug)
+	b << "tamer_debug_closure::set_block_landmark(0, 0);\n    ";
     if (_class.length())
 	b << _self.name() << "->" << _method_name;
     else
 	b << _name;
-    b << " (*this, blockid);\n"
+    b << "(*this, blockid);\n"
       << "  }\n";
 }
 
@@ -509,8 +492,9 @@ tame_fn_t::output_closure (outputter_t *o)
   if (_class.length())
       b << _class << "::";
   b << _closure.type ().base_type () 
-    << " : public tamer::tamerpriv::closure "
-    << "{\n"
+    << " : public tamer::tamerpriv::"
+    << (tamer_debug ? "tamer_debug_closure" : "tamer_closure")
+    << " {\n"
     << "public:\n"
     << "  " << _closure.type ().base_type () 
     << " (";
@@ -525,30 +509,29 @@ tame_fn_t::output_closure (outputter_t *o)
       _args->paramlist(b, DECLARATIONS);
   }
 
-  b << ") : tamer::tamerpriv::closure ("
-      // << "\"" << state->infile_name () << "\", \"" << _name << "\""
-    << ")"
-      ;
+  b << ")";
+  const char *separator = " : ";
 
   if (need_self ()) {
-    str s = _self.name ();
-    b << ", " << s << " (" << s << ")";
+      str s = _self.name ();
+      b << separator << s << " (" << s << ")";
+      separator = ", ";
   }
 
   // output arguments declaration
   if (_args && _args->size ()) {
-    b << ", ";
-    _args->initialize (b, true);
+      b << separator;
+      _args->initialize(b, true);
+      separator = ", ";
   }
   
   // output stack declaration
   if (_stack_vars.size ()) {
-    strbuf i;
-    _stack_vars.initialize (i, false);
-    str s (i.str());
-    if (s.length() > 0) {
-      b << ", " << s << " ";
-    }
+      strbuf i;
+      _stack_vars.initialize (i, false);
+      str s (i.str());
+      if (s.length() > 0)
+	  b << separator << s << " ";
   }
 
   
@@ -687,8 +670,8 @@ tame_fn_t::output_firstfn (outputter_t *o)
     if (_args)
 	_args->paramlist(b, NAMES);
     b << ");\n"
-      << "  __cls->_closure__activate(0);\n"
-      << "  __cls->closure::unuse();\n}\n";
+      << "  __cls->tamer_closure_activate(0);\n"
+      << "  __cls->tamer_closure::unuse();\n}\n";
     
     o->output_str(b.str());
     o->switch_to_mode(om);
@@ -757,7 +740,7 @@ tame_fn_t::output (outputter_t *o)
 }
 
 void 
-tame_block_ev_t::output (outputter_t *o)
+tame_block_ev_t::output(outputter_t *o)
 {
   strbuf b;
   str tmp;
@@ -781,13 +764,13 @@ tame_block_ev_t::output (outputter_t *o)
   om = o->switch_to_mode (OUTPUT_TREADMILL);
   b << _fn->label(_id) << ":\n"
     << "  while (" << TAME_CLOSURE_NAME << "._closure__block.nwaiting()) {\n"
-    << "      " << TAME_CLOSURE_NAME << "._closure__block.block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n"
-    << "      "
+    << "      " << TAME_CLOSURE_NAME << "._closure__block.block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n";
+  if (tamer_debug)
+      b << "      " << TAME_CLOSURE_NAME << ".tamer_debug_closure::set_block_landmark(__FILE__, __LINE__);\n";
+  b << "      "
     << _fn->return_expr ()
     << "; }\n"
-    << "  }\n"
-    ;
-
+    << "  }\n";
 
   o->output_str(b.str());
   o->switch_to_mode (om);
@@ -855,10 +838,10 @@ expr_list_t::output_vars (strbuf &b, bool first, const str &prfx,
 void
 tame_join_t::output_blocked (strbuf &b, const str &jgn)
 {
-    b << "    " << jgn << ".block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n"
-      << "    "
-      << _fn->return_expr()
-      << ";\n";
+    b << "    " << jgn << ".block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n";
+    if (tamer_debug)
+	b << "    " << TAME_CLOSURE_NAME << ".tamer_debug_closure::set_block_landmark(__FILE__, __LINE__);\n";
+    b << "    " << _fn->return_expr() << ";\n";
 }
 
 void

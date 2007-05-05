@@ -1,4 +1,4 @@
 Makefile Makefile.in config.h config.h.in stamp-h1
 .deps .libs
 *.la *.lo
-fileio.cc tamer.cc
+fileio.cc lock.cc

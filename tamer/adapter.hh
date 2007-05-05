@@ -92,7 +92,7 @@ const int signal = -EINTR;
 
 namespace tamerpriv {
 
-class connector_closure : public closure { public:
+class connector_closure : public tamer_closure { public:
 
     template <typename T1, typename T2, typename T3, typename T4>
     connector_closure(const event<T1, T2, T3, T4> &e, int *result = 0)
@@ -104,7 +104,7 @@ class connector_closure : public closure { public:
 	_e->unuse();
     }
 
-    void _closure__activate(unsigned) {
+    void tamer_closure_activate(unsigned) {
 	int x;
 	if (!_r.join(x)) {
 	    _r.block(*this, 0);
@@ -130,7 +130,7 @@ inline event<T1, T2, T3, T4> with_timeout(const timeval &delay, event<T1, T2, T3
     event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
     ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     at_delay(delay, make_event(c->_r, outcome::timeout));
-    c->_closure__activate(0);
+    c->tamer_closure_activate(0);
     c->unuse();
     return ret_e;
 }
@@ -142,7 +142,7 @@ inline event<T1, T2, T3, T4> with_timeout(const timeval &delay, event<T1, T2, T3
     event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
     ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     at_delay(delay, make_event(c->_r, outcome::timeout));
-    c->_closure__activate(0);
+    c->tamer_closure_activate(0);
     c->unuse();
     return ret_e;
 }
@@ -186,7 +186,7 @@ inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e) {
     event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
     ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     at_signal(sig, make_event(c->_r, outcome::signal));
-    c->_closure__activate(0);
+    c->tamer_closure_activate(0);
     c->unuse();
     return ret_e;
 }
@@ -198,7 +198,7 @@ inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e, int &
     event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
     ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     at_signal(sig, make_event(c->_r, outcome::signal));
-    c->_closure__activate(0);
+    c->tamer_closure_activate(0);
     c->unuse();
     return ret_e;
 }
@@ -210,7 +210,7 @@ inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, 
     ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
 	at_signal(*i, make_event(c->_r, outcome::signal));
-    c->_closure__activate(0);
+    c->tamer_closure_activate(0);
     c->unuse();
     return ret_e;
 }
@@ -223,7 +223,7 @@ inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, 
     ret_e.at_cancel(make_event(c->_r, outcome::cancel));
     for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
 	at_signal(*i, make_event(c->_r, outcome::signal));
-    c->_closure__activate(0);
+    c->tamer_closure_activate(0);
     c->unuse();
     return ret_e;
 }

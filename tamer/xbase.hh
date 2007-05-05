@@ -19,7 +19,7 @@ namespace tamerpriv {
 
 class simple_event;
 class abstract_rendezvous;
-class closure;
+class tamer_closure;
 class distribute_rendezvous;
 event<> hard_distribute(const event<> &e1, const event<> &e2);
 
@@ -113,7 +113,7 @@ class abstract_rendezvous { public:
     
     virtual void complete(uintptr_t rname, bool success) = 0;
 
-    inline void block(closure &c, unsigned where);
+    inline void block(tamer_closure &c, unsigned where);
     inline void unblock();
     inline void run();
     
@@ -125,7 +125,7 @@ class abstract_rendezvous { public:
     simple_event *_events;
     abstract_rendezvous *_unblocked_next;
     abstract_rendezvous *_unblocked_prev;
-    closure *_blocked_closure;
+    tamer_closure *_blocked_closure;
     unsigned _blocked_closure_blockid;
 
     abstract_rendezvous(const abstract_rendezvous &);
@@ -138,13 +138,13 @@ class abstract_rendezvous { public:
 
 
 
-struct closure {
+struct tamer_closure {
 
-    closure()
+    tamer_closure()
 	: _refcount(1) {
     }
 
-    virtual ~closure() {
+    virtual ~tamer_closure() {
     }
 
     void use() {
@@ -156,11 +156,34 @@ struct closure {
 	    delete this;
     }
 
-    virtual void _closure__activate(unsigned) = 0;
+    virtual void tamer_closure_activate(unsigned) = 0;
+
+    virtual bool block_landmark(const char *&file, unsigned &line);
 
   protected:
 
     unsigned _refcount;
+    
+};
+
+
+struct tamer_debug_closure : public tamer_closure {
+
+    tamer_debug_closure()
+	: _block_file(0), _block_line(0) {
+    }
+
+    bool block_landmark(const char *&file, unsigned &line);
+
+    void set_block_landmark(const char *file, unsigned line) {
+	_block_file = file;
+	_block_line = line;
+    }
+
+  protected:
+
+    const char *_block_file;
+    unsigned _block_line;
     
 };
 
@@ -229,7 +252,7 @@ inline bool simple_event::complete(bool success)
     return r != 0;
 }
 
-inline void abstract_rendezvous::block(closure &c, unsigned where)
+inline void abstract_rendezvous::block(tamer_closure &c, unsigned where)
 {
     assert(!_blocked_closure && &c);
     c.use();
@@ -252,7 +275,7 @@ inline void abstract_rendezvous::unblock()
 
 inline void abstract_rendezvous::run()
 {
-    closure *c = _blocked_closure;
+    tamer_closure *c = _blocked_closure;
     _blocked_closure = 0;
     if (_unblocked_prev)
 	_unblocked_prev->_unblocked_next = _unblocked_next;
@@ -263,7 +286,7 @@ inline void abstract_rendezvous::run()
     else if (unblocked_tail == this)
 	unblocked_tail = _unblocked_next;
     _unblocked_next = _unblocked_prev = 0;
-    c->_closure__activate(_blocked_closure_blockid);
+    c->tamer_closure_activate(_blocked_closure_blockid);
     c->unuse();
 }
 

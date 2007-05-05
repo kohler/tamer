@@ -25,4 +25,4 @@ inline void open(const char *filename, int flags, event<int> done) {
 }
 
 }}
-#endif /* TAMER_TAME_FILEIO_HH */
+#endif /* TAMER_FILEIO_HH */
