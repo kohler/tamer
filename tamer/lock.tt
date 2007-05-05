@@ -33,7 +33,7 @@ tamed void mutex::acquire(int shared, event<> done)
     }
 
     done.at_cancel(make_event(r, false));
-    _waiters.push_back(with_cancel(r, false, make_event(r, true)));
+    _waiters.push_back(make_cancel(r, false, make_event(r, true)));
 
     while (1) {
 	twait(r, result);
@@ -47,7 +47,7 @@ tamed void mutex::acquire(int shared, event<> done)
 		wake();
 	    return;
 	} else
-	    _waiters.push_back(with_cancel(r, false, make_event(r, true)));
+	    _waiters.push_back(make_cancel(r, false, make_event(r, true)));
     }
 }
 

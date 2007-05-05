@@ -92,32 +92,37 @@ const int signal = -EINTR;
 
 namespace tamerpriv {
 
-class connector_closure : public tamer_closure { public:
+class canceler_rendezvous : public abstract_rendezvous { public:
 
     template <typename T1, typename T2, typename T3, typename T4>
-    connector_closure(const event<T1, T2, T3, T4> &e, int *result = 0)
-	: _e(e.__get_simple()), _result(result) {
+    canceler_rendezvous(const event<T1, T2, T3, T4> &e, int *result)
+	: _e(e.__get_simple()), _result(result)
+    {
 	_e->use();
+	_e->at_cancel(event<>(*this, outcome::cancel));
     }
 
-    ~connector_closure() {
+    ~canceler_rendezvous() {
 	_e->unuse();
     }
 
-    void tamer_closure_activate(unsigned) {
-	int x;
-	if (!_r.join(x)) {
-	    _r.block(*this, 0);
-	    return;
-	}
-	_e->complete(x == outcome::success);
-	if (_result && x != outcome::success)
-	    *_result = x;
+    void add(simple_event *e, uintptr_t what) {
+	e->initialize(this, what);
     }
+    
+    void complete(uintptr_t rname, bool success) {
+	if (success || rname == (uintptr_t) outcome::success) {
+	    if (_result)
+		*_result = (success ? rname : outcome::cancel);
+	    _e->complete(true);
+	    delete this;
+	}
+    }
+    
+  private:
 
-    rendezvous<int> _r;
     simple_event *_e;
-    int *_result; 
+    int *_result;
 
 };
 
@@ -126,25 +131,17 @@ class connector_closure : public tamer_closure { public:
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_timeout(const timeval &delay, event<T1, T2, T3, T4> e) {
-    tamerpriv::connector_closure *c = new tamerpriv::connector_closure(e, 0);
-    event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
-    ret_e.at_cancel(make_event(c->_r, outcome::cancel));
-    at_delay(delay, make_event(c->_r, outcome::timeout));
-    c->tamer_closure_activate(0);
-    c->unuse();
-    return ret_e;
+    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, 0);
+    at_delay(delay, event<>(*r, outcome::timeout));
+    return e.make_rebind(*r, outcome::success);
 }
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_timeout(const timeval &delay, event<T1, T2, T3, T4> e, int &result) {
     result = outcome::success;
-    tamerpriv::connector_closure *c = new tamerpriv::connector_closure(e, &result);
-    event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
-    ret_e.at_cancel(make_event(c->_r, outcome::cancel));
-    at_delay(delay, make_event(c->_r, outcome::timeout));
-    c->tamer_closure_activate(0);
-    c->unuse();
-    return ret_e;
+    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, &result);
+    at_delay(delay, event<>(*r, outcome::timeout));
+    return e.make_rebind(*r, outcome::success);
 }
 
 template <typename T1, typename T2, typename T3, typename T4>
@@ -180,68 +177,101 @@ inline event<T1, T2, T3, T4> with_timeout_msec(int delay, event<T1, T2, T3, T4> 
 }
 
 
+inline event<int> add_timeout(const timeval &delay, event<int> e) {
+    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, e.slot1());
+    at_delay(delay, event<>(*r, outcome::timeout));
+    return e.make_rebind(*r, outcome::success);
+}
+
+inline event<int> add_timeout_sec(int delay, event<int> e) {
+    timeval tv;
+    tv.tv_sec = delay;
+    tv.tv_usec = 0;
+    return add_timeout(tv, e);
+}
+
+inline event<int> add_timeout_msec(int delay, event<int> e) {
+    timeval tv;
+    tv.tv_sec = delay / 1000;
+    tv.tv_usec = delay % 1000;
+    return add_timeout(tv, e);
+}
+
+
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e) {
-    tamerpriv::connector_closure *c = new tamerpriv::connector_closure(e, 0);
-    event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
-    ret_e.at_cancel(make_event(c->_r, outcome::cancel));
-    at_signal(sig, make_event(c->_r, outcome::signal));
-    c->tamer_closure_activate(0);
-    c->unuse();
-    return ret_e;
+    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, 0);
+    at_signal(sig, event<>(*r, outcome::signal));
+    return e.make_rebind(*r, outcome::success);
 }
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e, int &result) {
     result = outcome::success;
-    tamerpriv::connector_closure *c = new tamerpriv::connector_closure(e, &result);
-    event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
-    ret_e.at_cancel(make_event(c->_r, outcome::cancel));
-    at_signal(sig, make_event(c->_r, outcome::signal));
-    c->tamer_closure_activate(0);
-    c->unuse();
-    return ret_e;
+    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, &result);
+    at_signal(sig, event<>(*r, outcome::signal));
+    return e.make_rebind(*r, outcome::success);
 }
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, T2, T3, T4> e) {
-    tamerpriv::connector_closure *c = new tamerpriv::connector_closure(e, 0);
-    event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
-    ret_e.at_cancel(make_event(c->_r, outcome::cancel));
+    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, 0);
     for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
-	at_signal(*i, make_event(c->_r, outcome::signal));
-    c->tamer_closure_activate(0);
-    c->unuse();
-    return ret_e;
+	at_signal(*i, event<>(*r, outcome::signal));
+    return e.make_rebind(*r, outcome::success);
 }
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, T2, T3, T4> e, int &result) {
     result = outcome::success;
-    tamerpriv::connector_closure *c = new tamerpriv::connector_closure(e, &result);
-    event<T1, T2, T3, T4> ret_e = e.make_rebind(c->_r, outcome::success);
-    ret_e.at_cancel(make_event(c->_r, outcome::cancel));
+    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, &result);
     for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
-	at_signal(*i, make_event(c->_r, outcome::signal));
-    c->tamer_closure_activate(0);
-    c->unuse();
-    return ret_e;
+	at_signal(*i, event<>(*r, outcome::signal));
+    return e.make_rebind(*r, outcome::success);
 }
 
+
+inline event<int> add_signal(int sig, event<int> e) {
+    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, e.slot1());
+    at_signal(sig, event<>(*r, outcome::signal));
+    return e.make_rebind(*r, outcome::success);
+}
+
+inline event<int> add_signal(const std::vector<int> &sig, event<int> e) {
+    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, e.slot1());
+    for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
+	at_signal(*i, event<>(*r, outcome::signal));
+    return e.make_rebind(*r, outcome::success);
+}
+
+
+template <typename T1, typename T2, typename T3, typename T4>
+inline event<T1, T2, T3, T4> with_cancel(event<T1, T2, T3, T4> e) {
+    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, 0);
+    return e.make_rebind(*r, outcome::success);
+}
+
+
+inline event<int> add_cancel(event<int> e) {
+    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, e.slot1());
+    return e.make_rebind(*r, outcome::success);
+}
+
+
 template <typename R, typename T1, typename T2, typename T3, typename T4>
-inline event<T1, T2, T3, T4> with_cancel(R &r, event<T1, T2, T3, T4> e) {
+inline event<T1, T2, T3, T4> make_cancel(R &r, event<T1, T2, T3, T4> e) {
     e.at_cancel(make_event(r));
     return e;
 }
 
 template <typename R, typename I1, typename T1, typename T2, typename T3, typename T4>
-inline event<T1, T2, T3, T4> with_cancel(R &r, const I1 &i1, event<T1, T2, T3, T4> e) {
+inline event<T1, T2, T3, T4> make_cancel(R &r, const I1 &i1, event<T1, T2, T3, T4> e) {
     e.at_cancel(make_event(r, i1));
     return e;
 }
 
 template <typename R, typename I1, typename I2, typename T1, typename T2, typename T3, typename T4>
-inline event<T1, T2, T3, T4> with_cancel(R &r, const I1 &i1, const I2 &i2, event<T1, T2, T3, T4> e) {
+inline event<T1, T2, T3, T4> make_cancel(R &r, const I1 &i1, const I2 &i2, event<T1, T2, T3, T4> e) {
     e.at_cancel(make_event(r, i1, i2));
     return e;
 }

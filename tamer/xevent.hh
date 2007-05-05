@@ -219,6 +219,10 @@ class eventx<T1, void, void, void> : public simple_event { public:
     void unbind() {
 	_t1 = 0;
     }
+
+    T1 *slot1() const {
+	return _t1;
+    }
     
   private:
 
@@ -597,6 +601,10 @@ class event<T1, void, void, void> { public:
 	return e;
     }
 
+    T1 *slot1() const {
+	return _e->slot1();
+    }
+    
     event<T1> &operator=(const event<T1> &e) {
 	e._e->use();
 	_e->unuse();
