@@ -8,6 +8,7 @@ template <typename T1=void, typename T2=void, typename T3=void, typename T4=void
 inline event<> distribute(const event<> &, const event<> &);
 inline event<> distribute(const event<> &, const event<> &, const event<> &);
 class driver;
+class gather_rendezvous;
 
 class tamer_error : public std::runtime_error { public:
     explicit tamer_error(const std::string &arg)
@@ -116,6 +117,10 @@ class abstract_rendezvous { public:
     inline void block(tamer_closure &c, unsigned where);
     inline void unblock();
     inline void run();
+
+    tamer_closure *blocked_closure() const {
+	return _blocked_closure;
+    }
     
     static abstract_rendezvous *unblocked;
     static abstract_rendezvous *unblocked_tail;
@@ -135,7 +140,6 @@ class abstract_rendezvous { public:
     friend class driver;
     
 };
-
 
 
 struct tamer_closure {
@@ -186,6 +190,12 @@ struct tamer_debug_closure : public tamer_closure {
     unsigned _block_line;
     
 };
+
+
+namespace message {
+void rendezvous_dead(abstract_rendezvous *r);
+void gather_rendezvous_dead(gather_rendezvous *r);
+}
 
 
 inline simple_event::~simple_event()

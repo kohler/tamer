@@ -760,8 +760,9 @@ tame_block_ev_t::output(outputter_t *o)
       (*el)->output (o);
   }
 
-  o->output_str(" }\n#undef make_event\n");
-  om = o->switch_to_mode (OUTPUT_TREADMILL);
+  o->output_str(" }");
+  om = o->switch_to_mode(OUTPUT_TREADMILL);
+  o->output_str("#undef make_event\n");
   b << _fn->label(_id) << ":\n"
     << "  while (" << TAME_CLOSURE_NAME << "._closure__block.nwaiting()) {\n"
     << "      " << TAME_CLOSURE_NAME << "._closure__block.block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n";
@@ -836,7 +837,7 @@ expr_list_t::output_vars (strbuf &b, bool first, const str &prfx,
 }
 
 void
-tame_join_t::output_blocked (strbuf &b, const str &jgn)
+tame_join_t::output_blocked(strbuf &b, const str &jgn)
 {
     b << "    " << jgn << ".block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n";
     if (tamer_debug)
@@ -851,7 +852,7 @@ tame_wait_t::output (outputter_t *o)
     tmp << "(" << join_group ().name () << ")";
     str jgn = tmp.str();
 
-    output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
+    output_mode_t om = o->switch_to_mode(OUTPUT_TREADMILL);
     strbuf b;
     b << _fn->label(_id) << ":\n";
     b << "do {\n"

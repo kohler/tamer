@@ -17,7 +17,6 @@ tamed void read_sucka(int fd) {
     }
     n++;
     twait {
-	tamer::event<int> e = make_event(result);
 	tamer::fileio::read(fd, buf, 40, amt, tamer::with_timeout_sec(2, make_event(result)));
     }
     fprintf(stderr, "got %d: %d: %.*s\n", result, amt, amt, buf);

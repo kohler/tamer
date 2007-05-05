@@ -1,5 +1,6 @@
 #include <tamer.hh>
 #include <tamer/adapter.hh>
+#include <stdio.h>
 
 namespace tamer {
 namespace tamerpriv {
@@ -107,6 +108,31 @@ event<> hard_distribute(const event<> &e1, const event<> &e2) {
 	    return event<>(*d, 0);
 	}
     }
+}
+
+
+namespace message {
+
+void rendezvous_dead(abstract_rendezvous *r) {
+    tamer_closure *c = r->blocked_closure();
+    const char *file;
+    unsigned line;
+    if (c->block_landmark(file, line))
+	fprintf(stderr, "%s:%d: twait() may hang forever because an event was canceled\n", file, line);
+    else
+	fprintf(stderr, "twait() may hang forever because an event was canceled\n");
+}
+
+void gather_rendezvous_dead(gather_rendezvous *r) {
+    tamer_closure *c = r->blocked_closure();
+    const char *file;
+    unsigned line;
+    if (c->block_landmark(file, line))
+	fprintf(stderr, "%s:%d: twait{} will hang forever because an event was canceled\n", file, line);
+    else
+	fprintf(stderr, "twait{} will hang forever because an event was canceled\n");
+}
+
 }
 
 }}

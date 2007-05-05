@@ -50,8 +50,11 @@ void rendezvous<I1, I2>::complete(uintptr_t rname, bool success)
     if (success) {
 	_bs.activate(rname);
 	unblock();
-    } else
+    } else {
 	_bs.kill(rname);
+	if (blocked_closure() && nwaiting() == 0)
+	    tamerpriv::message::rendezvous_dead(this);
+    }
 }
 
 template <typename I1, typename I2>
@@ -111,8 +114,11 @@ void rendezvous<I1, void>::complete(uintptr_t rname, bool success)
     if (success) {
 	_bs.activate(rname);
 	unblock();
-    } else
+    } else {
 	_bs.cancel(rname);
+	if (blocked_closure() && nwaiting() == 0)
+	    tamerpriv::message::rendezvous_dead(this);
+    }
 }
 
 template <typename I1>
@@ -160,11 +166,12 @@ inline void rendezvous<uintptr_t>::add(tamerpriv::simple_event *e, uintptr_t i1)
 
 inline void rendezvous<uintptr_t>::complete(uintptr_t rname, bool success)
 {
+    _nwaiting--;
     if (success) {
 	_buf.push_back(rname);
 	unblock();
-    }
-    _nwaiting--;
+    } else if (blocked_closure() && nwaiting() == 0)
+	tamerpriv::message::rendezvous_dead(this);
 }
 
 inline bool rendezvous<uintptr_t>::join(uintptr_t &i1)
@@ -263,7 +270,8 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 	if (success) {
 	    _nready++;
 	    unblock();
-	}
+	} else if (blocked_closure() && nwaiting() == 0)
+	    tamerpriv::message::rendezvous_dead(this);
     }
     
     inline bool join() {
@@ -300,7 +308,8 @@ class gather_rendezvous : public rendezvous<> { public:
 		unblock();
 	} else if (!_dead) {
 	    _dead = true;
-	    printf("killing! death!\n");
+	    if (blocked_closure())
+		tamerpriv::message::gather_rendezvous_dead(this);
 	}
     }
 
