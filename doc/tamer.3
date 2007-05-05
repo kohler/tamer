@@ -507,9 +507,9 @@ one event that triggers two others.
 .RS 5
 Returns an event that distributes trigger operations over
 .IR e1 " and " e2 .
-When the returned event is triggered, both
+Triggering the returned event will trigger both
 .IR e1 " and " e2
-will be triggered automatically.  Canceling the returned event will release
+automatically.  Canceling the returned event will release
 its references to
 .IR e1 " and " e2 ;
 if those were the only references remaining, the events will be canceled as
@@ -690,4 +690,199 @@ to the correct current value.
 Equivalent to \*(lq\fBwhile (1) once();\fR\*(rq.
 .RE
 '
-.SH "ADAPTERS"
+.SH "CANCEL ADAPTERS"
+These functions integrate timeouts, signals, and other forms of canceling
+into existing events.  For example:
+.sp
+.nf
+  \fBint \fIi\fB;  rendezvous<> \fIr\fB;
+  event<int> \fIe\fB = add_timeout(\fIdelay\fB, make_event(\fIr\fB, \fIi\fB));\fR
+.fi
+.sp
+The event on
+.I r
+is triggered on the first of the following events.
+.IP \(bu 3
+If
+.I e
+is triggered,
+.I i
+is set to
+.IR e 's
+trigger value.
+.IP \(bu 3
+If
+.I e
+is canceled,
+.I i
+is set to
+.B -ECANCELED
+(or, equivalently,
+.BR tamer::outcome::cancel ).
+.IP \(bu 3
+If
+.I delay
+seconds elapse,
+.I i
+is set to
+.B -ETIMEDOUT
+(or, equivalently,
+.BR tamer::outcome::timeout ).
+.LP
+Cancel adapters are available for cancellation, timeouts, and signals.
+.sp
+.nf
+.B event<int> add_timeout(const timeval &\fIdelay\fB, event<int> \fIe\fB)
+.B event<int> add_timeout_sec(int \fIdelay\fB, event<int> \fIe\fB)
+.B event<int> add_timeout_msec(int \fIdelay\fB, event<int> \fIe\fB)
+.fi
+.RS 5
+Returns a timeout-adapted version of
+.IR e .
+When the returned event is triggered,
+.I e
+is triggered with the same trigger value.
+If, however, the timeout of
+.I delay
+expires first, then
+.I e
+is triggered with value
+.BR -ETIMEDOUT ;
+and if the returned event is canceled,
+.I e
+is triggered with value
+.BR -ECANCELED .
+.RE
+.sp
+.nf
+.B event<int> add_signal(int \fIsignal\fB, event<int> \fIe\fB)
+.B event<int> add_signal(const std::vector<int> &\fIsignals\fB, event<int> \fIe\fB)
+.fi
+.RS 5
+Returns a signal-adapted version of
+.IR e .
+When the returned event is triggered,
+.I e
+is triggered with the same trigger value.
+If, however, the
+.I signal
+(or one of the
+.IR signals )
+happens first, then
+.I e
+is triggered with value
+.BR -EINTR ;
+and if the returned event is canceled,
+.I e
+is triggered with value
+.BR -ECANCELED .
+.RE
+.sp
+.nf
+.B event<int> add_cancel(event<int> \fIe\fB)
+.fi
+.RS 5
+Returns a cancel-adapted version of
+.IR e .
+When the returned event is triggered,
+.I e
+is triggered with the same trigger value.
+If, however, the returned event is canceled,
+.I e
+is triggered with value
+.BR -ECANCELED .
+.RE
+.PP
+There is also a set of cancel adapters that don't set
+.IR e 's
+trigger value.  For example:
+.sp
+.nf
+  \fBint \fIi\fB;  rendezvous<> \fIr\fB;
+  event<int> \fIe\fB = with_timeout(\fIdelay\fB, make_event(\fIr\fB, \fIi\fB));\fR
+.fi
+.sp
+The event on
+.I r
+is triggered on the first of the following events.
+.IP \(bu 3
+If
+.I e
+is triggered,
+.I i
+is set to
+.IR e 's
+trigger value.
+.IP \(bu 3
+If
+.I e
+is canceled or
+.I delay
+seconds elapse,
+.I i
+retains its initial value.
+.PP
+This style of cancel adapter can handle any event type, not just
+.BR event<int> .
+.sp
+.nf
+.B event<T*> with_timeout(const timeval &\fIdelay\fB, event<T*> \fIe\fB)
+.B event<T*> with_timeout_sec(int \fIdelay\fB, event<T*> \fIe\fB)
+.B event<T*> with_timeout_msec(int \fIdelay\fB, event<T*> \fIe\fB)
+.B event<T*> with_signal(int \fIsignal\fB, event<T*> \fIe\fB)
+.B event<T*> with_signal(const std::vector<int> &\fIsignals\fB, event<T*> \fIe\fB)
+.B event<T*> with_cancel(event<T*> \fIe\fB)
+.fi
+.RS 5
+Return cancel-adapted versions of
+.IR e .
+These functions are analogous to the
+.B add_
+versions above, but do not set any trigger values to indicate whether the
+event triggered successfully.
+.RE
+.sp
+.nf
+.B event<T*> with_timeout(const timeval &\fIdelay\fB, event<T*> \fIe\fB, int &\fIresult\fB)
+.B event<T*> with_timeout_sec(int \fIdelay\fB, event<T*> \fIe\fB, int &\fIresult\fB)
+.B event<T*> with_timeout_msec(int \fIdelay\fB, event<T*> \fIe\fB, int &\fIresult\fB)
+.B event<T*> with_signal(int \fIsignal\fB, event<T*> \fIe\fB, int &\fIresult\fB)
+.B event<T*> with_signal(const std::vector<int> &\fIsignals\fB, event<T*> \fIe\fB,
+.B "                      int &\fIresult\fB)"
+.B event<T*> with_cancel(event<T*> \fIe\fB, int &\fIresult\fB)
+.fi
+.RS 5
+Return cancel-adapted versions of
+.IR e .
+When
+.I e
+triggers, the
+.I result
+variable is set to one of the following constants to indicate why:
+.RS 2
+.IP "\fB0\fR" 15
+if
+.I e
+triggered successfully.
+.IP "\fB-ECANCELED\fR" 15
+if
+.I e
+canceled.
+.IP "\fB-ETIMEDOUT\fR" 15
+if
+.I e
+timed out.
+.IP "\fB-EINTR\fR" 15
+if
+.I e
+was interrupted by a signal.
+.RE
+.LP
+The constants
+.BR tamer::outcome:: { success ,
+.BR cancel ,
+.BR timeout ,
+.BR signal }
+may be used instead of the error values.
+.RE
+'

@@ -92,17 +92,17 @@ const int signal = -EINTR;
 
 namespace tamerpriv {
 
-class canceler_rendezvous : public abstract_rendezvous { public:
+class cancel_adapter_rendezvous : public abstract_rendezvous { public:
 
     template <typename T1, typename T2, typename T3, typename T4>
-    canceler_rendezvous(const event<T1, T2, T3, T4> &e, int *result)
+    cancel_adapter_rendezvous(const event<T1, T2, T3, T4> &e, int *result)
 	: _e(e.__get_simple()), _result(result)
     {
 	_e->use();
 	_e->at_cancel(event<>(*this, outcome::cancel));
     }
 
-    ~canceler_rendezvous() {
+    ~cancel_adapter_rendezvous() {
 	_e->unuse();
     }
 
@@ -131,7 +131,7 @@ class canceler_rendezvous : public abstract_rendezvous { public:
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_timeout(const timeval &delay, event<T1, T2, T3, T4> e) {
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, 0);
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
     at_delay(delay, event<>(*r, outcome::timeout));
     return e.make_rebind(*r, outcome::success);
 }
@@ -139,7 +139,7 @@ inline event<T1, T2, T3, T4> with_timeout(const timeval &delay, event<T1, T2, T3
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_timeout(const timeval &delay, event<T1, T2, T3, T4> e, int &result) {
     result = outcome::success;
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, &result);
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
     at_delay(delay, event<>(*r, outcome::timeout));
     return e.make_rebind(*r, outcome::success);
 }
@@ -178,7 +178,7 @@ inline event<T1, T2, T3, T4> with_timeout_msec(int delay, event<T1, T2, T3, T4> 
 
 
 inline event<int> add_timeout(const timeval &delay, event<int> e) {
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, e.slot1());
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot1());
     at_delay(delay, event<>(*r, outcome::timeout));
     return e.make_rebind(*r, outcome::success);
 }
@@ -200,7 +200,7 @@ inline event<int> add_timeout_msec(int delay, event<int> e) {
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e) {
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, 0);
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
     at_signal(sig, event<>(*r, outcome::signal));
     return e.make_rebind(*r, outcome::success);
 }
@@ -208,14 +208,14 @@ inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e) {
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(int sig, event<T1, T2, T3, T4> e, int &result) {
     result = outcome::success;
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, &result);
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
     at_signal(sig, event<>(*r, outcome::signal));
     return e.make_rebind(*r, outcome::success);
 }
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, T2, T3, T4> e) {
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, 0);
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
     for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
 	at_signal(*i, event<>(*r, outcome::signal));
     return e.make_rebind(*r, outcome::success);
@@ -224,7 +224,7 @@ inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, T2, T3, T4> e, int &result) {
     result = outcome::success;
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, &result);
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
     for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
 	at_signal(*i, event<>(*r, outcome::signal));
     return e.make_rebind(*r, outcome::success);
@@ -232,13 +232,13 @@ inline event<T1, T2, T3, T4> with_signal(const std::vector<int> &sig, event<T1, 
 
 
 inline event<int> add_signal(int sig, event<int> e) {
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, e.slot1());
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot1());
     at_signal(sig, event<>(*r, outcome::signal));
     return e.make_rebind(*r, outcome::success);
 }
 
 inline event<int> add_signal(const std::vector<int> &sig, event<int> e) {
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, e.slot1());
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot1());
     for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
 	at_signal(*i, event<>(*r, outcome::signal));
     return e.make_rebind(*r, outcome::success);
@@ -247,13 +247,13 @@ inline event<int> add_signal(const std::vector<int> &sig, event<int> e) {
 
 template <typename T1, typename T2, typename T3, typename T4>
 inline event<T1, T2, T3, T4> with_cancel(event<T1, T2, T3, T4> e) {
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, 0);
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
     return e.make_rebind(*r, outcome::success);
 }
 
 
 inline event<int> add_cancel(event<int> e) {
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e, e.slot1());
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot1());
     return e.make_rebind(*r, outcome::success);
 }
 

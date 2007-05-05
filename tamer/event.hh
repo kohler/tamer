@@ -288,6 +288,10 @@ class event { public:
 	_e->trigger(t1, t2, t3, t4);
     }
 
+    void unbound_trigger() {
+	_e->complete(true);
+    }
+
     void cancel() {
 	_e->complete(false);
     }
@@ -382,6 +386,10 @@ class event<T1, T2, T3, void> { public:
 
     void trigger(const T1 &t1, const T2 &t2, const T3 &t3) {
 	_e->trigger(t1, t2, t3);
+    }
+
+    void unbound_trigger() {
+	_e->complete(true);
     }
 
     void cancel() {
@@ -480,6 +488,10 @@ class event<T1, T2, void, void> { public:
 	_e->trigger(t1, t2);
     }
 
+    void unbound_trigger() {
+	_e->complete(true);
+    }
+
     void cancel() {
 	_e->complete(false);
     }
@@ -574,6 +586,11 @@ class event<T1, void, void, void> { public:
 
     void trigger(const T1 &t1) {
 	_e->trigger(t1);
+    }
+
+    void unbound_trigger() {
+	_e->unbind();
+	_e->complete(true);
     }
 
     void cancel() {
@@ -681,6 +698,10 @@ class event<void, void, void, void> { public:
     }
 
     void trigger() {
+	_e->complete(true);
+    }
+
+    void unbound_trigger() {
 	_e->complete(true);
     }
 
