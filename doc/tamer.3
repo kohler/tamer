@@ -8,36 +8,36 @@ tamer \- C++ extensions for event-driven programming
 .B #include <tamer.hh>
 .B using namespace tamer;
 .sp
-\fBclass event<T1, T2, T3, T4> { public:
+\fBclass event<T0, T1, T2, T3> { public:
     event();
     operator bool() const;
     bool empty() const;
-    void trigger(const T1 &\fIv1\fB, const T2 &\fIv2\fB,
-                 const T3 &\fIv3\fB, const T4 &\fIv4\fB);
+    void trigger(const T0 &\fIv0\fB, const T1 &\fIv1\fB,
+                 const T2 &\fIv2\fB, const T3 &\fIv3\fB);
     void cancel();
     void at_cancel(const event<> &\fIcancel_evt\fB);
 }
 .sp
-class rendezvous<I1, I2> { public:
+class rendezvous<I0, I1> { public:
     rendezvous();
     unsigned nevents() const;
     unsigned nready() const;
     unsigned nwaiting() const;
-    bool join(I1 &\fIi1\fB, I2 &\fIi2\fB);
+    bool join(I0 &\fIi0\fB, I1 &\fIi1\fB);
 }
 .sp
-event<T1, T2, T3, T4> make_event(rendezvous<I1, I2> &\fIrendezvous\fB,
-                                 const I1 &\fIi1\fB, const I2 &\fIi2\fB,
-                                 T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB, T4 &\fIs4\fB);
-event<T1, T2, T3, T4> make_event(rendezvous<I1> &\fIrendezvous\fB,
-                                 const I1 &\fIi1\fB,
-                                 T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB, T4 &\fIs4\fB);
-event<T1, T2, T3, T4> make_event(rendezvous<> &\fIrendezvous\fB,
-                                 T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB, T4 &\fIs4\fB);
+event<T0, T1, T2, T3> make_event(rendezvous<I0, I1> &\fIrendezvous\fB,
+                                 const I0 &\fIi0\fB, const I1 &\fIi1\fB,
+                                 T0 &\fIs0\fB, T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB);
+event<T0, T1, T2, T3> make_event(rendezvous<I0> &\fIrendezvous\fB,
+                                 const I0 &\fIi0\fB,
+                                 T0 &\fIs0\fB, T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB);
+event<T0, T1, T2, T3> make_event(rendezvous<> &\fIrendezvous\fB,
+                                 T0 &\fIs0\fB, T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB);
 \&...
-event<> make_event(rendezvous<I1, I2> &\fIrendezvous\fB, 
-                   const I1 &\fIi1\fB, const I2 &\fIi2\fB);
-event<> make_event(rendezvous<I1> &\fIrendezvous\fB, const I1 &\fIi1\fB);
+event<> make_event(rendezvous<I0, I1> &\fIrendezvous\fB, 
+                   const I0 &\fIi0\fB, const I1 &\fIi1\fB);
+event<> make_event(rendezvous<I0> &\fIrendezvous\fB, const I0 &\fIi0\fB);
 event<> make_event(rendezvous<> &\fIrendezvous\fB);
 .sp
 tamed void user_function(...) {
@@ -46,8 +46,8 @@ tamed void user_function(...) {
 .sp
 twait { ... }
 .sp
-twait(rendezvous<I1, I2> &\fIrendezvous\fB, I1 &\fIi1\fB, I2 &\fIi2\fB);
-twait(rendezvous<I1> &\fIrendezvous\fB, I1 &\fIi1\fB);
+twait(rendezvous<I0, I1> &\fIrendezvous\fB, I0 &\fIi0\fB, I1 &\fIi1\fB);
+twait(rendezvous<I0> &\fIrendezvous\fB, I0 &\fIi0\fB);
 twait(rendezvous<> &\fIrendezvous\fB);
 .fi
 .SH DESCRIPTION
@@ -320,7 +320,7 @@ template class represents future occurrences.  The template takes zero to
 four type arguments, which represent the types of the
 .BR event 's
 trigger values.  In the following,
-.B T1-T4
+.B T0-T3
 are the template arguments of the
 .B event
 type.  If given, these type arguments must be copy-constructible and
@@ -336,19 +336,19 @@ returns true.
 .RE
 .sp
 .nf
-.B template <typename R, [typename I1, typename I2]>
-.B event<T1, T2, T3, T4>::event(R &\fIr\fB, [const I1 &\fIi1\fB, const I2 &\fIi2\fB,]
-.B "                             T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB, T4 &\fIs4\fB)"
-.B ... event<>::event(R &\fIr\fB, [const I1 &\fIi1\fB, const I2 &\fIi2\fB])
+.B template <typename R, [typename I0, typename I1]>
+.B event<T0, T1, T2, T3>::event(R &\fIr\fB, [const I0 &\fIi0\fB, const I1 &\fIi1\fB,]
+.B "                             T0 &\fIs0\fB, T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB)"
+.B ... event<>::event(R &\fIr\fB, [const I0 &\fIi0\fB, const I1 &\fIi1\fB])
 .fi
 .RS 5
 Creates an event on
 .B rendezvous
 .IR r
 with optional event IDs
-.IR i1 " and " i2
+.IR i0 " and " i1
 and trigger slots
-.IR s1 ... s4 .
+.IR s0 ... s3 .
 Each 
 .B event
 type has similar constructors whose slot arguments
@@ -386,15 +386,15 @@ been canceled, or it has already been triggered.
 .RE
 .sp
 .nf
-.B void event<T1, T2, T3, T4>::trigger(const T1 &\fIv1\fB, const T2 &\fIv2\fB,
-.B "                                    const T3 &\fIv3\fB, const T4 &\fIv4\fB)"
+.B void event<T0, T1, T2, T3>::trigger(const T0 &\fIv0\fB, const T1 &\fIv1\fB,
+.B "                                    const T2 &\fIv2\fB, const T3 &\fIv3\fB)"
 .B ... void event<>::trigger()
 .fi
 .RS 5
 Triggers the event.  If the event is empty, this does nothing; otherwise,
 it assigns the event's trigger slots (defined at creation time) to the
 trigger values
-.IR v1 ... v4
+.IR v0 ... v3
 and wakes the relevant blocked closure, if any.  Events become empty after
 they are triggered.  Each
 .B event
@@ -439,7 +439,7 @@ template class groups related events.  The template takes zero to
 two type arguments, which represent the types of the
 .BR rendezvous 's
 event IDs.  In the following,
-.BR I1 " and " I2
+.BR I0 " and " I1
 are the template arguments of the
 .B rendezvous
 type.  If given, these type arguments must be copy-constructible and
@@ -481,15 +481,15 @@ been triggered or canceled.
 .RE
 .sp
 .nf
-.B bool rendezvous<I1, I2>::join(I1 &\fIi1\fB, I2 &\fIi2\fB)
-.B bool rendezvous<I1>::join(I1 &\fIi1\fB)
+.B bool rendezvous<I0, I1>::join(I0 &\fIi0\fB, I1 &\fIi1\fB)
+.B bool rendezvous<I0>::join(I0 &\fIi0\fB)
 .B bool rendezvous<>::join()
 .fi
 .RS 5
 Collects a trigger notification, if any events have triggered but have not
 yet been collected.  If a trigger notification is available, sets the event
 ID argument(s)
-.IR i1 " and " i2 ,
+.IR i0 " and " i1 ,
 if any, to the collected event's ID(s) and returns true.  Otherwise,
 returns false.  The
 .B twait
@@ -517,18 +517,18 @@ usual.
 .RE
 .sp
 .nf
-.B event<> bind(const event<T1> &\fIe\fB, const T1 &\fIv1\fB)
+.B event<> bind(const event<T0> &\fIe\fB, const T0 &\fIv0\fB)
 .fi
 .RS 5
 Returns an event that, when triggered, will call
-.BR \fIe\fB.trigger(\fIv1\fB) .
+.BR \fIe\fB.trigger(\fIv0\fB) .
 Additionally, if
 .I e
 is canceled, then the returned event will be canceled.
 .RE
 .sp
 .nf
-.B event<T1> ignore_slot(const event<> &\fIe\fB)
+.B event<T0> ignore_slot(const event<> &\fIe\fB)
 .fi
 .RS 5
 Returns an event that, when triggered, will call

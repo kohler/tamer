@@ -4,14 +4,14 @@
 #include <tamer/base.hh>
 namespace tamer {
 
-template <typename I1, typename I2>
+template <typename I0, typename I1>
 class rendezvous : public tamerpriv::abstract_rendezvous { public:
 
     rendezvous();
 
-    void add(tamerpriv::simple_event *e, const I1 &i1, const I2 &i2);
+    void add(tamerpriv::simple_event *e, const I0 &i0, const I1 &i1);
     void complete(uintptr_t rname, bool success);
-    bool join(I1 &, I2 &);
+    bool join(I0 &, I1 &);
 
     unsigned nready() const	{ return _bs.nactive(); }
     unsigned nwaiting() const	{ return _bs.npassive(); }
@@ -21,31 +21,31 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
 
     struct evtrec {
 	size_t next;
+	I0 i0;
 	I1 i1;
-	I2 i2;
     };
 
     tamerpriv::blockset<evtrec> _bs;
     
 };
 
-template <typename I1, typename I2>
-rendezvous<I1, I2>::rendezvous()
+template <typename I0, typename I1>
+rendezvous<I0, I1>::rendezvous()
 {
 }
 
-template <typename I1, typename I2>
-void rendezvous<I1, I2>::add(tamerpriv::simple_event *e, const I1 &i1, const I2 &i2)
+template <typename I0, typename I1>
+void rendezvous<I0, I1>::add(tamerpriv::simple_event *e, const I0 &i0, const I1 &i1)
 {
     uintptr_t u;
     evtrec &ew = _bs.allocate_passive(u);
+    (void) new(static_cast<void *>(&ew.i0)) I0(i0);
     (void) new(static_cast<void *>(&ew.i1)) I1(i1);
-    (void) new(static_cast<void *>(&ew.i2)) I2(i2);
     e->initialize(this, u);
 }
 
-template <typename I1, typename I2>
-void rendezvous<I1, I2>::complete(uintptr_t rname, bool success)
+template <typename I0, typename I1>
+void rendezvous<I0, I1>::complete(uintptr_t rname, bool success)
 {
     if (success) {
 	_bs.activate(rname);
@@ -57,12 +57,12 @@ void rendezvous<I1, I2>::complete(uintptr_t rname, bool success)
     }
 }
 
-template <typename I1, typename I2>
-bool rendezvous<I1, I2>::join(I1 &i1, I2 &i2)
+template <typename I0, typename I1>
+bool rendezvous<I0, I1>::join(I0 &i0, I1 &i1)
 {
     if (evtrec *e = _bs.active_front()) {
+	i0 = e->i0;
 	i1 = e->i1;
-	i2 = e->i2;
 	_bs.pop_active();
 	return true;
     } else
@@ -70,14 +70,14 @@ bool rendezvous<I1, I2>::join(I1 &i1, I2 &i2)
 }
 
 
-template <typename I1>
-class rendezvous<I1, void> : public tamerpriv::abstract_rendezvous { public:
+template <typename I0>
+class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
 
     rendezvous();
 
-    void add(tamerpriv::simple_event *e, const I1 &i1);
+    void add(tamerpriv::simple_event *e, const I0 &i0);
     void complete(uintptr_t rname, bool success);
-    bool join(I1 &);
+    bool join(I0 &);
 
     unsigned nready() const	{ return _bs.nactive(); }
     unsigned nwaiting() const	{ return _bs.npassive(); }
@@ -87,29 +87,29 @@ class rendezvous<I1, void> : public tamerpriv::abstract_rendezvous { public:
 
     struct evtrec {
 	size_t next;
-	I1 i1;
+	I0 i0;
     };
 
     tamerpriv::blockset<evtrec> _bs;
     
 };
 
-template <typename I1>
-rendezvous<I1, void>::rendezvous()
+template <typename I0>
+rendezvous<I0, void>::rendezvous()
 {
 }
 
-template <typename I1>
-void rendezvous<I1, void>::add(tamerpriv::simple_event *e, const I1 &i1)
+template <typename I0>
+void rendezvous<I0, void>::add(tamerpriv::simple_event *e, const I0 &i0)
 {
     uintptr_t u;
     evtrec &erec = _bs.allocate_passive(u);
-    (void) new(static_cast<void *>(&erec.i1)) I1(i1);
+    (void) new(static_cast<void *>(&erec.i0)) I0(i0);
     e->initialize(this, u);
 }
 
-template <typename I1>
-void rendezvous<I1, void>::complete(uintptr_t rname, bool success)
+template <typename I0>
+void rendezvous<I0, void>::complete(uintptr_t rname, bool success)
 {
     if (success) {
 	_bs.activate(rname);
@@ -121,11 +121,11 @@ void rendezvous<I1, void>::complete(uintptr_t rname, bool success)
     }
 }
 
-template <typename I1>
-bool rendezvous<I1, void>::join(I1 &i1)
+template <typename I0>
+bool rendezvous<I0, void>::join(I0 &i0)
 {
     if (evtrec *e = _bs.active_front()) {
-	i1 = e->i1;
+	i0 = e->i0;
 	_bs.pop_active();
 	return true;
     } else
@@ -138,7 +138,7 @@ class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
 
     inline rendezvous();
 
-    inline void add(tamerpriv::simple_event *e, uintptr_t i1) throw ();
+    inline void add(tamerpriv::simple_event *e, uintptr_t i0) throw ();
     inline void complete(uintptr_t rname, bool success);
     inline bool join(uintptr_t &);
 
@@ -158,10 +158,10 @@ inline rendezvous<uintptr_t>::rendezvous()
 {
 }
 
-inline void rendezvous<uintptr_t>::add(tamerpriv::simple_event *e, uintptr_t i1) throw ()
+inline void rendezvous<uintptr_t>::add(tamerpriv::simple_event *e, uintptr_t i0) throw ()
 {
     _nwaiting++;
-    e->initialize(this, i1);
+    e->initialize(this, i0);
 }
 
 inline void rendezvous<uintptr_t>::complete(uintptr_t rname, bool success)
@@ -174,10 +174,10 @@ inline void rendezvous<uintptr_t>::complete(uintptr_t rname, bool success)
 	tamerpriv::message::rendezvous_dead(this);
 }
 
-inline bool rendezvous<uintptr_t>::join(uintptr_t &i1)
+inline bool rendezvous<uintptr_t>::join(uintptr_t &i0)
 {
     if (uintptr_t *x = _buf.front()) {
-	i1 = *x;
+	i0 = *x;
 	_buf.pop_front();
 	return true;
     } else
@@ -193,13 +193,13 @@ class rendezvous<T *> : public rendezvous<uintptr_t> { public:
 
     rendezvous() { }
 
-    inline void add(tamerpriv::simple_event *e, T *i1) throw () {
-	inherited::add(e, reinterpret_cast<uintptr_t>(i1));
+    inline void add(tamerpriv::simple_event *e, T *i0) throw () {
+	inherited::add(e, reinterpret_cast<uintptr_t>(i0));
     }
     
-    inline bool join(T *&i1) {
+    inline bool join(T *&i0) {
 	if (uintptr_t *x = _buf.front()) {
-	    i1 = reinterpret_cast<T *>(*x);
+	    i0 = reinterpret_cast<T *>(*x);
 	    _buf.pop_front();
 	    return true;
 	} else
@@ -216,13 +216,13 @@ class rendezvous<int> : public rendezvous<uintptr_t> { public:
 
     rendezvous() { }
 
-    inline void add(tamerpriv::simple_event *e, int i1) throw () {
-	inherited::add(e, static_cast<uintptr_t>(i1));
+    inline void add(tamerpriv::simple_event *e, int i0) throw () {
+	inherited::add(e, static_cast<uintptr_t>(i0));
     }
     
-    inline bool join(int &i1) {
+    inline bool join(int &i0) {
 	if (uintptr_t *x = _buf.front()) {
-	    i1 = static_cast<int>(*x);
+	    i0 = static_cast<int>(*x);
 	    _buf.pop_front();
 	    return true;
 	} else
@@ -239,13 +239,13 @@ class rendezvous<bool> : public rendezvous<uintptr_t> { public:
 
     rendezvous() { }
 
-    inline void add(tamerpriv::simple_event *e, bool i1) throw () {
-	inherited::add(e, static_cast<uintptr_t>(i1));
+    inline void add(tamerpriv::simple_event *e, bool i0) throw () {
+	inherited::add(e, static_cast<uintptr_t>(i0));
     }
     
-    inline bool join(bool &i1) {
+    inline bool join(bool &i0) {
 	if (uintptr_t *x = _buf.front()) {
-	    i1 = static_cast<bool>(*x);
+	    i0 = static_cast<bool>(*x);
 	    _buf.pop_front();
 	    return true;
 	} else

@@ -3,8 +3,8 @@
 #include <stdexcept>
 namespace tamer {
 
-template <typename I1=void, typename I2=void> class rendezvous;
-template <typename T1=void, typename T2=void, typename T3=void, typename T4=void> class event;
+template <typename I0=void, typename I1=void> class rendezvous;
+template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> class event;
 inline event<> distribute(const event<> &, const event<> &);
 inline event<> distribute(const event<> &, const event<> &, const event<> &);
 class driver;
@@ -30,11 +30,11 @@ class simple_event { public:
 	: _refcount(1), _r(0), _r_name(0), _r_next(0), _r_pprev(0), _canceller(0) {
     }
 
-    template <typename R, typename I1, typename I2>
-    inline simple_event(R &r, const I1 &i1, const I2 &i2);
+    template <typename R, typename I0, typename I1>
+    inline simple_event(R &r, const I0 &i0, const I1 &i1);
 
-    template <typename R, typename I1>
-    inline simple_event(R &r, const I1 &i1);
+    template <typename R, typename I0>
+    inline simple_event(R &r, const I0 &i0);
 
     template <typename R>
     inline simple_event(R &r);
