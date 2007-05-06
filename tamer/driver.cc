@@ -55,8 +55,9 @@ driver::driver()
       _fdcap(0), _fdgroup(0), _fdfree(0)
 {
     expand_timers();
-    FD_ZERO(&_readfds);
-    FD_ZERO(&_writefds);
+    FD_ZERO(&_fdset[fdread]);
+    FD_ZERO(&_fdset[fdwrite]);
+    FD_ZERO(&_fdset[fdclose]);
     set_now();
 }
 
@@ -190,34 +191,33 @@ void driver::at_fd(int fd, int action, const event<> &trigger)
 	t->action = action;
 	(void) new(static_cast<void *>(&t->e)) event<>(trigger);
 
-	if (action <= fdwrite) {
-	    fd_set *fset = (action == fdwrite ? &_writefds : &_readfds);
-	    FD_SET(fd, fset);
-	    if (fd >= _nfds)
-		_nfds = fd + 1;
+	FD_SET(fd, &_fdset[action]);
+	if (fd >= _nfds)
+	    _nfds = fd + 1;
+	if (action <= fdwrite)
 	    t->e.at_cancel(make_event(_fdcancelr));
-	}
     }
 }
 
 void driver::kill_fd(int fd)
 {
     assert(fd >= 0);
-    if (fd < _nfds) {
-	FD_CLR(fd, &_readfds);
-	FD_CLR(fd, &_writefds);
+    if (fd < _nfds && (FD_ISSET(fd, &_fdset[fdread]) || FD_ISSET(fd, &_fdset[fdwrite]) || FD_ISSET(fd, &_fdset[fdclose]))) {
+	FD_CLR(fd, &_fdset[fdread]);
+	FD_CLR(fd, &_fdset[fdwrite]);
+	FD_CLR(fd, &_fdset[fdclose]);
+	tfd **pprev = &_fd, *t;
+	while ((t = *pprev))
+	    if (t->fd == fd) {
+		if (t->action == fdclose)
+		    t->e.trigger();
+		t->e.~event();
+		*pprev = t->next;
+		t->next = _fdfree;
+		_fdfree = t;
+	    } else
+		pprev = &t->next;
     }
-    tfd **pprev = &_fd, *t;
-    while ((t = *pprev))
-	if (t->fd == fd) {
-	    if (t->action == fdclose)
-		t->e.trigger();
-	    t->e.~event();
-	    *pprev = t->next;
-	    t->next = _fdfree;
-	    _fdfree = t;
-	} else
-	    pprev = &t->next;
 }
 
 void driver::at_delay(double delay, const event<> &e)
@@ -326,8 +326,9 @@ void driver::once()
     if (_fdcancelr.nready()) {
 	while (_fdcancelr.join())
 	    /* nada */;
-	FD_ZERO(&_readfds);
-	FD_ZERO(&_writefds);
+	FD_ZERO(&_fdset[fdread]);
+	FD_ZERO(&_fdset[fdwrite]);
+	FD_ZERO(&_fdset[fdclose]);
 	_nfds = 0;
 	tfd **pprev = &_fd, *t;
 	while ((t = *pprev))
@@ -336,25 +337,25 @@ void driver::once()
 		*pprev = t->next;
 		t->next = _fdfree;
 		_fdfree = t;
-	    } else if (t->action <= fdwrite) {
-		fd_set *fset = (t->action == fdwrite ? &_writefds : &_readfds);
-		FD_SET(t->fd, fset);
-		pprev = &t->next;
+	    } else {
+		FD_SET(t->fd, &_fdset[t->action]);
 		if (t->fd >= _nfds)
 		    _nfds = t->fd + 1;
+		pprev = &t->next;
 	    }
     }
     
     // select!
-    fd_set rfds = _readfds;
-    fd_set wfds = _writefds;
+    fd_set fds[2];
+    fds[fdread] = _fdset[fdread];
+    fds[fdwrite] = _fdset[fdwrite];
     int nfds = _nfds;
     if (sig_pipe[0] >= 0) {
-	FD_SET(sig_pipe[0], &rfds);
+	FD_SET(sig_pipe[0], &fds[fdread]);
 	if (sig_pipe[0] > nfds)
 	    nfds = sig_pipe[0] + 1;
     }
-    nfds = select(nfds, &rfds, &wfds, 0, toptr);
+    nfds = select(nfds, &fds[fdread], &fds[fdwrite], 0, toptr);
 
     // run signals
     if (sig_any_active) {
@@ -394,10 +395,8 @@ void driver::once()
     if (nfds >= 0) {
 	tfd **pprev = &_fd, *t;
 	while ((t = *pprev))
-	    if ((t->action == fdread && FD_ISSET(t->fd, &rfds))
-		|| (t->action == fdwrite && FD_ISSET(t->fd, &wfds))) {
-		fd_set *fset = (t->action == fdwrite ? &_writefds : &_readfds);
-		FD_CLR(t->fd, fset);
+	    if (t->action <= fdwrite && FD_ISSET(t->fd, &fds[t->action])) {
+		FD_CLR(t->fd, &_fdset[t->action]);
 		t->e.trigger();
 		t->e.~event();
 		*pprev = t->next;

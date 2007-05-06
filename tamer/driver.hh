@@ -50,7 +50,7 @@ class driver { public:
 	ttimer t[1];
     };
 
-    enum { fdread = 0, fdwrite = 1, fdclose = 2 };
+    enum { fdread = 0, fdwrite = 1, fdclose = 2 }; // the order is important
     
     struct tfd {
 	int fd : 30;
@@ -69,8 +69,7 @@ class driver { public:
 
     tfd *_fd;
     int _nfds;
-    fd_set _readfds;
-    fd_set _writefds;
+    fd_set _fdset[3];
 
     tamerpriv::debuffer<event<> > _asap;
 
