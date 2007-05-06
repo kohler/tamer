@@ -6,7 +6,7 @@
 
 namespace tamer {
 
-inline void mutex::wake()
+void mutex::wake()
 {
     while (event<> *e = _waiters.front()) {
 	bool done = *e;
