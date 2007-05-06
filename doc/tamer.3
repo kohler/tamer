@@ -398,11 +398,11 @@ trigger values
 and wakes the relevant blocked closure, if any.  Events become empty after
 they are triggered.  Each
 .B event
-type has a similar
+type has a
 .B trigger
 method whose value arguments
 .I v*
-match the template arguments.
+have types that match the template arguments.
 .RE
 .sp
 .nf
@@ -829,7 +829,7 @@ There is also a set of cancel adapters that don't set
 trigger value.  For example:
 .sp
 .nf
-  \fBint \fIi\fB;  rendezvous<> \fIr\fB;
+  \fBint \fIi(-1)\fB;  rendezvous<> \fIr\fB;
   event<int> \fIe\fB = with_timeout(\fIdelay\fB, make_event(\fIr\fB, \fIi\fB));\fR
 .fi
 .sp
