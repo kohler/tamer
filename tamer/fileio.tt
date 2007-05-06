@@ -36,6 +36,7 @@ tamed void read(int fd, void *buf, size_t size, ssize_t &size_out, event<int> do
 	rendezvous<> r;
     }
     done.at_cancel(make_event(r));
+    tamer::at_fd_close(fd, make_canceler(done));
     while (pos != size && done) {
 	amt = ::read(fd, static_cast<char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
@@ -44,7 +45,7 @@ tamed void read(int fd, void *buf, size_t size, ssize_t &size_out, event<int> do
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    tamer::at_fd_read(fd, spread_cancel(done, make_event(r)));
+	    tamer::at_fd_read(fd, make_event(r));
 	    twait(r);
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
@@ -62,6 +63,7 @@ tamed void write(int fd, const void *buf, size_t size, ssize_t &size_out, event<
 	rendezvous<> r;
     }
     done.at_cancel(make_event(r));
+    tamer::at_fd_close(fd, make_canceler(done));
     while (pos != size && done) {
 	amt = ::write(fd, static_cast<const char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
@@ -70,7 +72,7 @@ tamed void write(int fd, const void *buf, size_t size, ssize_t &size_out, event<
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    tamer::at_fd_write(fd, spread_cancel(done, make_event(r)));
+	    tamer::at_fd_write(fd, make_event(r));
 	    twait(r);
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
@@ -117,12 +119,13 @@ tamed void accept(int listenfd, struct sockaddr *name_out, socklen_t *namelen_ou
 	rendezvous<> r;
     }
     done.at_cancel(make_event(r));
+    tamer::at_fd_close(listenfd, make_canceler(done));
     while (done) {
 	fd = ::accept(listenfd, name_out, namelen_out);
 	if (fd >= 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    tamer::at_fd_read(listenfd, spread_cancel(done, make_event(r)));
+	    tamer::at_fd_read(listenfd, make_event(r));
 	    twait(r);
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
@@ -139,9 +142,10 @@ tamed void connect(int fd, const struct sockaddr *name, socklen_t namelen, event
 	rendezvous<> r;
     }
     done.at_cancel(make_event(r));
+    tamer::at_fd_close(fd, tamer::make_canceler(done));
     ret = ::connect(fd, name, namelen);
     if (ret == -1 && errno == EINPROGRESS) {
-	tamer::at_fd_write(fd, spread_cancel(done, make_event(r)));
+	tamer::at_fd_write(fd, make_event(r));
 	twait(r);
 	socklen_t socklen = sizeof(ret);
 	if (!done)

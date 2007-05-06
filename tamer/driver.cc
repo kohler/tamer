@@ -174,7 +174,7 @@ void driver::expand_fds()
     }
 }
 
-void driver::at_fd(int fd, bool write, const event<> &trigger)
+void driver::at_fd(int fd, int action, const event<> &trigger)
 {
     if (!_fdfree)
 	expand_fds();
@@ -186,13 +186,16 @@ void driver::at_fd(int fd, bool write, const event<> &trigger)
 	t->next = _fd;
 	_fd = t;
 	
-	t->fdaction = fd*2 + write;
+	t->fd = fd;
+	t->action = action;
 	(void) new(static_cast<void *>(&t->e)) event<>(trigger);
-	
-	fd_set *fset = (write ? &_writefds : &_readfds);
-	FD_SET(fd, fset);
-	if (fd >= _nfds)
-	    _nfds = fd + 1;
+
+	if (action <= fdwrite) {
+	    fd_set *fset = (action == fdwrite ? &_writefds : &_readfds);
+	    FD_SET(fd, fset);
+	    if (fd >= _nfds)
+		_nfds = fd + 1;
+	}
 	
 	t->e.at_cancel(make_event(_fdcancelr));
     }
@@ -204,8 +207,9 @@ void driver::kill_fd(int fd)
     if (fd < _nfds && (FD_ISSET(fd, &_readfds) || FD_ISSET(fd, &_writefds))) {
 	tfd **pprev = &_fd, *t;
 	while ((t = *pprev))
-	    if ((t->fdaction >> 1) == fd) {
-		t->e.cancel();
+	    if (t->fd == fd) {
+		if (t->action == fdclose)
+		    t->e.trigger();
 		t->e.~event();
 		*pprev = t->next;
 		t->next = _fdfree;
@@ -326,17 +330,17 @@ void driver::once()
 	_nfds = 0;
 	tfd **pprev = &_fd, *t;
 	while ((t = *pprev))
-	    if (t->e) {
-		fd_set *fset = (t->fdaction & 1 ? &_writefds : &_readfds);
-		FD_SET(t->fdaction >> 1, fset);
-		pprev = &t->next;
-		if ((t->fdaction >> 1) >= _nfds)
-		    _nfds = (t->fdaction >> 1) + 1;
-	    } else {
+	    if (!t->e) {
 		t->e.~event();
 		*pprev = t->next;
 		t->next = _fdfree;
 		_fdfree = t;
+	    } else if (t->action <= fdwrite) {
+		fd_set *fset = (t->action == fdwrite ? &_writefds : &_readfds);
+		FD_SET(t->fd, fset);
+		pprev = &t->next;
+		if (t->fd >= _nfds)
+		    _nfds = t->fd + 1;
 	    }
     }
     
@@ -388,19 +392,23 @@ void driver::once()
     // run file descriptors
     if (nfds >= 0) {
 	tfd **pprev = &_fd, *t;
-	while ((t = *pprev)) {
-	    fd_set *fset = (t->fdaction & 1 ? &wfds : &rfds);
-	    if (FD_ISSET(t->fdaction >> 1, fset)) {
-		fset = (t->fdaction & 1 ? &_writefds : &_readfds);
-		FD_CLR(t->fdaction >> 1, fset);
+	while ((t = *pprev))
+	    if ((t->action == fdread && FD_ISSET(t->fd, &rfds))
+		|| (t->action == fdwrite && FD_ISSET(t->fd, &wfds))) {
+		fd_set *fset = (t->action == fdwrite ? &_writefds : &_readfds);
+		FD_CLR(t->fd, fset);
 		t->e.trigger();
+		t->e.~event();
+		*pprev = t->next;
+		t->next = _fdfree;
+		_fdfree = t;
+	    } else if (!t->e) {
 		t->e.~event();
 		*pprev = t->next;
 		t->next = _fdfree;
 		_fdfree = t;
 	    } else
 		pprev = &t->next;
-	}
     }
 
     // run the timers that worked

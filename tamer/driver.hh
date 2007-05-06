@@ -11,6 +11,7 @@ class driver { public:
 
     inline void at_fd_read(int fd, const event<> &e);
     inline void at_fd_write(int fd, const event<> &e);
+    inline void at_fd_close(int fd, const event<> &e);
     void kill_fd(int fd);
     
     inline void at_time(const timeval &expiry, const event<> &e);
@@ -49,8 +50,11 @@ class driver { public:
 	ttimer t[1];
     };
 
+    enum { fdread = 0, fdwrite = 1, fdclose = 2 };
+    
     struct tfd {
-	int fdaction;
+	int fd : 30;
+	unsigned action : 2;
 	event<> e;
 	tfd *next;
     };
@@ -83,7 +87,7 @@ class driver { public:
     void check_timers() const;
     void timer_reheapify_from(int pos, ttimer *t, bool will_delete);
     void expand_fds();
-    void at_fd(int fd, bool write, const event<> &e);
+    void at_fd(int fd, int action, const event<> &e);
     
 };
 
@@ -94,12 +98,17 @@ inline void driver::set_now()
 
 inline void driver::at_fd_read(int fd, const event<> &e)
 {
-    at_fd(fd, false, e);
+    at_fd(fd, fdread, e);
 }
 
 inline void driver::at_fd_write(int fd, const event<> &e)
 {
-    at_fd(fd, true, e);
+    at_fd(fd, fdwrite, e);
+}
+
+inline void driver::at_fd_close(int fd, const event<> &e)
+{
+    at_fd(fd, fdclose, e);
 }
 
 inline void driver::at_time(const timeval &expiry, const event<> &e)
@@ -175,6 +184,11 @@ inline void at_fd_read(int fd, const event<> &e)
 inline void at_fd_write(int fd, const event<> &e)
 {
     driver::main.at_fd_write(fd, e);
+}
+
+inline void at_fd_close(int fd, const event<> &e)
+{
+    driver::main.at_fd_close(fd, e);
 }
 
 inline void at_time(const timeval &expiry, const event<> &e)
