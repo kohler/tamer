@@ -133,6 +133,7 @@ class canceler_rendezvous : public abstract_rendezvous { public:
 	: _e(e.__get_simple())
     {
 	_e->use();
+	_e->at_cancel(event<>(*this));
     }
 
     ~canceler_rendezvous() {
