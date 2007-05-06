@@ -425,18 +425,17 @@ void driver::once()
     // run active closures
     while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::unblocked)
 	r->run();
+}
 
-#if 0
-    {
-	tfd *t = _fd;
-	while (t) {
-	    fprintf(stderr, "%d.%d ", t->fd, t->action);
-	    t = t->next;
-	}
-	if (_fd)
-	    fprintf(stderr, "\n");
-    }
-#endif
+void driver::print_fds()
+{
+  tfd *t = _fd;
+  while (t) {
+    fprintf(stderr, "%d.%d ", t->fd, t->action);
+    t = t->next;
+  }
+  if (_fd)
+    fprintf(stderr, "\n");
 }
 
 void driver::loop()

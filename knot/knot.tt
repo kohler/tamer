@@ -558,6 +558,7 @@ runloop (int s)
 	    }
 
 	    warn << "Interval time: " << now - start << "\n";
+	    tamer::driver::main.print_fds();
 
 
             start = now;

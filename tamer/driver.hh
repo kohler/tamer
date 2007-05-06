@@ -30,6 +30,7 @@ class driver { public:
     bool empty() const;
     void once();
     void loop();
+    void print_fds();
 
     static driver main;
 
