@@ -195,9 +195,8 @@ void driver::at_fd(int fd, int action, const event<> &trigger)
 	    FD_SET(fd, fset);
 	    if (fd >= _nfds)
 		_nfds = fd + 1;
+	    t->e.at_cancel(make_event(_fdcancelr));
 	}
-	
-	t->e.at_cancel(make_event(_fdcancelr));
     }
 }
 
