@@ -392,7 +392,7 @@ void driver::once()
     }
 
     // run file descriptors
-    if (nfds >= 0) {
+    if (nfds > 0) {
 	tfd **pprev = &_fd, *t;
 	while ((t = *pprev))
 	    if (t->action <= fdwrite && FD_ISSET(t->fd, &fds[t->action])) {
@@ -425,6 +425,18 @@ void driver::once()
     // run active closures
     while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::unblocked)
 	r->run();
+
+#if 0
+    {
+	tfd *t = _fd;
+	while (t) {
+	    fprintf(stderr, "%d.%d ", t->fd, t->action);
+	    t = t->next;
+	}
+	if (_fd)
+	    fprintf(stderr, "\n");
+    }
+#endif
 }
 
 void driver::loop()
