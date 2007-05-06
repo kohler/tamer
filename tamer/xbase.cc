@@ -53,6 +53,9 @@ class distribute_rendezvous : public abstract_rendezvous { public:
     }
 
     ~distribute_rendezvous() {
+	// Need to disconnect all events first, so that destroying the events
+	// in _es doesn't call back into distribute_rendezvous::complete.
+	disconnect_all();
     }
 
     void add(simple_event *e, uintptr_t rname) {

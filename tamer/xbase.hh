@@ -125,6 +125,10 @@ class abstract_rendezvous { public:
     static abstract_rendezvous *unblocked;
     static abstract_rendezvous *unblocked_tail;
 
+  protected:
+
+    inline void disconnect_all();
+
   private:
 
     simple_event *_events;
@@ -204,11 +208,16 @@ inline simple_event::~simple_event()
 	complete(false);
 }
 
+inline void abstract_rendezvous::disconnect_all()
+{
+    for (simple_event *e = _events; e; e = e->_r_next)
+	e->_r = 0;
+}
+
 inline abstract_rendezvous::~abstract_rendezvous()
 {
     // first take all events off this rendezvous, so they don't call back
-    for (simple_event *e = _events; e; e = e->_r_next)
-	e->_r = 0;
+    disconnect_all();
     // then complete events, calling their cancellers
     while (_events)
 	_events->complete(false);
