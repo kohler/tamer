@@ -537,6 +537,28 @@ The returned event's trigger value is ignored.  Additionally, if
 .I e
 is canceled, then the returned event will be canceled.
 .RE
+.sp
+.nf
+.B event<> make_canceler(const event<T*> &\fIe\fB)
+.fi
+.RS 5
+Returns an event that, when triggered, will call
+.BR \fIe\fB.cancel() .
+The returned event will be canceled itself if
+.I e
+is triggered or canceled first.
+.RE
+.sp
+.nf
+.B event<T*> spread_cancel(const event<U*> &\fIeto\fB, event<T*> \fIefrom\fB)
+.fi
+.RS 5
+When
+.I efrom
+is canceled,
+.I eto
+will immediately be canceled as well.  Returns
+.IR efrom .
 '
 .SH "DRIVER"
 The
@@ -574,6 +596,18 @@ becomes writable.
 .I fd
 must be a valid file descriptor less than
 .BR FD_SETSIZE .
+.RE
+.sp
+.nf
+.B void at_fd_close(int \fIfd\fB, const event<> &\fIe\fB)
+.fi
+.RS 5
+Triggers event
+.I e
+when
+.I fd
+is closed by
+.BR tamer::fileio::close .
 .RE
 .sp
 .nf
@@ -703,29 +737,26 @@ The event on
 .I r
 is triggered on the first of the following events.
 .IP \(bu 3
-If
 .I e
-is triggered,
+is triggered.
 .I i
 is set to
 .IR e 's
 trigger value.
 .IP \(bu 3
-If
 .I e
-is canceled,
+is canceled.
 .I i
 is set to
-.B -ECANCELED
+.B \-ECANCELED
 (or, equivalently,
 .BR tamer::outcome::cancel ).
 .IP \(bu 3
-If
 .I delay
-seconds elapse,
+seconds elapse.
 .I i
 is set to
-.B -ETIMEDOUT
+.B \-ETIMEDOUT
 (or, equivalently,
 .BR tamer::outcome::timeout ).
 .LP
@@ -747,11 +778,11 @@ If, however, the timeout of
 expires first, then
 .I e
 is triggered with value
-.BR -ETIMEDOUT ;
+.BR \-ETIMEDOUT ;
 and if the returned event is canceled,
 .I e
 is triggered with value
-.BR -ECANCELED .
+.BR \-ECANCELED .
 .RE
 .sp
 .nf
@@ -771,11 +802,11 @@ If, however, the
 happens first, then
 .I e
 is triggered with value
-.BR -EINTR ;
+.BR \-EINTR ;
 and if the returned event is canceled,
 .I e
 is triggered with value
-.BR -ECANCELED .
+.BR \-ECANCELED .
 .RE
 .sp
 .nf
@@ -790,7 +821,7 @@ is triggered with the same trigger value.
 If, however, the returned event is canceled,
 .I e
 is triggered with value
-.BR -ECANCELED .
+.BR \-ECANCELED .
 .RE
 .PP
 There is also a set of cancel adapters that don't set
@@ -806,19 +837,17 @@ The event on
 .I r
 is triggered on the first of the following events.
 .IP \(bu 3
-If
 .I e
-is triggered,
+is triggered.
 .I i
 is set to
 .IR e 's
 trigger value.
 .IP \(bu 3
-If
 .I e
 is canceled or
 .I delay
-seconds elapse,
+seconds elapse.
 .I i
 retains its initial value.
 .PP
@@ -864,15 +893,15 @@ variable is set to one of the following constants to indicate why:
 if
 .I e
 triggered successfully.
-.IP "\fB-ECANCELED\fR" 15
+.IP "\fB\-ECANCELED\fR" 15
 if
 .I e
 canceled.
-.IP "\fB-ETIMEDOUT\fR" 15
+.IP "\fB\-ETIMEDOUT\fR" 15
 if
 .I e
 timed out.
-.IP "\fB-EINTR\fR" 15
+.IP "\fB\-EINTR\fR" 15
 if
 .I e
 was interrupted by a signal.
@@ -886,3 +915,209 @@ The constants
 may be used instead of the error values.
 .RE
 '
+.SH "FILE I/O"
+.BR Tamer 's
+support for file I/O is available via
+.BR "#include <tamer/fileio.hh>" .
+Variants of the main I/O system calls are provided, most of them
+nonblocking.  You can avoid the
+.B tamer::fileio::
+prefix via
+.RB \*(lq "using namespace tamer::fileio" \*(rq.
+.sp
+.nf
+.B #include <tamer/fileio.hh>
+
+.B int fileio::make_nonblocking(int \fIfd\fB)
+.fi
+.RS 5
+Makes I/O on
+.I fd
+nonblocking.  Returns
+.B 0
+on success and a negative error code, such as
+.BR \-EINVAL ,
+on error.
+.RE
+.sp
+.nf
+.B void fileio::open(const char *\fIfilename\fB, int \fIflags\fB, event<int> \fIdone\fB)
+.B void fileio::open(const char *\fIfilename\fB, int \fIflags\fB, mode_t \fImode\fB,
+.B "                  event<int> \fIdone\fB)"
+.fi
+.RS 5
+Opens
+.I filename
+with
+.I flags
+and optional
+.IR mode .
+The resulting file descriptor is made nonblocking, then passed as a trigger
+value to
+.IR done .
+On error,
+.I done
+is triggered with a negative error code, such as
+.BR \-EPERM .
+The current implementation of
+.B open
+actually blocks.  File descriptors returned by
+.B tamer::fileio::open
+should be closed with
+.BR tamer::fileio::close .
+.RE
+.sp
+.nf
+.B void fileio::fstat(int \fIfd\fB, struct stat &\fIstat_out\fB, event<int> \fIdone\fB)
+.fi
+.RS 5
+Calls
+.BR fstat(\fIfd\fB) ,
+storing the result in
+.IR stat_out
+and triggering
+.I done
+when complete.
+.IR done 's
+trigger value is
+.B 0
+on success and a negative error code, such as
+.BR \-EBADF ,
+on failure.  The current implementation of
+.B fstat
+actually blocks.
+.RE
+.sp
+.nf
+.B void fileio::read(int \fIfd\fB, void *\fIbuf\fB, size_t \fIsize\fB, ssize_t &\fIsize_out\fB,
+.B "                  event<int> \fIdone\fB)"
+.fi
+.RS 5
+Reads up to
+.I size
+bytes from
+.I fd
+into
+.IR buf ,
+triggering
+.I done
+when complete.  The number of bytes read is stored in
+.IR size_out ,
+which is kept up to date as reading progresses.
+.IR done 's
+trigger value is
+.B 0
+on successful completion and a negative error code, such as
+.BR \-EIO ,
+on failure.  End-of-file is represented by a trigger value of
+.B 0
+and a
+.I size_out
+value of 
+.BR 0 .
+The current implementation of
+.B read
+blocks on reads from disk file descriptors.
+.RE
+.sp
+.nf
+.B void fileio::write(int \fIfd\fB, const void *\fIbuf\fB, size_t \fIsize\fB,
+.B "                   ssize_t &\fIsize_out\fB, event<int> \fIdone\fB)"
+.fi
+.RS 5
+Writes up to
+.I size
+bytes from
+.I buf
+into
+.IR fd ,
+triggering
+.I done
+when complete.  The number of bytes written is stored in
+.IR size_out ,
+which is kept up to date as writing progresses.
+.IR done 's
+trigger value is
+.B 0
+on successful completion and a negative error code, such as
+.BR \-EIO ,
+on failure.  The current implementation of
+.B read
+blocks on writes from disk file descriptors.
+.RE
+.sp
+.nf
+.B void fileio::close(int \fIfd\fB)
+.fi
+.RS 5
+Closes
+.IR fd .
+Any file descriptor used for nonblocking reads and/or writes should be
+closed with
+.BR tamer::fileio::close ,
+which correctly calls
+.B tamer::at_fd_close
+handlers.
+.RE
+.sp
+.nf
+.B void fileio::pipe(int \fIfd_out\fB[2], event<int> \fIdone\fB)
+.fi
+.RS 5
+Creates a nonblocking pipe, setting
+.IB fd_out [0]
+to the read end of the pipe and
+.IB fd_out [1]
+to the write end.  Signals completion by triggering
+.I done
+with trigger value
+.B 0
+on success and a negative error code on error.
+.RE
+.sp
+.nf
+.B void fileio::socket(int \fIdomain\fB, int \fItype\fB, int \fIprotocol\fB,
+.B "                    event<int> \fIdone\fB)"
+.fi
+.RS 5
+Creates a nonblocking socket.  The resulting file descriptor is passed as a
+trigger value to
+.IR done ;
+on error,
+.I done
+is triggered with a negative error code.
+.RE
+.sp
+.nf
+.B void fileio::accept(int \fIlistenfd\fB, struct sockaddr *\fIname_out\fB, 
+.B "                    socklen_t *\fInamelen_out\fB, event<int> \fIdone\fB)"
+.fi
+.RS 5
+Accepts a new connection on listening socket
+.IB listenfd .
+If non-null, the
+.I name_out
+and
+.I namelen_out
+variables are filled in with the accepted connection's address.  The
+resulting file descriptor is made nonblocking, then passed as a trigger
+value to
+.IR done ;
+on error,
+.I done
+is triggered with a negative error code.
+.RE
+.sp
+.nf
+.B void fileio::connect(int \fIfd\fB, const struct sockaddr *\fIname\fB,
+.B "                     socklen_t \fInamelen\fB, event<int> \fIdone\fB)"
+.fi
+.RS 5
+Connects the socket file descriptor
+.I fd
+to the given address.  On successful completion,
+.I done
+is triggered with trigger value
+.BR 0 ;
+on error, it is triggered with a negative error code.
+.RE
