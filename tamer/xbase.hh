@@ -27,7 +27,7 @@ event<> hard_distribute(const event<> &e1, const event<> &e2);
 class simple_event { public:
 
     inline simple_event()
-	: _refcount(1), _r(0), _r_name(0), _r_next(0), _r_pprev(0), _canceller(0) {
+	: _refcount(1), _r(0), _r_name(0), _r_next(0), _r_pprev(0), _canceler(0) {
     }
 
     template <typename R, typename I0, typename I1>
@@ -85,7 +85,7 @@ class simple_event { public:
     uintptr_t _r_name;
     simple_event *_r_next;
     simple_event **_r_pprev;
-    simple_event *_canceller;
+    simple_event *_canceler;
 
     static simple_event *dead;
 
@@ -218,7 +218,7 @@ inline abstract_rendezvous::~abstract_rendezvous()
 {
     // first take all events off this rendezvous, so they don't call back
     disconnect_all();
-    // then complete events, calling their cancellers
+    // then complete events, calling their cancelers
     while (_events)
 	_events->complete(false);
     
@@ -249,7 +249,7 @@ inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rname)
 inline bool simple_event::complete(bool success)
 {
     abstract_rendezvous *r = _r;
-    simple_event *canceller = _canceller;
+    simple_event *canceler = _canceler;
 
     if (_r_pprev)
 	*_r_pprev = _r_next;
@@ -257,16 +257,16 @@ inline bool simple_event::complete(bool success)
 	_r_next->_r_pprev = _r_pprev;
     
     _r = 0;
-    _canceller = 0;
+    _canceler = 0;
     _r_pprev = 0;
     _r_next = 0;
 
     if (r)
 	r->complete(_r_name, success);
-    if (canceller && !success)
-	canceller->complete(true);
-    if (canceller)
-	canceller->unuse();
+    if (canceler && !success)
+	canceler->complete(true);
+    if (canceler)
+	canceler->unuse();
 
     return r != 0;
 }

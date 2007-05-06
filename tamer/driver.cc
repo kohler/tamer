@@ -427,16 +427,18 @@ void driver::once()
 	r->run();
 }
 
+#if 0
 void driver::print_fds()
 {
-  tfd *t = _fd;
-  while (t) {
-    fprintf(stderr, "%d.%d ", t->fd, t->action);
-    t = t->next;
-  }
-  if (_fd)
-    fprintf(stderr, "\n");
+    tfd *t = _fd;
+    while (t) {
+	fprintf(stderr, "%d.%d ", t->fd, t->action);
+	t = t->next;
+    }
+    if (_fd)
+	fprintf(stderr, "\n");
 }
+#endif
 
 void driver::loop()
 {

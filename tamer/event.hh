@@ -6,21 +6,21 @@ namespace tamerpriv {
 
 template <typename R, typename I0, typename I1>
 simple_event::simple_event(R &r, const I0 &i0, const I1 &i1)
-    : _refcount(1), _canceller(0)
+    : _refcount(1), _canceler(0)
 {
     r.add(this, i0, i1);
 }
 
 template <typename R, typename I0>
 simple_event::simple_event(R &r, const I0 &i0)
-    : _refcount(1), _canceller(0)
+    : _refcount(1), _canceler(0)
 {
     r.add(this, i0);
 }
 
 template <typename R>
 inline simple_event::simple_event(R &r)
-    : _refcount(1), _canceller(0)
+    : _refcount(1), _canceler(0)
 {
     r.add(this);
 }
@@ -759,13 +759,13 @@ inline void simple_event::at_cancel(const event<> &e)
 {
     if (!_r)
 	e._e->complete(true);
-    else if (!_canceller) {
-	_canceller = e._e;
-	_canceller->use();
+    else if (!_canceler) {
+	_canceler = e._e;
+	_canceler->use();
     } else {
-	event<> comb = tamer::distribute(event<>::__take(_canceller), e);
-	_canceller = comb._e;
-	_canceller->use();
+	event<> comb = tamer::distribute(event<>::__take(_canceler), e);
+	_canceler = comb._e;
+	_canceler->use();
     }
 }
 }
