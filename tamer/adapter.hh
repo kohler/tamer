@@ -126,6 +126,35 @@ class cancel_adapter_rendezvous : public abstract_rendezvous { public:
 
 };
 
+class cancel_spread_rendezvous : public abstract_rendezvous { public:
+
+    template <typename T0, typename T1, typename T2, typename T3>
+    cancel_spread_rendezvous(const event<T0, T1, T2, T3> &e)
+	: _e(e.__get_simple())
+    {
+	_e->use();
+    }
+
+    ~cancel_spread_rendezvous() {
+	_e->unuse();
+    }
+
+    void add(simple_event *e) {
+	e->initialize(this, 0);
+    }
+    
+    void complete(uintptr_t, bool success) {
+	if (success)
+	    _e->complete(false);
+	delete this;
+    }
+    
+  private:
+
+    simple_event *_e;
+
+};
+
 }
 
 
@@ -249,6 +278,15 @@ template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_cancel(event<T0, T1, T2, T3> e) {
     tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
     return e.make_rebind(*r, outcome::success);
+}
+
+
+template <typename T0, typename T1, typename T2, typename T3,
+	  typename U0, typename U1, typename U2, typename U3>
+inline event<T0, T1, T2, T3> spread_cancel(const event<U0, U1, U2, U3> &cancelee, event<T0, T1, T2, T3> e) {
+    tamerpriv::cancel_spread_rendezvous *r = new tamerpriv::cancel_spread_rendezvous(cancelee);
+    e.at_cancel(event<>(*r));
+    return e;
 }
 
 

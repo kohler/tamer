@@ -198,6 +198,23 @@ void driver::at_fd(int fd, bool write, const event<> &trigger)
     }
 }
 
+void driver::kill_fd(int fd)
+{
+    assert(fd >= 0);
+    if (fd < _nfds && (FD_ISSET(fd, &_readfds) || FD_ISSET(fd, &_writefds))) {
+	tfd **pprev = &_fd, *t;
+	while ((t = *pprev))
+	    if ((t->fdaction >> 1) == fd) {
+		t->e.cancel();
+		t->e.~event();
+		*pprev = t->next;
+		t->next = _fdfree;
+		_fdfree = t;
+	    } else
+		pprev = &t->next;
+    }
+}
+
 void driver::at_delay(double delay, const event<> &e)
 {
     if (delay <= 0)

@@ -29,11 +29,19 @@ tamed void time_sucka() {
     n--;
 }
 
+tamed void close_sucka(int fd) {
+    n++;
+    twait { tamer::at_delay_msec(500, make_event()); }
+    tamer::fileio::close(fd);
+    n--;
+}
+
 
 int main(int, char **) {
     tamer::fileio::make_nonblocking(0);
     read_sucka(0);
     time_sucka();
+    close_sucka(0);
     while (n > 0)
 	tamer::once();
 }

@@ -11,6 +11,7 @@ class driver { public:
 
     inline void at_fd_read(int fd, const event<> &e);
     inline void at_fd_write(int fd, const event<> &e);
+    void kill_fd(int fd);
     
     inline void at_time(const timeval &expiry, const event<> &e);
     inline void at_delay(timeval delay, const event<> &e);
