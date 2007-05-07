@@ -7,6 +7,9 @@ conventional C++ code, the Tamer libraries for event-driven programming,
 and several examples, including a working port of the Knot web server
 distributed with the Capriccio threading package.
 
+   Installation is standard; run "./configure", supplying any options, then
+"make install".
+
 
 Why Tamer?
 ----------
@@ -25,3 +28,34 @@ abstractions to a standard C++ environment.  Although currently less
 powerful than Tame and SFSlite -- for example, Tamer code can block on disk
 I/O, a problem SFSlite can solve with RPCs -- Tamer is much smaller and
 lighter weight.  It was also designed to be easier to use.
+
+   If your main concern is code readability, try Tamer.  If you really can
+never block, or would benefit from built-in RPC support, try Tame.
+
+
+License and Non-Warranty
+------------------------
+
+   Tamer is distributed under the GNU Public License, Version 2.  See the
+file "LICENSE".
+
+   The tamer preprocessor transforms code using the Tamer extensions into
+conventional C++.  We explicitly state that preprocessor output does not
+add license requirements.  That is, the output of the tamer preprocessor
+need not be distributed under the GPL, and may use whatever license applies
+to the original code.  However, the Tamer library, including header files
+and other source files in the tamer/ subdirectory, is licensed under the
+GPL.  Since most Tamer source files will make integral use of the Tamer
+library, the effect is that most Tamer source files will generally need to
+be distributed under the GPL.
+
+
+Authors
+-------
+
+Eddie Kohler <kohler@cs.ucla.edu>
+http://www.cs.ucla.edu/~kohler/
+
+Maxwell Krohn <krohn@mit.edu>
+http://www.okws.org/
+Especially including the original version of the tamer preprocessor.
