@@ -1,2 +1,27 @@
 TAMER
 =====
+
+   Tamer is a lightweight version of the Tame event-driven programming
+package.  Included is a preprocessor that compiles Tame abstractions into
+conventional C++ code, the Tamer libraries for event-driven programming,
+and several examples, including a working port of the Knot web server
+distributed with the Capriccio threading package.
+
+
+Why Tamer?
+----------
+
+   For historical reasons, the Tame package distributed as part of SFSlite
+follows SFS conventions, and requires a wide variety of less than
+documented general-purpose classes, including strings, string buffers,
+vectors, hash tables, linked lists, and reference counts.  Better, or at
+least more standard, versions of many of these classes are available as
+part of the C++ standard library and the Boost libraries.  Additionally,
+the Tame abstractions are layered on top of SFSlite's existing "wrap"
+callbacks, adding overhead and complexity.
+
+   Tamer, in contrast, is a freestanding port of the basic Tame
+abstractions to a standard C++ environment.  Although currently less
+powerful than Tame and SFSlite -- for example, Tamer code can block on disk
+I/O, a problem SFSlite can solve with RPCs -- Tamer is much smaller and
+lighter weight.  It was also designed to be easier to use.
