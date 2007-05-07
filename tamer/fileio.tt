@@ -82,19 +82,19 @@ tamed void write(int fd, const void *buf, size_t size, ssize_t &size_out, event<
     done.trigger(pos < size || closewatch ? 0 : -ECANCELED);
 }
 
-tamed void close(int fd)
+void close(int fd)
 {
     driver::main.kill_fd(fd);
     ::close(fd);
 }
 
-tamed void fstat(int fd, struct stat &stat_out, event<int> done)
+void fstat(int fd, struct stat &stat_out, event<int> done)
 {
     int x = ::fstat(fd, &stat_out);
     done.trigger(x == -1 ? -errno : 0);
 }
 
-tamed void pipe(int fd_out[2], event<int> done)
+void pipe(int fd_out[2], event<int> done)
 {
     int x = ::pipe(fd_out);
     if (x >= 0) {
