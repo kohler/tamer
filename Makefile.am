@@ -2,5 +2,4 @@
 AUTOMAKE_OPTIONS = foreign check-news
 
 
-SUBDIRS = compiler tamer ex knot
-
+SUBDIRS = compiler tamer ex knot doc

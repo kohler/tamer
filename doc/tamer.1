@@ -1,0 +1,71 @@
+.TH TAMER 1 2007-04-30 Tamer "Tamer Processor Manual"
+.ds E \-\-\-
+.if t .ds E \(em
+.SH NAME
+tamer \- C++ preprocessor for event-driven programming
+.SH SYNOPSIS
+.BR tamer " [" \-g "] [" "\-o \fIfile" "] " \fIfile
+.br
+.BR tamer " [" \-g "] " \-c " \fIfile"
+.fi
+.SH DESCRIPTION
+The
+.B tamer
+C++ preprocessor reads a source file that uses the
+.B Tamer
+extensions and generates the corresponding conventional C++.
+.LP
+The
+.B Tamer
+programming model is described in more detail at
+.BR tamer (3).
+'
+.SH OPTIONS
+.TP 5
+.B \-g
+Generate code in debugging mode.  Debugging mode tracks the filenames and
+line numbers corresponding to important objects at runtime, allowing
+.B Tamer
+to generate better error messages.
+.TP 5
+.BI \-o " file"
+Places the output C++ source in
+.IR file .
+.TP 5
+.BI \-c
+Compilation mode: automatically derives the output filename from the input
+filename.  For example, a file named
+.B ex1.tt
+will be compiled into a file named
+.BR ex1.cc ,
+.B ex2.tpp
+will be compiled into
+.BR ex2.cpp ,
+and so forth.
+'
+.SH BUGS
+The existing
+.B tamer
+preprocessor is not that good at generating
+.BR Tame d
+versions of class member functions and template functions.
+.LP
+.B Tamer
+preprocessing should happen
+.I after
+the normal C++ preprocessor, but it currently happens before.
+'
+.SH AUTHOR
+Maxwell Krohn <krohn@mit.edu>: original Tame version
+.br
+Eddie Kohler <kohler@cs.ucla.edu>: port to
+.B Tamer
+'
+.SH "SEE ALSO"
+.BR tamer (3)
+.LP
+\*(lqEvents Can Make Sense\*(rq.  Maxwell Krohn, Eddie Kohler, and Frans
+Kaashoek.  In
+.I Proc. USENIX 2007 Annual Technical Conference.
+Also available at
+http://www.cs.ucla.edu/~kohler/pubs/krohn07events.pdf

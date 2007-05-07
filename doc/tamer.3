@@ -59,7 +59,13 @@ This manual page gives an overview of the
 .B Tamer
 abstractions, and describes the user-accessible
 .B Tamer
-methods and functions.
+methods and functions.  Most
+.B Tamer
+programs will also use the
+.BR tamer (1)
+preprocessor, which converts programs using
+.B twait
+into conventional C++.
 '
 .SH OVERVIEW
 .B Tamer
@@ -1121,3 +1127,76 @@ is triggered with trigger value
 .BR 0 ;
 on error, it is triggered with a negative error code.
 .RE
+'
+.SH BUGS
+The existing
+.B fileio
+wrappers are only truly nonblocking for pipe, socket, and network I/O.  The
+functions will block on disk I/O.
+.LP
+The
+.B Tamer
+interface differs in several ways from the interface described in
+\*(lqEvents Can Make Sense\*(rq by Krohn et al.  First, all
+.B Tamer
+classes and functions are declared in the
+.B tamer
+namespace.  
+.RB \*(lq "using namespace tamer;" \*(rq
+will bring them into the global namespace.
+Second,
+.B Tamer
+events are created with
+.BR make_event
+(rather than
+.BR mkevent ),
+which more closely follows the C++ standard library's style.  Third,
+.B Tamer
+primitive events are registered with functions
+.BR at_time ,
+.BR at_fd_read ,
+and
+.BR at_fd_write
+rather than
+.BR timer
+and
+.BR wait_on_fd ;
+the
+.B at_
+convention will generalize better to future classes of events.  Finally,
+.B tamed
+functions in
+.B Tamer
+are declared using code like \*(lq\fBtamed void f()\fR\*(rq, not
+\*(lq\fBtamed f()\fR\*(rq.
+.LP
+The
+.B Tamer
+interface also differs substantially from that of
+.BR Tame ,
+which is distributed as part of
+.BR sfslite .
+'
+.SH AUTHOR
+Eddie Kohler <kohler@cs.ucla.edu>
+.br
+Based on joint work on Tame with Maxwell Krohn <krohn@mit.edu> and Frans
+Kaashoek <kaashoek@mit.edu>
+'
+.SH "SEE ALSO"
+.BR tamer (1)
+.LP
+\*(lqEvents Can Make Sense\*(rq.  Maxwell Krohn, Eddie Kohler, and Frans
+Kaashoek.  In
+.I Proc. USENIX 2007 Annual Technical Conference.
+Also available at
+http://www.cs.ucla.edu/~kohler/pubs/krohn07events.pdf
+.LP
+The SFSlite libraries for writing asynchronous programs include the
+original
+.B Tame
+processor and libraries.  The SFSlite libraries are larger and more
+full-featured than
+.BR Tamer ,
+but also harder to use.  SFSlite is available at
+http://www.okws.org/doku.php?id=sfslite

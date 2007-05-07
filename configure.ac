@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(configure.ac)
-AM_INIT_AUTOMAKE(tamer, 0.1)
+AM_INIT_AUTOMAKE(tamer, 1.0.0)
 AM_CONFIG_HEADER(tamer/config.h)
 AM_MAINTAINER_MODE
 
@@ -235,4 +235,4 @@ dnl
 dnl Output
 dnl
 
-AC_OUTPUT(Makefile compiler/Makefile tamer/Makefile ex/Makefile knot/Makefile)
+AC_OUTPUT(Makefile compiler/Makefile tamer/Makefile ex/Makefile knot/Makefile doc/Makefile)
