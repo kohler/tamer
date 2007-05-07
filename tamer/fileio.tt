@@ -150,9 +150,7 @@ tamed void connect(int fd, const struct sockaddr *name, socklen_t namelen, event
 	tamer::at_fd_write(fd, make_event(r));
 	twait(r);
 	socklen_t socklen = sizeof(x);
-	if (!done)
-	    /* do nothing */;
-	else if (!closewatch)
+	if (!done || !closewatch)
 	    ret = -ECANCELED;
 	else if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (void *) &x, &socklen) == -1)
 	    ret = -errno;
