@@ -50,6 +50,14 @@ library, the effect is that most Tamer source files will generally need to
 be distributed under the GPL.
 
 
+Bugs and Contributing
+---------------------
+
+   We are happy to accept bug reports, patches, and contributions of code,
+for example to improve Tamer's support for nonblocking disk I/O.  Send them
+to Eddie Kohler at the address below.
+
+
 Authors
 -------
 
