@@ -34,10 +34,10 @@ tamed void read(int fd, void *buf, size_t size, ssize_t &size_out, event<int> do
 	size_t pos(0);
 	ssize_t amt;
 	rendezvous<> r;
+	event<> closewatch(r);
     }
-    done.at_cancel(make_event(r));
-    tamer::at_fd_close(fd, make_canceler(done));
-    while (pos != size && done) {
+    tamer::at_fd_close(fd, closewatch);
+    while (pos != size && done && closewatch) {
 	amt = ::read(fd, static_cast<char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
@@ -52,7 +52,7 @@ tamed void read(int fd, void *buf, size_t size, ssize_t &size_out, event<int> do
 	    return;
 	}
     }
-    done.trigger(0);
+    done.trigger(pos < size || closewatch ? 0 : -ECANCELED);
 }
 
 tamed void write(int fd, const void *buf, size_t size, ssize_t &size_out, event<int> done)
@@ -61,10 +61,10 @@ tamed void write(int fd, const void *buf, size_t size, ssize_t &size_out, event<
 	size_t pos(0);
 	ssize_t amt;
 	rendezvous<> r;
+	event<> closewatch(r);
     }
-    done.at_cancel(make_event(r));
-    tamer::at_fd_close(fd, make_canceler(done));
-    while (pos != size && done) {
+    tamer::at_fd_close(fd, closewatch);
+    while (pos != size && done && closewatch) {
 	amt = ::write(fd, static_cast<const char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
@@ -79,7 +79,7 @@ tamed void write(int fd, const void *buf, size_t size, ssize_t &size_out, event<
 	    return;
 	}
     }
-    done.trigger(0);
+    done.trigger(pos < size || closewatch ? 0 : -ECANCELED);
 }
 
 tamed void close(int fd)
@@ -90,18 +90,18 @@ tamed void close(int fd)
 
 tamed void fstat(int fd, struct stat &stat_out, event<int> done)
 {
-    int ret = ::fstat(fd, &stat_out);
-    done.trigger(ret == -1 ? -errno : 0);
+    int x = ::fstat(fd, &stat_out);
+    done.trigger(x == -1 ? -errno : 0);
 }
 
 tamed void pipe(int fd_out[2], event<int> done)
 {
-    int ret = ::pipe(fd_out);
-    if (ret >= 0) {
+    int x = ::pipe(fd_out);
+    if (x >= 0) {
 	make_nonblocking(fd_out[0]);
 	make_nonblocking(fd_out[1]);
     }
-    done.trigger(ret == -1 ? -errno : 0);
+    done.trigger(x == -1 ? -errno : 0);
 }
 
 void socket(int domain, int type, int protocol, event<int> done)
@@ -117,10 +117,10 @@ tamed void accept(int listenfd, struct sockaddr *name_out, socklen_t *namelen_ou
     tvars {
 	int fd(-1);
 	rendezvous<> r;
+	event<> closewatch(r);
     }
-    done.at_cancel(make_event(r));
-    tamer::at_fd_close(listenfd, make_canceler(done));
-    while (done) {
+    tamer::at_fd_close(listenfd, closewatch);
+    while (done && closewatch) {
 	fd = ::accept(listenfd, name_out, namelen_out);
 	if (fd >= 0)
 	    break;
@@ -132,33 +132,34 @@ tamed void accept(int listenfd, struct sockaddr *name_out, socklen_t *namelen_ou
 	    return;
 	}
     }
-    done.trigger(fd == -1 ? -ECANCELED : fd);
+    done.trigger(fd >= 0 ? fd : -ECANCELED);
 }
 
 tamed void connect(int fd, const struct sockaddr *name, socklen_t namelen, event<int> done)
 {
     tvars {
-	int ret;
+	int x, ret(0);
 	rendezvous<> r;
+	event<> closewatch(r);
     }
-    done.at_cancel(make_event(r));
-    tamer::at_fd_close(fd, tamer::make_canceler(done));
-    ret = ::connect(fd, name, namelen);
-    if (ret == -1 && errno == EINPROGRESS) {
+    x = ::connect(fd, name, namelen);
+    if (x == -1 && errno != EINPROGRESS)
+	ret = -errno;
+    else if (x == -1) {
+	tamer::at_fd_close(fd, closewatch);
 	tamer::at_fd_write(fd, make_event(r));
 	twait(r);
-	socklen_t socklen = sizeof(ret);
+	socklen_t socklen = sizeof(x);
 	if (!done)
-	    return;
-	if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (void *) &ret, &socklen) == -1) {
-	    done.trigger(-errno);
-	    return;
-	} else if (ret > 0) {
-	    done.trigger(-ret);
-	    return;
-	}
+	    /* do nothing */;
+	else if (!closewatch)
+	    ret = -ECANCELED;
+	else if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (void *) &x, &socklen) == -1)
+	    ret = -errno;
+	else if (ret > 0)
+	    ret = -x;
     }
-    done.trigger(ret == -1 ? -errno : 0);
+    done.trigger(ret);
 }
 
 }}

@@ -573,8 +573,8 @@ exitloop(int s)
 {
     twait { tamer::at_signal(SIGINT, make_event()); }
     printf ("Got shutdown signal...\n");
-    close(s);
-    clear_cache ();
+    tamer::fileio::close(s);
+    clear_cache();
     exit(0);
 }
 
