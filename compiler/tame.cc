@@ -1,5 +1,5 @@
 
-/* $Id: tame.cc,v 1.2 2007-05-05 17:12:28 kohler Exp $ */
+/* $Id: tame.cc,v 1.3 2007-05-07 07:35:08 kohler Exp $ */
 
 #include "tame.hh"
 #include <iostream>
@@ -43,13 +43,30 @@ usage ()
 static str
 ifn2ofn (const str &s)
 {
-    str::size_type l = s.length();
-    if (l > 2 && s[l-2] == '.' && s[l-1] == 'T')
-	return s.substr(0, l - 2) + ".C";
-    else if (l > 3 && s[l-3] == '.' && s[l-2] == 't' && s[l-1] == 't')
-	return s.substr(0, l - 3) + ".cc";
-    else if (l > 4 && s[l-4] == '.' && s[l-3] == 't' && s[l-2] == 'c' && s[l-1] == 'c')
-	return s.substr(0, l - 4) + ".cc";
+    str::size_type rdot = s.rfind('.');
+    if (rdot == str::npos || rdot == 0 || rdot == s.length() - 1
+	|| s[rdot - 1] == '/')
+	return str();
+    str base = s.substr(0, rdot);
+    str ext = s.substr(rdot + 1);
+    if (ext == "T" || ext == "tC")
+	return base + ".C";
+    else if (ext == "tt" || ext == "tcc")
+	return base + ".cc";
+    else if (ext == "txx" || ext == "tcxx")
+	return base + ".cxx";
+    else if (ext == "tpp" || ext == "tcpp")
+	return base + ".cpp";
+    else if (ext == "thh" || ext == "tth")
+	return base + ".hh";
+    else if (ext == "thxx" || ext == "thx")
+	return base + ".hxx";
+    else if (ext == "thpp" || ext == "thp")
+	return base + ".hpp";
+    else if (ext == "th")
+	return base + ".h";
+    else if (ext == "tH" || ext == "TH")
+	return base + ".H";
     else
 	return str();
 }
