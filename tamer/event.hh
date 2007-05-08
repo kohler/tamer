@@ -10,13 +10,59 @@ namespace tamer {
 /** @class event tamer/event.hh <tamer.hh>
  *  @brief  A future occurrence.
  *
- *  A Tamer event object represents a future occurrence.
+ *  Each event object represents a future occurrence, such as the completion
+ *  of a network read.  When the expected occurrence actually happens---for
+ *  instance, a packet arrives---the event is triggered via its trigger()
+ *  method.  A function can wait for the event using @c twait special forms,
+ *  which allow event-driven code to block.
+ *
+ *  The main operations on an event are trigger() and cancel().  trigger()
+ *  marks the event's completion, and wakes up any blocked function waiting
+ *  for the event.  cancel() marks that the event will never complete; for
+ *  example, an event representing the completion of a network read might be
+ *  canceled when the connection is closed.  cancel() does not wake up any
+ *  blocked function.  An event is implicitly canceled when the last reference
+ *  to its occurrence is destroyed.
+ *
+ *  Events have from zero to four trigger slots of arbitrary type.  For
+ *  example, an event of type <tt>event<int, char*, bool></tt> has three
+ *  trigger slots with types <tt>int</tt>, <tt>char*</tt>, and <tt>bool</tt>.
+ *  The main constructors for <tt>event<int, char*, bool></tt> take three
+ *  reference arguments of types <tt>int&</tt>, <tt>char*&</tt>, and
+ *  <tt>bool&</tt>, and its trigger() method takes value arguments of types
+ *  <tt>int</tt>, <tt>char*</tt>, and <tt>bool</tt>.  Calling <tt>e.trigger(1,
+ *  "Hi", false)</tt> will set the trigger slots to the corresponding values.
+ *  This can be used to pass information back to the function waiting for the
+ *  event.
+ *
+ *  Each event is in one of two states, active or empty.  An active event is
+ *  ready to be triggered.  An empty event has already been triggered or
+ *  canceled.  Events can be triggered or canceled at most once; triggering or
+ *  canceling an empty event has no additional effect.  The empty() and
+ *  operator unspecified_bool_type() member functions test whether an event is
+ *  empty or active.
+ *
+ *  <pre>
+ *      Constructors                    Default constructor
+ *           |                                  |
+ *           v                                  v
+ *         ACTIVE   === trigger/cancel ===>   EMPTY   =====+
+ *                                              ^    trigger/cancel
+ *                                              |          |
+ *                                              +==========+
+ *  </pre>
  *
  *  Multiple event objects may refer to the same underlying occurrence.
  *  Triggering or canceling an event can thus affect several event objects.
- *  For instance, after an assignment <tt>e1 = e2;</tt>, @c e1 and @c e2 refer
- *  to the same occurrence, and either <tt>e1.trigger()</tt> or
- *  <tt>e2.trigger()</tt> would have the same observable effects.
+ *  For instance, after an assignment <tt>e1 = e2</tt>, @c e1 and @c e2 refer
+ *  to the same occurrence.  Either <tt>e1.trigger()</tt> or
+ *  <tt>e2.trigger()</tt> would trigger the underlying occurrence, making both
+ *  @c e1 and @c e2 empty.
+ *
+ *  Events can have associated cancel notifiers, which are triggered when the
+ *  event is canceled.  A cancel notifier is simply an <tt>event<></tt>
+ *  object.  If the event is triggered, the cancel notifier is itself
+ *  canceled.
  */
 template <typename T0, typename T1, typename T2, typename T3>
 class event { public:
@@ -104,9 +150,9 @@ class event { public:
     /** @brief  Register a cancel notifier.
      *  @param  e  Cancel notifier.
      *
-     *  If event is empty, @a e is immediately triggered.  Otherwise,
-     *  when this event is triggered, cancels @a e.  Otherwise, when
-     *  this event is canceled (explicitly or implicitly), triggers @a e.
+     *  If this event is empty, @a e is triggered immediately.  Otherwise,
+     *  when this event is triggered, cancels @a e; when this event is
+     *  canceled, triggers @a e.
      */
     void at_cancel(const event<> &e) {
 	_e->at_cancel(e);
@@ -134,7 +180,7 @@ class event { public:
 
     /** @brief  Cancel event.
      *
-     *  Does nothing if this event is empty.
+     *  Does nothing if event is empty.
      */
     void cancel() {
 	_e->complete(false);
@@ -150,6 +196,9 @@ class event { public:
      *  this event's slots to a new event on @a r with event IDs @a i0 and
      *  @a i1.  When this event is triggered, its trigger values will be
      *  ignored.
+     *
+     *  @note Versions of this function exist for rendezvous with two, one,
+     *  and zero event IDs.
      */
     template <typename R, typename I0, typename I1>
     event<T0, T1, T2, T3> make_rebind(R &r, const I0 &i0, const I1 &i1) {
@@ -161,11 +210,6 @@ class event { public:
 	    return event<T0, T1, T2, T3>();
     }
 
-    /** @brief  Transfer trigger slots to a new event on @a r.
-     *  @param  r   Rendezvous.
-     *  @param  i0  First event ID.
-     *  @return  Event on @a r with this event's slots.
-     */
     template <typename R, typename I0>
     event<T0, T1, T2, T3> make_rebind(R &r, const I0 &i0) {
 	if (*this) {
@@ -176,10 +220,6 @@ class event { public:
 	    return event<T0, T1, T2, T3>();
     }
 
-    /** @brief  Transfer trigger slots to a new event on @a r.
-     *  @param  r   Rendezvous.
-     *  @return  Event on @a r with this event's slots.
-     */
     template <typename R>
     event<T0, T1, T2, T3> make_rebind(R &r) {
 	if (*this) {

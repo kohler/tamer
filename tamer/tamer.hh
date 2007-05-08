@@ -9,7 +9,7 @@
  */
 
 /** @namespace tamer
- *  @brief  Namespace containing all Tamer classes and functions.
+ *  @brief  Namespace containing all public Tamer classes and functions.
  */
 
 #include <tamer/rendezvous.hh>

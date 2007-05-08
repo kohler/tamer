@@ -83,7 +83,29 @@ packet arrives\*Ethe event is
 .I triggered
 via its
 .B trigger
-method.
+method.  A
+.B rendezvous
+object represents a set of related events; each
+.B event
+associates with exactly one
+.BR rendezvous .
+A function can block until some event on a
+.B rendezvous
+occurs using a
+.B twait
+special form.  For example, this function uses
+.B Tamer
+to print "Done!" after 10 seconds have elapsed.  During that 10 seconds,
+the function blocks, allowing other application code to continue
+processing.
+.sp
+.nf
+.B "  tamed void f() {"
+.B "      twait { tamer::at_delay_sec(10, make_event()); }"
+.B "      printf(""Done!\en"");"
+.B "  }"
+.fi
+.SS "Events"
 .LP
 The
 .B make_event
@@ -166,6 +188,7 @@ is triggered first, then
 .B Tamer
 will automatically cancel
 .IR e2 .
+.SS "Wait Points and Rendezvous"
 .LP
 The
 .B wait point
@@ -307,6 +330,7 @@ triggers a corresponding event.  The top-level event loop cycles through
 unblocked functions, calling them in some order.
 .LP
 Multiple functions cannot simultaneously block on the same rendezvous.
+.SS "Safe Local Variables"
 .LP
 Finally, 
 .B safe local variables
