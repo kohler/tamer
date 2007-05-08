@@ -44,7 +44,7 @@ inline event<> distribute(const event<> &e1, const event<> &e2, const event<> &e
 
 /** @brief  Create event that triggers @a e with @a v0 when triggered.
  *  @param  e   Event.
- *  @param  v0  Trigger value
+ *  @param  v0  Trigger value.
  *  @return  Adapter event.
  *
  *  When the adapter event is triggered, @a e is triggered instantly with
