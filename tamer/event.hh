@@ -3,6 +3,10 @@
 #include <tamer/xevent.hh>
 namespace tamer {
 
+/** @file <tamer/event.hh>
+ *  @brief  The event template classes and helper functions.
+ */
+
 /** @class event tamer/event.hh <tamer.hh>
  *  @brief  A future occurrence.
  *
@@ -101,8 +105,8 @@ class event { public:
      *  @param  e  Cancel notifier.
      *
      *  If event is empty, @a e is immediately triggered.  Otherwise,
-     *  when event is triggered, cancels @a e.  Otherwise, when
-     *  this is canceled (explicitly or implicitly), triggers @a e.
+     *  when this event is triggered, cancels @a e.  Otherwise, when
+     *  this event is canceled (explicitly or implicitly), triggers @a e.
      */
     void at_cancel(const event<> &e) {
 	_e->at_cancel(e);
@@ -673,10 +677,10 @@ class event<void, void, void, void> { public:
 
 /** @defgroup make_event Helper functions for making events
  *
- *  Creating new events can be simplified using the @c make_event() helper
- *  function.  @c make_event() automatically selects the right type of event
- *  for its arguments.  There are 3*5 = 15 versions, one for each combination
- *  of event IDs and trigger slots.
+ *  The @c make_event() helper function simplifies event creation.  @c
+ *  make_event() automatically selects the right type of event for its
+ *  arguments.  There are 3*5 = 15 versions, one for each combination of event
+ *  IDs and trigger slots.
  *
  *  @{ */
  
@@ -688,6 +692,12 @@ class event<void, void, void, void> { public:
  *  @param  t1  Second trigger slot.
  *  @param  t2  Third trigger slot.
  *  @param  t3  Fourth trigger slot.
+ *
+ *  @note Versions of this function exist for any combination of two, one, or
+ *  zero event IDs and four, three, two, one, or zero trigger slots.  For
+ *  example, <tt>make_event(r)</tt> creates a zero-ID, zero-slot event on
+ *  <tt>rendezvous<> r</tt>, while <tt>make_event(r, 1, i, j)</tt> might
+ *  create a one-ID, two-slot event on <tt>rendezvous<int> r</tt>.
  */
 template <typename I0, typename I1, typename J0, typename J1, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_event(rendezvous<I0, I1> &r, const J0 &i0, const J1 &i1, T0 &t0, T1 &t1, T2 &t2, T3 &t3)
@@ -773,9 +783,6 @@ inline event<> make_event(rendezvous<I0> &r, const J0 &i0)
     return event<>(r, i0);
 }
 
-/** @brief  Construct a zero-ID, zero-slot event on rendezvous @a r.
- *  @param  r   Rendezvous.
- */
 inline event<> make_event(rendezvous<> &r)
 {
     return event<>(r);
