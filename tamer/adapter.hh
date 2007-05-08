@@ -159,6 +159,20 @@ class canceler_rendezvous : public abstract_rendezvous { public:
 }
 
 
+inline event<> distribute(const event<> &e1, const event<> &e2) {
+    if (e1.empty())
+	return e2;
+    else if (e2.empty())
+	return e1;
+    else
+	return tamerpriv::hard_distribute(e1, e2);
+}
+
+inline event<> distribute(const event<> &e1, const event<> &e2, const event<> &e3) {
+    return distribute(distribute(e1, e2), e3);
+}
+
+
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2, T3> e) {
     tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);

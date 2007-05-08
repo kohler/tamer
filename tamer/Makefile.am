@@ -3,6 +3,7 @@ libtamer_la_SOURCES = \
 	base.cc base.hh \
 	driver.cc driver.hh \
 	event.hh \
+	eventx.hh \
 	rendezvous.hh \
 	util.hh \
 	adapter.hh \

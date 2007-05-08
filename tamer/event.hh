@@ -1,302 +1,148 @@
 #ifndef TAMER_EVENT_HH
 #define TAMER_EVENT_HH 1
-#include <tamer/rendezvous.hh>
+#include <tamer/eventx.hh>
 namespace tamer {
-namespace tamerpriv {
 
-template <typename R, typename I0, typename I1>
-simple_event::simple_event(R &r, const I0 &i0, const I1 &i1)
-    : _refcount(1), _canceler(0)
-{
-    r.add(this, i0, i1);
-}
-
-template <typename R, typename I0>
-simple_event::simple_event(R &r, const I0 &i0)
-    : _refcount(1), _canceler(0)
-{
-    r.add(this, i0);
-}
-
-template <typename R>
-inline simple_event::simple_event(R &r)
-    : _refcount(1), _canceler(0)
-{
-    r.add(this);
-}
-
-
-template <typename T0, typename T1, typename T2, typename T3>
-class eventx : public simple_event { public:
-
-    eventx()
-	: simple_event(), _t0(0), _t1(0), _t2(0), _t3(0) {
-    }
-    
-    template <typename R, typename I0, typename I1>
-    eventx(R &r, const I0 &i0, const I1 &i1, T0 &t0, T1 &t1, T2 &t2, T3 &t3)
-	: simple_event(r, i0, i1), _t0(&t0), _t1(&t1), _t2(&t2), _t3(&t3) {
-    }
-
-    template <typename R, typename I0>
-    eventx(R &r, const I0 &i0, T0 &t0, T1 &t1, T2 &t2, T3 &t3)
-	: simple_event(r, i0), _t0(&t0), _t1(&t1), _t2(&t2), _t3(&t3) {
-    }
-
-    template <typename R>
-    eventx(R &r, T0 &t0, T1 &t1, T2 &t2, T3 &t3)
-	: simple_event(r), _t0(&t0), _t1(&t1), _t2(&t2), _t3(&t3) {
-    }
-
-    void unuse() {
-	if (!--_refcount)
-	    delete this;
-    }
-    
-    void trigger(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3) {
-	if (simple_event::complete(true)) {
-	    if (_t0) *_t0 = v0;
-	    if (_t1) *_t1 = v1;
-	    if (_t2) *_t2 = v2;
-	    if (_t3) *_t3 = v3;
-	}
-    }
-
-    void unbind() {
-	_t0 = 0;
-	_t1 = 0;
-	_t2 = 0;
-	_t3 = 0;
-    }
-    
-  private:
-
-    T0 *_t0;
-    T1 *_t1;
-    T2 *_t2;
-    T3 *_t3;
-
-    friend class event<T0, T1, T2, T3>;
-    
-};
-
-
-template <typename T0, typename T1, typename T2>
-class eventx<T0, T1, T2, void> : public simple_event { public:
-
-    eventx()
-	: simple_event(), _t0(0), _t1(0), _t2(0) {
-    }
-    
-    template <typename R, typename I0, typename I1>
-    eventx(R &r, const I0 &i0, const I1 &i1, T0 &t0, T1 &t1, T2 &t2)
-	: simple_event(r, i0, i1), _t0(&t0), _t1(&t1), _t2(&t2) {
-    }
-
-    template <typename R, typename I0>
-    eventx(R &r, const I0 &i0, T0 &t0, T1 &t1, T2 &t2)
-	: simple_event(r, i0), _t0(&t0), _t1(&t1), _t2(&t2) {
-    }
-
-    template <typename R>
-    eventx(R &r, T0 &t0, T1 &t1, T2 &t2)
-	: simple_event(r), _t0(&t0), _t1(&t1), _t2(&t2) {
-    }
-
-    void unuse() {
-	if (!--_refcount)
-	    delete this;
-    }
-    
-    void trigger(const T0 &v0, const T1 &v1, const T2 &v2) {
-	if (simple_event::complete(true)) {
-	    if (_t0) *_t0 = v0;
-	    if (_t1) *_t1 = v1;
-	    if (_t2) *_t2 = v2;
-	}
-    }
-
-    void unbind() {
-	_t0 = 0;
-	_t1 = 0;
-	_t2 = 0;
-    }
-    
-  private:
-
-    T0 *_t0;
-    T1 *_t1;
-    T2 *_t2;
-
-    friend class event<T0, T1, T2>;
-    
-};
-
-
-
-template <typename T0, typename T1>
-class eventx<T0, T1, void, void> : public simple_event { public:
-
-    eventx()
-	: simple_event(), _t0(0), _t1(0) {
-    }
-    
-    template <typename R, typename I0, typename I1>
-    eventx(R &r, const I0 &i0, const I1 &i1, T0 &t0, T1 &t1)
-	: simple_event(r, i0, i1), _t0(&t0), _t1(&t1) {
-    }
-
-    template <typename R, typename I0>
-    eventx(R &r, const I0 &i0, T0 &t0, T1 &t1)
-	: simple_event(r, i0), _t0(&t0), _t1(&t1) {
-    }
-
-    template <typename R>
-    eventx(R &r, T0 &t0, T1 &t1)
-	: simple_event(r), _t0(&t0), _t1(&t1) {
-    }
-
-    void unuse() {
-	if (!--_refcount)
-	    delete this;
-    }
-    
-    void trigger(const T0 &v0, const T1 &v1) {
-	if (simple_event::complete(true)) {
-	    if (_t0) *_t0 = v0;
-	    if (_t1) *_t1 = v1;
-	}
-    }
-
-    void unbind() {
-	_t0 = 0;
-	_t1 = 0;
-    }
-    
-  private:
-
-    T0 *_t0;
-    T1 *_t1;
-
-    friend class event<T0, T1>;
-    
-};
-
-
-template <typename T0>
-class eventx<T0, void, void, void> : public simple_event { public:
-
-    eventx()
-	: simple_event(), _t0(0) {
-    }
-    
-    template <typename R, typename I0, typename I1>
-    eventx(R &r, const I0 &i0, const I1 &i1, T0 &t0)
-	: simple_event(r, i0, i1), _t0(&t0) {
-    }
-
-    template <typename R, typename I0>
-    eventx(R &r, const I0 &i0, T0 &t0)
-	: simple_event(r, i0), _t0(&t0) {
-    }
-
-    template <typename R>
-    eventx(R &r, T0 &t0)
-	: simple_event(r), _t0(&t0) {
-    }
-
-    void unuse() {
-	if (!--_refcount)
-	    delete this;
-    }
-    
-    void trigger(const T0 &v0) {
-	if (simple_event::complete(true)) {
-	    if (_t0) *_t0 = v0;
-	}
-    }
-
-    void unbind() {
-	_t0 = 0;
-    }
-
-    T0 *slot(int i) const {
-	assert(i == 0);
-	return _t0;
-    }
-    
-  private:
-
-    T0 *_t0;
-    
-    friend class event<T0>;
-    
-};
-
-} /* namespace tamerpriv */
-
-
+/** @class event tamer/event.hh <tamer/event.hh>
+ *  @brief  A future occurrence.
+ *
+ *  A Tamer event object represents a future occurrence.
+ *
+ *  Multiple event objects may refer to the same underlying occurrence.
+ *  Triggering or canceling an event can thus affect several event objects.
+ *  For instance, after an assignment <tt>e1 = e2;</tt>, @c e1 and @c e2 refer
+ *  to the same occurrence, and either <tt>e1.trigger()</tt> or
+ *  <tt>e2.trigger()</tt> would have the same observable effects.
+ */
 template <typename T0, typename T1, typename T2, typename T3>
 class event { public:
 
+    /** @brief  Default constructor creates an empty event. */
     event()
 	: _e(new tamerpriv::eventx<T0, T1, T2, T3>()) {
     }
-    
+
+    /** @brief  Construct a two-ID, four-slot event on rendezvous @a r.
+     *  @param  r   Rendezvous.
+     *  @param  i0  First event ID.
+     *  @param  i1  Second event ID.
+     *  @param  t0  First trigger slot.
+     *  @param  t1  Second trigger slot.
+     *  @param  t2  Third trigger slot.
+     *  @param  t3  Fourth trigger slot.
+     */
     template <typename R, typename I0, typename I1>
     event(R &r, const I0 &i0, const I1 &i1, T0 &t0, T1 &t1, T2 &t2, T3 &t3)
 	: _e(new tamerpriv::eventx<T0, T1, T2, T3>(r, i0, i1, t0, t1, t2, t3)) {
     }
 
+    /** @brief  Construct a one-ID, four-slot event on rendezvous @a r.
+     *  @param  r   Rendezvous.
+     *  @param  i0  First event ID.
+     *  @param  t0  First trigger slot.
+     *  @param  t1  Second trigger slot.
+     *  @param  t2  Third trigger slot.
+     *  @param  t3  Fourth trigger slot.
+     */
     template <typename R, typename I0>
     event(R &r, const I0 &i0, T0 &t0, T1 &t1, T2 &t2, T3 &t3)
 	: _e(new tamerpriv::eventx<T0, T1, T2, T3>(r, i0, t0, t1, t2, t3)) {
     }
 
+    /** @brief  Construct a no-ID, four-slot event on rendezvous @a r.
+     *  @param  r   Rendezvous.
+     *  @param  t0  First trigger slot.
+     *  @param  t1  Second trigger slot.
+     *  @param  t2  Third trigger slot.
+     *  @param  t3  Fourth trigger slot.
+     */
     template <typename R>
     event(R &r, T0 &t0, T1 &t1, T2 &t2, T3 &t3)
 	: _e(new tamerpriv::eventx<T0, T1, T2, T3>(r, t0, t1, t2, t3)) {
     }
 
+    /** @brief  Construct event for the same occurrence as @a e.
+     *  @param  e  Source event.
+     */
     event(const event<T0, T1, T2, T3> &e)
 	: _e(e._e) {
 	_e->use();
     }
-    
+
+    /** @brief  Destroy the event instance.
+     *  @note   The underlying occurrence is canceled if this event was the
+     *          last remaining reference.
+     */
     ~event() {
 	_e->unuse();
     }
 
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
-    
+
+    /** @brief  Test if event is active.
+     *  @return  True if event is active, false if it is empty. */
     operator unspecified_bool_type() const {
 	return *_e;
     }
 
+    /** @brief  Test if event is empty.
+     *  @return  True if event is empty, false if it is active. */
     bool operator!() const {
 	return _e->empty();
     }
-    
+
+    /** @brief  Test if event is empty.
+     *  @return  True if event is empty, false if it is active. */
     bool empty() const {
 	return _e->empty();
     }
 
+    /** @brief  Register a cancel notifier.
+     *  @param  e  Cancel notifier.
+     *
+     *  If event is empty, @a e is immediately triggered.  Otherwise,
+     *  when event is triggered, cancels @a e.  Otherwise, when
+     *  this is canceled (explicitly or implicitly), triggers @a e.
+     */
     void at_cancel(const event<> &e) {
 	_e->at_cancel(e);
     }
 
+    /** @brief  Trigger event.
+     *  @param  v0  First trigger value.
+     *  @param  v1  Second trigger value.
+     *  @param  v2  Third trigger value.
+     *  @param  v3  Fourth trigger value.
+     *
+     *  Does nothing if event is empty.
+     */
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3) {
 	_e->trigger(v0, v1, v2, v3);
     }
 
+    /** @brief  Trigger event without trigger values.
+     *
+     *  Does nothing if event is empty.
+     */
     void unbound_trigger() {
 	_e->complete(true);
     }
 
+    /** @brief  Cancel event.
+     *
+     *  Does nothing if this event is empty.
+     */
     void cancel() {
 	_e->complete(false);
     }
 
+    /** @brief  Transfer trigger slots to a new event on @a r.
+     *  @param  r   Rendezvous.
+     *  @param  i0  First event ID.
+     *  @param  i1  Second event ID.
+     *
+     
+     */
     template <typename R, typename I0, typename I1>
     event<T0, T1, T2, T3> make_rebind(R &r, const I0 &i0, const I1 &i1) {
 	event<T0, T1, T2, T3> e(r, i0, i1, *_e->_t0, *_e->_t1, *_e->_t2, *_e->_t3);
@@ -620,7 +466,7 @@ class event<T0, void, void, void> { public:
     }
 
     T0 *slot0() const {
-	return _e->slot(0);
+	return _e->slot0();
     }
     
     event<T0> &operator=(const event<T0> &e) {
@@ -858,19 +704,6 @@ inline event<> make_event(rendezvous<I0> &r, const J0 &i0)
 inline event<> make_event(rendezvous<> &r)
 {
     return event<>(r);
-}
-
-inline event<> distribute(const event<> &e1, const event<> &e2) {
-    if (e1.empty())
-	return e2;
-    else if (e2.empty())
-	return e1;
-    else
-	return tamerpriv::hard_distribute(e1, e2);
-}
-
-inline event<> distribute(const event<> &e1, const event<> &e2, const event<> &e3) {
-    return distribute(distribute(e1, e2), e3);
 }
 
 }
