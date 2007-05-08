@@ -10,6 +10,13 @@ namespace tamer {
 
 /** @class rendezvous tamer/event.hh <tamer.hh>
  *  @brief  A set of watched events.
+ *
+ *  Rendezvous may also be declared with one or zero template arguments, as in
+ *  <tt>rendezvous<T0></tt> or <tt>rendezvous<></tt>.  Each specialized
+ *  rendezvous class has functions similar to the full-featured rendezvous,
+ *  but with parameters to @c join appropriate to the template arguments.
+ *  Specialized rendezvous implementations are often more efficient than the
+ *  full @c rendezvous.
  */
 template <typename I0, typename I1>
 class rendezvous : public tamerpriv::abstract_rendezvous { public:
@@ -120,17 +127,8 @@ bool rendezvous<I0, I1>::join(I0 &i0, I1 &i1)
 }
 
 
-/** @defgroup specialized_rendezvous Specialized rendezvous classes
- *
- *  Rendezvous may also be declared with one or zero template arguments, as in
- *  <tt>rendezvous<T0></tt> or <tt>rendezvous<></tt>.  Each specialized
- *  rendezvous class has functions similar to the full-featured rendezvous,
- *  but with parameters to @c join appropriate to the template arguments.
- *  Specialized rendezvous implementations are often more efficient than the
- *  full @c rendezvous.
- *
- *  @{
- */
+/** @cond specialized_rendezvous */
+
 template <typename I0>
 class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
 
@@ -380,7 +378,7 @@ class gather_rendezvous : public rendezvous<> { public:
     
 };
 
-/** @} */
+/** @endcond */
 
 }
 #endif /* TAMER__RENDEZVOUS_HH */

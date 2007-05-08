@@ -30,22 +30,22 @@ template <typename T0, typename T1, typename T2, typename T3>
 class eventx : public simple_event { public:
 
     eventx()
-	: simple_event(), _t0(0), _t1(0), _t2(0), _t3(0) {
+	: simple_event(), _s0(0), _s1(0), _s2(0), _s3(0) {
     }
     
     template <typename R, typename I0, typename I1>
-    eventx(R &r, const I0 &i0, const I1 &i1, T0 &t0, T1 &t1, T2 &t2, T3 &t3)
-	: simple_event(r, i0, i1), _t0(&t0), _t1(&t1), _t2(&t2), _t3(&t3) {
+    eventx(R &r, const I0 &i0, const I1 &i1, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
+	: simple_event(r, i0, i1), _s0(&s0), _s1(&s1), _s2(&s2), _s3(&s3) {
     }
 
     template <typename R, typename I0>
-    eventx(R &r, const I0 &i0, T0 &t0, T1 &t1, T2 &t2, T3 &t3)
-	: simple_event(r, i0), _t0(&t0), _t1(&t1), _t2(&t2), _t3(&t3) {
+    eventx(R &r, const I0 &i0, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
+	: simple_event(r, i0), _s0(&s0), _s1(&s1), _s2(&s2), _s3(&s3) {
     }
 
     template <typename R>
-    eventx(R &r, T0 &t0, T1 &t1, T2 &t2, T3 &t3)
-	: simple_event(r), _t0(&t0), _t1(&t1), _t2(&t2), _t3(&t3) {
+    eventx(R &r, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
+	: simple_event(r), _s0(&s0), _s1(&s1), _s2(&s2), _s3(&s3) {
     }
 
     void unuse() {
@@ -55,26 +55,26 @@ class eventx : public simple_event { public:
     
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3) {
 	if (simple_event::complete(true)) {
-	    if (_t0) *_t0 = v0;
-	    if (_t1) *_t1 = v1;
-	    if (_t2) *_t2 = v2;
-	    if (_t3) *_t3 = v3;
+	    if (_s0) *_s0 = v0;
+	    if (_s1) *_s1 = v1;
+	    if (_s2) *_s2 = v2;
+	    if (_s3) *_s3 = v3;
 	}
     }
 
     void unbind() {
-	_t0 = 0;
-	_t1 = 0;
-	_t2 = 0;
-	_t3 = 0;
+	_s0 = 0;
+	_s1 = 0;
+	_s2 = 0;
+	_s3 = 0;
     }
     
   private:
 
-    T0 *_t0;
-    T1 *_t1;
-    T2 *_t2;
-    T3 *_t3;
+    T0 *_s0;
+    T1 *_s1;
+    T2 *_s2;
+    T3 *_s3;
 
     friend class event<T0, T1, T2, T3>;
     
@@ -85,22 +85,22 @@ template <typename T0, typename T1, typename T2>
 class eventx<T0, T1, T2, void> : public simple_event { public:
 
     eventx()
-	: simple_event(), _t0(0), _t1(0), _t2(0) {
+	: simple_event(), _s0(0), _s1(0), _s2(0) {
     }
     
     template <typename R, typename I0, typename I1>
-    eventx(R &r, const I0 &i0, const I1 &i1, T0 &t0, T1 &t1, T2 &t2)
-	: simple_event(r, i0, i1), _t0(&t0), _t1(&t1), _t2(&t2) {
+    eventx(R &r, const I0 &i0, const I1 &i1, T0 &s0, T1 &s1, T2 &s2)
+	: simple_event(r, i0, i1), _s0(&s0), _s1(&s1), _s2(&s2) {
     }
 
     template <typename R, typename I0>
-    eventx(R &r, const I0 &i0, T0 &t0, T1 &t1, T2 &t2)
-	: simple_event(r, i0), _t0(&t0), _t1(&t1), _t2(&t2) {
+    eventx(R &r, const I0 &i0, T0 &s0, T1 &s1, T2 &s2)
+	: simple_event(r, i0), _s0(&s0), _s1(&s1), _s2(&s2) {
     }
 
     template <typename R>
-    eventx(R &r, T0 &t0, T1 &t1, T2 &t2)
-	: simple_event(r), _t0(&t0), _t1(&t1), _t2(&t2) {
+    eventx(R &r, T0 &s0, T1 &s1, T2 &s2)
+	: simple_event(r), _s0(&s0), _s1(&s1), _s2(&s2) {
     }
 
     void unuse() {
@@ -110,23 +110,23 @@ class eventx<T0, T1, T2, void> : public simple_event { public:
     
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2) {
 	if (simple_event::complete(true)) {
-	    if (_t0) *_t0 = v0;
-	    if (_t1) *_t1 = v1;
-	    if (_t2) *_t2 = v2;
+	    if (_s0) *_s0 = v0;
+	    if (_s1) *_s1 = v1;
+	    if (_s2) *_s2 = v2;
 	}
     }
 
     void unbind() {
-	_t0 = 0;
-	_t1 = 0;
-	_t2 = 0;
+	_s0 = 0;
+	_s1 = 0;
+	_s2 = 0;
     }
     
   private:
 
-    T0 *_t0;
-    T1 *_t1;
-    T2 *_t2;
+    T0 *_s0;
+    T1 *_s1;
+    T2 *_s2;
 
     friend class event<T0, T1, T2>;
     
@@ -138,22 +138,22 @@ template <typename T0, typename T1>
 class eventx<T0, T1, void, void> : public simple_event { public:
 
     eventx()
-	: simple_event(), _t0(0), _t1(0) {
+	: simple_event(), _s0(0), _s1(0) {
     }
     
     template <typename R, typename I0, typename I1>
-    eventx(R &r, const I0 &i0, const I1 &i1, T0 &t0, T1 &t1)
-	: simple_event(r, i0, i1), _t0(&t0), _t1(&t1) {
+    eventx(R &r, const I0 &i0, const I1 &i1, T0 &s0, T1 &s1)
+	: simple_event(r, i0, i1), _s0(&s0), _s1(&s1) {
     }
 
     template <typename R, typename I0>
-    eventx(R &r, const I0 &i0, T0 &t0, T1 &t1)
-	: simple_event(r, i0), _t0(&t0), _t1(&t1) {
+    eventx(R &r, const I0 &i0, T0 &s0, T1 &s1)
+	: simple_event(r, i0), _s0(&s0), _s1(&s1) {
     }
 
     template <typename R>
-    eventx(R &r, T0 &t0, T1 &t1)
-	: simple_event(r), _t0(&t0), _t1(&t1) {
+    eventx(R &r, T0 &s0, T1 &s1)
+	: simple_event(r), _s0(&s0), _s1(&s1) {
     }
 
     void unuse() {
@@ -163,20 +163,20 @@ class eventx<T0, T1, void, void> : public simple_event { public:
     
     void trigger(const T0 &v0, const T1 &v1) {
 	if (simple_event::complete(true)) {
-	    if (_t0) *_t0 = v0;
-	    if (_t1) *_t1 = v1;
+	    if (_s0) *_s0 = v0;
+	    if (_s1) *_s1 = v1;
 	}
     }
 
     void unbind() {
-	_t0 = 0;
-	_t1 = 0;
+	_s0 = 0;
+	_s1 = 0;
     }
     
   private:
 
-    T0 *_t0;
-    T1 *_t1;
+    T0 *_s0;
+    T1 *_s1;
 
     friend class event<T0, T1>;
     
@@ -187,22 +187,22 @@ template <typename T0>
 class eventx<T0, void, void, void> : public simple_event { public:
 
     eventx()
-	: simple_event(), _t0(0) {
+	: simple_event(), _s0(0) {
     }
     
     template <typename R, typename I0, typename I1>
-    eventx(R &r, const I0 &i0, const I1 &i1, T0 &t0)
-	: simple_event(r, i0, i1), _t0(&t0) {
+    eventx(R &r, const I0 &i0, const I1 &i1, T0 &s0)
+	: simple_event(r, i0, i1), _s0(&s0) {
     }
 
     template <typename R, typename I0>
-    eventx(R &r, const I0 &i0, T0 &t0)
-	: simple_event(r, i0), _t0(&t0) {
+    eventx(R &r, const I0 &i0, T0 &s0)
+	: simple_event(r, i0), _s0(&s0) {
     }
 
     template <typename R>
-    eventx(R &r, T0 &t0)
-	: simple_event(r), _t0(&t0) {
+    eventx(R &r, T0 &s0)
+	: simple_event(r), _s0(&s0) {
     }
 
     void unuse() {
@@ -212,21 +212,21 @@ class eventx<T0, void, void, void> : public simple_event { public:
     
     void trigger(const T0 &v0) {
 	if (simple_event::complete(true)) {
-	    if (_t0) *_t0 = v0;
+	    if (_s0) *_s0 = v0;
 	}
     }
 
     void unbind() {
-	_t0 = 0;
+	_s0 = 0;
     }
 
     T0 *slot0() const {
-	return _t0;
+	return _s0;
     }
     
   private:
 
-    T0 *_t0;
+    T0 *_s0;
     
     friend class event<T0>;
     

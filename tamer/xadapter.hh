@@ -87,7 +87,7 @@ class cancel_adapter_rendezvous : public abstract_rendezvous { public:
     void complete(uintptr_t rid, bool success) {
 	if (success || rid == (uintptr_t) 0) {
 	    if (_result)
-		*_result = (success ? rid : -ECANCELED);
+		*_result = (success ? (int) rid : -ECANCELED);
 	    _e->complete(true);
 	    delete this;
 	}
