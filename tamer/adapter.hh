@@ -89,7 +89,7 @@ inline event<> make_canceler(const event<T0, T1, T2, T3> &e) {
  *  @param  e2  Event.
  *  @return  @a e2.
  *
- *  When the @a e2 is canceled, @a e1 is canceled immediately.
+ *  When @a e2 is canceled, @a e1 is canceled immediately.
  */
 template <typename T0, typename T1, typename T2, typename T3,
 	  typename U0, typename U1, typename U2, typename U3>
@@ -99,7 +99,18 @@ inline event<T0, T1, T2, T3> spread_cancel(const event<U0, U1, U2, U3> &e1, even
     return e2;
 }
 
-
+/** @brief  Add a cancel notifier to an event.
+ *  @param  r   Rendezvous.
+ *  @param  i0  First event ID.
+ *  @param  i1  Second event ID.
+ *  @param  e   Event.
+ *  @return  @a e.
+ *
+ *  Equivalent to
+ *  @code
+ *  e.at_cancel(make_event(r, i0, i1)); return e;
+ *  @endcode
+ */
 template <typename R, typename I0, typename I1, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_cancel(R &r, const I0 &i0, const I1 &i1, event<T0, T1, T2, T3> e) {
     e.at_cancel(make_event(r, i0, i1));
