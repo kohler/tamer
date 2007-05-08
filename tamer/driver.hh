@@ -3,6 +3,11 @@
 #include <tamer/xdriver.hh>
 namespace tamer {
 
+/** @file <tamer/driver.hh>
+ *  @brief  Functions for registering primitive events and managing the event
+ *  loop.
+ */
+    
 /** @brief  Fetches Tamer's current time.
  *  @return  Current timestamp.
  */
