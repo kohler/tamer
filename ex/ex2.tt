@@ -32,7 +32,7 @@ tamed void time_sucka() {
 tamed void close_sucka(int fd) {
     n++;
     twait { tamer::at_delay_msec(500, make_event()); }
-    tamer::fileio::close(fd);
+    twait { tamer::fileio::close(fd, tamer::ignore_slot<int>(make_event())); }
     n--;
 }
 

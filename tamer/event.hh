@@ -1,9 +1,9 @@
 #ifndef TAMER_EVENT_HH
 #define TAMER_EVENT_HH 1
-#include <tamer/eventx.hh>
+#include <tamer/xevent.hh>
 namespace tamer {
 
-/** @class event tamer/event.hh <tamer/event.hh>
+/** @class event tamer/event.hh <tamer.hh>
  *  @brief  A future occurrence.
  *
  *  A Tamer event object represents a future occurrence.
@@ -140,37 +140,69 @@ class event { public:
      *  @param  r   Rendezvous.
      *  @param  i0  First event ID.
      *  @param  i1  Second event ID.
+     *  @return  Event on @a r with this event's slots.
      *
-     
+     *  If event is empty, returns an empty event.  Otherwise, transfers
+     *  this event's slots to a new event on @a r with event IDs @a i0 and
+     *  @a i1.  When this event is triggered, its trigger values will be
+     *  ignored.
      */
     template <typename R, typename I0, typename I1>
     event<T0, T1, T2, T3> make_rebind(R &r, const I0 &i0, const I1 &i1) {
-	event<T0, T1, T2, T3> e(r, i0, i1, *_e->_t0, *_e->_t1, *_e->_t2, *_e->_t3);
-	_e->unbind();
-	return e;
+	if (*this) {
+	    event<T0, T1, T2, T3> e(r, i0, i1, *_e->_t0, *_e->_t1, *_e->_t2, *_e->_t3);
+	    _e->unbind();
+	    return e;
+	} else
+	    return event<T0, T1, T2, T3>();
     }
 
+    /** @brief  Transfer trigger slots to a new event on @a r.
+     *  @param  r   Rendezvous.
+     *  @param  i0  First event ID.
+     *  @return  Event on @a r with this event's slots.
+     */
     template <typename R, typename I0>
     event<T0, T1, T2, T3> make_rebind(R &r, const I0 &i0) {
-	event<T0, T1, T2, T3> e(r, i0, *_e->_t0, *_e->_t1, *_e->_t2, *_e->_t3);
-	_e->unbind();
-	return e;
+	if (*this) {
+	    event<T0, T1, T2, T3> e(r, i0, *_e->_t0, *_e->_t1, *_e->_t2, *_e->_t3);
+	    _e->unbind();
+	    return e;
+	} else
+	    return event<T0, T1, T2, T3>();
     }
 
+    /** @brief  Transfer trigger slots to a new event on @a r.
+     *  @param  r   Rendezvous.
+     *  @return  Event on @a r with this event's slots.
+     */
     template <typename R>
     event<T0, T1, T2, T3> make_rebind(R &r) {
-	event<T0, T1, T2, T3> e(r, *_e->_t0, *_e->_t1, *_e->_t2, *_e->_t3);
-	_e->unbind();
-	return e;
+	if (*this) {
+	    event<T0, T1, T2, T3> e(r, *_e->_t0, *_e->_t1, *_e->_t2, *_e->_t3);
+	    _e->unbind();
+	    return e;
+	} else
+	    return event<T0, T1, T2, T3>();
     }
-    
+
+    /** @brief  Assign this event to the same occurrence as @a e.
+     *  @param  e  Source event.
+     *
+     *  This event's occurrence is canceled if this event was its last
+     *  reference.
+     */
     event<T0, T1, T2, T3> &operator=(const event<T0, T1, T2, T3> &e) {
 	e._e->use();
 	_e->unuse();
 	_e = e._e;
 	return *this;
     }
-    
+
+    /** @internal
+     *  @brief  Fetch underlying occurrence.
+     *  @return  Underlying occurrence.
+     */
     tamerpriv::simple_event *__get_simple() const {
 	return _e;
     }
@@ -182,6 +214,16 @@ class event { public:
 };
 
 
+/** @defgroup specialized_events Specialized event classes
+ *
+ *  Events may be declared with three, two, one, or zero template arguments,
+ *  as in <tt>event<T0, T1, T2></tt>, <tt>event<T0, T1></tt>,
+ *  <tt>event<T0></tt>, and <tt>event<></tt>.  Each specialized event class
+ *  has functions similar to the full-featured event, but with parameters to
+ *  constructors and @c trigger methods appropriate to the template arguments.
+ *
+ *  @{
+ */
 template <typename T0, typename T1, typename T2>
 class event<T0, T1, T2, void> { public:
 
@@ -245,23 +287,32 @@ class event<T0, T1, T2, void> { public:
 
     template <typename R, typename I0, typename I1>
     event<T0, T1, T2> make_rebind(R &r, const I0 &i0, const I1 &i1) {
-	event<T0, T1, T2> e(r, i0, i1, *_e->_t0, *_e->_t1, *_e->_t2);
-	_e->unbind();
-	return e;
+	if (*this) {
+	    event<T0, T1, T2> e(r, i0, i1, *_e->_t0, *_e->_t1, *_e->_t2);
+	    _e->unbind();
+	    return e;
+	} else
+	    return event<T0, T1, T2>();
     }
 
     template <typename R, typename I0>
     event<T0, T1, T2> make_rebind(R &r, const I0 &i0) {
-	event<T0, T1, T2> e(r, i0, *_e->_t0, *_e->_t1, *_e->_t2);
-	_e->unbind();
-	return e;
+	if (*this) {
+	    event<T0, T1, T2> e(r, i0, *_e->_t0, *_e->_t1, *_e->_t2);
+	    _e->unbind();
+	    return e;
+	} else
+	    return event<T0, T1, T2>();
     }
 
     template <typename R>
     event<T0, T1, T2> make_rebind(R &r) {
-	event<T0, T1, T2> e(r, *_e->_t0, *_e->_t1, *_e->_t2);
-	_e->unbind();
-	return e;
+	if (*this) {
+	    event<T0, T1, T2> e(r, *_e->_t0, *_e->_t1, *_e->_t2);
+	    _e->unbind();
+	    return e;
+	} else
+	    return event<T0, T1, T2>();
     }
 
     event<T0, T1, T2> &operator=(const event<T0, T1, T2> &e) {
@@ -345,23 +396,32 @@ class event<T0, T1, void, void> { public:
 
     template <typename R, typename I0, typename I1>
     event<T0, T1> make_rebind(R &r, const I0 &i0, const I1 &i1) {
-	event<T0, T1> e(r, i0, i1, *_e->_t0, *_e->_t1);
-	_e->unbind();
-	return e;
+	if (*this) {
+	    event<T0, T1> e(r, i0, i1, *_e->_t0, *_e->_t1);
+	    _e->unbind();
+	    return e;
+	} else
+	    return event<T0, T1>();
     }
 
     template <typename R, typename I0>
     event<T0, T1> make_rebind(R &r, const I0 &i0) {
-	event<T0, T1> e(r, i0, *_e->_t0, *_e->_t1);
-	_e->unbind();
-	return e;
+	if (*this) {
+	    event<T0, T1> e(r, i0, *_e->_t0, *_e->_t1);
+	    _e->unbind();
+	    return e;
+	} else
+	    return event<T0, T1>();
     }
 
     template <typename R>
     event<T0, T1> make_rebind(R &r) {
-	event<T0, T1> e(r, *_e->_t0, *_e->_t1);
-	_e->unbind();
-	return e;
+	if (*this) {
+	    event<T0, T1> e(r, *_e->_t0, *_e->_t1);
+	    _e->unbind();
+	    return e;
+	} else
+	    return event<T0, T1>();
     }
 
     event<T0, T1> &operator=(const event<T0, T1> &e) {
@@ -446,23 +506,32 @@ class event<T0, void, void, void> { public:
 
     template <typename R, typename I0, typename I1>
     event<T0> make_rebind(R &r, const I0 &i0, const I1 &i1) {
-	event<T0> e(r, i0, i1, *_e->_t0);
-	_e->unbind();
-	return e;
+	if (*this) {
+	    event<T0> e(r, i0, i1, *_e->_t0);
+	    _e->unbind();
+	    return e;
+	} else
+	    return event<T0>();
     }
 
     template <typename R, typename I0>
     event<T0> make_rebind(R &r, const I0 &i0) {
-	event<T0> e(r, i0, *_e->_t0);
-	_e->unbind();
-	return e;
+	if (*this) {
+	    event<T0> e(r, i0, *_e->_t0);
+	    _e->unbind();
+	    return e;
+	} else
+	    return event<T0>();
     }
 
     template <typename R>
     event<T0> make_rebind(R &r) {
-	event<T0> e(r, *_e->_t0);
-	_e->unbind();
-	return e;
+	if (*this) {
+	    event<T0> e(r, *_e->_t0);
+	    _e->unbind();
+	    return e;
+	} else
+	    return event<T0>();
     }
 
     T0 *slot0() const {
@@ -558,17 +627,17 @@ class event<void, void, void, void> { public:
 
     template <typename R, typename I0, typename I1>
     event<> make_rebind(R &r, const I0 &i0, const I1 &i1) {
-	return event<>(r, i0, i1);
+	return (*this ? event<>(r, i0, i1) : event<>());
     }
 
     template <typename R, typename I0>
     event<> make_rebind(R &r, const I0 &i0) {
-	return event<>(r, i0);
+	return (*this ? event<>(r, i0) : event<>());
     }
 
     template <typename R>
     event<> make_rebind(R &r) {
-	return event<>(r);
+	return (*this ? event<>(r) : event<>());
     }
 
     event<> &operator=(const event<> &e) {
@@ -599,24 +668,27 @@ class event<void, void, void, void> { public:
     
 };
 
-
-namespace tamerpriv {
-inline void simple_event::at_cancel(const event<> &e)
-{
-    if (!_r)
-	e._e->complete(true);
-    else if (!_canceler) {
-	_canceler = e._e;
-	_canceler->use();
-    } else {
-	event<> comb = tamer::distribute(event<>::__take(_canceler), e);
-	_canceler = comb._e;
-	_canceler->use();
-    }
-}
-}
+/** @} */
 
 
+/** @defgroup make_event Helper functions for making events
+ *
+ *  Creating new events can be simplified using the @c make_event() helper
+ *  function.  @c make_event() automatically selects the right type of event
+ *  for its arguments.  There are 3*5 = 15 versions, one for each combination
+ *  of event IDs and trigger slots.
+ *
+ *  @{ */
+ 
+/** @brief  Construct a two-ID, four-slot event on rendezvous @a r.
+ *  @param  r   Rendezvous.
+ *  @param  i0  First event ID.
+ *  @param  i1  Second event ID.
+ *  @param  t0  First trigger slot.
+ *  @param  t1  Second trigger slot.
+ *  @param  t2  Third trigger slot.
+ *  @param  t3  Fourth trigger slot.
+ */
 template <typename I0, typename I1, typename J0, typename J1, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_event(rendezvous<I0, I1> &r, const J0 &i0, const J1 &i1, T0 &t0, T1 &t1, T2 &t2, T3 &t3)
 {
@@ -701,10 +773,15 @@ inline event<> make_event(rendezvous<I0> &r, const J0 &i0)
     return event<>(r, i0);
 }
 
+/** @brief  Construct a zero-ID, zero-slot event on rendezvous @a r.
+ *  @param  r   Rendezvous.
+ */
 inline event<> make_event(rendezvous<> &r)
 {
     return event<>(r);
 }
+
+/** @} */
 
 }
 #endif /* TAMER__EVENT_HH */

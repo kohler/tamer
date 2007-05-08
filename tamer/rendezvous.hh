@@ -4,19 +4,65 @@
 #include <tamer/base.hh>
 namespace tamer {
 
+/** @class rendezvous tamer/event.hh <tamer.hh>
+ *  @brief  A set of watched events.
+ */
 template <typename I0, typename I1>
 class rendezvous : public tamerpriv::abstract_rendezvous { public:
 
-    rendezvous();
+    /** @brief  Default constructor creates a fresh rendezvous. */
+    inline rendezvous();
 
-    void add(tamerpriv::simple_event *e, const I0 &i0, const I1 &i1);
-    void complete(uintptr_t rname, bool success);
-    bool join(I0 &, I1 &);
+    /** @brief  Report the next ready event.
+     *  @param[out]  i0  Set to the first event ID of the ready event.
+     *  @param[out]  i1  Set to the second event ID of the ready event.
+     *  @return  True if there was a ready event, false otherwise.
+     *
+     *  @a i0 and @a i1 were modified if and only if @a join returns true.
+     */
+    inline bool join(I0 &i0, I1 &i1);
 
-    unsigned nready() const	{ return _bs.nactive(); }
-    unsigned nwaiting() const	{ return _bs.npassive(); }
-    unsigned nevents() const	{ return nready() + nwaiting(); }
+    /** @brief  Report how many events are ready.
+     *  @return  The number of ready events.
+     *
+     *  An event is ready if it has triggered, but no @a join or @c twait
+     *  has reported it yet.
+     */
+    unsigned nready() const {
+	return _bs.nactive();
+    }
 
+    /** @brief  Report how many events are waiting.
+     *  @return  The number of waiting events.
+     *
+     *  An event is waiting until it is either triggered or canceled.
+     */
+    unsigned nwaiting() const {
+	return _bs.npassive();
+    }
+
+    /** @brief  Report how many events are ready or waiting.
+     *  @return  The number of ready or waiting events.
+     */
+    unsigned nevents() const {
+	return nready() + nwaiting();
+    }
+
+    /** @internal
+     *  @brief  Add an occurrence to this rendezvous.
+     *  @param  e   The occurrence.
+     *  @param  i0  The occurrence's first event ID.
+     *  @param  i1  The occurrence's first event ID.
+     */
+    inline void add(tamerpriv::simple_event *e, const I0 &i0, const I1 &i1);
+
+    /** @internal
+     *  @brief  Mark the triggering or cancellation of an occurrence.
+     *  @param  rid  The occurrence's ID within this rendezvous.
+     *  @param  success  True if the occurrence was triggered, false otherwise.
+     */
+    inline void complete(uintptr_t rid, bool success);
+    
   private:
 
     struct evtrec {
@@ -45,13 +91,13 @@ void rendezvous<I0, I1>::add(tamerpriv::simple_event *e, const I0 &i0, const I1 
 }
 
 template <typename I0, typename I1>
-void rendezvous<I0, I1>::complete(uintptr_t rname, bool success)
+void rendezvous<I0, I1>::complete(uintptr_t rid, bool success)
 {
     if (success) {
-	_bs.activate(rname);
+	_bs.activate(rid);
 	unblock();
     } else {
-	_bs.kill(rname);
+	_bs.kill(rid);
 	if (blocked_closure() && nwaiting() == 0)
 	    tamerpriv::message::rendezvous_dead(this);
     }
@@ -70,14 +116,25 @@ bool rendezvous<I0, I1>::join(I0 &i0, I1 &i1)
 }
 
 
+/** @defgroup specialized_rendezvous Specialized rendezvous classes
+ *
+ *  Rendezvous may also be declared with one or zero template arguments, as in
+ *  <tt>rendezvous<T0></tt> or <tt>rendezvous<></tt>.  Each specialized
+ *  rendezvous class has functions similar to the full-featured rendezvous,
+ *  but with parameters to @c join appropriate to the template arguments.
+ *  Specialized rendezvous implementations are often more efficient than the
+ *  full @c rendezvous.
+ *
+ *  @{
+ */
 template <typename I0>
 class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
 
-    rendezvous();
-
-    void add(tamerpriv::simple_event *e, const I0 &i0);
-    void complete(uintptr_t rname, bool success);
-    bool join(I0 &);
+    inline rendezvous();
+    
+    inline void add(tamerpriv::simple_event *e, const I0 &i0);
+    inline void complete(uintptr_t rid, bool success);
+    inline bool join(I0 &);
 
     unsigned nready() const	{ return _bs.nactive(); }
     unsigned nwaiting() const	{ return _bs.npassive(); }
@@ -109,13 +166,13 @@ void rendezvous<I0, void>::add(tamerpriv::simple_event *e, const I0 &i0)
 }
 
 template <typename I0>
-void rendezvous<I0, void>::complete(uintptr_t rname, bool success)
+void rendezvous<I0, void>::complete(uintptr_t rid, bool success)
 {
     if (success) {
-	_bs.activate(rname);
+	_bs.activate(rid);
 	unblock();
     } else {
-	_bs.cancel(rname);
+	_bs.cancel(rid);
 	if (blocked_closure() && nwaiting() == 0)
 	    tamerpriv::message::rendezvous_dead(this);
     }
@@ -139,7 +196,7 @@ class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
     inline rendezvous();
 
     inline void add(tamerpriv::simple_event *e, uintptr_t i0) throw ();
-    inline void complete(uintptr_t rname, bool success);
+    inline void complete(uintptr_t rid, bool success);
     inline bool join(uintptr_t &);
 
     unsigned nready() const	{ return _buf.size(); }
@@ -164,11 +221,11 @@ inline void rendezvous<uintptr_t>::add(tamerpriv::simple_event *e, uintptr_t i0)
     e->initialize(this, i0);
 }
 
-inline void rendezvous<uintptr_t>::complete(uintptr_t rname, bool success)
+inline void rendezvous<uintptr_t>::complete(uintptr_t rid, bool success)
 {
     _nwaiting--;
     if (success) {
-	_buf.push_back(rname);
+	_buf.push_back(rid);
 	unblock();
     } else if (blocked_closure() && nwaiting() == 0)
 	tamerpriv::message::rendezvous_dead(this);
@@ -318,6 +375,8 @@ class gather_rendezvous : public rendezvous<> { public:
     bool _dead;
     
 };
+
+/** @} */
 
 }
 #endif /* TAMER__RENDEZVOUS_HH */

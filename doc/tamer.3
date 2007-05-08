@@ -1053,7 +1053,7 @@ blocks on writes from disk file descriptors.
 .RE
 .sp
 .nf
-.B void fileio::close(int \fIfd\fB)
+.B int fileio::close(int \fIfd\fB)
 .fi
 .RS 5
 Closes
@@ -1063,7 +1063,20 @@ closed with
 .BR tamer::fileio::close ,
 which correctly calls
 .B tamer::at_fd_close
-handlers.
+handlers.  Returns
+.B 0
+on successful completion and a negative error code on failure.
+.RE
+.sp
+.nf
+.B void fileio::close(int \fIfd\fB, event<int> \fIdone\fB)
+.fi
+.RS 5
+A version of
+.B fileio::close
+that triggers
+.I done
+on completion instead of returning an error code directly.
 .RE
 .sp
 .nf

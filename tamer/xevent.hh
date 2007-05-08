@@ -1,5 +1,5 @@
-#ifndef TAMER_EVENTX_HH
-#define TAMER_EVENTX_HH 1
+#ifndef TAMER_XEVENT_HH
+#define TAMER_XEVENT_HH 1
 #include <tamer/rendezvous.hh>
 namespace tamer {
 namespace tamerpriv {
@@ -233,4 +233,4 @@ class eventx<T0, void, void, void> : public simple_event { public:
 };
 
 }}
-#endif /* TAMER_EVENTX_HH */
+#endif /* TAMER_XEVENT_HH */

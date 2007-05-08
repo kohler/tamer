@@ -27,7 +27,7 @@ event<> hard_distribute(const event<> &e1, const event<> &e2);
 class simple_event { public:
 
     inline simple_event()
-	: _refcount(1), _r(0), _r_name(0), _r_next(0), _r_pprev(0), _canceler(0) {
+	: _refcount(1), _r(0), _rid(0), _r_next(0), _r_pprev(0), _canceler(0) {
     }
 
     template <typename R, typename I0, typename I1>
@@ -68,10 +68,10 @@ class simple_event { public:
 	return _r;
     }
 
-    inline void initialize(abstract_rendezvous *r, uintptr_t rname);
+    inline void initialize(abstract_rendezvous *r, uintptr_t rid);
     
-    uintptr_t rname() const {
-	return _r_name;
+    uintptr_t rid() const {
+	return _rid;
     }
     
     inline void at_cancel(const event<> &c);
@@ -82,7 +82,7 @@ class simple_event { public:
 
     unsigned _refcount;
     abstract_rendezvous *_r;
-    uintptr_t _r_name;
+    uintptr_t _rid;
     simple_event *_r_next;
     simple_event **_r_pprev;
     simple_event *_canceler;
@@ -112,7 +112,7 @@ class abstract_rendezvous { public:
 	return false;
     }
     
-    virtual void complete(uintptr_t rname, bool success) = 0;
+    virtual void complete(uintptr_t rid, bool success) = 0;
 
     inline void block(tamer_closure &c, unsigned where);
     inline void unblock();
@@ -234,11 +234,11 @@ inline abstract_rendezvous::~abstract_rendezvous()
 	_blocked_closure->unuse();
 }
 
-inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rname)
+inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
 {
     // NB this can be called before e has been fully initialized.
     _r = r;
-    _r_name = rname;
+    _rid = rid;
     _r_pprev = &r->_events;
     if (r->_events)
 	r->_events->_r_pprev = &_r_next;
@@ -262,7 +262,7 @@ inline bool simple_event::complete(bool success)
     _r_next = 0;
 
     if (r)
-	r->complete(_r_name, success);
+	r->complete(_rid, success);
     if (canceler && !success)
 	canceler->complete(true);
     if (canceler)

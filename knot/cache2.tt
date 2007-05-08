@@ -109,7 +109,7 @@ cache_new(const std::string &filename, tamer::event<refptr<cache_entry> > ev)
 			filename.c_str(), strerror(-rc));
 
 	    twait {
-		tamer::fileio::close(fd);
+		tamer::fileio::close(fd, make_event(rc));
 	    }
 	}
     } else {

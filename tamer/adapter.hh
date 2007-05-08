@@ -1,86 +1,7 @@
 #ifndef TAMER_ADAPTER_HH
 #define TAMER_ADAPTER_HH 1
-#include <tamer/event.hh>
-#include <tamer/driver.hh>
-#include <vector>
-#include <errno.h>
+#include <tamer/xadapter.hh>
 namespace tamer {
-namespace tamerpriv {
-
-template <typename T> class unbind_rendezvous : public abstract_rendezvous { public:
-
-    unbind_rendezvous(const event<> &ein)
-	: _ein(ein)
-    {
-	_ein.at_cancel(event<>(*this, 0));
-    }
-
-    void add(simple_event *e, uintptr_t what) {
-	e->initialize(this, what);
-    }
-    
-    void complete(uintptr_t rname, bool success) {
-	if (success && rname)
-	    _ein.trigger();
-	else
-	    _ein.cancel();
-	if (success)
-	    delete this;
-    }
-
-  private:
-
-    event<> _ein;
-    
-};
-
-template <typename T0> class bind_rendezvous : public abstract_rendezvous { public:
-
-    template <typename V0>
-    bind_rendezvous(const event<T0> &ein, const V0 &v0)
-	: _ein(ein), _v0(v0)
-    {
-	_ein.at_cancel(event<>(*this, 0));
-    }
-
-    ~bind_rendezvous() {
-    }
-
-    void add(simple_event *e, uintptr_t what) {
-	e->initialize(this, what);
-    }
-    
-    void complete(uintptr_t rname, bool success) {
-	if (success && rname)
-	    _ein.trigger(_v0);
-	else
-	    _ein.cancel();
-	if (success)
-	    delete this;
-    }
-    
-  private:
-
-    event<T0> _ein;
-    T0 _v0;
-
-};
-
-} /* namespace tamerpriv */
-
-
-template <typename T0>
-event<T0> ignore_slot(const event<> &e) {
-    tamerpriv::unbind_rendezvous<T0> *ur = new tamerpriv::unbind_rendezvous<T0>(e);
-    return event<T0>(*ur, 1, *((T0 *) 0));
-}
-
-template <typename T0, typename V0>
-event<> bind(const event<T0> &e, const V0 &v0) {
-    tamerpriv::bind_rendezvous<T0> *ur = new tamerpriv::bind_rendezvous<T0>(e, v0);
-    return event<>(*ur, 1);
-}
-
 
 namespace outcome {
 const int success = 0;
@@ -89,76 +10,15 @@ const int timeout = -ETIMEDOUT;
 const int signal = -EINTR;
 }
 
-
-namespace tamerpriv {
-
-class cancel_adapter_rendezvous : public abstract_rendezvous { public:
-
-    template <typename T0, typename T1, typename T2, typename T3>
-    cancel_adapter_rendezvous(const event<T0, T1, T2, T3> &e, int *result)
-	: _e(e.__get_simple()), _result(result)
-    {
-	_e->use();
-	_e->at_cancel(event<>(*this, outcome::cancel));
-    }
-
-    ~cancel_adapter_rendezvous() {
-	_e->unuse();
-    }
-
-    void add(simple_event *e, uintptr_t what) {
-	e->initialize(this, what);
-    }
-    
-    void complete(uintptr_t rname, bool success) {
-	if (success || rname == (uintptr_t) outcome::success) {
-	    if (_result)
-		*_result = (success ? rname : outcome::cancel);
-	    _e->complete(true);
-	    delete this;
-	}
-    }
-    
-  private:
-
-    simple_event *_e;
-    int *_result;
-
-};
-
-class canceler_rendezvous : public abstract_rendezvous { public:
-
-    template <typename T0, typename T1, typename T2, typename T3>
-    canceler_rendezvous(const event<T0, T1, T2, T3> &e)
-	: _e(e.__get_simple())
-    {
-	_e->use();
-	_e->at_cancel(event<>(*this));
-    }
-
-    ~canceler_rendezvous() {
-	_e->unuse();
-    }
-
-    void add(simple_event *e) {
-	e->initialize(this, 0);
-    }
-    
-    void complete(uintptr_t, bool success) {
-	if (success)
-	    _e->complete(false);
-	delete this;
-    }
-    
-  private:
-
-    simple_event *_e;
-
-};
-
-}
-
-
+/** @brief  Create event that triggers @a e1 and @a e2 when triggered.
+ *  @param  e1  First event.
+ *  @param  e2  Second event.
+ *  @return  Distributer event.
+ *
+ *  When the distributer event is triggered, @a e1 and @a e2 are both
+ *  triggered instantly.  When both @a e1 and @a e2 are canceled, the
+ *  distributer event is itself canceled.
+ */
 inline event<> distribute(const event<> &e1, const event<> &e2) {
     if (e1.empty())
 	return e2;
@@ -168,8 +28,94 @@ inline event<> distribute(const event<> &e1, const event<> &e2) {
 	return tamerpriv::hard_distribute(e1, e2);
 }
 
+/** @brief  Create event that triggers @a e1, @a e2, and @a e3 when triggered.
+ *  @param  e1  First event.
+ *  @param  e2  Second event.
+ *  @param  e3  Third event.
+ *  @return  Distributer event.
+ *
+ *  When the distributer event is triggered, @a e1, @a e2, and @a e3 are all
+ *  triggered instantly.  When @a e1, @a e2, and @a e3 are all canceled, the
+ *  distributer event is itself canceled.
+ */
 inline event<> distribute(const event<> &e1, const event<> &e2, const event<> &e3) {
     return distribute(distribute(e1, e2), e3);
+}
+
+/** @brief  Create event that triggers @a e with @a v0 when triggered.
+ *  @param  e   Event.
+ *  @param  v0  Trigger value
+ *  @return  Adapter event.
+ *
+ *  When the adapter event is triggered, @a e is triggered instantly with
+ *  trigger value @a v0.  When @a e is canceled, the adapter event is itself
+ *  canceled.
+ */
+template <typename T0, typename V0>
+event<> bind(const event<T0> &e, const V0 &v0) {
+    tamerpriv::bind_rendezvous<T0> *ur = new tamerpriv::bind_rendezvous<T0>(e, v0);
+    return event<>(*ur, 1);
+}
+
+/** @brief  Create 1-slot event that triggers @a e when triggered.
+ *  @param  e  Event.
+ *  @return  Adapter event.
+ *
+ *  When the adapter event is triggered, its @c T0 trigger value is ignored
+ *  and @a e is triggered instantly.  When @a e is canceled, the adapter
+ *  event is itself canceled.
+ */
+template <typename T0>
+event<T0> ignore_slot(const event<> &e) {
+    tamerpriv::unbind_rendezvous<T0> *ur = new tamerpriv::unbind_rendezvous<T0>(e);
+    return event<T0>(*ur, 1, *((T0 *) 0));
+}
+
+/** @brief  Create event that cancels @a e when triggered.
+ *  @param  e  Event.
+ *  @return  Canceler event.
+ *
+ *  When the canceler event is triggered, @a e is canceled instantly.  When
+ *  @a e is canceled or triggered, the canceler event is itself canceled.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<> make_canceler(const event<T0, T1, T2, T3> &e) {
+    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e);
+    return event<>(*r);
+}
+
+/** @brief  Cause @a e1 to cancel when @a e2 is canceled.
+ *  @param  e1  Event.
+ *  @param  e2  Event.
+ *  @return  @a e2.
+ *
+ *  When the @a e2 is canceled, @a e1 is canceled immediately.
+ */
+template <typename T0, typename T1, typename T2, typename T3,
+	  typename U0, typename U1, typename U2, typename U3>
+inline event<T0, T1, T2, T3> spread_cancel(const event<U0, U1, U2, U3> &e1, event<T0, T1, T2, T3> e2) {
+    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e1);
+    e2.at_cancel(event<>(*r));
+    return e2;
+}
+
+
+template <typename R, typename I0, typename I1, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_cancel(R &r, const I0 &i0, const I1 &i1, event<T0, T1, T2, T3> e) {
+    e.at_cancel(make_event(r, i0, i1));
+    return e;
+}
+
+template <typename R, typename I0, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_cancel(R &r, const I0 &i0, event<T0, T1, T2, T3> e) {
+    e.at_cancel(make_event(r, i0));
+    return e;
+}
+
+template <typename R, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_cancel(R &r, event<T0, T1, T2, T3> e) {
+    e.at_cancel(make_event(r));
+    return e;
 }
 
 
@@ -295,44 +241,9 @@ inline event<T0, T1, T2, T3> with_cancel(event<T0, T1, T2, T3> e) {
     return e.make_rebind(*r, outcome::success);
 }
 
-
-template <typename T0, typename T1, typename T2, typename T3,
-	  typename U0, typename U1, typename U2, typename U3>
-inline event<T0, T1, T2, T3> spread_cancel(const event<U0, U1, U2, U3> &cancelee, event<T0, T1, T2, T3> e) {
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(cancelee);
-    e.at_cancel(event<>(*r));
-    return e;
-}
-
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<> make_canceler(const event<T0, T1, T2, T3> &e) {
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e);
-    return event<>(*r);
-}
-
-
 inline event<int> add_cancel(event<int> e) {
     tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
     return e.make_rebind(*r, outcome::success);
-}
-
-
-template <typename R, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_cancel(R &r, event<T0, T1, T2, T3> e) {
-    e.at_cancel(make_event(r));
-    return e;
-}
-
-template <typename R, typename I0, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_cancel(R &r, const I0 &i0, event<T0, T1, T2, T3> e) {
-    e.at_cancel(make_event(r, i0));
-    return e;
-}
-
-template <typename R, typename I0, typename I1, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_cancel(R &r, const I0 &i0, const I1 &i1, event<T0, T1, T2, T3> e) {
-    e.at_cancel(make_event(r, i0, i1));
-    return e;
 }
 
 } /* namespace tamer */

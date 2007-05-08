@@ -58,8 +58,8 @@ class distribute_rendezvous : public abstract_rendezvous { public:
 	disconnect_all();
     }
 
-    void add(simple_event *e, uintptr_t rname) {
-	e->initialize(this, rname);
+    void add(simple_event *e, uintptr_t rid) {
+	e->initialize(this, rid);
     }
 
     bool is_distribute() const {
@@ -73,15 +73,15 @@ class distribute_rendezvous : public abstract_rendezvous { public:
 	}
     }
     
-    void complete(uintptr_t rname, bool success) {
-	if (success && rname) {
+    void complete(uintptr_t rid, bool success) {
+	if (success && rid) {
 	    while (_es.size() && !_es.back())
 		_es.pop_back();
 	} else if (success) {
 	    for (std::vector<event<> >::iterator i = _es.begin(); i != _es.end(); i++)
 		i->trigger();
 	}
-	if (!rname || !_es.size())
+	if (!rid || !_es.size())
 	    delete this;
     }
     
