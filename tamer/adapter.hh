@@ -231,21 +231,23 @@ inline event<int> add_signal(int sig, event<int> e) {
 }
 
 /** @brief  Add signal interruption to an event.
- *  @param  sigs  Vector of signal numbers.
- *  @param  e     Event.
+ *  @param  first  Input iterator for start of signal collection.
+ *  @param  last   Input iterator for end of signal collection.
+ *  @param  e      Event.
  *  @return  Adapter event.
  *
  *  Returns an adapter that adds signal interruption and cancellation support
  *  to @a e.  If the adapter event is triggered, then @a e is triggered with
  *  the same value.  If the adapter event is canceled, then @a e is triggered
- *  with value @c -ECANCELED.  If any of the signals in @a sigs occur, then @a
- *  e is triggered with value @c -EINTR.  Conversely, if @a e is triggered or
- *  canceled, then the adapter event is canceled.
+ *  with value @c -ECANCELED.  If any of the signals in [@a first, @a last)
+ *  occur, then @a e is triggered with value @c -EINTR.  Conversely, if @a e
+ *  is triggered or canceled, then the adapter event is canceled.
  */
-inline event<int> add_signal(const std::vector<int> &sigs, event<int> e) {
+template <class SigInputIterator>
+inline event<int> add_signal(SigInputIterator first, SigInputIterator last, event<int> e) {
     tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
-    for (std::vector<int>::const_iterator i = sigs.begin(); i != sigs.end(); i++)
-	at_signal(*i, event<>(*r, outcome::signal));
+    for (; first != last; ++first)
+	at_signal(*first, event<>(*r, outcome::signal));
     return e.make_rebind(*r, outcome::success);
 }
 
@@ -339,23 +341,24 @@ inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e) {
 }
 
 /** @brief  Add silent signal interruption to an event.
- *  @param  sigs  Vector of signal numbers.
- *  @param  e     Event.
+ *  @param  first  Input iterator for start of signal collection.
+ *  @param  last   Input iterator for end of signal collection.
+ *  @param  e      Event.
  *  @return  Adapter event.
  *
  *  Returns an adapter that adds signal interruption and cancellation support
  *  to @a e.  If the adapter event is triggered, then @a e is triggered with
  *  the same values.  If the adapter event is canceled, or one of the signals
- *  in @a sigs is received first, then @a e is triggered via
+ *  in [@a first, @a last) is received first, then @a e is triggered via
  *  event<>::unbound_trigger(), which leaves the trigger slots unchanged.
  *  Conversely, if @a e is triggered or canceled, then the adapter event is
  *  canceled.
  */
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> with_signal(const std::vector<int> &sigs, event<T0, T1, T2, T3> e) {
+template <typename T0, typename T1, typename T2, typename T3, typename SigInputIterator>
+inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e) {
     tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
-    for (std::vector<int>::const_iterator i = sigs.begin(); i != sigs.end(); i++)
-	at_signal(*i, event<>(*r, outcome::signal));
+    for (; first != last; ++first)
+	at_signal(*first, event<>(*r, outcome::signal));
     return e.make_rebind(*r, outcome::success);
 }
 
@@ -456,7 +459,8 @@ inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e, int &
 }
 
 /** @brief  Add signal interruption to an event.
- *  @param       sigs    Vector of signal numbers.
+ *  @param       first   Input iterator for start of signal collection.
+ *  @param       last    Input iterator for end of signal collection.
  *  @param       e       Event.
  *  @param[out]  result  Result tracker.
  *  @return      Adapter event.
@@ -464,18 +468,18 @@ inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e, int &
  *  Returns an adapter that adds signal interruption and cancellation support
  *  to @a e.  Initially sets the variable @a to 0.  If the adapter event is
  *  triggered, then @a e is triggered with the same values.  If the adapter
- *  event is canceled, or if any signal in @a sigs is received first, then @a
- *  e is triggered via event<>::unbound_trigger(), which leaves the trigger
- *  slots unchanged, and @a result is immediately set to @c -ECANCELED or @c
- *  -EINTR, respectively.  Conversely, if @a e is triggered or canceled, then
- *  the adapter event is canceled.
+ *  event is canceled, or if any signal in [@a first, @a last) is received
+ *  first, then @a e is triggered via event<>::unbound_trigger(), which leaves
+ *  the trigger slots unchanged, and @a result is immediately set to @c
+ *  -ECANCELED or @c -EINTR, respectively.  Conversely, if @a e is triggered
+ *  or canceled, then the adapter event is canceled.
  */
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> with_signal(const std::vector<int> &sigs, event<T0, T1, T2, T3> e, int &result) {
+template <typename T0, typename T1, typename T2, typename T3, typename SigInputIterator>
+inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e, int &result) {
     result = outcome::success;
     tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
-    for (std::vector<int>::const_iterator i = sigs.begin(); i != sigs.end(); i++)
-	at_signal(*i, event<>(*r, outcome::signal));
+    for (; first != last; ++first)
+	at_signal(*first, event<>(*r, outcome::signal));
     return e.make_rebind(*r, outcome::success);
 }
 

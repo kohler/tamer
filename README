@@ -10,7 +10,8 @@ distributed with the Capriccio threading package.
    Installation is standard; run "./configure", supplying any options, then
 "make install".  Documentation is supplied in "man" format, and as doxygen
 comments in the user-facing header files in "tamer/".  After "make
-install", try "man 3 tamer"; or try "nroff -man doc/tamer.3 | less" now.
+install", try "man 3 tamer"; before installation, try "nroff -man
+doc/tamer.3 | less" .
 
 
 Why Tamer?
