@@ -85,8 +85,8 @@ inline event<> make_canceler(const event<T0, T1, T2, T3> &e) {
 }
 
 /** @brief  Cause @a e1 to cancel when @a e2 is canceled.
- *  @param  e1  Event.
- *  @param  e2  Event.
+ *  @param  e1  Cancel destination event.
+ *  @param  e2  Cancel source event.
  *  @return  @a e2.
  *
  *  When @a e2 is canceled, @a e1 is canceled immediately.
