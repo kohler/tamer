@@ -14,3 +14,6 @@ input.cc: input.tt $(TAMER)
 knot.cc: knot.tt $(TAMER)
 
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/tamer
+
+clean-local:
+	-rm -f cache2.cc http.cc input.cc knot.cc

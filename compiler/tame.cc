@@ -1,5 +1,5 @@
 
-/* $Id: tame.cc,v 1.3 2007-05-07 07:35:08 kohler Exp $ */
+/* $Id: tame.cc,v 1.4 2007-05-08 21:14:24 kohler Exp $ */
 
 #include "tame.hh"
 #include <iostream>
@@ -104,7 +104,8 @@ main (int argc, char *argv[])
       break;
     case 'c':
       ifn = optarg;
-      outfile = ifn2ofn(ifn);
+      if (!outfile.length())
+	  outfile = ifn2ofn(ifn);
       if (!outfile.length()) {
 	warn << "-c expects an input file with the .T suffix\n";
 	usage ();
