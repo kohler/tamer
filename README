@@ -8,7 +8,8 @@ and several examples, including a working port of the Knot web server
 distributed with the Capriccio threading package.
 
    Installation is standard; run "./configure", supplying any options, then
-"make install".  Documentation is supplied in "man" format.  After "make
+"make install".  Documentation is supplied in "man" format, and as doxygen
+comments in the user-facing header files in "tamer/".  After "make
 install", try "man 3 tamer"; or try "nroff -man doc/tamer.3 | less" now.
 
 

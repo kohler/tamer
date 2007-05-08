@@ -130,6 +130,172 @@ inline event<T0, T1, T2, T3> make_cancel(R &r, event<T0, T1, T2, T3> e) {
 }
 
 
+/** @brief  Add cancellation notification to an event.
+ *  @param  e  Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds cancellation support to @a e.  If the adapter
+ *  event is triggered, then @a e is triggered with the same value.  If the
+ *  adapter event is canceled, then @a e is triggered with value @c
+ *  -ECANCELED.  Conversely, if @a e is triggered or canceled, then the
+ *  adapter event is canceled.
+ *
+ *  @note Event adapter functions like add_cancel() are particularly useful in
+ *  @c twait{} blocks.  Consider this code:
+ *  @code
+ *  twait { at_fd_read(fd, make_event()); }
+ *  @endcode
+ *  If @c fd is closed, the created event is canceled, preventing the @c
+ *  twait{} block from ever completing.  This version, using with_cancel(),
+ *  handles this correctly; the @c twait{} block will complete when @c fd
+ *  either becomes readable or is closed.
+ *  @code
+ *  twait { at_fd_read(fd, with_cancel(make_event())); }
+ *  @endcode
+ *  The @c add_ versions set the event's trigger value based on whether
+ *  cancellation occurred; the @c with_ versions use
+ *  event<>::unbound_trigger() in case of cancellation to trigger events
+ *  without setting their trigger values.
+ */
+inline event<int> add_cancel(event<int> e) {
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
+    return e.make_rebind(*r, outcome::success);
+}
+
+/** @brief  Add timeout to an event.
+ *  @param  delay  Timeout duration.
+ *  @param  e      Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds a timeout and cancellation support to @a e.
+ *  If the adapter event is triggered, then @a e is triggered with the same
+ *  value.  If the adapter event is canceled, then @a e is triggered with
+ *  value @c -ECANCELED.  If @a delay time passes, then @a e is triggered with
+ *  value @c -ETIMEDOUT.  Conversely, if @a e is triggered or canceled, then
+ *  the adapter event is canceled.
+ */
+inline event<int> add_timeout(const timeval &delay, event<int> e) {
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
+    at_delay(delay, event<>(*r, outcome::timeout));
+    return e.make_rebind(*r, outcome::success);
+}
+
+/** @brief  Add timeout to an event.
+ *  @param  delay  Timeout duration.
+ *  @param  e      Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds a timeout and cancellation support to @a e.
+ *  See add_timeout(const timeval &, event<int>).
+ */
+inline event<int> add_timeout(double delay, event<int> e) {
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
+    at_delay(delay, event<>(*r, outcome::timeout));
+    return e.make_rebind(*r, outcome::success);
+}
+
+/** @brief  Add timeout to an event.
+ *  @param  delay  Timeout duration in seconds.
+ *  @param  e      Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds a timeout and cancellation support to @a e.
+ *  See add_timeout(const timeval &, event<int>).
+ */
+inline event<int> add_timeout_sec(int delay, event<int> e) {
+    timeval tv;
+    tv.tv_sec = delay;
+    tv.tv_usec = 0;
+    return add_timeout(tv, e);
+}
+
+/** @brief  Add timeout to an event.
+ *  @param  delay  Timeout duration in milliseconds.
+ *  @param  e      Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds a timeout and cancellation support to @a e.
+ *  See add_timeout(const timeval &, event<int>).
+ */
+inline event<int> add_timeout_msec(int delay, event<int> e) {
+    timeval tv;
+    tv.tv_sec = delay / 1000;
+    tv.tv_usec = delay % 1000;
+    return add_timeout(tv, e);
+}
+
+/** @brief  Add signal interruption to an event.
+ *  @param  sig  Signal number.
+ *  @param  e    Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds signal interruption and cancellation support
+ *  to @a e.  If the adapter event is triggered, then @a e is triggered with
+ *  the same value.  If the adapter event is canceled, then @a e is triggered
+ *  with value @c -ECANCELED.  If signal @a sig occurs, then @a e is triggered
+ *  with value @c -EINTR.  Conversely, if @a e is triggered or canceled, then
+ *  the adapter event is canceled.
+ */
+inline event<int> add_signal(int sig, event<int> e) {
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
+    at_signal(sig, event<>(*r, outcome::signal));
+    return e.make_rebind(*r, outcome::success);
+}
+
+/** @brief  Add signal interruption to an event.
+ *  @param  sigs  Vector of signal numbers.
+ *  @param  e     Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds signal interruption and cancellation support
+ *  to @a e.  If the adapter event is triggered, then @a e is triggered with
+ *  the same value.  If the adapter event is canceled, then @a e is triggered
+ *  with value @c -ECANCELED.  If any of the signals in @a sigs occur, then @a
+ *  e is triggered with value @c -EINTR.  Conversely, if @a e is triggered or
+ *  canceled, then the adapter event is canceled.
+ */
+inline event<int> add_signal(const std::vector<int> &sigs, event<int> e) {
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
+    for (std::vector<int>::const_iterator i = sigs.begin(); i != sigs.end(); i++)
+	at_signal(*i, event<>(*r, outcome::signal));
+    return e.make_rebind(*r, outcome::success);
+}
+
+
+/** @brief  Add silent cancellation notification to an event.
+ *  @param  e  Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds cancellation support to @a e.  If the adapter
+ *  event is triggered, then @a e is triggered with the same values.  If the
+ *  adapter event is canceled, then @a e is triggered via
+ *  event<>::unbound_trigger(), which leaves the trigger slots unchanged.
+ *  Conversely, if @a e is triggered or canceled, then the adapter event is
+ *  canceled.
+ *
+ *  @note Unlike the @c add_ adapters, such as add_cancel(), the @c with_
+ *  adapters don't provide any information about whether an event actually
+ *  triggered.  The programmer should use trigger values to distinguish the
+ *  cases.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> with_cancel(event<T0, T1, T2, T3> e) {
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
+    return e.make_rebind(*r, outcome::success);
+}
+
+/** @brief  Add silent timeout to an event.
+ *  @param  delay  Timeout duration.
+ *  @param  e      Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds a timeout and cancellation support to @a e.
+ *  If the adapter event is triggered, then @a e is triggered with the same
+ *  values.  If the adapter event is canceled, or if @a delay seconds pass
+ *  first, then @a e is triggered via event<>::unbound_trigger(), which leaves
+ *  the trigger slots unchanged.  Conversely, if @a e is triggered or
+ *  canceled, then the adapter event is canceled.
+ */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2, T3> e) {
     tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
@@ -137,14 +303,29 @@ inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2
     return e.make_rebind(*r, outcome::success);
 }
 
+/** @brief  Add silent timeout to an event.
+ *  @param  delay  Timeout duration in seconds.
+ *  @param  e      Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds a timeout and cancellation support to @a e.
+ *  See with_timeout(const timeval &, event<T0, T1, T2, T3>).
+ */
 template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2, T3> e, int &result) {
-    result = outcome::success;
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
+inline event<T0, T1, T2, T3> with_timeout(double delay, event<T0, T1, T2, T3> e) {
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
     at_delay(delay, event<>(*r, outcome::timeout));
     return e.make_rebind(*r, outcome::success);
 }
 
+/** @brief  Add silent timeout to an event.
+ *  @param  delay  Timeout duration in seconds.
+ *  @param  e      Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds a timeout and cancellation support to @a e.
+ *  See with_timeout(const timeval &, event<T0, T1, T2, T3>).
+ */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_sec(int delay, event<T0, T1, T2, T3> e) {
     timeval tv;
@@ -153,14 +334,14 @@ inline event<T0, T1, T2, T3> with_timeout_sec(int delay, event<T0, T1, T2, T3> e
     return with_timeout(tv, e);
 }
 
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> with_timeout_sec(int delay, event<T0, T1, T2, T3> e, int &result) {
-    timeval tv;
-    tv.tv_sec = delay;
-    tv.tv_usec = 0;
-    return with_timeout(tv, e, result);
-}
-
+/** @brief  Add silent timeout to an event.
+ *  @param  delay  Timeout duration in milliseconds.
+ *  @param  e      Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds a timeout and cancellation support to @a e.
+ *  See with_timeout(const timeval &, event<T0, T1, T2, T3>).
+ */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> e) {
     timeval tv;
@@ -169,6 +350,133 @@ inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> 
     return with_timeout(tv, e);
 }
 
+/** @brief  Add silent signal interruption to an event.
+ *  @param  sig  Signal number.
+ *  @param  e    Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds signal interruption and cancellation support
+ *  to @a e.  If the adapter event is triggered, then @a e is triggered with
+ *  the same values.  If the adapter event is canceled, or signal @a sig is
+ *  received first, then @a e is triggered via event<>::unbound_trigger(),
+ *  which leaves the trigger slots unchanged.  Conversely, if @a e is
+ *  triggered or canceled, then the adapter event is canceled.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e) {
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
+    at_signal(sig, event<>(*r, outcome::signal));
+    return e.make_rebind(*r, outcome::success);
+}
+
+/** @brief  Add silent signal interruption to an event.
+ *  @param  sigs  Vector of signal numbers.
+ *  @param  e     Event.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds signal interruption and cancellation support
+ *  to @a e.  If the adapter event is triggered, then @a e is triggered with
+ *  the same values.  If the adapter event is canceled, or one of the signals
+ *  in @a sigs is received first, then @a e is triggered via
+ *  event<>::unbound_trigger(), which leaves the trigger slots unchanged.
+ *  Conversely, if @a e is triggered or canceled, then the adapter event is
+ *  canceled.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> with_signal(const std::vector<int> &sigs, event<T0, T1, T2, T3> e) {
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
+    for (std::vector<int>::const_iterator i = sigs.begin(); i != sigs.end(); i++)
+	at_signal(*i, event<>(*r, outcome::signal));
+    return e.make_rebind(*r, outcome::success);
+}
+
+
+/** @brief  Add cancellation notification to an event.
+ *  @param       e       Event.
+ *  @param[out]  result  Result tracker.
+ *  @return      Adapter event.
+ *
+ *  Returns an adapter that adds cancellation support to @a e.  The variable
+ *  @a result is initially set to 0.  If the adapter event is triggered, then
+ *  @a e is triggered with the same values.  If the adapter event is canceled,
+ *  then @a e is triggered via event<>::unbound_trigger(), which leaves the
+ *  trigger slots unchanged, and @a result is immediately set to @c
+ *  -ECANCELED.  Conversely, if @a e is triggered or canceled, then the
+ *  adapter event is canceled.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> with_cancel(event<T0, T1, T2, T3> e, int &result) {
+    result = outcome::success;
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
+    return e.make_rebind(*r, outcome::success);
+}
+
+/** @brief  Add timeout to an event.
+ *  @param       delay   Timeout duration.
+ *  @param       e       Event.
+ *  @param[out]  result  Result tracker.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds a timeout and cancellation support to @a e.
+ *  Initially sets the variable @a to 0.  If the adapter event is
+ *  triggered, then @a e is triggered with the same values.  If the adapter
+ *  event is canceled, or if @a delay seconds pass first, then @a e is
+ *  triggered via event<>::unbound_trigger(), which leaves the trigger slots
+ *  unchanged, and @a result is immediately set to @c -ECANCELED or @c
+ *  -ETIMEDOUT, respectively.  Conversely, if @a e is triggered or canceled,
+ *  then the adapter event is canceled.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2, T3> e, int &result) {
+    result = outcome::success;
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
+    at_delay(delay, event<>(*r, outcome::timeout));
+    return e.make_rebind(*r, outcome::success);
+}
+
+/** @brief  Add timeout to an event.
+ *  @param       delay   Timeout duration in seconds.
+ *  @param       e       Event.
+ *  @param[out]  result  Result tracker.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds a timeout and cancellation support to @a e.
+ *  See with_timeout(const timeval &, event<T0, T1, T2, T3>, int &).
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> with_timeout(double &delay, event<T0, T1, T2, T3> e, int &result) {
+    result = outcome::success;
+    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
+    at_delay(delay, event<>(*r, outcome::timeout));
+    return e.make_rebind(*r, outcome::success);
+}
+
+/** @brief  Add timeout to an event.
+ *  @param       delay   Timeout duration in seconds.
+ *  @param       e       Event.
+ *  @param[out]  result  Result tracker.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds a timeout and cancellation support to @a e.
+ *  See with_timeout(const timeval &, event<T0, T1, T2, T3>, int &).
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> with_timeout_sec(int delay, event<T0, T1, T2, T3> e, int &result) {
+    timeval tv;
+    tv.tv_sec = delay;
+    tv.tv_usec = 0;
+    return with_timeout(tv, e, result);
+}
+
+/** @brief  Add timeout to an event.
+ *  @param       delay   Timeout duration in milliseconds.
+ *  @param       e       Event.
+ *  @param[out]  result  Result tracker.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds a timeout and cancellation support to @a e.
+ *  See with_timeout(const timeval &, event<T0, T1, T2, T3>, int &).
+ */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> e, int &result) {
     timeval tv;
@@ -177,35 +485,21 @@ inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> 
     return with_timeout(tv, e, result);
 }
 
-
-inline event<int> add_timeout(const timeval &delay, event<int> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
-    at_delay(delay, event<>(*r, outcome::timeout));
-    return e.make_rebind(*r, outcome::success);
-}
-
-inline event<int> add_timeout_sec(int delay, event<int> e) {
-    timeval tv;
-    tv.tv_sec = delay;
-    tv.tv_usec = 0;
-    return add_timeout(tv, e);
-}
-
-inline event<int> add_timeout_msec(int delay, event<int> e) {
-    timeval tv;
-    tv.tv_sec = delay / 1000;
-    tv.tv_usec = delay % 1000;
-    return add_timeout(tv, e);
-}
-
-
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
-    at_signal(sig, event<>(*r, outcome::signal));
-    return e.make_rebind(*r, outcome::success);
-}
-
+/** @brief  Add signal interruption to an event.
+ *  @param       sig     Signal number.
+ *  @param       e       Event.
+ *  @param[out]  result  Result tracker.
+ *  @return      Adapter event.
+ *
+ *  Returns an adapter that adds signal interruption and cancellation support
+ *  to @a e.  Initially sets the variable @a to 0.  If the adapter event is
+ *  triggered, then @a e is triggered with the same values.  If the adapter
+ *  event is canceled, or if signal @a sig is received first, then @a e is
+ *  triggered via event<>::unbound_trigger(), which leaves the trigger slots
+ *  unchanged, and @a result is immediately set to @c -ECANCELED or @c -EINTR,
+ *  respectively.  Conversely, if @a e is triggered or canceled, then the
+ *  adapter event is canceled.
+ */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e, int &result) {
     result = outcome::success;
@@ -214,46 +508,27 @@ inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e, int &
     return e.make_rebind(*r, outcome::success);
 }
 
+/** @brief  Add signal interruption to an event.
+ *  @param       sigs    Vector of signal numbers.
+ *  @param       e       Event.
+ *  @param[out]  result  Result tracker.
+ *  @return      Adapter event.
+ *
+ *  Returns an adapter that adds signal interruption and cancellation support
+ *  to @a e.  Initially sets the variable @a to 0.  If the adapter event is
+ *  triggered, then @a e is triggered with the same values.  If the adapter
+ *  event is canceled, or if any signal in @a sigs is received first, then @a
+ *  e is triggered via event<>::unbound_trigger(), which leaves the trigger
+ *  slots unchanged, and @a result is immediately set to @c -ECANCELED or @c
+ *  -EINTR, respectively.  Conversely, if @a e is triggered or canceled, then
+ *  the adapter event is canceled.
+ */
 template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> with_signal(const std::vector<int> &sig, event<T0, T1, T2, T3> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
-    for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
-	at_signal(*i, event<>(*r, outcome::signal));
-    return e.make_rebind(*r, outcome::success);
-}
-
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> with_signal(const std::vector<int> &sig, event<T0, T1, T2, T3> e, int &result) {
+inline event<T0, T1, T2, T3> with_signal(const std::vector<int> &sigs, event<T0, T1, T2, T3> e, int &result) {
     result = outcome::success;
     tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
-    for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
+    for (std::vector<int>::const_iterator i = sigs.begin(); i != sigs.end(); i++)
 	at_signal(*i, event<>(*r, outcome::signal));
-    return e.make_rebind(*r, outcome::success);
-}
-
-
-inline event<int> add_signal(int sig, event<int> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
-    at_signal(sig, event<>(*r, outcome::signal));
-    return e.make_rebind(*r, outcome::success);
-}
-
-inline event<int> add_signal(const std::vector<int> &sig, event<int> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
-    for (std::vector<int>::const_iterator i = sig.begin(); i != sig.end(); i++)
-	at_signal(*i, event<>(*r, outcome::signal));
-    return e.make_rebind(*r, outcome::success);
-}
-
-
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> with_cancel(event<T0, T1, T2, T3> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
-    return e.make_rebind(*r, outcome::success);
-}
-
-inline event<int> add_cancel(event<int> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
     return e.make_rebind(*r, outcome::success);
 }
 
