@@ -8,6 +8,10 @@
 namespace tamer {
 namespace fileio {
 
+/** @file <tamer/fileio.hh>
+ *  @brief  Functions for asynchronous I/O.
+ */
+
 /** @brief  Make file descriptor nonblocking.
  *  @param  fd  File descriptor.
  *  @return  0 on success, or a negative error code.

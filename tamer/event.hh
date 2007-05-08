@@ -124,7 +124,7 @@ class event { public:
 	_e->trigger(v0, v1, v2, v3);
     }
 
-    /** @brief  Trigger event without trigger values.
+    /** @brief  Trigger event without setting trigger values.
      *
      *  Does nothing if event is empty.
      */
@@ -134,7 +134,7 @@ class event { public:
 
     /** @brief  Cancel event.
      *
-     *  Does nothing if this event is empty.
+     *  Does nothing if event is empty.
      */
     void cancel() {
 	_e->complete(false);
@@ -150,6 +150,9 @@ class event { public:
      *  this event's slots to a new event on @a r with event IDs @a i0 and
      *  @a i1.  When this event is triggered, its trigger values will be
      *  ignored.
+     *
+     *  @note Versions of this function exist for rendezvous with two, one,
+     *  and zero event IDs.
      */
     template <typename R, typename I0, typename I1>
     event<T0, T1, T2, T3> make_rebind(R &r, const I0 &i0, const I1 &i1) {
@@ -161,11 +164,6 @@ class event { public:
 	    return event<T0, T1, T2, T3>();
     }
 
-    /** @brief  Transfer trigger slots to a new event on @a r.
-     *  @param  r   Rendezvous.
-     *  @param  i0  First event ID.
-     *  @return  Event on @a r with this event's slots.
-     */
     template <typename R, typename I0>
     event<T0, T1, T2, T3> make_rebind(R &r, const I0 &i0) {
 	if (*this) {
@@ -176,10 +174,6 @@ class event { public:
 	    return event<T0, T1, T2, T3>();
     }
 
-    /** @brief  Transfer trigger slots to a new event on @a r.
-     *  @param  r   Rendezvous.
-     *  @return  Event on @a r with this event's slots.
-     */
     template <typename R>
     event<T0, T1, T2, T3> make_rebind(R &r) {
 	if (*this) {

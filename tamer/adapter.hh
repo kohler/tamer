@@ -3,6 +3,10 @@
 #include <tamer/xadapter.hh>
 namespace tamer {
 
+/** @file <tamer/adapter.hh>
+ *  @brief  Functions for adapting events.
+ */
+
 namespace outcome {
 const int success = 0;
 const int cancel = -ECANCELED;
@@ -110,6 +114,9 @@ inline event<T0, T1, T2, T3> spread_cancel(const event<U0, U1, U2, U3> &e1, even
  *  @code
  *  e.at_cancel(make_event(r, i0, i1)); return e;
  *  @endcode
+ *
+ *  @note Versions of this function exist for rendezvous with two, one, and
+ *  zero event IDs.
  */
 template <typename R, typename I0, typename I1, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_cancel(R &r, const I0 &i0, const I1 &i1, event<T0, T1, T2, T3> e) {
@@ -173,6 +180,11 @@ inline event<int> add_cancel(event<int> e) {
  *  value @c -ECANCELED.  If @a delay time passes, then @a e is triggered with
  *  value @c -ETIMEDOUT.  Conversely, if @a e is triggered or canceled, then
  *  the adapter event is canceled.
+ *
+ *  @note Versions of this function exist for @a delay values of types @c
+ *  timeval, @c double, and under the names add_timeout_sec() and
+ *  add_timeout_msec(), @c int numbers of seconds and milliseconds,
+ *  respectively.
  */
 inline event<int> add_timeout(const timeval &delay, event<int> e) {
     tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
@@ -180,28 +192,12 @@ inline event<int> add_timeout(const timeval &delay, event<int> e) {
     return e.make_rebind(*r, outcome::success);
 }
 
-/** @brief  Add timeout to an event.
- *  @param  delay  Timeout duration.
- *  @param  e      Event.
- *  @return  Adapter event.
- *
- *  Returns an adapter that adds a timeout and cancellation support to @a e.
- *  See add_timeout(const timeval &, event<int>).
- */
 inline event<int> add_timeout(double delay, event<int> e) {
     tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
     at_delay(delay, event<>(*r, outcome::timeout));
     return e.make_rebind(*r, outcome::success);
 }
 
-/** @brief  Add timeout to an event.
- *  @param  delay  Timeout duration in seconds.
- *  @param  e      Event.
- *  @return  Adapter event.
- *
- *  Returns an adapter that adds a timeout and cancellation support to @a e.
- *  See add_timeout(const timeval &, event<int>).
- */
 inline event<int> add_timeout_sec(int delay, event<int> e) {
     timeval tv;
     tv.tv_sec = delay;
@@ -209,14 +205,6 @@ inline event<int> add_timeout_sec(int delay, event<int> e) {
     return add_timeout(tv, e);
 }
 
-/** @brief  Add timeout to an event.
- *  @param  delay  Timeout duration in milliseconds.
- *  @param  e      Event.
- *  @return  Adapter event.
- *
- *  Returns an adapter that adds a timeout and cancellation support to @a e.
- *  See add_timeout(const timeval &, event<int>).
- */
 inline event<int> add_timeout_msec(int delay, event<int> e) {
     timeval tv;
     tv.tv_sec = delay / 1000;
@@ -295,6 +283,11 @@ inline event<T0, T1, T2, T3> with_cancel(event<T0, T1, T2, T3> e) {
  *  first, then @a e is triggered via event<>::unbound_trigger(), which leaves
  *  the trigger slots unchanged.  Conversely, if @a e is triggered or
  *  canceled, then the adapter event is canceled.
+ *
+ *  @note Versions of this function exist for @a delay values of types @c
+ *  timeval, @c double, and under the names with_timeout_sec() and
+ *  with_timeout_msec(), @c int numbers of seconds and milliseconds,
+ *  respectively.
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2, T3> e) {
@@ -303,14 +296,6 @@ inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2
     return e.make_rebind(*r, outcome::success);
 }
 
-/** @brief  Add silent timeout to an event.
- *  @param  delay  Timeout duration in seconds.
- *  @param  e      Event.
- *  @return  Adapter event.
- *
- *  Returns an adapter that adds a timeout and cancellation support to @a e.
- *  See with_timeout(const timeval &, event<T0, T1, T2, T3>).
- */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(double delay, event<T0, T1, T2, T3> e) {
     tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
@@ -318,14 +303,6 @@ inline event<T0, T1, T2, T3> with_timeout(double delay, event<T0, T1, T2, T3> e)
     return e.make_rebind(*r, outcome::success);
 }
 
-/** @brief  Add silent timeout to an event.
- *  @param  delay  Timeout duration in seconds.
- *  @param  e      Event.
- *  @return  Adapter event.
- *
- *  Returns an adapter that adds a timeout and cancellation support to @a e.
- *  See with_timeout(const timeval &, event<T0, T1, T2, T3>).
- */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_sec(int delay, event<T0, T1, T2, T3> e) {
     timeval tv;
@@ -334,14 +311,6 @@ inline event<T0, T1, T2, T3> with_timeout_sec(int delay, event<T0, T1, T2, T3> e
     return with_timeout(tv, e);
 }
 
-/** @brief  Add silent timeout to an event.
- *  @param  delay  Timeout duration in milliseconds.
- *  @param  e      Event.
- *  @return  Adapter event.
- *
- *  Returns an adapter that adds a timeout and cancellation support to @a e.
- *  See with_timeout(const timeval &, event<T0, T1, T2, T3>).
- */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> e) {
     timeval tv;
@@ -425,6 +394,11 @@ inline event<T0, T1, T2, T3> with_cancel(event<T0, T1, T2, T3> e, int &result) {
  *  unchanged, and @a result is immediately set to @c -ECANCELED or @c
  *  -ETIMEDOUT, respectively.  Conversely, if @a e is triggered or canceled,
  *  then the adapter event is canceled.
+ *
+ *  @note Versions of this function exist for @a delay values of types @c
+ *  timeval, @c double, and under the names with_timeout_sec() and
+ *  with_timeout_msec(), @c int numbers of seconds and milliseconds,
+ *  respectively.
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2, T3> e, int &result) {
@@ -434,15 +408,6 @@ inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2
     return e.make_rebind(*r, outcome::success);
 }
 
-/** @brief  Add timeout to an event.
- *  @param       delay   Timeout duration in seconds.
- *  @param       e       Event.
- *  @param[out]  result  Result tracker.
- *  @return  Adapter event.
- *
- *  Returns an adapter that adds a timeout and cancellation support to @a e.
- *  See with_timeout(const timeval &, event<T0, T1, T2, T3>, int &).
- */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(double &delay, event<T0, T1, T2, T3> e, int &result) {
     result = outcome::success;
@@ -451,15 +416,6 @@ inline event<T0, T1, T2, T3> with_timeout(double &delay, event<T0, T1, T2, T3> e
     return e.make_rebind(*r, outcome::success);
 }
 
-/** @brief  Add timeout to an event.
- *  @param       delay   Timeout duration in seconds.
- *  @param       e       Event.
- *  @param[out]  result  Result tracker.
- *  @return  Adapter event.
- *
- *  Returns an adapter that adds a timeout and cancellation support to @a e.
- *  See with_timeout(const timeval &, event<T0, T1, T2, T3>, int &).
- */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_sec(int delay, event<T0, T1, T2, T3> e, int &result) {
     timeval tv;
@@ -468,15 +424,6 @@ inline event<T0, T1, T2, T3> with_timeout_sec(int delay, event<T0, T1, T2, T3> e
     return with_timeout(tv, e, result);
 }
 
-/** @brief  Add timeout to an event.
- *  @param       delay   Timeout duration in milliseconds.
- *  @param       e       Event.
- *  @param[out]  result  Result tracker.
- *  @return  Adapter event.
- *
- *  Returns an adapter that adds a timeout and cancellation support to @a e.
- *  See with_timeout(const timeval &, event<T0, T1, T2, T3>, int &).
- */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> e, int &result) {
     timeval tv;

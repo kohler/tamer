@@ -4,6 +4,10 @@
 #include <tamer/base.hh>
 namespace tamer {
 
+/** @file <tamer/rendezvous.hh>
+ *  @brief  The rendezvous template classes.
+ */
+
 /** @class rendezvous tamer/event.hh <tamer.hh>
  *  @brief  A set of watched events.
  */

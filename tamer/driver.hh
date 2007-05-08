@@ -139,7 +139,7 @@ inline void at_delay_msec(int delay, const event<> &e)
  *  @param  e    Event.
  *
  *  Triggers @a e soon after @a sig is received.  The signal @a sig remains
- *  blocked until code waiting on @a e has run.
+ *  blocked until any code waiting on @a e has run.
  */
 inline void at_signal(int sig, const event<> &e)
 {
