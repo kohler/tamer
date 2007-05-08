@@ -1,7 +1,7 @@
 #ifndef TAMER_RENDEZVOUS_HH
 #define TAMER_RENDEZVOUS_HH 1
 #include <tamer/util.hh>
-#include <tamer/base.hh>
+#include <tamer/xbase.hh>
 namespace tamer {
 
 /** @file <tamer/rendezvous.hh>
