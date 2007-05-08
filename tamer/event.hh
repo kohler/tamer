@@ -63,6 +63,9 @@ namespace tamer {
  *  event is canceled.  A cancel notifier is simply an <tt>event<></tt>
  *  object.  If the event is triggered, the cancel notifier is itself
  *  canceled.
+ *
+ *  Events are usually created with the make_event() helper function, which
+ *  automatically detects the right type of event to return.
  */
 template <typename T0, typename T1, typename T2, typename T3>
 class event { public:
