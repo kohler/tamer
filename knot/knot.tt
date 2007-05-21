@@ -9,11 +9,11 @@
 #include <iostream>
 #include <stdarg.h>
 #include <signal.h>
+#include <netdb.h>
 
 #include "http.hh"
 #include "httphdrs.h"
 
-#include <syscall.h>
 #include <tamer/fileio.hh>
 #include <fcntl.h>
 #include <errno.h>
@@ -467,8 +467,17 @@ accept_loop(int s)
         // turn off Nagle, so pipelined requests don't wait unnecessarily.
         if( 1 ) {
             int optval = 1;
+	    static int sol = 0;
+#ifdef SOL_TCP
+	    sol = SOL_TCP;
+#else
+	    if (!sol) {
+		struct protoent *p = getprotobyname("tcp");
+		sol = p->p_proto;
+	    }
+#endif
             //if (setsockopt (sock, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof (optval)) < 0)
-            if (setsockopt (c, SOL_TCP, TCP_NODELAY, &optval, sizeof (optval)) < 0)
+            if (setsockopt (c, sol, TCP_NODELAY, &optval, sizeof (optval)) < 0)
             {
                 perror("setsockopt");
                 continue;
