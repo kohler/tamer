@@ -7,7 +7,7 @@ namespace tamer {
  *  @brief  The event template classes and helper functions.
  */
 
-/** @class event tamer/event.hh <tamer.hh>
+/** @class event tamer/event.hh <tamer/tamer.hh>
  *  @brief  A future occurrence.
  *
  *  Each event object represents a future occurrence, such as the completion

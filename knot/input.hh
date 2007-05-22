@@ -1,7 +1,7 @@
 #ifndef INPUT_H
 #define INPUT_H
 
-#include <tamer.hh>
+#include <tamer/tamer.hh>
 
 #define INPUT_MAX_BUF 511
 

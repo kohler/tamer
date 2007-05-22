@@ -8,7 +8,7 @@ namespace tamer {
  *  @brief  The rendezvous template classes.
  */
 
-/** @class rendezvous tamer/event.hh <tamer.hh>
+/** @class rendezvous tamer/event.hh <tamer/tamer.hh>
  *  @brief  A set of watched events.
  *
  *  Rendezvous may also be declared with one or zero template arguments, as in

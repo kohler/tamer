@@ -1,6 +1,6 @@
 #ifndef CACHE_HH
 #define CACHE_HH 1
-#include <tamer.hh>
+#include <tamer/tamer.hh>
 #include <assert.h>
 #include <stdlib.h>
 #include <string>

@@ -9,7 +9,7 @@ ex2_LDADD = ../tamer/libtamer.la
 ex3_SOURCES = ex3.tt
 ex3_LDADD = ../tamer/libtamer.la
 
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/tamer
+INCLUDES = -I$(top_srcdir)
 
 TAMER = ../compiler/tamer
 .tt.cc: $(TAMER)

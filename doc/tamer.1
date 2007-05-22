@@ -1,6 +1,9 @@
 .TH TAMER 1 2007-04-30 Tamer "Tamer Processor Manual"
 .ds E \-\-\-
 .if t .ds E \(em
+.de M
+.BR "\\$1" "(\\$2)\\$3"
+..
 .SH NAME
 tamer \- C++ preprocessor for event-driven programming
 .SH SYNOPSIS
@@ -18,7 +21,7 @@ extensions and generates the corresponding conventional C++.
 The
 .B Tamer
 programming model is described in more detail at
-.BR tamer (3).
+.M tamer 3 .
 '
 .SH OPTIONS
 .TP 5
@@ -96,7 +99,7 @@ Eddie Kohler <kohler@cs.ucla.edu>: improvements, port to
 .B Tamer
 '
 .SH "SEE ALSO"
-.BR tamer (3)
+.M tamer 3
 .LP
 \*(lqEvents Can Make Sense\*(rq.  Maxwell Krohn, Eddie Kohler, and Frans
 Kaashoek.  In

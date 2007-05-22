@@ -1,12 +1,17 @@
 #ifndef TAMER_FILEIO_HH
 #define TAMER_FILEIO_HH
-#include <tamer.hh>
+#include <tamer/tamer.hh>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 namespace tamer {
 namespace fileio {
+
+/** @namespace tamer::fileio
+ *  @brief  Namespace containing public Tamer classes and functions for
+ *  file descriptor I/O.
+ */
 
 /** @file <tamer/fileio.hh>
  *  @brief  Functions for asynchronous I/O.

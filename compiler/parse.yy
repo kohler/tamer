@@ -1,5 +1,5 @@
 /* -*-fundamental-*- */
-/* $Id: parse.yy,v 1.3 2007-05-22 18:08:08 kohler Exp $ */
+/* $Id: parse.yy,v 1.4 2007-05-22 20:58:16 kohler Exp $ */
 
 /*
  *
@@ -51,7 +51,6 @@ int vars_lineno;
 %token T_VIRTUAL
 %token T_INLINE
 %token T_TEMPLATE
-%token T_HOLDVAR
 
 %token T_2COLON
 %token T_RETURN
@@ -491,7 +490,6 @@ type_specifier: T_VOID		{ $$ = lstr(get_yy_lineno(), "void"); }
 type_qualifier:	T_CONST	{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "const"), CONST_FLAG); }
 	| T_STRUCT	{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "struct")); }
 	| T_TYPENAME	{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "typename")); }
-	| T_HOLDVAR	{ $$ = type_qualifier_t(lstr(), HOLDVAR_FLAG); }
 	;
 
 type_qualifier_list: type_qualifier

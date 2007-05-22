@@ -1,5 +1,5 @@
 
-/* $Id: tame.cc,v 1.4 2007-05-08 21:14:24 kohler Exp $ */
+/* $Id: tame.cc,v 1.5 2007-05-22 20:58:16 kohler Exp $ */
 
 #include "tame.hh"
 #include <iostream>
@@ -31,7 +31,7 @@ usage ()
 	<< "  If no input or output files are specified, then standard in\n"
 	<< "  and out are assumed, respectively.\n"
 	<< "\n"
-    << "  Environment Variables:\n"
+	<< "  Environment Variables:\n"
 	<< "    TAME_NO_LINE_NUMBERS  equivalent to -L\n"
 	<< "    TAME_ADD_NEWLINES     equivalent to -n\n"
 	<< "    TAME_DEBUG_SOURCE     equivalent to -Ln\n"

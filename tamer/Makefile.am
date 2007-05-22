@@ -12,7 +12,6 @@ libtamer_la_SOURCES = \
 	xbase.hh xbase.cc \
 	xdriver.hh \
 	xevent.hh
-include_HEADERS = tamer.hh
 pkginclude_HEADERS = \
 	adapter.hh \
 	driver.hh \
@@ -20,13 +19,14 @@ pkginclude_HEADERS = \
 	fileio.hh \
 	lock.hh \
 	rendezvous.hh \
+	tamer.hh \
 	util.hh \
 	xadapter.hh \
 	xbase.hh \
 	xdriver.hh \
 	xevent.hh
 
-INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/tamer
+INCLUDES = -I$(top_srcdir)
 TAMER = ../compiler/tamer
 
 .tt.cc:

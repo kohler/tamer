@@ -1,4 +1,4 @@
-#include <tamer.hh>
+#include <tamer/tamer.hh>
 #include <tamer/adapter.hh>
 #include <stdio.h>
 

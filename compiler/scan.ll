@@ -1,5 +1,5 @@
 /* -*-fundamental-*- */
-/* $Id: scan.ll,v 1.3 2007-05-22 18:08:08 kohler Exp $ */
+/* $Id: scan.ll,v 1.4 2007-05-22 20:58:16 kohler Exp $ */
 
 /*
  *
@@ -103,7 +103,6 @@ unsigned	return T_UNSIGNED;
 static		return T_STATIC;
 inline		return T_INLINE;
 virtual		return T_VIRTUAL;
-holdvar		return T_HOLDVAR;
 template	{ yy_push_state (TEMPLATE_ENTER); return T_TEMPLATE; }
 
 {ID} 		{ return std_ret (T_ID); }

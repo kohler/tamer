@@ -1,11 +1,14 @@
 .TH TAMER 3 2007-04-30 Tamer "Tamer Manual"
 .ds E \-\-\-
 .if t .ds E \(em
+.de M
+.BR "\\$1" "(\\$2)\\$3"
+..
 .SH NAME
 tamer \- C++ extensions for event-driven programming
 .SH SYNOPSIS
 .nf
-.B #include <tamer.hh>
+.B #include <tamer/tamer.hh>
 .B using namespace tamer;
 .sp
 \fBclass event<T0, T1, T2, T3> { public:
@@ -62,7 +65,7 @@ abstractions, and describes the user-accessible
 methods and functions.  Most
 .B Tamer
 programs will also use the
-.BR tamer (1)
+.M tamer 1
 preprocessor, which converts programs using
 .B twait
 into conventional C++.
@@ -528,7 +531,7 @@ special forms are built around calls to
 .RE
 '
 .SH "EVENT MODIFIERS"
-These operations manipulate events generically, for example by returning
+These functions manipulate events generically, for example by returning
 one event that triggers two others.
 .sp
 .nf
@@ -589,6 +592,7 @@ is canceled,
 .I eto
 will immediately be canceled as well.  Returns
 .IR efrom .
+.RE
 '
 .SH "DRIVER"
 The
@@ -1221,7 +1225,7 @@ Based on joint work on Tame with Maxwell Krohn <krohn@mit.edu> and Frans
 Kaashoek <kaashoek@mit.edu>
 '
 .SH "SEE ALSO"
-.BR tamer (1)
+.M tamer 1
 .LP
 \*(lqEvents Can Make Sense\*(rq.  Maxwell Krohn, Eddie Kohler, and Frans
 Kaashoek.  In

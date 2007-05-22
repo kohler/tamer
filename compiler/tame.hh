@@ -1,5 +1,5 @@
 // -*-c++-*-
-/* $Id: tame.hh,v 1.6 2007-05-22 18:08:08 kohler Exp $ */
+/* $Id: tame.hh,v 1.7 2007-05-22 20:58:16 kohler Exp $ */
 
 /*
  *
@@ -104,7 +104,6 @@ inline strbuf &operator<<(strbuf &ostr, const lstr &l)
 }
 
 
-#define HOLDVAR_FLAG     (1 << 0)
 #define CONST_FLAG       (2 << 0)
 /*
  * object for holding type modifiers like "unsigned", "const",
@@ -328,7 +327,6 @@ public:
 
     void set_type(const type_t &t) { _type = t; }
     initializer_t *initializer() const { return _initializer; }
-    bool do_output() const;
 
     str param_decl(const str &prfx) const;
     str decl() const;

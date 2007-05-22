@@ -1,8 +1,14 @@
 TAMER
 =====
 
-   Tamer is a lightweight version of the Tame event-driven programming
-package.  Included is a preprocessor that compiles Tame abstractions into
+   Tamer is a C++ language extension and library that simplifies
+event-driven programming.  Functions in Tamer can block to wait for an
+event, then resume computation later.  While one function is blocked, other
+functions can continue their computation.  This is as easy as threaded
+programming, but avoids most synchronization and locking issues and
+generally requires less memory.
+
+   Tamer contains a preprocessor that compiles Tamer abstractions into
 conventional C++ code, the Tamer libraries for event-driven programming,
 and several examples, including a working port of the Knot web server
 distributed with the Capriccio threading package.
@@ -17,7 +23,8 @@ doc/tamer.3 | less" .
 Why Tamer?
 ----------
 
-   For historical reasons, the Tame package distributed as part of SFSlite
+   Tamer is a lightweight version of the Tame event-driven programming
+package distributed as part of SFSlite.  For historical reasons, Tame
 follows SFS conventions, and requires a wide variety of less than
 documented general-purpose classes, including strings, string buffers,
 vectors, hash tables, linked lists, and reference counts.  Better, or at
@@ -26,12 +33,12 @@ part of the C++ standard library and the Boost libraries.  Additionally,
 the Tame abstractions are layered on top of SFSlite's existing "wrap"
 callbacks, adding complexity and minor overhead.
 
-   Tamer, in contrast, is a freestanding port of the basic Tame
-abstractions to a standard C++ environment.  Although currently less
-powerful than Tame and SFSlite -- for example, Tamer code can block on disk
-I/O, a problem SFSlite can solve with RPCs, and SFSlite ships with an
-asynchronous DNS resolver -- Tamer is much smaller and lighter weight.  It
-was also designed to be easier to use.
+   Tamer is a freestanding port of the basic Tame abstractions to a
+standard C++ environment.  Although currently less powerful than Tame and
+SFSlite -- for example, Tamer code can block on disk I/O, a problem SFSlite
+can solve with RPCs, and SFSlite ships with an asynchronous DNS resolver --
+Tamer is much smaller and lighter weight.  It was also designed to be
+easier to use.
 
    If your main concern is code readability, try Tamer.  If you really can
 never block, or would benefit from built-in RPC support, try Tame.

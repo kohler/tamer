@@ -3,6 +3,12 @@
 #include <stdexcept>
 namespace tamer {
 
+#if __GNUC__
+#define TAMER_CLOSUREVARDECL(decl) decl __attribute__((unused))
+#else
+#define TAMER_CLOSUREVARDECL(decl) decl
+#endif
+
 template <typename I0=void, typename I1=void> class rendezvous;
 template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> class event;
 inline event<> distribute(const event<> &, const event<> &);

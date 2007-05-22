@@ -2,7 +2,7 @@
 #define HTTP_H
 
 #include "input.hh"
-#include <tamer.hh>
+#include <tamer/tamer.hh>
 
 
 typedef enum 

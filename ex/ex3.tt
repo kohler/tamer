@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <tamer.hh>
+#include <tamer/tamer.hh>
 #include <tamer/lock.hh>
 
 static tamer::mutex m;

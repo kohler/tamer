@@ -2,7 +2,7 @@
 
 #include "cache2.hh"
 #include "httphdrs.h"
-#include <tamer.hh>
+#include <tamer/tamer.hh>
 #include <tamer/fileio.hh>
 #include <stdio.h>
 #include <unistd.h>

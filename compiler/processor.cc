@@ -159,13 +159,13 @@ str var_t::ref_decl() const
 }
 
 str
-initializer_t::ref_prefix () const 
+initializer_t::ref_prefix() const 
 {
   return "&";
 }
 
 str
-array_initializer_t::ref_prefix () const
+array_initializer_t::ref_prefix() const
 {
   /*
    * useful for when we can handle 2-dim++ arrays, but not really 
@@ -509,32 +509,24 @@ tame_fn_t::output_closure(outputter_t *o)
   o->switch_to_mode (om);
 }
 
-bool
-var_t::do_output () const
-{
-    return (!(_flags & HOLDVAR_FLAG));
-}
-
 void
-tame_fn_t::output_stack_vars (strbuf &b)
+tame_fn_t::output_stack_vars(strbuf &b)
 {
-  for (unsigned i = 0; i < _stack_vars.size (); i++) {
-    const var_t &v = _stack_vars._vars[i];
-    if (v.do_output ()) {
-      b << "  " << v.ref_decl() << " = " 
-	<< closure_nm () << "." << v.name () << ";\n" ;
+    for (unsigned i = 0; i < _stack_vars.size (); i++) {
+	const var_t &v = _stack_vars._vars[i];
+	b << "  TAMER_CLOSUREVARDECL(" << v.ref_decl() << ") = " 
+	  << closure_nm () << "." << v.name () << ";\n" ;
     }
-  } 
 }
 
 void
-tame_fn_t::output_arg_references (strbuf &b)
+tame_fn_t::output_arg_references(strbuf &b)
 {
-  for (unsigned i = 0; _args && i < _args->size (); i++) {
-    const var_t &v = _args->_vars[i];
-    b << "  " << v.ref_decl() << " __attribute__((unused)) = "
-      << closure_nm () << "." << v.name () << ";\n";
-  }
+    for (unsigned i = 0; _args && i < _args->size(); i++) {
+	const var_t &v = _args->_vars[i];
+	b << "  TAMER_CLOSUREVARDECL(" << v.ref_decl() << ") = "
+	  << closure_nm() << "." << v.name() << ";\n";
+    }
 }
 
 void
