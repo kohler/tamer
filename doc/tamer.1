@@ -43,12 +43,46 @@ will be compiled into
 .BR ex2.cpp ,
 and so forth.
 '
-.SH BUGS
-The existing
-.B tamer
-preprocessor is not that good at generating
-.BR Tame d
-versions of class member functions and template functions.
+.SH BUGS AND LIMITATIONS
+.LP
+There are several limitations in handling
+.BR tamed
+class member functions.  Do not define a
+.B tamed
+member function in the class body.  Also,
+.B tamed
+static member function
+.I definitions
+must use the 
+.B static
+keyword (this is illegal in normal C++).  For example, don't say this:
+.nf
+.sp
+    class foo {
+        tamed void memfn() { ... };
+        tamed static void staticmemfn();
+    };
+    tamed void foo::staticmemfn() { ... }
+.sp
+.fi
+Say this:
+.nf
+.sp
+    class foo {
+        tamed void memfn();
+        tamed static void staticmemfn();
+    };
+    tamed void foo::memfn() { ... }
+    tamed static void foo::staticmemfn() { ... }
+.sp
+.fi
+.LP
+There are likely remaining bugs in class member functions and template
+functions.
+.LP
+The
+.B tamed
+keyword must be the first thing in the function declaration.
 .LP
 .B Tamer
 preprocessing should happen
@@ -58,7 +92,7 @@ the normal C++ preprocessor, but it currently happens before.
 .SH AUTHOR
 Maxwell Krohn <krohn@mit.edu>: original Tame version
 .br
-Eddie Kohler <kohler@cs.ucla.edu>: port to
+Eddie Kohler <kohler@cs.ucla.edu>: improvements, port to
 .B Tamer
 '
 .SH "SEE ALSO"

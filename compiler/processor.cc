@@ -1,34 +1,5 @@
-
 #include "tame.hh"
 #include <ctype.h>
-
-//-----------------------------------------------------------------------
-// output only the generic callbacks that we need, to speed up compile
-// times.
-//
-std::map<unsigned, bool> _generic_cb_tab;
-std::map<unsigned, bool> _generic_mk_cv_tab;
-
-static unsigned cross (unsigned a, unsigned b) 
-{
-  assert (a <= 0xff && b <= 0xff);
-  return ((a << 8) | b);
-}
-
-bool generic_cb_exists (unsigned a, unsigned b) 
-{ return _generic_cb_tab[cross (a,b)]; }
-
-bool generic_mk_cv_exists (unsigned a, unsigned b)
-{ return _generic_mk_cv_tab[cross (a,b)]; }
-
-void generic_cb_declare (unsigned a, unsigned b)
-{ _generic_cb_tab[cross (a,b)] = 1; }
-
-void generic_mk_cv_declare (unsigned a, unsigned b)
-{ _generic_mk_cv_tab[cross (a,b)] = 1; }
-
-//
-//-----------------------------------------------------------------------
 
 
 var_t::var_t(const type_qualifier_t &t, declarator_t *d, const lstr &arrays, vartyp_t a)
@@ -58,19 +29,14 @@ str template_args (str s)
 }
 
 void element_list_t::output(outputter_t *o) {
-    for (std::list<tame_el_t *>::iterator i = _lst.begin(); i != _lst.end(); i++) {
-	char x[50]; sprintf(x, "/*<%p>*/ ", *i);
-	o->output_str(x);
-	(*i)->output(o);}
+    for (std::list<tame_el_t *>::iterator i = _lst.begin(); i != _lst.end(); i++)
+	(*i)->output(o);
 }
 
 // Must match "__CLS" in tame_const.h
 #define TAME_CLOSURE_NAME     "__cls"
 
-
-#define CLOSURE_RFCNT         "__cls_r"
 #define CLOSURE_GENERIC       "__cls_g"
-#define TAME_PREFIX           "__tame_"
 
 str
 type_t::type_without_pointer () const
@@ -329,12 +295,6 @@ array_initializer_t::output_in_declaration () const
 //
 
 var_t
-tame_fn_t::trig ()
-{
-  return var_t ("ptr<trig_t>", NULL, "trig");
-}
-
-var_t
 tame_fn_t::mk_closure (bool ref) const
 {
   strbuf b;
@@ -349,14 +309,6 @@ tame_fn_t::reenter_fn () const
   strbuf b;
   b << closure ().type ().to_str_w_template_args (false)
     << "::tamer_closure_activate";
-  return b.str();
-}
-
-str
-tame_fn_t::frozen_arg (const str &i) const
-{
-  strbuf b;
-  b << closure_nm () << "->_args." << i ;
   return b.str();
 }
 
@@ -399,7 +351,7 @@ vartab_t::paramlist (strbuf &b, list_mode_t list_mode, str prfx) const
       b << _vars[i].param_decl(prfx);
       break;
     case NAMES:
-      b << prfx << _vars[i].name ();
+      b << prfx << _vars[i].name();
       break;
     case TYPES:
       b << _vars[i].type().to_str();
@@ -479,7 +431,7 @@ output_is_onstack (strbuf &b)
 }
 
 void
-tame_fn_t::output_closure (outputter_t *o)
+tame_fn_t::output_closure(outputter_t *o)
 {
   strbuf b;
   output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
@@ -491,7 +443,7 @@ tame_fn_t::output_closure (outputter_t *o)
   b << "class ";
   if (_class.length())
       b << _class << "::";
-  b << _closure.type ().base_type () 
+  b << _closure.type().base_type() 
     << " : public tamer::tamerpriv::"
     << (tamer_debug ? "tamer_debug_closure" : "tamer_closure")
     << " {\n"
@@ -539,7 +491,7 @@ tame_fn_t::output_closure (outputter_t *o)
 
   output_reenter (b);
 
-  if (_class.length())
+  if (_class.length() && !(_opts & STATIC_DECL))
       b << "  " << _self.decl() << ";\n";
   
   //output_is_onstack (b);
@@ -560,7 +512,7 @@ tame_fn_t::output_closure (outputter_t *o)
 bool
 var_t::do_output () const
 {
-  return (!(_flags & HOLDVAR_FLAG));
+    return (!(_flags & HOLDVAR_FLAG));
 }
 
 void
@@ -606,17 +558,20 @@ tame_fn_t::output_jump_tab (strbuf &b)
 }
 
 str
-tame_fn_t::signature (bool d, str prfx, bool static_flag) const
+tame_fn_t::signature() const
 {
     strbuf b;
     if (_template.length())
-	b << template_str () << "\n";
-    if (static_flag)
+	b << template_str() << " ";
+    if ((_opts & STATIC_DECL) && !_class.length())
 	b << "static ";
-    b << _ret_type.to_str () << "\n"
-      << _name << "(";
+    if (_opts & VIRTUAL_DECL)
+	b << "virtual ";
+    if (_opts & INLINE_DECL)
+	b << "inline ";
+    b << _ret_type.to_str() << " " << _name << "(";
     if (_args)
-	_args->paramlist(b, DECLARATIONS, prfx);
+	_args->paramlist(b, DECLARATIONS);
     b << ")";
     if (_isconst) 
 	b << " const";
@@ -624,48 +579,33 @@ tame_fn_t::signature (bool d, str prfx, bool static_flag) const
 }
 
 str
-tame_fn_t::closure_signature (bool d, str prfx, bool static_flag) const
-{
-  strbuf b;
-  if (_template.length())
-      b << template_str () << "\n";
-  if (static_flag)
-    b << "static ";
-
-  b << _ret_type.to_str () << "\n"
-    << _name << "(";
-  b << mk_closure(true).decl();
-  b << ", unsigned __tame_blockid)";
-  if (_isconst) 
-    b << " const";
-
-  return b.str();
-}
-
-void
-tame_fn_t::output_static_decl (outputter_t *o)
-{
-  strbuf b;
-  output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
-  b << closure_signature (true, "", true) << ";\n\n";
-  o->output_str(b.str());
-  o->switch_to_mode (om);
-}
-
-void
-tame_fn_t::output_firstfn (outputter_t *o)
+tame_fn_t::closure_signature() const
 {
     strbuf b;
-    state->set_fn (this);
+    if (_template.length())
+	b << template_str() << " ";
+    if ((_opts & STATIC_DECL) && !_class.length())
+	b << "static ";
+    b << _ret_type.to_str() << " " << _name << "("
+      << mk_closure(true).decl() << ", unsigned __tame_blockid)";
+    if (_isconst)
+	b << " const";
+    return b.str();
+}
 
-    output_mode_t om = o->switch_to_mode (OUTPUT_PASSTHROUGH);
-    b << signature (false)  << "\n"
-      << "{\n";
+void
+tame_fn_t::output_firstfn(outputter_t *o)
+{
+    strbuf b;
+    state->set_fn(this);
+
+    output_mode_t om = o->switch_to_mode(OUTPUT_PASSTHROUGH);
+    b << signature() << "\n{\n";
     
     // If no vars section was specified, do it now.
     b << "  " << _closure.decl () << ";\n";
     b << "  __cls = new " << _closure.type().base_type() << "(";
-    if (_class.length())
+    if (_class.length() && !(_opts & STATIC_DECL))
 	b << "this" << (_args ? ", " : "");
     if (_args)
 	_args->paramlist(b, NAMES);
@@ -680,23 +620,22 @@ tame_fn_t::output_firstfn (outputter_t *o)
 void
 tame_fn_t::output_fn(outputter_t *o)
 {
-  strbuf b;
-  state->set_fn (this);
+    strbuf b;
+    state->set_fn (this);
 
-  output_mode_t om = o->switch_to_mode (OUTPUT_PASSTHROUGH);
-  b << closure_signature (false, TAME_PREFIX)  << "\n"
-    << "{\n";
+    output_mode_t om = o->switch_to_mode(OUTPUT_PASSTHROUGH);
+    b << closure_signature() << "\n{\n";
 
-  o->output_str(b.str());
+    o->output_str(b.str());
 
-  // If no vars section was specified, do it now.
-  if (!_vars)
-    output_vars (o, _lbrace_lineno);
+    // If no vars section was specified, do it now.
+    if (!_vars)
+	output_vars(o, _lbrace_lineno);
 
-  element_list_t::output (o);
-
-  o->output_str("\n");
-  o->switch_to_mode (om);
+    element_list_t::output(o);
+    
+    o->output_str("\n");
+    o->switch_to_mode (om);
 }
 
 void
@@ -725,18 +664,23 @@ tame_fn_t::output_vars (outputter_t *o, int ln)
 }
 
 void 
-tame_fn_t::output (outputter_t *o)
+tame_fn_t::output(outputter_t *o)
 {
-    if (!_class.length()) {
-	strbuf b;
-	b << "class " << _closure.type ().base_type () << ";\n";
-	o->output_str(b.str());
-    }
+    strbuf b;
+    if (!_class.length() || _declaration_only)
+	b << "class " << _closure.type().base_type() << ";";
+    if (_declaration_only)
+	b << " " << signature() << ";";
     if (!_class.length())
-	output_static_decl(o);
-    output_closure(o);
-    output_firstfn(o);
-    output_fn(o);
+	b << " " << closure_signature() << ";";
+    str bstr = b.str();
+    if (bstr.length())
+	o->output_str(bstr + "\n");
+    if (!_declaration_only) {
+	output_closure(o);
+	output_firstfn(o);
+	output_fn(o);
+    }
 }
 
 void 
@@ -761,8 +705,9 @@ tame_block_ev_t::output(outputter_t *o)
   }
 
   o->output_str(" }");
-  om = o->switch_to_mode(OUTPUT_TREADMILL);
-  o->output_str("#undef make_event\n");
+  o->switch_to_mode(OUTPUT_PASSTHROUGH);
+  o->output_str("\n#undef make_event\n");
+  o->switch_to_mode(OUTPUT_TREADMILL);
   b << _fn->label(_id) << ":\n"
     << "  while (" << TAME_CLOSURE_NAME << "._closure__block.nwaiting()) {\n"
     << "      " << TAME_CLOSURE_NAME << "._closure__block.block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n";
@@ -975,6 +920,3 @@ type_qualifier_t::to_str () const
   }
   return _b.str();
 }
-
-//
-//-----------------------------------------------------------------------

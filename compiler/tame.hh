@@ -1,5 +1,5 @@
 // -*-c++-*-
-/* $Id: tame.hh,v 1.5 2007-05-05 17:12:28 kohler Exp $ */
+/* $Id: tame.hh,v 1.6 2007-05-22 18:08:08 kohler Exp $ */
 
 /*
  *
@@ -145,35 +145,35 @@ public:
   outputter_t (const str &in, const str &out, bool ox) 
     : _mode (OUTPUT_NONE), _infn (in), _outfn (out), _fd (-1), 
       _lineno (1), _output_xlate (ox), _need_xlate (false), 
-      _last_char_was_nl (false), _last_output_in_mode (OUTPUT_NONE),
-      _last_lineno (-1), _did_output (false), 
-      _do_output_line_number (false) {}
-  virtual ~outputter_t ();
-  bool init ();
+      _last_char_was_nl(true), _last_output_in_mode (OUTPUT_NONE),
+      _cur_lineno(-1), _cur_file(""),
+      _do_output_line_number(false) {}
+    virtual ~outputter_t ();
+    bool init ();
 
-  void start_output ();
-  void flush ();
+    void start_output ();
+    void flush ();
 
-  output_mode_t switch_to_mode (output_mode_t m, int ln = -1);
-  output_mode_t mode () const { return _mode; }
-  virtual void output_str(const str &s);
-protected:
-  void output_line_number ();
+    output_mode_t switch_to_mode (output_mode_t m, int ln = -1);
+    output_mode_t mode () const { return _mode; }
+    virtual void output_str(const str &s);
+  protected:
+    void output_line_number ();
     void _output_str (const str &s, const str &sep_str = str());
-  output_mode_t _mode;
-private:
-  const str _infn, _outfn;
-  int _fd;
-  int _lineno;
-  bool _output_xlate;
+    output_mode_t _mode;
+  private:
+    const str _infn, _outfn;
+    int _fd;
+    int _lineno;
+    bool _output_xlate;
 
-  strbuf _buf;
-  bool _need_xlate;
-  bool _last_char_was_nl;
-  output_mode_t _last_output_in_mode;
-  int _last_lineno;
-  bool _did_output;
-  bool _do_output_line_number;
+    strbuf _buf;
+    bool _need_xlate;
+    bool _last_char_was_nl;
+    output_mode_t _last_output_in_mode;
+    int _cur_lineno;
+    str _cur_file;
+    bool _do_output_line_number;
 };
 
 /**
@@ -417,54 +417,59 @@ str strip_off_method (const str &in);
 
 class tame_block_t;
 
-#define STATIC_DECL           (1 << 0)
-#define CONST_DECL            (2 << 0)
+#define STATIC_DECL           1
+#define CONST_DECL            2
+#define VIRTUAL_DECL	      4
+#define INLINE_DECL	      8
 
 // function specifier embodies static and template keywords and options
 // at present, and perhaps more in the future.
 struct fn_specifier_t {
-  fn_specifier_t (unsigned o = 0, str t = "")
-    : _opts (o), _template (t) {}
-  unsigned _opts;
-  str _template;
+    fn_specifier_t() : _opts(0) { }
+    unsigned _opts;
+    str _template;
 };
 
 //
 // Unwrap Function Type
 //
 class tame_fn_t : public element_list_t {
-public:
-  tame_fn_t (const fn_specifier_t &fn, const str &r, declarator_t *d, 
-	     bool c, unsigned l, str loc)
-      : _ret_type (ws_strip (r), ws_strip(d->pointer())),
-      _name (d->name ()),
-      _method_name (strip_to_method (_name)),
-      _class (strip_off_method (_name)), 
-      _self (c ? str("const ") + _class : _class, "*", "_closure__self"),
-      _isconst (c),
-      _template (fn._template),
-      _template_args (_class.length() ? template_args (_class) : ""),
-      _closure (mk_closure (false)), 
-      _args (d->params ()), 
-      _opts (fn._opts),
-      _lineno (l),
-      _n_labels (0),
-      _n_blocks (0),
-      _loc (loc),
-      _lbrace_lineno (0),
-      _vars (NULL),
-      _after_vars_el_encountered (false)
-  { }
+  public:
+    tame_fn_t (const fn_specifier_t &fn, const str &r, declarator_t *d, 
+	       bool c, unsigned l, str loc)
+	: _ret_type(ws_strip(r), ws_strip(d->pointer())),
+	  _name(d->name()),
+	  _method_name(strip_to_method(_name)),
+	  _class(strip_off_method(_name)), 
+	  _self(c ? str("const ") + _class : _class, "*", "_closure__self"),
+	  _isconst(c),
+	  _template(fn._template),
+	  _template_args(_class.length() ? template_args (_class) : ""),
+	  _closure(mk_closure(false)),
+	  _declaration_only(false),
+	  _args(d->params()), 
+	  _opts(fn._opts),
+	  _lineno(l),
+	  _n_labels(0),
+	  _n_blocks(0),
+	  _loc(loc),
+	  _lbrace_lineno(0),
+	  _vars(NULL),
+	  _after_vars_el_encountered(false) {
+    }
 
-  vartab_t *stack_vars () { return &_stack_vars; }
-  vartab_t *args () { return _args; }
-  vartab_t *class_vars_tmp () { return &_class_vars_tmp; }
+    vartab_t *stack_vars() { return &_stack_vars; }
+    vartab_t *args() { return _args; }
+    vartab_t *class_vars_tmp() { return &_class_vars_tmp; }
 
-  void push_hook (tame_el_t *el)
-  {
-    if (el->goes_after_vars ())
-      _after_vars_el_encountered = true;
-  }
+    void set_declaration_only() {
+	_declaration_only = true;
+    }
+    
+    void push_hook(tame_el_t *el) {
+	if (el->goes_after_vars())
+	    _after_vars_el_encountered = true;
+    }
 
   // called from tame_vars_t class
   void output_vars (outputter_t *o, int ln);
@@ -483,10 +488,10 @@ public:
 	return (_ret_type.is_void () || _default_return.length());
     }
 
-  str classname () const { return _class; }
-  str name () const { return _name; }
-  str closure_signature (bool decl, str prfx = "", bool sttc = false) const;
-  str signature (bool decl, str prfx = "", bool sttc = false) const;
+    str classname() const { return _class; }
+    str name() const { return _name; }
+    str closure_signature() const;
+    str signature() const;
 
   void set_opts (int i) { _opts = i; }
   int opts () const { return _opts; }
@@ -497,14 +502,12 @@ public:
 
   void add_env (tame_env_t *g) ;
 
-  var_t closure () const { return _closure; }
-  static var_t trig () ;
+    var_t closure() const { return _closure; }
 
   void hit_tame_block () { _n_blocks++; }
 
   str closure_nm () const { return _closure.name (); }
   str reenter_fn  () const ;
-  str frozen_arg (const str &i) const ;
 
   str label (str s) const;
   str label (unsigned id) const ;
@@ -525,44 +528,44 @@ public:
   { _vars = v; return (!_after_vars_el_encountered); }
   const tame_vars_t *get_vars () const { return _vars; }
 
-private:
-  const type_t _ret_type;
-  const str _name;
-  const str _method_name;
-  const str _class;
-  const var_t _self;
+  private:
+    const type_t _ret_type;
+    const str _name;
+    const str _method_name;
+    const str _class;
+    const var_t _self;
 
-  const bool _isconst;
-  str _template;
-  str _template_args;
-  const var_t _closure;
+    const bool _isconst;
+    str _template;
+    str _template_args;
+    const var_t _closure;
+    bool _declaration_only;
 
-  var_t mk_closure (bool ref) const ;
+    var_t mk_closure (bool ref) const ;
 
-  vartab_t *_args;
-  vartab_t _stack_vars;
-  vartab_t _class_vars_tmp;
+    vartab_t *_args;
+    vartab_t _stack_vars;
+    vartab_t _class_vars_tmp;
     std::vector<tame_env_t *> _envs;
 
-  void output_reenter (strbuf &b);
-  void output_closure (outputter_t *o);
-  void output_firstfn (outputter_t *o);
-  void output_fn (outputter_t *o);
-  void output_static_decl (outputter_t *o);
-  void output_stack_vars (strbuf &b);
-  void output_arg_references (strbuf &b);
-  void output_jump_tab (strbuf &b);
-  void output_block_cb_switch (strbuf &b);
+    void output_reenter(strbuf &b);
+    void output_closure(outputter_t *o);
+    void output_firstfn(outputter_t *o);
+    void output_fn(outputter_t *o);
+    void output_stack_vars(strbuf &b);
+    void output_arg_references(strbuf &b);
+    void output_jump_tab(strbuf &b);
+    void output_block_cb_switch(strbuf &b);
   
-  int _opts;
-  unsigned _lineno;
-  unsigned _n_labels;
-  unsigned _n_blocks;
-  str _default_return;
-  str _loc; // filename:linenumber where this function was declared
-  unsigned _lbrace_lineno;  // void foo () { ... where the '{' was
-  tame_vars_t *_vars;
-  bool _after_vars_el_encountered;
+    int _opts;
+    unsigned _lineno;
+    unsigned _n_labels;
+    unsigned _n_blocks;
+    str _default_return;
+    str _loc; // filename:linenumber where this function was declared
+    unsigned _lbrace_lineno;  // void foo () { ... where the '{' was
+    tame_vars_t *_vars;
+    bool _after_vars_el_encountered;
 };
 
 
@@ -629,7 +632,7 @@ public:
 
   void set_decl_specifier (const type_qualifier_t &m) { _decl_specifier = m; }
   const type_qualifier_t &decl_specifier () const { return _decl_specifier; }
-  tame_fn_t *function () { return _fn; }
+  tame_fn_t *function() { return _fn; }
   const tame_fn_t &function_const () const { return *_fn; }
 
   void new_block (tame_block_t *g);

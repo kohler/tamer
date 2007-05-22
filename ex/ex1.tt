@@ -8,6 +8,19 @@
 
 int n;
 
+class foo {
+    tamed void f();
+    tamed void g();
+};
+
+tamed void foo::g() {
+    tvars { int x(); }
+}
+
+tamed void foo::f() {
+    tvars { int n(0); }
+}
+
 tamed void delay1(int x, tamer::event<> e) {
     n++;
     twait { tamer::at_delay_msec(x, make_event()); }

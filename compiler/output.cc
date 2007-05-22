@@ -5,12 +5,11 @@
 #include <fcntl.h>
 #include <errno.h>
 
-unsigned count_newlines (const str &s)
+unsigned count_newlines(const str &s)
 {
     unsigned n = 0;
-    for (str::const_iterator i = s.begin(); i != s.end(); i++)
-	if (*i == '\n')
-	    n++;
+    for (str::size_type p = 0; (p = s.find('\n', p)) != str::npos; p++)
+	n++;
     return n;
 }
 
@@ -38,18 +37,17 @@ outputter_t::start_output ()
 }
 
 void
-outputter_t::output_line_number ()
+outputter_t::output_line_number()
 {
-  if (_output_xlate &&
-      (_did_output || _last_lineno != _lineno)) {
-    strbuf b;
-    if (!_last_char_was_nl)
-      b << "\n";
-    b << "# " << _lineno << " \"" << _infn << "\"\n";
-    _output_str (b.str(), "");
-    _last_lineno = _lineno;
-    _did_output = false;
-  }
+    if (_output_xlate && (_cur_lineno != _lineno || _cur_file != _infn)) {
+	strbuf b;
+	if (!_last_char_was_nl)
+	    b << "\n";
+	b << "# " << _lineno << " \"" << _infn << "\"\n";
+	_output_str(b.str(), "");
+	_cur_lineno = _lineno;
+	_cur_file = _infn;
+    }
 }
 
 void
@@ -66,7 +64,7 @@ outputter_H_t::output_str(const str &s)
 	    p = q + 1;
 	} while (p < s.length());
     } else
-	outputter_t::output_str (s);
+	outputter_t::output_str(s);
 }
 
 void
@@ -86,41 +84,41 @@ outputter_t::output_str(const str &s)
     } else {
 	// we might have set up a defered output_line_number from
 	// within switch_to_mode; now is the time to do it.
+	if (s == "\n")
+	    _lineno--;
 	if (s.length() && _do_output_line_number) {
-	    output_line_number ();
+	    output_line_number();
 	    _do_output_line_number = false;
 	}
-
-	_output_str (s, "");
+	_output_str(s, "");
 	if (_mode == OUTPUT_PASSTHROUGH)
-	    _lineno += count_newlines (s);
+	    _lineno += count_newlines(s);
     }
 }
 
 void
 outputter_t::_output_str(const str &s, const str &sep_str)
 {
-  if (!s.length())
-    return;
+    if (!s.length())
+	return;
 
-  _last_output_in_mode = _mode;
-  _did_output = true;
+    _last_output_in_mode = _mode;
 
-  _buf << s;
-  if (sep_str.length()) {
-    _buf << sep_str;
-    _last_char_was_nl = (sep_str[sep_str.length() - 1] == '\n');
-  } else {
-    if (s.length() && s[s.length() - 1] == '\n') {
-      _last_char_was_nl = true;
-    } else {
-      _last_char_was_nl = false;
-    }
-  }
+    _buf << s;
+    if (sep_str.length()) {
+	_buf << sep_str;
+	_last_char_was_nl = (sep_str[sep_str.length() - 1] == '\n');
+    } else
+	_last_char_was_nl = (s.length() && s[s.length() - 1] == '\n');
+
+    for (str::size_type p = 0; (p = s.find('\n', p)) != str::npos; p++)
+	_cur_lineno++;
+    for (str::size_type p = 0; (p = sep_str.find('\n', p)) != str::npos; p++)
+	_cur_lineno++;
 }
 
 void
-outputter_t::flush ()
+outputter_t::flush()
 {
     str bufstr = _buf.str();
     const char *x = bufstr.data(), *end = x + bufstr.length();
@@ -144,7 +142,7 @@ outputter_t::~outputter_t ()
 }
 
 output_mode_t 
-outputter_t::switch_to_mode (output_mode_t m, int nln)
+outputter_t::switch_to_mode(output_mode_t m, int nln)
 {
   output_mode_t old = _mode;
   int oln = _lineno;

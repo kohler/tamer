@@ -1,5 +1,5 @@
 /* -*-fundamental-*- */
-/* $Id: scan.ll,v 1.2 2007-04-18 00:54:24 kohler Exp $ */
+/* $Id: scan.ll,v 1.3 2007-05-22 18:08:08 kohler Exp $ */
 
 /*
  *
@@ -101,6 +101,8 @@ double		return T_DOUBLE;
 signed		return T_SIGNED;
 unsigned	return T_UNSIGNED;
 static		return T_STATIC;
+inline		return T_INLINE;
+virtual		return T_VIRTUAL;
 holdvar		return T_HOLDVAR;
 template	{ yy_push_state (TEMPLATE_ENTER); return T_TEMPLATE; }
 
@@ -109,18 +111,20 @@ template	{ yy_push_state (TEMPLATE_ENTER); return T_TEMPLATE; }
 
 [}]		{ yy_pop_state (); return yytext[0]; }
 
-[<>;,:*&]	{ return yytext[0]; }
+[<>,:*&]	{ return yytext[0]; }
 "::"		{ return T_2COLON; }
 }
 
 <FULL_PARSE,HALF_PARSE>{
 [)]		{ yy_pop_state (); return yytext[0]; }
+[;]		{ return yytext[0]; }
 }
 
 <SIG_PARSE>{
 [()]		{ return yytext[0]; }
 [[]		{ yy_push_state(PP_BASE); return yytext[0]; }
-[{]		{ switch_to_state (TAME_BASE); return yytext[0]; }
+[{]		{ switch_to_state(TAME_BASE); return yytext[0]; }
+[;]		{ switch_to_state(INITIAL); return yytext[0]; }
 }
 
 <TEMPLATE_ENTER>{
@@ -326,10 +330,8 @@ twait/[ \t\n({/]           { return tame_ret (TWAIT_ENTER, T_TWAIT); }
 
 
 <TAME,TAME_BASE,INITIAL>{
-"//"		{ yy_push_state (CXX_COMMENT); gobble_flag = 0;
-	          return std_ret (T_PASSTHROUGH); }
-"/*"		{ yy_push_state (C_COMMENT); gobble_flag = 0;
-	          return std_ret (T_PASSTHROUGH); }
+"//"		{ yy_push_state (CXX_COMMENT); gobble_flag = 1; }
+"/*"		{ yy_push_state (C_COMMENT); gobble_flag = 1; }
 }
 
 <INITIAL>{
@@ -368,7 +370,7 @@ TAME_ON		{ tame_on = 1; GOBBLE_RET; }
 <FULL_PARSE,SIG_PARSE,FN_ENTER,VARS_ENTER,HALF_PARSE,PP,PP_BASE,EXPR_LIST,EXPR_LIST_BASE,ID_LIST,RETURN_PARAMS,EXPR_LIST_BR,EXPR_LIST_BR_BASE,DEFRET_ENTER,TWAIT_BODY,TWAIT_BODY_BASE>{
 
 "//"		{ gobble_flag = 1; yy_push_state (CXX_COMMENT); }
-"/*"		{ gobble_flag = 1; yy_push_state (C_COMMENT); }
+"/*"		{ gobble_flag = 1; fprintf(stderr, "!\n"); yy_push_state (C_COMMENT); }
 
 }
 

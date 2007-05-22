@@ -1,5 +1,5 @@
 /* -*-fundamental-*- */
-/* $Id: parse.yy,v 1.2 2007-04-18 00:54:24 kohler Exp $ */
+/* $Id: parse.yy,v 1.3 2007-05-22 18:08:08 kohler Exp $ */
 
 /*
  *
@@ -48,6 +48,8 @@ int vars_lineno;
 %token T_SIGNED
 %token T_UNSIGNED
 %token T_STATIC
+%token T_VIRTUAL
+%token T_INLINE
 %token T_TEMPLATE
 %token T_HOLDVAR
 
@@ -55,7 +57,6 @@ int vars_lineno;
 %token T_RETURN
 
 /* Keywords for our new filter */
-%token T_TAME
 %token T_TAMED
 %token T_VARS
 %token T_JOIN
@@ -70,7 +71,7 @@ int vars_lineno;
 %type <str> template_instantiation_list_opt identifier
 %type <str> typedef_name arrays_opt
 %type <str> type_specifier 
-%type <str> passthrough 
+%type <str> passthrough passthroughs
 %type <typ_mod> type_modifier type_modifier_list declaration_specifiers 
 %type <typ_mod> type_qualifier_list_opt type_qualifier_list type_qualifier 
 %type <initializer> cpp_initializer_opt
@@ -91,22 +92,24 @@ int vars_lineno;
 %type <el>   block_body twait_body wait_body
 %type <el>   default_return
 
-%type <opts> static_opt
-%type <fn_spc> fn_specifiers template_decl
+%type <fn_spc> fn_specifiers
 
 %%
 
 
-file:  passthrough 			{ state->passthrough ($1); }
-	| file fn_or_twait passthrough 	{ state->passthrough ($3); }
+file:   /* empty */
+	| file passthrough		{ state->passthrough ($2); }
+	| file fn_or_twait
 	;
 
 fn_or_twait: fn	
 	| twait				{ state->new_el ($1); }
 	;
 
-passthrough: /* empty */	    { $$ = lstr(get_yy_lineno(), ""); }
-	| passthrough T_PASSTHROUGH 
+passthrough: T_PASSTHROUGH		{ $$ = $1; }
+
+passthroughs: /* empty */	    { $$ = lstr(get_yy_lineno(), ""); }
+	| passthroughs T_PASSTHROUGH 
 	{
 	   strbuf b;
 	   b << $1 << $2;
@@ -114,8 +117,7 @@ passthrough: /* empty */	    { $$ = lstr(get_yy_lineno(), ""); }
 	}
 	;
 
-tame_decl: T_TAME '(' fn_declaration ')'   { $$ = $3; }
-	| T_TAMED fn_declaration 	   { $$ = $2; }
+tame_decl: T_TAMED fn_declaration 	   { $$ = $2; }
 	;
 
 fn:	tame_decl '{'
@@ -136,28 +138,28 @@ fn:	tame_decl '{'
 	  state->pop_list ();
 	  state->clear_fn ();
 	}
-	;
-
-fn_specifiers:	template_decl { $$ = $1; }
-	| T_STATIC	      { $$ = fn_specifier_t (STATIC_DECL); }
-	| /* empty */	      { $$ = fn_specifier_t (0); }
-	;
-
-template_decl: T_TEMPLATE '<' passthrough '>' static_opt
+	|
+	tame_decl ';'
 	{
-	   $$ = fn_specifier_t ($5, $3.str());
+	  $1->set_declaration_only();
+	  $1->set_lbrace_lineno(get_yy_lineno());
+	  state->new_el($1);
 	}
 	;
 
-static_opt: T_STATIC 	{ $$ = STATIC_DECL; }
-	| /* empty */	{ $$ = 0; }
+fn_specifiers: /* empty */		{ $$ = fn_specifier_t(); }
+	| fn_specifiers T_STATIC	{ $1._opts |= STATIC_DECL; $$ = $1; }
+	| fn_specifiers T_VIRTUAL	{ $1._opts |= VIRTUAL_DECL; $$ = $1; }
+	| fn_specifiers T_INLINE	{ $1._opts |= INLINE_DECL; $$ = $1; }
+	| fn_specifiers T_TEMPLATE '<' passthroughs '>'
+	{ $1._template = $4.str(); $$ = $1; }
 	;
 
 /* declaration_specifiers is no longer optional ?! */
 fn_declaration: fn_specifiers declaration_specifiers declarator const_opt
 	{
-	   $$ = new tame_fn_t ($1, $2.to_str (), $3, $4, get_yy_lineno (), 
-	                       get_yy_loc ());
+	   $$ = new tame_fn_t($1, $2.to_str(), $3, $4, get_yy_lineno(), 
+			      get_yy_loc());
 	}
 	;
 
@@ -165,11 +167,11 @@ const_opt: /* empty */		{ $$ = false; }
 	| T_CONST		{ $$ = true; }
 	;
 
-fn_statements: passthrough			
+fn_statements: passthroughs			
 	{
 	  state->passthrough ($1);
 	}
-	| fn_statements fn_tame passthrough
+	| fn_statements fn_tame passthroughs
 	{
    	  if ($2) state->push ($2);
 	  state->passthrough ($3);
@@ -182,7 +184,7 @@ fn_tame: vars
 	| default_return
 	;
 
-default_return: T_DEFAULT_RETURN '{' passthrough '}'
+default_return: T_DEFAULT_RETURN '{' passthroughs '}'
 	{
 	  // this thing will not be output anywhere near where
 	  // it's being input, so don't associate it in the 
@@ -215,7 +217,7 @@ vars:	T_VARS
 	}
 	;
 
-return_statement: T_RETURN passthrough ';'
+return_statement: T_RETURN passthroughs ';'
 	{
 	   tame_ret_t *r = new tame_ret_t (get_yy_lineno (), 
 			  	    state->function ());	
@@ -265,7 +267,7 @@ id_list:  ',' identifier
 	}
 	;
 
-join_list: passthrough id_list_opt
+join_list: passthroughs id_list_opt
 	{
 	  if ($2) {
 	    (*$2)[0] = var_t($1.str(), EXPR);
@@ -401,7 +403,7 @@ declarator: pointer_opt direct_declarator
 	;
 
 arrays_opt: /* empty */			{ $$ = lstr(get_yy_lineno(), ""); }
-	| arrays_opt '[' passthrough ']' {
+	| arrays_opt '[' passthroughs ']' {
 		$$ = lstr(get_yy_lineno(), $1.str() + "[" + $3.str() + "]");
 	}
 	;
@@ -415,8 +417,8 @@ declarator_cpp: pointer_opt direct_declarator_cpp
 	;
 
 cpp_initializer_opt: /* empty */	{ $$ = new initializer_t(); }
-	| '(' passthrough ')'		{ $$ = new cpp_initializer_t($2); }
-	| '[' passthrough ']'		{ $$ = new array_initializer_t($2); }
+	| '(' passthroughs ')'		{ $$ = new cpp_initializer_t($2); }
+	| '[' passthroughs ']'		{ $$ = new array_initializer_t($2); }
 	;
 
 direct_declarator_cpp: identifier	{ $$ = new declarator_t($1.str()); }
