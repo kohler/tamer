@@ -13,6 +13,8 @@
  *
  *  Most documented Tamer functions and classes can be found under the
  *  "Namespaces" and "Classes" tabs.
+ *
+ *  <a href='http://www.read.cs.ucla.edu/tamer/'>Main Tamer page</a>
  */
 
 /** @file <tamer/tamer.hh>
