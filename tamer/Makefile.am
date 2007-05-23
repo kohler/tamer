@@ -37,4 +37,3 @@ lock.cc: $(TAMER) lock.tt
 
 clean-local:
 	-rm -f fileio.cc lock.cc
-	-rm -rf .deps

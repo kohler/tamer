@@ -1,5 +1,10 @@
 Tamer NEWS
 
+Version 1.0.1
+
+* "make clean" fixes from Henrik Nordstrom.
+
+
 Version 1.0.0   22.May.2007
 
 * Initial release.

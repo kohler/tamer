@@ -55,4 +55,4 @@ BUILT_SOURCES = parse.cc parse.hh scan.cc
 CLEANFILES = core *.core *~ *.rpo
 
 EXTRA_DIST = .cvsignore
-MAINTAINERCLEANFILES = Makefile.in parse.hh parse.cc scan.cc
+MAINTAINERCLEANFILES = parse.hh parse.cc scan.cc
