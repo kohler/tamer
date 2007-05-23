@@ -178,6 +178,31 @@ fi
 
 
 dnl
+dnl libevent support
+dnl
+
+LIBEVENT_LIBS=
+AC_ARG_WITH([libevent], [    --with-libevent        Include libevent driver.], [:], [with_libevent=maybe])
+if test "$with_libevent" != no; then
+    AC_CHECK_LIB([event], [event_init], [have_libevent=yes])
+    AC_CHECK_HEADERS([event.h], [have_event_h=yes])
+    if test "$have_libevent" = yes -a "$have_event_h" = yes; then
+	AC_DEFINE([HAVE_LIBEVENT], [1], [Define if Tame programs should use libevent.])
+	LIBEVENT_LIBS=-levent
+    elif test "$with_libevent" = yes; then
+	AC_MSG_ERROR([
+=========================================
+
+You explicitly requested libevent support, but <event.h> and/or -levent
+were not found.
+
+=========================================])
+    fi
+fi
+AC_SUBST(LIBEVENT_LIBS)
+
+
+dnl
 dnl verbatim portions of the header
 dnl
 

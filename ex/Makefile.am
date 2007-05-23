@@ -1,13 +1,15 @@
 noinst_PROGRAMS = ex1 ex2 ex3
 
 ex1_SOURCES = ex1.tt
-ex1_LDADD = ../tamer/libtamer.la
+ex1_LDADD = ../tamer/libtamer.la $(LIBEVENT_LIBS)
 
 ex2_SOURCES = ex2.tt
-ex2_LDADD = ../tamer/libtamer.la
+ex2_LDADD = ../tamer/libtamer.la $(LIBEVENT_LIBS)
 
 ex3_SOURCES = ex3.tt
-ex3_LDADD = ../tamer/libtamer.la
+ex3_LDADD = ../tamer/libtamer.la $(LIBEVENT_LIBS)
+
+LIBEVENT_LIBS = @LIBEVENT_LIBS@
 
 INCLUDES = -I$(top_srcdir)
 

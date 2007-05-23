@@ -1,54 +1,82 @@
-#include <tamer/driver.hh>
-#include <tamer/adapter.hh>
+#include <tamer/tamer.hh>
 #include <sys/select.h>
 #include <stdio.h>
-#include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
 
 namespace tamer {
-
-driver driver::main;
-
-// using the "self-pipe trick" recommended by select(3) and sfslite.
 namespace {
 
-#define NSIGNALS 32
-int sig_pipe[2] = { -1, -1 };
-volatile unsigned sig_any_active;
-volatile unsigned sig_active[NSIGNALS];
-volatile int sig_installing = -1;
-event<> sig_handlers[NSIGNALS];
+class driver_tamer : public driver { public:
 
-class sigcancel_rendezvous : public rendezvous<> { public:
+    driver_tamer();
+    ~driver_tamer();
 
-    sigcancel_rendezvous() {
-    }
+    virtual void at_fd(int fd, int action, const event<> &e);
+    virtual void at_time(const timeval &expiry, const event<> &e);
+    virtual void at_asap(const event<> &e);
+    virtual void kill_fd(int fd);
 
-    inline void add(tamerpriv::simple_event *e) throw () {
-	_nwaiting++;
-	e->initialize(this, sig_installing);
-    }
+    virtual bool empty();
+    virtual void once();
+    virtual void loop();
     
-    void complete(uintptr_t rid, bool success) {
-	if ((int) rid != sig_installing && success) {
-	    struct sigaction sa;
-	    sa.sa_handler = SIG_DFL;
-	    sigemptyset(&sa.sa_mask);
-	    sa.sa_flags = SA_RESETHAND;
-	    sigaction(rid, &sa, 0);
-	}
-	rendezvous<>::complete(rid, success);
-    }
+  private:
+    
+    struct ttimer {
+	union {
+	    int schedpos;
+	    ttimer *next;
+	} u;
+	timeval expiry;
+	event<> trigger;
+	ttimer(int schedpos_, const timeval &expiry_, const event<> &trigger_) : expiry(expiry_), trigger(trigger_) { u.schedpos = schedpos_; }
+    };
+
+    struct ttimer_group {
+	ttimer_group *next;
+	ttimer t[1];
+    };
+
+    struct tfd {
+	int fd : 30;
+	unsigned action : 2;
+	event<> e;
+	tfd *next;
+    };
+
+    struct tfd_group {
+	tfd_group *next;
+	tfd t[1];
+    };
+    
+    ttimer **_t;
+    int _nt;
+
+    tfd *_fd;
+    int _nfds;
+    fd_set _fdset[3];
+
+    tamerpriv::debuffer<event<> > _asap;
+
+    int _tcap;
+    ttimer_group *_tgroup;
+    ttimer *_tfree;
+
+    int _fdcap;
+    tfd_group *_fdgroup;
+    tfd *_fdfree;
+    rendezvous<> _fdcancelr;
+
+    void expand_timers();
+    void check_timers() const;
+    void timer_reheapify_from(int pos, ttimer *t, bool will_delete);
+    void expand_fds();
     
 };
 
-sigcancel_rendezvous sigcancelr;
 
-}
-
-
-driver::driver()
+driver_tamer::driver_tamer()
     : _t(0), _nt(0),
       _fd(0), _nfds(0),
       _tcap(0), _tgroup(0), _tfree(0),
@@ -61,7 +89,7 @@ driver::driver()
     set_now();
 }
 
-driver::~driver()
+driver_tamer::~driver_tamer()
 {
     // destroy all active timers
     for (int i = 0; i < _nt; i++)
@@ -89,7 +117,7 @@ driver::~driver()
     }
 }
 
-void driver::expand_timers()
+void driver_tamer::expand_timers()
 {
     int ncap = (_tcap ? _tcap * 2 : 16);
 
@@ -108,7 +136,7 @@ void driver::expand_timers()
     _tcap = ncap;
 }
 
-void driver::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/)
+void driver_tamer::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/)
 {
     int npos;
     while (pos > 0
@@ -143,7 +171,7 @@ void driver::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/)
 }
 
 #if 0
-void driver::check_timers() const
+void driver_tamer::check_timers() const
 {
     fprintf(stderr, "---");
     for (int k = 0; k < _nt; k++)
@@ -162,7 +190,7 @@ void driver::check_timers() const
 }
 #endif
 
-void driver::expand_fds()
+void driver_tamer::expand_fds()
 {
     int ncap = (_fdcap ? _fdcap * 2 : 16);
 
@@ -175,7 +203,7 @@ void driver::expand_fds()
     }
 }
 
-void driver::at_fd(int fd, int action, const event<> &trigger)
+void driver_tamer::at_fd(int fd, int action, const event<> &trigger)
 {
     if (!_fdfree)
 	expand_fds();
@@ -199,7 +227,7 @@ void driver::at_fd(int fd, int action, const event<> &trigger)
     }
 }
 
-void driver::kill_fd(int fd)
+void driver_tamer::kill_fd(int fd)
 {
     assert(fd >= 0);
     if (fd < _nfds && (FD_ISSET(fd, &_fdset[fdread]) || FD_ISSET(fd, &_fdset[fdwrite]) || FD_ISSET(fd, &_fdset[fdclose]))) {
@@ -220,83 +248,31 @@ void driver::kill_fd(int fd)
     }
 }
 
-void driver::at_delay(double delay, const event<> &e)
+void driver_tamer::at_time(const timeval &expiry, const event<> &e)
 {
-    if (delay <= 0)
-	at_asap(e);
-    else {
-	timeval tv = now;
-	long ldelay = (long) delay;
-	tv.tv_sec += ldelay;
-	tv.tv_usec += (long) ((delay - ldelay) * 1000000 + 0.5);
-	if (tv.tv_usec >= 1000000) {
-	    tv.tv_sec++;
-	    tv.tv_usec -= 1000000;
-	}
-	at_time(tv, e);
-    }
+    if (!_tfree)
+	expand_timers();
+    ttimer *t = _tfree;
+    _tfree = t->u.next;
+    (void) new(static_cast<void *>(t)) ttimer(_nt, expiry, e);
+    _t[_nt++] = 0;
+    timer_reheapify_from(_nt - 1, t, false);
 }
 
-extern "C" {
-static void tame_signal_handler(int signal) {
-    sig_any_active = sig_active[signal] = 1;
-    // ensure select wakes up, even if we get a signal in between setting the
-    // timeout and calling select!
-    write(sig_pipe[1], "", 1);
-
-    // block signal until we trigger the event, giving the unblocked
-    // rendezvous a chance to maybe install another handler
-    sigset_t sigset;
-    sigemptyset(&sigset);
-    sigaddset(&sigset, signal);
-    sigprocmask(SIG_BLOCK, &sigset, NULL);
-}
-}
-
-void driver::at_signal(int signal, const event<> &trigger)
+void driver_tamer::at_asap(const event<> &e)
 {
-    assert(signal < NSIGNALS);
-
-    if (!trigger)
-	return;
-    
-    if (sig_pipe[0] < 0) {
-	pipe(sig_pipe);
-	fcntl(sig_pipe[0], F_SETFL, O_NONBLOCK);
-	fcntl(sig_pipe[0], F_SETFD, FD_CLOEXEC);
-	fcntl(sig_pipe[1], F_SETFD, FD_CLOEXEC);
-    }
-
-    if (sig_handlers[signal])
-	sig_handlers[signal] = distribute(sig_handlers[signal], trigger);
-    else {
-	sig_installing = signal;
-    
-	sig_handlers[signal] = trigger;
-	sig_handlers[signal].at_cancel(make_event(sigcancelr));
-    
-	struct sigaction sa;
-	sa.sa_handler = tame_signal_handler;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = SA_RESETHAND;
-	sigaction(signal, &sa, 0);
-
-	sig_installing = -1;
-    }
+    _asap.push_back(e);
 }
 
-bool driver::empty() const
+bool driver_tamer::empty()
 {
     if (_nt != 0 || _nfds != 0 || _asap.size() != 0
 	|| sig_any_active || tamerpriv::abstract_rendezvous::unblocked)
 	return false;
-    for (int i = 0; i < NSIGNALS; i++)
-	if (sig_handlers[i])
-	    return false;
     return true;
 }
 
-void driver::once()
+void driver_tamer::once()
 {
     // get rid of initial cancelled timers
     ttimer *t;
@@ -358,32 +334,8 @@ void driver::once()
     nfds = select(nfds, &fds[fdread], &fds[fdwrite], 0, toptr);
 
     // run signals
-    if (sig_any_active) {
-	sig_any_active = 0;
-	sigset_t sigs_unblock;
-	sigemptyset(&sigs_unblock);
-
-	// check signals
-	for (int sig = 0; sig < NSIGNALS; sig++)
-	    if (sig_active[sig]) {
-		sig_active[sig] = 0;
-		sig_handlers[sig].trigger();
-		sigaddset(&sigs_unblock, sig);
-	    }
-
-	// run closures activated by signals (plus maybe some others)
-	while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::unblocked)
-	    r->run();
-
-	// now that the signal responders have potentially reinstalled signal
-	// handlers, unblock the signals
-	sigprocmask(SIG_UNBLOCK, &sigs_unblock, 0);
-
-	// kill crap data written to pipe
-	char crap[64];
-	while (read(sig_pipe[0], crap, 64) > 0)
-	    /* do nothing */;
-    }
+    if (sig_any_active)
+	dispatch_signals();
 
     // run asaps
     while (event<> *e = _asap.front()) {
@@ -428,7 +380,7 @@ void driver::once()
 }
 
 #if 0
-void driver::print_fds()
+void driver_tamer::print_fds()
 {
     tfd *t = _fd;
     while (t) {
@@ -440,10 +392,17 @@ void driver::print_fds()
 }
 #endif
 
-void driver::loop()
+void driver_tamer::loop()
 {
     while (1)
 	once();
+}
+
+}
+
+driver *driver::make_tamer()
+{
+    return new driver_tamer;
 }
 
 }

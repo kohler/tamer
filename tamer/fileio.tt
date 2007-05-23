@@ -84,14 +84,14 @@ tamed void write(int fd, const void *buf, size_t size, ssize_t &size_out, event<
 
 int close(int fd)
 {
-    driver::main.kill_fd(fd);
+    driver::main->kill_fd(fd);
     int x = ::close(fd);
     return (x == -1 ? -errno : 0);
 }
 
 void close(int fd, event<int> done)
 {
-    driver::main.kill_fd(fd);
+    driver::main->kill_fd(fd);
     int x = ::close(fd);
     done.trigger(x == -1 ? -errno : 0);
 }

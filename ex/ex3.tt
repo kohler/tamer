@@ -50,10 +50,11 @@ tamed void f4() {
 }
 
 int main(int, char **) {
+    tamer::initialize();
     f1();
     f2();
     f3();
     f4();
-    while (!tamer::driver::main.empty())
+    while (!tamer::driver_empty())
 	tamer::once();
 }

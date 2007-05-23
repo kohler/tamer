@@ -7,20 +7,27 @@ namespace tamer {
  *  @brief  Functions for registering primitive events and managing the event
  *  loop.
  */
-    
+
+/** @brief  Initializes the Tamer event loop.
+ *
+ *  Must be called at least once before any primitive Tamer events are
+ *  registered.
+ */
+void initialize();
+
 /** @brief  Fetches Tamer's current time.
  *  @return  Current timestamp.
  */
 inline timeval &now()
 {
-    return driver::main.now;
+    return driver::main->now;
 }
 
 /** @brief  Sets Tamer's current time to the current timestamp.
  */
 inline void set_now()
 {
-    driver::main.set_now();
+    driver::main->set_now();
 }
 
 /** @brief  Test whether driver events are pending.
@@ -30,19 +37,19 @@ inline void set_now()
  */
 inline bool driver_empty()
 {
-    return driver::main.empty();
+    return driver::main->empty();
 }
 
 /** @brief  Run driver loop once. */
 inline void once()
 {
-    driver::main.once();
+    driver::main->once();
 }
 
 /** @brief  Run driver loop indefinitely. */
 inline void loop()
 {
-    driver::main.loop();
+    driver::main->loop();
 }
 
 /** @brief  Register event for file descriptor readability.
@@ -54,7 +61,7 @@ inline void loop()
  */
 inline void at_fd_read(int fd, const event<> &e)
 {
-    driver::main.at_fd_read(fd, e);
+    driver::main->at_fd_read(fd, e);
 }
 
 /** @brief  Register event for file descriptor writability.
@@ -66,7 +73,7 @@ inline void at_fd_read(int fd, const event<> &e)
  */
 inline void at_fd_write(int fd, const event<> &e)
 {
-    driver::main.at_fd_write(fd, e);
+    driver::main->at_fd_write(fd, e);
 }
 
 /** @brief  Register event for file descriptor close.
@@ -77,7 +84,7 @@ inline void at_fd_write(int fd, const event<> &e)
  */
 inline void at_fd_close(int fd, const event<> &e)
 {
-    driver::main.at_fd_close(fd, e);
+    driver::main->at_fd_close(fd, e);
 }
 
 /** @brief  Register event for a given time.
@@ -88,7 +95,7 @@ inline void at_fd_close(int fd, const event<> &e)
  */
 inline void at_time(const timeval &expiry, const event<> &e)
 {
-    driver::main.at_time(expiry, e);
+    driver::main->at_time(expiry, e);
 }
 
 /** @brief  Register event for a given delay.
@@ -100,7 +107,7 @@ inline void at_time(const timeval &expiry, const event<> &e)
  */
 inline void at_delay(const timeval &delay, const event<> &e)
 {
-    driver::main.at_delay(delay, e);
+    driver::main->at_delay(delay, e);
 }
 
 /** @brief  Register event for a given delay.
@@ -112,7 +119,7 @@ inline void at_delay(const timeval &delay, const event<> &e)
  */
 inline void at_delay(double delay, const event<> &e)
 {
-    driver::main.at_delay(delay, e);
+    driver::main->at_delay(delay, e);
 }
 
 /** @brief  Register event for a given delay.
@@ -124,7 +131,7 @@ inline void at_delay(double delay, const event<> &e)
  */
 inline void at_delay_sec(int delay, const event<> &e)
 {
-    driver::main.at_delay_sec(delay, e);
+    driver::main->at_delay_sec(delay, e);
 }
 
 /** @brief  Register event for a given delay.
@@ -136,7 +143,7 @@ inline void at_delay_sec(int delay, const event<> &e)
  */
 inline void at_delay_msec(int delay, const event<> &e)
 {
-    driver::main.at_delay_msec(delay, e);
+    driver::main->at_delay_msec(delay, e);
 }
 
 /** @brief  Register event for signal occurrence.
@@ -158,7 +165,7 @@ inline void at_signal(int sig, const event<> &e)
  */
 inline void at_asap(const event<> &e)
 {
-    driver::main.at_asap(e);
+    driver::main->at_asap(e);
 }
 
 }

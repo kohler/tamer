@@ -1,7 +1,11 @@
 lib_LTLIBRARIES = libtamer.la
 libtamer_la_SOURCES = \
 	adapter.hh \
-	driver.hh driver.cc \
+	driver.hh \
+	dbase.cc \
+	dlibevent.cc \
+	dtamer.cc \
+	dsignal.cc \
 	event.hh \
 	fileio.hh fileio.tt \
 	lock.hh lock.tt \

@@ -37,6 +37,7 @@ tamed void close_sucka(int fd) {
 
 
 int main(int, char **) {
+    tamer::initialize();
     tamer::fileio::make_nonblocking(0);
     read_sucka(0);
     time_sucka();

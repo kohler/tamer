@@ -2,7 +2,7 @@ noinst_PROGRAMS = knot.tamer
 
 knot_tamer_SOURCES = cache2.tt cache2.hh http.tt http.hh httphdrs.h \
 	input.tt input.hh knot.tt refptr.hh
-knot_tamer_LDADD = ../tamer/libtamer.la
+knot_tamer_LDADD = ../tamer/libtamer.la $(LIBEVENT_LIBS)
 
 TAMER = ../compiler/tamer
 .tt.cc: $(TAMER)

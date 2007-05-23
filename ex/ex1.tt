@@ -11,7 +11,7 @@ int n;
 tamed void delay1(int x, tamer::event<> e) {
     n++;
     twait { tamer::at_delay_msec(x, make_event()); }
-    fprintf(stderr, "%d.%06d: %d!\n", tamer::driver::main.now.tv_sec, tamer::driver::main.now.tv_usec, x);
+    fprintf(stderr, "%d.%06d: %d!\n", tamer::driver::main->now.tv_sec, tamer::driver::main->now.tv_usec, x);
     n--;
     e.trigger();
 }
@@ -126,7 +126,7 @@ tamed void bindery() {
 int main(int, char **) {
     tamer::rendezvous<int> r;
     fprintf(stderr, "???????? *** %d\n\n", getpid());
-    tamer::set_now();
+    tamer::initialize();
     waitr(r);
     delay1(100, tamer::event<>());
     delay1(1000, tamer::make_event(r, 10));

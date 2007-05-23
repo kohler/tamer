@@ -499,7 +499,7 @@ accept_loop(int s)
 static unsigned long long
 timenow_usec ()
 {
-    return tamer::driver::main.now.tv_usec + tamer::driver::main.now.tv_sec * 1000000ULL;
+    return tamer::now().tv_usec + tamer::now().tv_sec * 1000000ULL;
 }
 
 static int 
@@ -683,10 +683,10 @@ main2 (int argc, char **argv)
 int
 main(int argc, char **argv)
 {
-    tamer::driver::main.set_now();
+    tamer::initialize();
     main2 (argc, argv);
     while (1)
-	tamer::driver::main.once();
+	tamer::once();
 }
 
 //////////////////////////////////////////////////
