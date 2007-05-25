@@ -1,5 +1,5 @@
 // -*-c++-*-
-/* $Id: tame.hh,v 1.7 2007-05-22 20:58:16 kohler Exp $ */
+/* $Id: tame.hh,v 1.8 2007-05-25 18:29:58 kohler Exp $ */
 
 /*
  *
@@ -89,6 +89,12 @@ public:
     lstr(unsigned ln, const std::string &s) : _s(s), _lineno(ln) {}
     lstr(unsigned ln, const strbuf &s) : _s(s.str()), _lineno(ln) {}
     const std::string &str() const { return _s; }
+    typedef std::string::iterator iterator;
+    typedef std::string::const_iterator const_iterator;
+    iterator begin() { return _s.begin(); }
+    iterator end() { return _s.end(); }
+    const_iterator begin() const { return _s.begin(); }
+    const_iterator end() const { return _s.end(); }
     std::string::size_type length() const { return _s.length(); }
     void set_lineno (unsigned l) { _lineno = l; }
     unsigned lineno () const { return _lineno; }
@@ -290,9 +296,9 @@ protected:
 
 class cpp_initializer_t : public initializer_t {
 public:
-  cpp_initializer_t (const lstr &v) : initializer_t (v) {}
-  str output_in_constructor () const;
-  bool do_constructor_output () const { return true; }
+    cpp_initializer_t(const lstr &v);
+    str output_in_constructor() const;
+    bool do_constructor_output() const { return true; }
 };
 
 class array_initializer_t : public initializer_t {

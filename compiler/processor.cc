@@ -273,6 +273,40 @@ tame_fn_t::add_env (tame_env_t *e)
     e->set_id (++_n_labels);
 }
 
+cpp_initializer_t::cpp_initializer_t(const lstr &v)
+    : initializer_t(v)
+{
+    // rewrite "this" to "__self".  Do it the right way.
+    strbuf b;
+    int mode = 0;
+    std::string::iterator last = _value.begin();
+    for (std::string::iterator a = last; a + 4 < _value.end(); a++)
+	if (*a == '\\')
+	    a++;
+	else if (mode == 0 && (*a == '\"' || *a == '\''))
+	    mode = *a;
+	else if (mode == *a && (*a == '\"' || *a == '\''))
+	    mode = 0;
+	else if (mode == 0 && *a == '/' && a[1] == '/')
+	    mode = '/';
+	else if (mode == 0 && *a == '/' && a[1] == '*')
+	    mode = '*';
+	else if (mode == '/' && *a == '\n')
+	    mode = 0;
+	else if (mode == '*' && *a == '*' && a[1] == '/')
+	    mode = 0;
+	else if (mode == 0 && *a == 't' && a[1] == 'h' && a[2] == 'i' && a[3] == 's' && (a + 4 == _value.end() || (!isalnum(a[4]) && a[4] != '_' && a[4] != '$'))) {
+	    b << std::string(last, a) << "_closure__self";
+	    last = a + 4;
+	    a += 3;
+	}
+    if (last != _value.begin()) {
+	b << std::string(last, _value.end());
+	_value = lstr(_value.lineno(), b);
+    }
+    
+}
+
 str
 cpp_initializer_t::output_in_constructor () const
 {
