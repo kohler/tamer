@@ -12,6 +12,7 @@ const int success = 0;
 const int cancel = -ECANCELED;
 const int timeout = -ETIMEDOUT;
 const int signal = -EINTR;
+const int overflow = -E2BIG;
 }
 
 /** @brief  Create event that triggers @a e1 and @a e2 when triggered.
