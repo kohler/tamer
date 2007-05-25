@@ -1,5 +1,5 @@
 /* -*-fundamental-*- */
-/* $Id: parse.yy,v 1.4 2007-05-22 20:58:16 kohler Exp $ */
+/* $Id: parse.yy,v 1.5 2007-05-25 15:43:04 kohler Exp $ */
 
 /*
  *
@@ -418,6 +418,7 @@ declarator_cpp: pointer_opt direct_declarator_cpp
 cpp_initializer_opt: /* empty */	{ $$ = new initializer_t(); }
 	| '(' passthroughs ')'		{ $$ = new cpp_initializer_t($2); }
 	| '[' passthroughs ']'		{ $$ = new array_initializer_t($2); }
+	| '=' passthroughs		{ $$ = new cpp_initializer_t($2); }
 	;
 
 direct_declarator_cpp: identifier	{ $$ = new declarator_t($1.str()); }

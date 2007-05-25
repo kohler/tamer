@@ -1,5 +1,5 @@
 /* -*-fundamental-*- */
-/* $Id: scan.ll,v 1.4 2007-05-22 20:58:16 kohler Exp $ */
+/* $Id: scan.ll,v 1.5 2007-05-25 15:43:04 kohler Exp $ */
 
 /*
  *
@@ -57,7 +57,7 @@ XNUM 	[+-]?0x[0-9a-fA-F]
 
 %x FULL_PARSE FN_ENTER VARS_ENTER 
 %x TAME_BASE C_COMMENT CXX_COMMENT TAME
-%x ID_OR_NUM NUM_ONLY HALF_PARSE PP PP_BASE
+%x ID_OR_NUM NUM_ONLY HALF_PARSE PP PP_BASE PP_EQUALS BB
 %x JOIN_LIST JOIN_LIST_BASE
 %x TWAIT_ENTER TWAIT_BODY TWAIT_BODY_BASE
 %x EXPR_LIST EXPR_LIST_BASE ID_LIST RETURN_PARAMS
@@ -149,6 +149,7 @@ template	{ yy_push_state (TEMPLATE_ENTER); return T_TEMPLATE; }
 
 <HALF_PARSE>{
 [([]		{ yy_push_state(PP_BASE); return yytext[0]; }
+[=]		{ yy_push_state(PP_EQUALS); return yytext[0]; }
 }
 
 <FULL_PARSE>{
@@ -167,38 +168,56 @@ template	{ yy_push_state (TEMPLATE_ENTER); return T_TEMPLATE; }
 				  "environment"); }
 }
 
+<PP_EQUALS>{
+[,;]		{ yy_pop_state(); return yytext[0]; }
+[)\]]		{ return std_ret(T_PASSTHROUGH); }
+}
+
 <PP_BASE>{
-[)\]]		{ yy_pop_state (); return yytext[0]; } 
+[)\]]		{ yy_pop_state(); return yytext[0]; } 
+[;]		{ yy_pop_state(); return yytext[0]; }
 }
 
-<PP,PP_BASE>{
+<BB>{
+[\]]		{ yy_pop_state(); return std_ret(T_PASSTHROUGH); }
+}
+
+<PP>{
+[)]		{ yy_pop_state(); return std_ret(T_PASSTHROUGH); }
+}
+
+<PP,PP_BASE,PP_EQUALS,BB>{
 \n			{ ++lineno; }
-[^()\]\n/_]+|[/_]	{ return std_ret (T_PASSTHROUGH); }
-[(]			{ yy_push_state (PP); return std_ret (T_PASSTHROUGH); }
+[(]			{ yy_push_state(PP); return std_ret(T_PASSTHROUGH); }
+[[]			{ yy_push_state(BB); return std_ret(T_PASSTHROUGH); }
 }
 
-<PP,PP_BASE,TAME,TAME_BASE>{
+<PP,PP_BASE,BB>{
+[^()[\]\n/_]+|[/_]	{ return std_ret(T_PASSTHROUGH); }
+}
+
+<PP_EQUALS>{
+[^()[\]\n/_,;]+|[/_]	{ return std_ret(T_PASSTHROUGH); }
+}
+
+<PP,PP_BASE,PP_EQUALS,BB,TAME,TAME_BASE>{
 __LINE__	{ return lineno_return (); }
 __FILE__        { return filename_return (); }
 __LOC__         { return loc_return (); }
 }
 
-<PP>{
-[)]		{ yy_pop_state (); return std_ret (T_PASSTHROUGH); }
-}
-
 
 <VARS_ENTER>{
-[{]		{ switch_to_state (HALF_PARSE); return yytext[0]; }
+[{]		{ switch_to_state(HALF_PARSE); return yytext[0]; }
 .		{ return yyerror ("illegal token found between VARS and '{'");}
 }
 
 
 <TWAIT_ENTER>{
-[(]		{ yy_push_state (JOIN_LIST_BASE); return yytext[0]; }
-[{]		{ switch_to_state (TWAIT_BODY_BASE); return yytext[0]; }
-[;]		{ yy_pop_state (); return yytext[0]; }
-.		{ return yyerror ("illegal token found after twait"); }
+[(]		{ yy_push_state(JOIN_LIST_BASE); return yytext[0]; }
+[{]		{ switch_to_state(TWAIT_BODY_BASE); return yytext[0]; }
+[;]		{ yy_pop_state(); return yytext[0]; }
+.		{ return yyerror("illegal token found after twait"); }
 
 }
 
@@ -300,12 +319,12 @@ return/[ \t\n(;]	{ return yyerror ("cannot return withint twait{..}"); }
 [{]		{ yylval.str = lstr(lineno, yytext); yy_push_state (TAME); 
 		  return T_PASSTHROUGH; }
 
-tvars/[ \t\n{/]	    { return tame_ret (VARS_ENTER, T_VARS); }
-DEFAULT_RETURN	    { return tame_ret (DEFRET_ENTER, T_DEFAULT_RETURN); }
+tvars/[ \t\n{/]	    { return tame_ret(VARS_ENTER, T_VARS); }
+DEFAULT_RETURN	    { return tame_ret(DEFRET_ENTER, T_DEFAULT_RETURN); }
 
-return/[ \t\n(/;]   { yy_push_state (RETURN_PARAMS); return T_RETURN; }
+return/[ \t\n(/;]   { yy_push_state(RETURN_PARAMS); return T_RETURN; }
 
-\"		    { yy_push_state (QUOTE); return std_ret (T_PASSTHROUGH); }
+\"		    { yy_push_state(QUOTE); return std_ret (T_PASSTHROUGH); }
 }
 
 <TAME,TAME_BASE,INITIAL>{
@@ -366,7 +385,7 @@ TAME_ON		{ tame_on = 1; GOBBLE_RET; }
 }
 
 
-<FULL_PARSE,SIG_PARSE,FN_ENTER,VARS_ENTER,HALF_PARSE,PP,PP_BASE,EXPR_LIST,EXPR_LIST_BASE,ID_LIST,RETURN_PARAMS,EXPR_LIST_BR,EXPR_LIST_BR_BASE,DEFRET_ENTER,TWAIT_BODY,TWAIT_BODY_BASE>{
+<FULL_PARSE,SIG_PARSE,FN_ENTER,VARS_ENTER,HALF_PARSE,PP,PP_BASE,PP_EQUALS,BB,EXPR_LIST,EXPR_LIST_BASE,ID_LIST,RETURN_PARAMS,EXPR_LIST_BR,EXPR_LIST_BR_BASE,DEFRET_ENTER,TWAIT_BODY,TWAIT_BODY_BASE>{
 
 "//"		{ gobble_flag = 1; yy_push_state (CXX_COMMENT); }
 "/*"		{ gobble_flag = 1; fprintf(stderr, "!\n"); yy_push_state (C_COMMENT); }
