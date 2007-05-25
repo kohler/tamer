@@ -102,22 +102,32 @@ void fstat(int fd, struct stat &stat_out, event<int> done)
     done.trigger(x == -1 ? -errno : 0);
 }
 
-void pipe(int fd_out[2], event<int> done)
+int pipe(int fd_out[2])
 {
     int x = ::pipe(fd_out);
     if (x >= 0) {
 	make_nonblocking(fd_out[0]);
 	make_nonblocking(fd_out[1]);
     }
-    done.trigger(x == -1 ? -errno : 0);
+    return (x == -1 ? -errno : 0);
 }
 
-void socket(int domain, int type, int protocol, event<int> done)
+void pipe(int fd_out[2], event<int> done)
+{
+    done.trigger(pipe(fd_out));
+}
+
+int socket(int domain, int type, int protocol)
 {
     int fd = ::socket(domain, type, protocol);
     if (fd >= 0)
 	make_nonblocking(fd);
-    done.trigger(fd == -1 ? -errno : fd);
+    return (fd == -1 ? -errno : fd);
+}
+
+void socket(int domain, int type, int protocol, event<int> done)
+{
+    done.trigger(socket(domain, type, protocol));
 }
 
 tamed void accept(int listenfd, struct sockaddr *name_out, socklen_t *namelen_out, event<int> done)

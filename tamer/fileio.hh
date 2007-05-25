@@ -99,12 +99,30 @@ void close(int fd, event<int> done);
 
 /** @brief  Create a nonblocking pipe.
  *  @param[out]  fd    Pipe file descriptors.
+ *  @return  0 on success, or a negative error code.
+ *
+ *  Both file descriptors in @a fd are made nonblocking.
+ */
+int pipe(int fd[2]);
+
+/** @brief  Create a nonblocking pipe.
+ *  @param[out]  fd    Pipe file descriptors.
  *  @param       done  Event triggered on completion.
  *
  *  @a done is triggered with 0 on success, or a negative error code.  Both
  *  file descriptors in @a fd are made nonblocking.
  */
 void pipe(int fd[2], event<int> done);
+
+/** @brief  Open a nonblocking socket.
+ *  @param  domain    Protocol domain.
+ *  @param  type      Transport type.
+ *  @param  protocol  Protocol.
+ *  @return  Socket file descriptor on success, or a negative error code.
+ *
+ *  The returned file descriptor is made nonblocking.
+ */
+int socket(int domain, int type, int protocol);
 
 /** @brief  Open a nonblocking socket.
  *  @param  domain    Protocol domain.
