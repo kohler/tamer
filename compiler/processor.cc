@@ -477,6 +477,8 @@ mangler::mangler(const str &s)
 		do_base("f");
 	    else if (s == "double")
 		do_base("d");
+	    else if (s == "struct" || s == "union" || s == "class" || s == "enum")
+		/* do nothing */;
 	    else
 		do_base(ntoa(s.length()) + s);
 	} else if (*i == ':' && i+1 != s.end() && i[1] == ':') {

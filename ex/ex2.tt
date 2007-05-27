@@ -4,19 +4,19 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <tamer/tamer.hh>
-#include <tamer/fileio.hh>
+#include <tamer/fd.hh>
 
 int n;
 
-tamed void read_sucka(int fd) {
+tamed void read_sucka(tamer::fd &f) {
     tvars {
 	int result(-1);
 	char buf[40];
-	ssize_t amt(0);
+	size_t amt(0);
     }
     n++;
     twait {
-	tamer::fileio::read(fd, buf, 40, amt, tamer::add_timeout_sec(2, make_event(result)));
+	f.read(buf, 40, amt, tamer::add_timeout_sec(2, make_event(result)));
     }
     fprintf(stderr, "got %d: %d: %.*s\n", result, amt, amt, buf);
     n--;
@@ -28,20 +28,21 @@ tamed void time_sucka() {
     n--;
 }
 
-tamed void close_sucka(int fd) {
+tamed void close_sucka(tamer::fd &f) {
     n++;
     twait { tamer::at_delay_msec(500, make_event()); }
-    twait { tamer::fileio::close(fd, tamer::ignore_slot<int>(make_event())); }
+    twait { f.close(); }
     n--;
 }
 
 
 int main(int, char **) {
     tamer::initialize();
-    tamer::fileio::make_nonblocking(0);
-    read_sucka(0);
+    tamer::fd::make_nonblocking(0);
+    tamer::fd mystdin(0);
+    read_sucka(mystdin);
     time_sucka();
-    close_sucka(0);
+    close_sucka(mystdin);
     while (n > 0)
 	tamer::once();
 }

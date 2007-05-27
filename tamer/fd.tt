@@ -1,0 +1,210 @@
+// -*- mode: c++ -*-
+#include <tamer/fd.hh>
+#include <sys/select.h>
+#include <sys/ioctl.h>
+#include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+
+namespace tamer {
+
+int fd::make_nonblocking(int f)
+{
+    int flags = 1;
+    if (::ioctl(f, FIONBIO, &flags) == 0)
+	return 0;
+    flags = ::fcntl(f, F_GETFL);
+    if (flags < 0)
+	return flags;
+    return ::fcntl(f, F_SETFL, flags | O_NONBLOCK);
+}
+
+tamed void fd::read(void *buf, size_t size, size_t &size_out, event<int> done)
+{
+    tvars {
+	size_t pos(0);
+	ssize_t amt;
+	rendezvous<> r;
+	event<> closewatch(r);
+    }
+    
+    if (!*this) {
+	done.trigger(-EBADF);
+	return;
+    }
+    
+    twait { _p->rlock.acquire(make_event()); }
+    at_close(closewatch);
+    
+    while (pos != size && done && closewatch) {
+	amt = ::read(_p->fd, static_cast<char *>(buf) + pos, size - pos);
+	if (amt != 0 && amt != (ssize_t) -1) {
+	    pos += amt;
+	    if (&size_out)
+		size_out = pos;
+	} else if (amt == 0)
+	    break;
+	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+	    tamer::at_fd_read(_p->fd, make_event(r));
+	    twait(r);
+	} else if (errno != EINTR) {
+	    done.trigger(-errno);
+	    return;
+	}
+    }
+    
+    _p->rlock.release();
+    done.trigger(pos < size || closewatch ? 0 : -ECANCELED);
+}
+
+tamed void fd::write(const void *buf, size_t size, size_t &size_out, event<int> done)
+{
+    tvars {
+	size_t pos(0);
+	ssize_t amt;
+	rendezvous<> r;
+	event<> closewatch(r);
+    }
+
+    if (!*this) {
+	done.trigger(-EBADF);
+	return;
+    }
+    
+    twait { _p->wlock.acquire(make_event()); }
+    at_close(closewatch);
+    
+    while (pos != size && done && closewatch) {
+	amt = ::write(_p->fd, static_cast<const char *>(buf) + pos, size - pos);
+	if (amt != 0 && amt != (ssize_t) -1) {
+	    pos += amt;
+	    if (&size_out)
+		size_out = pos;
+	} else if (amt == 0)
+	    break;
+	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+	    tamer::at_fd_write(_p->fd, make_event(r));
+	    twait(r);
+	} else if (errno != EINTR) {
+	    done.trigger(-errno);
+	    return;
+	}
+    }
+    
+    _p->wlock.release();
+    done.trigger(pos < size || closewatch ? 0 : -ECANCELED);
+}
+
+tamed void fd::write(std::string s, size_t &size_out, event<int> done)
+{
+    twait {
+	done.at_complete(make_event());
+	write(s.data(), s.length(), size_out, done);
+    }
+}
+
+fd fd::socket(int domain, int type, int protocol)
+{
+    int f = ::socket(domain, type, protocol);
+    if (f >= 0)
+	make_nonblocking(f);
+    return fd(f == -1 ? -errno : f);
+}
+
+int fd::listen(int backlog)
+{
+    if (!*this)
+	return -EBADF;
+    else
+	return (::listen(_p->fd, backlog) == 0 ? 0 : -errno);
+}
+
+tamed void fd::accept(struct sockaddr *name_out, socklen_t *namelen_out, fd &newfd, event<int> done)
+{
+    tvars {
+	int f = -ECANCELED;
+	rendezvous<> r;
+	event<> closewatch(r);
+    }
+
+    newfd = fd();
+
+    if (!*this) {
+	done.trigger(-EBADF);
+	return;
+    }
+
+    twait { _p->rlock.acquire(make_event()); }
+    at_close(closewatch);
+    
+    while (done && closewatch) {
+	f = ::accept(_p->fd, name_out, namelen_out);
+	if (f >= 0) {
+	    make_nonblocking(f);
+	    newfd = fd(f); 
+	    break;
+	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+	    tamer::at_fd_read(_p->fd, make_event(r));
+	    twait(r);
+	} else if (errno != EINTR) {
+	    f = -errno;
+	    break;
+	}
+    }
+
+    _p->rlock.release();
+    done.trigger(f >= 0 ? 0 : f);
+}
+
+tamed void fd::connect(const struct sockaddr *name, socklen_t namelen, event<int> done)
+{
+    tvars {
+	int x, ret(0);
+	rendezvous<> r;
+	event<> closewatch(r);
+    }
+
+    if (!*this) {
+	done.trigger(-EBADF);
+	return;
+    }
+    
+    twait { _p->wlock.acquire(make_event()); }
+    
+    x = ::connect(_p->fd, name, namelen);
+    if (x == -1 && errno != EINPROGRESS)
+	ret = -errno;
+    else if (x == -1) {
+	at_close(closewatch);
+	tamer::at_fd_write(_p->fd, make_event(r));
+	twait(r);
+	socklen_t socklen = sizeof(x);
+	if (!done || !closewatch)
+	    ret = -ECANCELED;
+	else if (getsockopt(_p->fd, SOL_SOCKET, SO_ERROR, (void *) &x, &socklen) == -1)
+	    ret = -errno;
+	else if (ret > 0)
+	    ret = -x;
+    }
+
+    _p->wlock.release();
+    done.trigger(ret);
+}
+
+void fd::close(event<int> done)
+{
+    if (*this) {
+	int x = ::close(_p->fd);
+	x = (x == -1 ? -errno : 0);
+	driver::main->kill_fd(_p->fd);
+	_p->fd = -1;
+	_p->at_close.trigger();
+	_p->at_close = event<>();
+	done.trigger(x);
+    } else
+	done.trigger(-EBADF);
+}
+
+}
