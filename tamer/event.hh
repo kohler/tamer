@@ -161,6 +161,16 @@ class event { public:
 	_e->at_cancel(e);
     }
 
+    /** @brief  Register a completion notifier.
+     *  @param  e  Completion notifier.
+     *
+     *  If this event is empty, @a e is triggered immediately.  Otherwise,
+     *  when this event is triggered or canceled, triggers @a e.
+     */
+    void at_complete(const event<> &e) {
+	_e->at_complete(e);
+    }
+
     /** @brief  Trigger event.
      *  @param  v0  First trigger value.
      *  @param  v1  Second trigger value.
@@ -316,6 +326,10 @@ class event<T0, T1, T2, void> { public:
 	_e->at_cancel(e);
     }
 
+    void at_complete(const event<> &e) {
+	_e->at_complete(e);
+    }
+
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2) {
 	_e->trigger(v0, v1, v2);
     }
@@ -425,6 +439,10 @@ class event<T0, T1, void, void> { public:
 	_e->at_cancel(e);
     }
 
+    void at_complete(const event<> &e) {
+	_e->at_complete(e);
+    }
+
     void trigger(const T0 &v0, const T1 &v1) {
 	_e->trigger(v0, v1);
     }
@@ -532,6 +550,10 @@ class event<T0, void, void, void> { public:
 
     void at_cancel(const event<> &e) {
 	_e->at_cancel(e);
+    }
+
+    void at_complete(const event<> &e) {
+	_e->at_complete(e);
     }
 
     void trigger(const T0 &v0) {
@@ -654,6 +676,10 @@ class event<void, void, void, void> { public:
 
     void at_cancel(const event<> &e) {
 	_e->at_cancel(e);
+    }
+
+    void at_complete(const event<> &e) {
+	_e->at_complete(e);
     }
 
     void trigger() {

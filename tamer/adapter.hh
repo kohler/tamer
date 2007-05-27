@@ -22,8 +22,8 @@ const int closed = -EPIPE;
  *  @return  Distributer event.
  *
  *  When the distributer event is triggered, @a e1 and @a e2 are both
- *  triggered instantly.  When both @a e1 and @a e2 are canceled, the
- *  distributer event is itself canceled.
+ *  triggered instantly.  The distributer event is itself canceled when both
+ *  @a e1 and @a e2 are canceled.
  */
 inline event<> distribute(const event<> &e1, const event<> &e2) {
     if (e1.empty())

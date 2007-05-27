@@ -946,10 +946,10 @@ tame_block_ev_t::output(outputter_t *o)
   b << "  { {\n#define make_event(...) make_event(__cls._closure__block, ## __VA_ARGS__)\n";
   o->output_str(b.str());
 
-  output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
+  output_mode_t om = o->switch_to_mode(OUTPUT_TREADMILL);
   b.str(str());
   assert(b.str() == str());
-  o->switch_to_mode (om);
+  o->switch_to_mode(om);
 
   // now we are returning to mainly pass-through code, but with some
   // callbacks thrown in (which won't change the line-spacing)
@@ -958,10 +958,11 @@ tame_block_ev_t::output(outputter_t *o)
       (*el)->output (o);
   }
 
+  int lineno = o->lineno();
   o->output_str(" }");
   o->switch_to_mode(OUTPUT_PASSTHROUGH);
   o->output_str("\n#undef make_event\n");
-  o->switch_to_mode(OUTPUT_TREADMILL);
+  o->switch_to_mode(OUTPUT_TREADMILL, lineno);
   b << _fn->label(_id) << ":\n"
     << "  while (" << TAME_CLOSURE_NAME << "._closure__block.nwaiting()) {\n"
     << "      " << TAME_CLOSURE_NAME << "._closure__block.block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n";

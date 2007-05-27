@@ -80,7 +80,9 @@ class simple_event { public:
 	return _rid;
     }
     
-    inline void at_cancel(const event<> &c);
+    inline void at_cancel(const event<> &e);
+
+    void at_complete(const event<> &e);
 
     inline bool complete(bool success);
 

@@ -49,7 +49,8 @@ bool tamer_debug_closure::block_landmark(const char *&file, unsigned &line) {
 
 class distribute_rendezvous : public abstract_rendezvous { public:
 
-    distribute_rendezvous() {
+    distribute_rendezvous()
+	: _ncomplete(0) {
     }
 
     ~distribute_rendezvous() {
@@ -66,19 +67,30 @@ class distribute_rendezvous : public abstract_rendezvous { public:
 	return true;
     }
 
-    void add_distribute(const event<> &e) {
-	if (e) {
+    void add_distribute(const event<> &e, bool complete) {
+	if (!e)
+	    return;
+	if (complete && _es.size()) {
+	    _es.push_back(_es[_ncomplete]);
+	    _es[_ncomplete] = e;
+	} else
 	    _es.push_back(e);
+	if (complete)
+	    _es[_ncomplete++].at_cancel(event<>(*this, 1));
+	else
 	    _es.back().at_cancel(event<>(*this, 1));
-	}
     }
     
     void complete(uintptr_t rid, bool success) {
-	if (success && rid) {
+	if (rid && success) {
 	    while (_es.size() && !_es.back())
 		_es.pop_back();
-	} else if (success) {
-	    for (std::vector<event<> >::iterator i = _es.begin(); i != _es.end(); i++)
+	    if (_ncomplete > _es.size())
+		_ncomplete = _es.size();
+	} else if (!rid) {
+	    std::vector<event<> >::iterator i = _es.begin();
+	    std::vector<event<> >::iterator e = i + (success ? _es.size() : _ncomplete);
+	    for (; i != e; i++)
 		i->trigger();
 	}
 	if (!rid || !_es.size())
@@ -88,6 +100,7 @@ class distribute_rendezvous : public abstract_rendezvous { public:
   private:
 
     std::vector<event<> > _es;
+    std::vector<event<> >::size_type _ncomplete;
     
 };
 
@@ -102,13 +115,39 @@ event<> hard_distribute(const event<> &e1, const event<> &e2) {
 	if (r->is_distribute() && e1.__get_simple()->refcount() == 1) {
 	    // safe to reuse e1
 	    distribute_rendezvous *d = static_cast<distribute_rendezvous *>(r);
-	    d->add_distribute(e2);
+	    d->add_distribute(e2, false);
 	    return e1;
 	} else {
 	    distribute_rendezvous *d = new distribute_rendezvous;
-	    d->add_distribute(e1);
-	    d->add_distribute(e2);
+	    d->add_distribute(e1, false);
+	    d->add_distribute(e2, false);
 	    return event<>(*d, 0);
+	}
+    }
+}
+
+
+void simple_event::at_complete(const event<> &e)
+{
+    if (!_r)
+	e._e->complete(true);
+    else if (!e)
+	/* do nothing */;
+    else if (!_canceler) {
+	distribute_rendezvous *d = new distribute_rendezvous;
+	d->add_distribute(e, true);
+	_canceler = new simple_event(*d, 0);
+    } else {
+	abstract_rendezvous *r = _canceler->rendezvous();
+	if (r->is_distribute() && _canceler->refcount() == 1) {
+	    // safe to reuse _canceler
+	    distribute_rendezvous *d = static_cast<distribute_rendezvous *>(r);
+	    d->add_distribute(e, true);
+	} else {
+	    distribute_rendezvous *d = new distribute_rendezvous;
+	    d->add_distribute(event<>::__take(_canceler), false);
+	    d->add_distribute(e, true);
+	    _canceler = new simple_event(*d, 0);
 	}
     }
 }

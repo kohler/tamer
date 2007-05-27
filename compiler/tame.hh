@@ -1,5 +1,5 @@
 // -*-c++-*-
-/* $Id: tame.hh,v 1.9 2007-05-27 07:49:48 kohler Exp $ */
+/* $Id: tame.hh,v 1.10 2007-05-27 16:16:13 kohler Exp $ */
 
 /*
  *
@@ -158,6 +158,7 @@ public:
 
     void start_output ();
     void flush ();
+    int lineno() const { return _lineno; }
 
     output_mode_t switch_to_mode (output_mode_t m, int ln = -1);
     output_mode_t mode () const { return _mode; }
