@@ -23,10 +23,10 @@ class buffer { public:
 
     ssize_t fill_more(int fd, const event<int> &done, const event<> &closewatch);
 
-    class fill_untilickRkQ__closure;
-    void fill_until(fill_untilickRkQ__closure &, unsigned);
-    class take_untilickRN3std6stringEQ__closure;
-    void take_until(take_untilickRN3std6stringEQ__closure &, unsigned);
+    class closure__fill_until__ickRkQ;
+    void fill_until(closure__fill_until__ickRkQ &, unsigned);
+    class closure__take_until__ickRSsQ;
+    void take_until(closure__take_until__ickRSsQ &, unsigned);
 
 };
 

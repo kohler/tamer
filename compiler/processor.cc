@@ -330,10 +330,11 @@ var_t
 tame_fn_t::mk_closure(bool ref) const
 {
     strbuf b;
-    b << _method_name;
-    if (_args)
+    b << "closure__" << _method_name;
+    if (_args) {
+	b << "__";
 	_args->mangle(b);
-    b << "__closure";
+    }
     return var_t(b.str(), (ref ? "&" : "*"), TAME_CLOSURE_NAME, NONE, _template_args);
 }
 
@@ -479,7 +480,10 @@ mangler::mangler(const str &s)
 	    else
 		do_base(ntoa(s.length()) + s);
 	} else if (*i == ':' && i+1 != s.end() && i[1] == ':') {
-	    _cvflag |= 8;
+	    if (_base == "3std")
+		_base = "St";
+	    else if (_base == "5tamer")
+		_base = "Sx";
 	    for (i += 2; i != s.end() && isspace((unsigned char) *i); i++)
 		/* */;
 	    str::const_iterator j = i;
@@ -487,6 +491,18 @@ mangler::mangler(const str &s)
 		/* */;
 	    if (j != i)
 		_base += ntoa(i - j) + str(j, i);
+	    if (_base == "St9allocator")
+		_base = "Sa";
+	    else if (_base == "St12basic_string")
+		_base = "Sb";
+	    else if (_base == "St6string")
+		_base = "Ss";
+	    else if (_base == "Sx5event")
+		_base = "Q";
+	    else if (_base == "Sx2fd")
+		_base = "Sf";
+	    else
+		_cvflag |= 8;
 	} else if (*i == '*') {
 	    if (_lflag || _cvflag)
 		make_base("");
@@ -529,7 +545,7 @@ mangler::mangler(const str &s)
 		}
 	    if (i != s.end())
 		i++;
-	    if (_base == "5event" || _base == "5tamer5event") {
+	    if (_base == "5event") {
 		_base = "Q";
 		_cvflag &= ~8;
 	    }
