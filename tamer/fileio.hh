@@ -1,10 +1,11 @@
 #ifndef TAMER_FILEIO_HH
-#define TAMER_FILEIO_HH
+#define TAMER_FILEIO_HH 1
 #include <tamer/tamer.hh>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <string>
 namespace tamer {
 namespace fileio {
 
@@ -76,6 +77,27 @@ void read(int fd, void *buf, size_t size, ssize_t &nread, event<int> done);
  *  nwritten is kept up to date as the write progresses.
  */
 void write(int fd, const void *buf, size_t size, ssize_t &nwritten, event<int> done);
+
+/** @brief  Write to file descriptor.
+ *  @param       fd        File descriptor.
+ *  @param       buf       Buffer.
+ *  @param       size      Buffer size.
+ *  @param       done      Event triggered on completion.
+ *
+ *  @a done is triggered with 0 on success, or a negative error code.  May
+ *  write less than @a size characters on error.
+ */
+void write(int fd, const void *buf, size_t size, const event<int> &done);
+
+/** @brief  Write to file descriptor.
+ *  @param       fd        File descriptor.
+ *  @param       str       Buffer.
+ *  @param       done      Event triggered on completion.
+ *
+ *  @a done is triggered with 0 on success, or a negative error code.  May
+ *  write less than @a str.length() characters on error.
+ */
+void write(int fd, const std::string &str, const event<int> &done);
 
 /** @brief  Close file descriptor.
  *  @param  fd    File descriptor.
@@ -158,6 +180,14 @@ void connect(int fd, const struct sockaddr *name, socklen_t namelen, event<int> 
 
 inline void open(const char *filename, int flags, event<int> done) {
     open(filename, flags, 0, done);
+}
+
+inline void write(int fd, const void *buf, size_t size, const event<int> &done) {
+    write(fd, buf, size, *(ssize_t *) 0, done);
+}
+
+inline void write(int fd, const std::string &buf, const event<int> &done) {
+    write(fd, buf.data(), buf.length(), *(ssize_t *) 0, done);
 }
 
 }}

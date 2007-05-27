@@ -75,14 +75,13 @@ vartab_t::lookup(const str &n) const
 	return &_vars[i->second];
 }
 
-str
-type_t::to_str() const
+str type_t::to_str() const
 {
-  strbuf b;
-  b << _base_type << " ";
-  if (_pointer.length())
-    b << _pointer;
-  return b.str();
+    strbuf b;
+    b << _base_type << " ";
+    if (_pointer.length())
+	b << _pointer;
+    return b.str();
 }
 
 str
@@ -182,8 +181,7 @@ array_initializer_t::ref_prefix() const
   return "*";
 }
 
-str
-mangle (const str &in)
+str mangle(const str &in)
 {
     strbuf b;
     for (str::const_iterator i = in.begin(); i != in.end(); i++)
@@ -329,19 +327,233 @@ array_initializer_t::output_in_declaration () const
 //
 
 var_t
-tame_fn_t::mk_closure (bool ref) const
+tame_fn_t::mk_closure(bool ref) const
 {
-  strbuf b;
-  b << _method_name << "__closure";
-
-  return var_t (b.str(), (ref ? "&" : "*"), TAME_CLOSURE_NAME, NONE, _template_args);
+    strbuf b;
+    b << _method_name;
+    if (_args)
+	_args->mangle(b);
+    b << "__closure";
+    return var_t(b.str(), (ref ? "&" : "*"), TAME_CLOSURE_NAME, NONE, _template_args);
 }
 
-str
-tame_fn_t::reenter_fn () const
+void vartab_t::mangle(strbuf &b) const
+{
+    for (unsigned i = 0; i < size(); i++)
+	b << _vars[i].type().mangle();
+}
+
+class mangler { public:
+
+    mangler(const str &s);
+
+    void make_base(const str & = str());
+    void do_base(const str &s);
+    void go(const str &s);
+    static str cv(int);
+
+    str s();
+    
+    int _cvflag;
+    int _lflag;
+    str _base;
+    str _ptr;
+    strbuf _result;
+    
+};
+
+str mangler::cv(int cvflag)
+{
+    if (!cvflag)
+	return str();
+    if (cvflag == 1)
+	return "K";
+    else if (cvflag == 2)
+	return "V";
+    str s;
+    if (cvflag & 4)
+	s += "r";
+    if (cvflag & 2)
+	s += "V";
+    if (cvflag & 1)
+	s += "K";
+    if (cvflag & 8)
+	s += "N";
+    return s;
+}
+
+void mangler::make_base(const str &nnn)
+{
+    if (!_base.length()) {
+	if (((_lflag & 4) && nnn != "i" && nnn != "d")
+	    || ((_lflag & 3) && nnn != "c" && nnn != "s" && nnn != "i"))
+	    _base = "i";
+    }
+    if (!_base.length() && !nnn.length())
+	_base = "vv";
+    if (_base.length()) {
+	if ((_lflag & 8) && _base == "i")
+	    _base = "x";
+	else if ((_lflag & 4) && _base == "i")
+	    _base = "l";
+	else if ((_lflag & 4) && _base == "d")
+	    _base = "e";
+	if ((_lflag & 1) && _base == "c")
+	    _base = "a";
+	else if ((_lflag & 2) && _base == "c")
+	    _base = "h";
+	else if ((_lflag & 2) && (_base == "s" || _base == "i" || _base == "l" || _base == "x"))
+	    _base[0]++;
+	if (_cvflag & 8)
+	    _base += "E";
+	_base = _ptr + cv(_cvflag) + _base;
+	_cvflag = 0;
+	_lflag = 0;
+	_ptr = "";
+    }
+}
+
+void mangler::do_base(const str &new_base)
+{
+    make_base(new_base);
+    if (_base.length())
+	_result << _base;
+    _base = new_base;
+}
+
+str mangler::s()
+{
+    make_base("");
+    _result << _base;
+    return _result.str();
+}
+
+static str ntoa(int x)
+{
+    strbuf b;
+    b << x;
+    return b.str();
+}
+
+mangler::mangler(const str &s)
+    : _cvflag(0), _lflag(0)
+{
+    // It is too hard to mangle correctly given this representation.
+    // Just give it a go.
+
+    for (str::const_iterator i = s.begin(); i != s.end(); )
+	if (isalpha((unsigned char) *i) || *i == '_') {
+	    str::const_iterator j = i;
+	    for (i++; i != s.end(); i++)
+		if (!isalnum((unsigned char) *i) && *i != '_')
+		    break;
+	    str s(j, i);
+	    if (s == "restrict")
+		_cvflag |= 4;
+	    else if (s == "volatile")
+		_cvflag |= 2;
+	    else if (s == "const")
+		_cvflag |= 1;
+	    else if (s == "void")
+		do_base("v");
+	    else if (s == "wchar_t")
+		do_base("w");
+	    else if (s == "size_t")
+		do_base("k");
+	    else if (s == "bool")
+		do_base("b");
+	    else if (s == "char")
+		do_base("c");
+	    else if (s == "signed")
+		_lflag |= 1;
+	    else if (s == "unsigned")
+		_lflag |= 2;
+	    else if (s == "int")
+		do_base("i");
+	    else if (s == "long")
+		_lflag |= (_lflag & 4 ? 8 : 4);
+	    else if (s == "float")
+		do_base("f");
+	    else if (s == "double")
+		do_base("d");
+	    else
+		do_base(ntoa(s.length()) + s);
+	} else if (*i == ':' && i+1 != s.end() && i[1] == ':') {
+	    _cvflag |= 8;
+	    for (i += 2; i != s.end() && isspace((unsigned char) *i); i++)
+		/* */;
+	    str::const_iterator j = i;
+	    for (; i != s.end() && (isalnum((unsigned char) *i) || *i == '_'); i++)
+		/* */;
+	    if (j != i)
+		_base += ntoa(i - j) + str(j, i);
+	} else if (*i == '*') {
+	    if (_lflag || _cvflag)
+		make_base("");
+	    _ptr = "P" + _ptr;
+	    i++;
+	} else if (*i == '&') {
+	    if (_lflag || _cvflag)
+		make_base("");
+	    _ptr = "R" + _ptr;
+	    i++;
+	} else if (isdigit((unsigned char) *i)) {
+	    str::const_iterator j = i;
+	    for (i++; i != s.end() && isdigit((unsigned char) *i); i++)
+		/* */;
+	    do_base(str(j, i));
+	} else if (*i == '[') {
+	    str::const_iterator j = i+1;
+	    for (i++; i != s.end() && *i != ']'; i++)
+		/* */;
+	    if (_lflag || _cvflag)
+		make_base("");
+	    if (i != j)
+		_ptr = "P" + _ptr;
+	    else
+		_ptr = "A" + mangler(str(j, i)).s() + "_";
+	    if (i != s.end())
+		i++;
+	} else if (*i == '<') {
+	    str::const_iterator j = i+1;
+	    int inner = 0;
+	    strbuf b;
+	    for (i++; i != s.end() && (*i != '>' || !inner); i++)
+		if (*i == '<')
+		    inner++;
+		else if (*i == '>')
+		    inner--;
+		else if (*i == ',') {
+		    b << mangler(str(j, i)).s();
+		    j = i+1;
+		}
+	    if (i != s.end())
+		i++;
+	    if (_base == "5event" || _base == "5tamer5event") {
+		_base = "Q";
+		_cvflag &= ~8;
+	    }
+	    str targs = b.str();
+	    if (_base != "Q" || targs.length())
+		_base = _base + "I" + targs + "E";
+	} else if (*i == '.' && i+2 < s.end() && i[1] == '.' && i[2] == '.') {
+	    do_base("z");
+	    i += 2;
+	} else
+	    i++;
+}
+
+str type_t::mangle() const
+{
+    // It is too hard to mangle correctly given this representation.
+    // Just give it a go.
+    return mangler(to_str_w_template_args()).s();
+}
+
+str tame_fn_t::reenter_fn() const
 {
   strbuf b;
-  b << closure ().type ().to_str_w_template_args (false)
+  b << closure().type().to_str_w_template_args(false)
     << "::tamer_closure_activate";
   return b.str();
 }
@@ -477,12 +689,12 @@ tame_fn_t::output_closure(outputter_t *o)
   b << "class ";
   if (_class.length())
       b << _class << "::";
-  b << _closure.type().base_type() 
+  b << closure().type().base_type() 
     << " : public tamer::tamerpriv::"
     << (tamer_debug ? "tamer_debug_closure" : "tamer_closure")
     << " {\n"
     << "public:\n"
-    << "  " << _closure.type ().base_type () 
+    << "  " << closure().type().base_type () 
     << " (";
 
   if (need_self ()) {
@@ -629,8 +841,8 @@ tame_fn_t::output_firstfn(outputter_t *o)
     b << signature() << "\n{\n";
     
     // If no vars section was specified, do it now.
-    b << "  " << _closure.decl () << ";\n";
-    b << "  __cls = new " << _closure.type().base_type() << "(";
+    b << "  " << closure().decl() << ";\n";
+    b << "  __cls = new " << closure().type().base_type() << "(";
     if (_class.length() && !(_opts & STATIC_DECL))
 	b << "this" << (_args ? ", " : "");
     if (_args)
@@ -694,7 +906,7 @@ tame_fn_t::output(outputter_t *o)
 {
     strbuf b;
     if (!_class.length() || _declaration_only)
-	b << "class " << _closure.type().base_type() << ";";
+	b << "class " << closure().type().base_type() << ";";
     if (_declaration_only)
 	b << " " << signature() << ";";
     if (!_class.length())

@@ -12,7 +12,8 @@ const int success = 0;
 const int cancel = -ECANCELED;
 const int timeout = -ETIMEDOUT;
 const int signal = -EINTR;
-const int overflow = -E2BIG;
+const int overflow = -EOVERFLOW;
+const int closed = -EPIPE;
 }
 
 /** @brief  Create event that triggers @a e1 and @a e2 when triggered.
@@ -92,7 +93,7 @@ inline event<> make_canceler(const event<T0, T1, T2, T3> &e) {
 /** @brief  Cause @a e1 to cancel when @a e2 is canceled.
  *  @param  e1  Cancel destination event.
  *  @param  e2  Cancel source event.
- *  @return  @a e2.
+ *  @return  @a e1.
  *
  *  When @a e2 is canceled, @a e1 is canceled immediately.
  */
@@ -101,7 +102,7 @@ template <typename T0, typename T1, typename T2, typename T3,
 inline event<T0, T1, T2, T3> spread_cancel(const event<U0, U1, U2, U3> &e1, event<T0, T1, T2, T3> e2) {
     tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e1);
     e2.at_cancel(event<>(*r));
-    return e2;
+    return e1;
 }
 
 /** @brief  Add a cancel notifier to an event.

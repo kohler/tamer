@@ -41,7 +41,8 @@ tamed void read(int fd, void *buf, size_t size, ssize_t &size_out, event<int> do
 	amt = ::read(fd, static_cast<char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
-	    size_out = pos;
+	    if (&size_out)
+		size_out = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -68,7 +69,8 @@ tamed void write(int fd, const void *buf, size_t size, ssize_t &size_out, event<
 	amt = ::write(fd, static_cast<const char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
-	    size_out = pos;
+	    if (&size_out)
+		size_out = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -140,9 +142,10 @@ tamed void accept(int listenfd, struct sockaddr *name_out, socklen_t *namelen_ou
     tamer::at_fd_close(listenfd, closewatch);
     while (done && closewatch) {
 	fd = ::accept(listenfd, name_out, namelen_out);
-	if (fd >= 0)
+	if (fd >= 0) {
+	    make_nonblocking(fd);
 	    break;
-	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
 	    tamer::at_fd_read(listenfd, make_event(r));
 	    twait(r);
 	} else if (errno != EINTR) {

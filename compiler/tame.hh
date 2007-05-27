@@ -1,5 +1,5 @@
 // -*-c++-*-
-/* $Id: tame.hh,v 1.8 2007-05-25 18:29:58 kohler Exp $ */
+/* $Id: tame.hh,v 1.9 2007-05-27 07:49:48 kohler Exp $ */
 
 /*
  *
@@ -272,6 +272,7 @@ class type_t {
     void set_base_type(const str &t) { _base_type = t; }
     void set_pointer(const str &p) { _pointer = p; }
     void set_arrays(const str &a) { _arrays = a; }
+    str mangle() const;
     bool is_complete() const { return _base_type.length(); }
     bool is_void() const {
 	return (_base_type == "void" && _pointer.length() == 0);
@@ -363,13 +364,14 @@ public:
     vartab_t() {}
     vartab_t(const var_t &v) { add(v); }
     ~vartab_t() {}
-    size_t size () const { return _vars.size (); }
-    bool add(const var_t &v) ;
-    void declarations (strbuf &b, const str &padding) const;
-    void paramlist (strbuf &b, list_mode_t m, str prfx = "") const;
-    void initialize (strbuf &b, bool self) const;
-    bool exists (const str &n) const { return _tab.find(n) != _tab.end(); }
-    const var_t *lookup (const str &n) const;
+    size_t size() const { return _vars.size (); }
+    bool add(const var_t &v);
+    void declarations(strbuf &b, const str &padding) const;
+    void paramlist(strbuf &b, list_mode_t m, str prfx = "") const;
+    void initialize(strbuf &b, bool self) const;
+    bool exists(const str &n) const { return _tab.find(n) != _tab.end(); }
+    const var_t *lookup(const str &n) const;
+    void mangle(strbuf &b) const;
 
     std::vector<var_t> _vars;
     std::map<str, unsigned> _tab;
@@ -449,7 +451,7 @@ class tame_fn_t : public element_list_t {
 	  _isconst(c),
 	  _template(fn._template),
 	  _template_args(_class.length() ? template_args (_class) : ""),
-	  _closure(mk_closure(false)),
+	  _the_closure(0),
 	  _declaration_only(false),
 	  _args(d->params()), 
 	  _opts(fn._opts),
@@ -460,6 +462,9 @@ class tame_fn_t : public element_list_t {
 	  _lbrace_lineno(0),
 	  _vars(NULL),
 	  _after_vars_el_encountered(false) {
+    }
+    ~tame_fn_t() {
+	delete _the_closure;
     }
 
     vartab_t *stack_vars() { return &_stack_vars; }
@@ -506,12 +511,16 @@ class tame_fn_t : public element_list_t {
 
   void add_env (tame_env_t *g) ;
 
-    var_t closure() const { return _closure; }
+    const var_t &closure() const {
+	if (!_the_closure)
+	    _the_closure = new var_t(mk_closure(false));
+	return *_the_closure;
+    }
 
   void hit_tame_block () { _n_blocks++; }
 
-  str closure_nm () const { return _closure.name (); }
-  str reenter_fn  () const ;
+    str closure_nm() const { return closure().name (); }
+    str reenter_fn() const ;
 
   str label (str s) const;
   str label (unsigned id) const ;
@@ -542,10 +551,10 @@ class tame_fn_t : public element_list_t {
     const bool _isconst;
     str _template;
     str _template_args;
-    const var_t _closure;
+    mutable var_t *_the_closure;
     bool _declaration_only;
 
-    var_t mk_closure (bool ref) const ;
+    var_t mk_closure(bool ref) const;
 
     vartab_t *_args;
     vartab_t _stack_vars;

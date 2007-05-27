@@ -34,9 +34,9 @@ class mutex { public:
     int _locked;
     tamerpriv::debuffer<event<> > _waiters;
 
-    class acquire__closure;
+    class acquireiQ__closure;
     void acquire(int shared, event<> done);
-    void acquire(acquire__closure &, unsigned);
+    void acquire(acquireiQ__closure &, unsigned);
 
     void wake();
     

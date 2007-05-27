@@ -1,6 +1,7 @@
 lib_LTLIBRARIES = libtamer.la
 libtamer_la_SOURCES = \
 	adapter.hh \
+	bufferedio.hh bufferedio.tt \
 	driver.hh \
 	dbase.cc \
 	dlibevent.cc \
@@ -18,6 +19,7 @@ libtamer_la_SOURCES = \
 	xevent.hh
 pkginclude_HEADERS = \
 	adapter.hh \
+	bufferedio.hh \
 	driver.hh \
 	event.hh \
 	fileio.hh \
@@ -38,6 +40,7 @@ TAMER = ../compiler/tamer
 
 fileio.cc: $(TAMER) fileio.tt
 lock.cc: $(TAMER) lock.tt
+bufferedio.cc: $(TAMER) bufferedio.tt
 
 clean-local:
-	-rm -f fileio.cc lock.cc
+	-rm -f fileio.cc lock.cc bufferedio.cc

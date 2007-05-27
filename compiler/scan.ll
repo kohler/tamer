@@ -1,5 +1,5 @@
 /* -*-fundamental-*- */
-/* $Id: scan.ll,v 1.5 2007-05-25 15:43:04 kohler Exp $ */
+/* $Id: scan.ll,v 1.6 2007-05-27 07:49:48 kohler Exp $ */
 
 /*
  *
@@ -353,7 +353,7 @@ twait/[ \t\n({/]           { return tame_ret (TWAIT_ENTER, T_TWAIT); }
 }
 
 <INITIAL>{
-tamed/[ \t\n/]   { return tame_ret (SIG_PARSE, T_TAMED); }
+tamed/[ \t\n/]   { return tame_ret(SIG_PARSE, T_TAMED); }
 [^t\n"/]+|[t/]   { yylval.str = lstr(lineno, yytext); return T_PASSTHROUGH ; }
 \n		 { ++lineno; yylval.str = lstr(lineno, yytext); return T_PASSTHROUGH; }
 \"		 { yy_push_state (QUOTE); return std_ret (T_PASSTHROUGH); }
@@ -361,10 +361,10 @@ tamed/[ \t\n/]   { return tame_ret (SIG_PARSE, T_TAMED); }
 
 <CXX_COMMENT>{
 \n		{ ++lineno; yy_pop_state (); GOBBLE_RET; }
-"//"		{ yy_push_state (CXX_COMMENT); gobble_flag = 0;
-	          return std_ret (T_PASSTHROUGH); }
-"/*"		{ yy_push_state (C_COMMENT); gobble_flag = 0;
-	          return std_ret (T_PASSTHROUGH); }
+"//"		{ yy_push_state(CXX_COMMENT); gobble_flag = 0;
+	          return std_ret(T_PASSTHROUGH); }
+"/*"		{ yy_push_state(C_COMMENT); gobble_flag = 0;
+	          return std_ret(T_PASSTHROUGH); }
 [^T\n]+|[T]	{ GOBBLE_RET; }
 TAME_OFF	{ tame_on = 0; GOBBLE_RET; }
 TAME_ON		{ tame_on = 1; GOBBLE_RET; }
