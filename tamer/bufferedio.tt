@@ -3,7 +3,6 @@
 #include <tamer/fileio.hh>
 
 namespace tamer {
-namespace fileio {
 
 buffer::buffer(size_t s)
     : _head(0), _tail(0)
@@ -18,9 +17,9 @@ buffer::~buffer()
     delete[] _buf;
 }
 
-ssize_t buffer::fill_more(int fd, const event<int> &done, const event<> &closewatch)
+ssize_t buffer::fill_more(fd &f, const event<int> &done, const event<> &closewatch)
 {
-    if (fd < 0)
+    if (!f)
 	return -EOVERFLOW;
     if (!done || !closewatch)
 	return -ECANCELED;
@@ -40,11 +39,11 @@ ssize_t buffer::fill_more(int fd, const event<int> &done, const event<> &closewa
 
     ssize_t amt;
     if ((_tail & (_size - 1)) == 0 && (_head & (_size - 1)) == 0)
-	amt = ::read(fd, _buf, _size);
+	amt = ::read(f.value(), _buf, _size);
     else if ((_tail & (_size - 1)) < (_head & (_size - 1)))
-	amt = ::read(fd, _buf + (_tail & (_size - 1)), (_head & (_size - 1)) - (_tail & (_size - 1)));
+	amt = ::read(f.value(), _buf + (_tail & (_size - 1)), (_head & (_size - 1)) - (_tail & (_size - 1)));
     else
-	amt = ::read(fd, _buf + (_tail & (_size - 1)), _size - (_tail & (_size - 1)));
+	amt = ::read(f.value(), _buf + (_tail & (_size - 1)), _size - (_tail & (_size - 1)));
 
     if (amt != (ssize_t) -1)
 	return amt;
@@ -54,7 +53,7 @@ ssize_t buffer::fill_more(int fd, const event<int> &done, const event<> &closewa
 	return -errno;
 }
 
-tamed void buffer::fill_until(int fd, char c, size_t max_size, size_t &out_size, event<int> done)
+tamed void buffer::fill_until(fd &f, char c, size_t max_size, size_t &out_size, event<int> done)
 {
     tvars {
 	int ret = -ECANCELED;
@@ -65,8 +64,8 @@ tamed void buffer::fill_until(int fd, char c, size_t max_size, size_t &out_size,
     }
     
     out_size = 0;
-    if (fd >= 0)
-	tamer::at_fd_close(fd, closewatch);
+    if (f)
+	f.at_close(closewatch);
 
     while (done) {
 	for (; pos != _tail && pos != _head + max_size; pos++)
@@ -76,16 +75,16 @@ tamed void buffer::fill_until(int fd, char c, size_t max_size, size_t &out_size,
 		goto done;
 	    }
 
-	if (pos == _head + max_size || fd < 0) {
+	if (pos == _head + max_size || !f) {
 	    ret = -E2BIG;
 	    break;
 	}
 
 	assert(pos == _tail);
-	amt = fill_more(fd, done, closewatch);
+	amt = fill_more(f, done, closewatch);
 	pos = _tail;
 	if (amt == -EAGAIN) {
-	    tamer::at_fd_read(fd, make_event(r));
+	    tamer::at_fd_read(f.value(), make_event(r));
 	    twait(r);
 	} else if (amt <= 0) {
 	    ret = (amt == 0 ? tamer::outcome::closed : amt);
@@ -99,7 +98,7 @@ tamed void buffer::fill_until(int fd, char c, size_t max_size, size_t &out_size,
     done.trigger(ret);
 }
 
-tamed void buffer::take_until(int fd, char c, size_t max_size, std::string &str, event<int> done)
+tamed void buffer::take_until(fd &f, char c, size_t max_size, std::string &str, event<int> done)
 {
     tvars {
 	size_t size;
@@ -110,7 +109,7 @@ tamed void buffer::take_until(int fd, char c, size_t max_size, std::string &str,
     str = std::string();
 
     done.at_cancel(make_event(r));
-    fill_until(fd, c, max_size, size, make_event(r, ret));
+    fill_until(f, c, max_size, size, make_event(r, ret));
     twait(r);
 
     if (done && ret == 0) {
@@ -126,4 +125,4 @@ tamed void buffer::take_until(int fd, char c, size_t max_size, std::string &str,
     done.trigger(ret);
 }
 
-}}
+}

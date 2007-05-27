@@ -65,6 +65,9 @@ class fd {
     class closure__accept__P8sockaddrP9socklen_tR2fdQ; void accept(closure__accept__P8sockaddrP9socklen_tR2fdQ &, unsigned);
     class closure__connect__PK8sockaddr9socklen_tQ; void connect(closure__connect__PK8sockaddr9socklen_tQ &, unsigned);
 
+    friend bool operator==(const fd &, const fd &);
+    friend bool operator!=(const fd &, const fd &);
+
 };
 
 inline fd::fd()
@@ -88,7 +91,7 @@ inline fd::~fd() {
 
 inline fd &fd::operator=(const fd &other) {
     if (other._p)
-	++_p->refcount;
+	++other._p->refcount;
     if (_p && --_p->refcount == 0)
 	close();
     _p = other._p;
@@ -131,6 +134,14 @@ inline void fd::write(const std::string &buf, const event<int> &done) {
 
 inline void fd::close() {
     close(event<int>());
+}
+
+inline bool operator==(const fd &a, const fd &b) {
+    return a._p == b._p;
+}
+
+inline bool operator!=(const fd &a, const fd &b) {
+    return a._p != b._p;
 }
 
 }
