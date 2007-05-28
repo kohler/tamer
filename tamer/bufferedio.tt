@@ -1,6 +1,5 @@
 // -*- mode: c++ -*-
 #include <tamer/bufferedio.hh>
-#include <tamer/fileio.hh>
 
 namespace tamer {
 
