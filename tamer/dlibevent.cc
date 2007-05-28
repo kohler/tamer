@@ -130,15 +130,9 @@ void driver_libevent::at_fd(int fd, int action, const event<> &trigger)
     
     eevent *e = _efree;
     _efree = e->next;
-
-    if (action == fdclose) {
-	e->libevent.ev_fd = fd;
-	e->libevent.ev_events = 0;
-    } else {
-	event_set(&e->libevent, fd, (action == fdwrite ? EV_WRITE : EV_READ),
-		  libevent_trigger, e);
-	event_add(&e->libevent, 0);
-    }
+    event_set(&e->libevent, fd, (action == fdwrite ? EV_WRITE : EV_READ),
+	      libevent_trigger, e);
+    event_add(&e->libevent, 0);
     
     e->next = _efd;
     e->pprev = &_efd;
@@ -154,10 +148,7 @@ void driver_libevent::kill_fd(int fd)
     eevent **ep = &_efd;
     for (eevent *e = *ep; e; e = *ep)
 	if (e->libevent.ev_fd == fd) {
-	    if (e->libevent.ev_events == 0) // fdclose
-		e->trigger.trigger();
-	    else
-		event_del(&e->libevent);
+	    event_del(&e->libevent);
 	    e->trigger.~event();
 	    *ep = e->next;
 	    if (*ep)

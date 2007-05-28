@@ -76,17 +76,6 @@ inline void at_fd_write(int fd, const event<> &e)
     driver::main->at_fd_write(fd, e);
 }
 
-/** @brief  Register event for file descriptor close.
- *  @param  fd  File descriptor.
- *  @param  e   Event.
- *
- *  Triggers @a e when @a fd is closed.
- */
-inline void at_fd_close(int fd, const event<> &e)
-{
-    driver::main->at_fd_close(fd, e);
-}
-
 /** @brief  Register event for a given time.
  *  @param  expiry  Time.
  *  @param  e       Event.

@@ -11,7 +11,7 @@ class driver { public:
     virtual inline ~driver();
 
     // basic functions
-    enum { fdread = 0, fdwrite = 1, fdclose = 2 }; // the order is important
+    enum { fdread = 0, fdwrite = 1 }; // the order is important
     virtual void at_fd(int fd, int action, const event<> &e) = 0;
     virtual void at_time(const timeval &expiry, const event<> &e) = 0;
     virtual void at_asap(const event<> &e);
@@ -19,7 +19,6 @@ class driver { public:
 
     inline void at_fd_read(int fd, const event<> &e);
     inline void at_fd_write(int fd, const event<> &e);
-    inline void at_fd_close(int fd, const event<> &e);
 
     inline void at_delay(timeval delay, const event<> &e);
     void at_delay(double delay, const event<> &e);
@@ -76,11 +75,6 @@ inline void driver::at_fd_read(int fd, const event<> &e)
 inline void driver::at_fd_write(int fd, const event<> &e)
 {
     at_fd(fd, fdwrite, e);
-}
-
-inline void driver::at_fd_close(int fd, const event<> &e)
-{
-    at_fd(fd, fdclose, e);
 }
 
 inline void driver::at_delay(timeval delay, const event<> &e)

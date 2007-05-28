@@ -55,7 +55,7 @@ class driver_tamer : public driver { public:
 
     tfd *_fd;
     int _nfds;
-    fd_set _fdset[3];
+    fd_set _fdset[2];
 
     tamerpriv::debuffer<event<> > _asap;
 
@@ -85,7 +85,6 @@ driver_tamer::driver_tamer()
     expand_timers();
     FD_ZERO(&_fdset[fdread]);
     FD_ZERO(&_fdset[fdwrite]);
-    FD_ZERO(&_fdset[fdclose]);
     set_now();
 }
 
@@ -230,15 +229,12 @@ void driver_tamer::at_fd(int fd, int action, const event<> &trigger)
 void driver_tamer::kill_fd(int fd)
 {
     assert(fd >= 0);
-    if (fd < _nfds && (FD_ISSET(fd, &_fdset[fdread]) || FD_ISSET(fd, &_fdset[fdwrite]) || FD_ISSET(fd, &_fdset[fdclose]))) {
+    if (fd < _nfds && (FD_ISSET(fd, &_fdset[fdread]) || FD_ISSET(fd, &_fdset[fdwrite]))) {
 	FD_CLR(fd, &_fdset[fdread]);
 	FD_CLR(fd, &_fdset[fdwrite]);
-	FD_CLR(fd, &_fdset[fdclose]);
 	tfd **pprev = &_fd, *t;
 	while ((t = *pprev))
 	    if (t->fd == fd) {
-		if (t->action == fdclose)
-		    t->e.trigger();
 		t->e.~event();
 		*pprev = t->next;
 		t->next = _fdfree;
@@ -304,7 +300,6 @@ void driver_tamer::once()
 	    /* nada */;
 	FD_ZERO(&_fdset[fdread]);
 	FD_ZERO(&_fdset[fdwrite]);
-	FD_ZERO(&_fdset[fdclose]);
 	_nfds = 0;
 	tfd **pprev = &_fd, *t;
 	while ((t = *pprev))
