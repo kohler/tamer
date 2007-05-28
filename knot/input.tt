@@ -4,7 +4,6 @@
 #include <unistd.h>
 
 #include "input.hh"
-#include <tamer/fileio.hh>
 
 
 #ifndef DEBUG_input_c

@@ -14,7 +14,7 @@
 #include "http.hh"
 #include "httphdrs.h"
 
-#include <tamer/fileio.hh>
+#include <tamer/fd.hh>
 #include <fcntl.h>
 #include <errno.h>
 
@@ -153,41 +153,40 @@ get_request_filename(http_request *request, tamer::event<char *> ev)
 }
 
 tamed static void
-get_request_fd(http_request *request, tamer::event<int> ev)
+get_request_fd(http_request *request, tamer::event<tamer::fd> ev)
 {
     tvars {
-	char *filename (NULL);
-	int rc;
+	char *filename(NULL);
+	tamer::fd f(-EINVAL);
     }
 
     twait { get_request_filename(request, make_event(filename)); }
     if (filename != NULL) {
-	twait { tamer::fileio::open(filename, O_RDONLY, 0, make_event(rc)); }
-	if (rc < 0)
-	    warn << "Error opening file " << filename << ": " << strerror(-rc) << "\n";
-    } else
-	rc = -EINVAL;
+	twait { tamer::fd::open(filename, O_RDONLY, 0, make_event(f)); }
+	if (f.error())
+	    warn << "Error opening file " << filename << ": " << strerror(-f.error()) << "\n";
+    }
     
-    ev.trigger(rc);
+    ev.trigger(f);
 }
 
 #define BUFSZ 8192
 
 tamed static void
-process_client_nocache(http_request *request, int client, tamer::event<int> ev)
+process_client_nocache(http_request *request, tamer::fd client, tamer::event<int> ev)
 {
     tvars {
-	int fd;
+	tamer::fd f;
 	int success (1);
         int written (0);
-	ssize_t n;
+	size_t n;
 	int rc;
 	char buf[BUFSZ];
     }
 
-    twait { get_request_fd (request, make_event(fd)); }
+    twait { get_request_fd (request, make_event(f)); }
 
-    if (fd >= 0) 
+    if (f) 
     {
 #if USE_SENDFILE > 0
 
@@ -234,15 +233,15 @@ NOTE-- this code is probably broken
 #else
         while (1)
         {
-	    twait { tamer::fileio::read(fd, buf, BUFSZ, n, make_event(rc)); }
-	    if (n < 0) {
+	    twait { f.read(buf, BUFSZ, n, make_event(rc)); }
+	    if (rc < 0) {
                 perror("read");
                 success = 0;
                 break;
             } else if (n == 0)
 		break;
 
-	    twait { tamer::fileio::write(client, buf, n, n, make_event(rc)); }
+	    twait { client.write(buf, n, n, make_event(rc)); }
 	    if (rc < 0) {
 		perror("write");
 		success = 0;
@@ -279,12 +278,12 @@ get_request_entry(http_request *request, tamer::event<refptr<cache_entry> > ev)
 }
 
 tamed static void
-process_client_cache(http_request *request, int client, tamer::event<int> ev)
+process_client_cache(http_request *request, tamer::fd client, tamer::event<int> ev)
 {
     tvars {
 	int success (0);
 	refptr<cache_entry> entry;
-        ssize_t written (0);
+        size_t written (0);
         int rc(0);
         char *p (NULL); 
 	char *bigstuff (NULL);
@@ -311,7 +310,7 @@ process_client_cache(http_request *request, int client, tamer::event<int> ev)
         }
 
 
-	twait { tamer::fileio::write(client, entry->data(), entry->size(), written, make_event(rc)); }
+	twait { client.write(entry->data(), entry->size(), written, make_event(rc)); }
 
 	pthread_mutex_lock(&g_cache_mutex);
 	g_bytes_sent += written;
@@ -338,7 +337,7 @@ process_client_cache(http_request *request, int client, tamer::event<int> ev)
 }
 
 tamed static void
-process_client(int client)
+process_client(tamer::fd client)
 {
     tvars {
 	http_request request;
@@ -360,7 +359,7 @@ process_client(int client)
     }
     */
 
-    http_init(&request, client);
+    http_init(&request, client.value());
     
     while (!done)
     {
@@ -388,7 +387,7 @@ process_client(int client)
         if (!success && !request.closed)
         {
             int len = strlen(HEADER_404);
-            if (::write(client, HEADER_404, len) != len)
+            if (::write(client.value(), HEADER_404, len) != len)
             {
                 ;
             } else {
@@ -413,21 +412,19 @@ process_client(int client)
         pthread_mutex_unlock(&g_cache_mutex);
     }
 
-    tamer::fileio::close (client);
+    client.close();
     g_conn_active --;
    // warn ("'thread' exiting...\n");
 }
 
 tamed static void
-accept_loop(int s)
+accept_loop(tamer::fd s)
 {
     tvars {
 	socklen_t socklen;
-	int c;
+	tamer::fd c;
 	int i (0);
     }
-
-    tamer::fileio::make_nonblocking(s);
 
     /*
       twait { delaycb (0, 0, mkevent ()); }
@@ -448,10 +445,10 @@ accept_loop(int s)
 
         debug("thread %d waiting\n", id);
 
-	twait { tamer::fileio::accept(s, (struct sockaddr *) &caddr, &socklen, make_event(c)); }
+	twait { s.accept((struct sockaddr *) &caddr, &socklen, make_event(c)); }
 	i++;
 
-	if (c < 0) {
+	if (!c) {
 	    perror("accept");
 	    //exit(1);
 	    continue;
@@ -477,7 +474,7 @@ accept_loop(int s)
 	    }
 #endif
             //if (setsockopt (sock, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof (optval)) < 0)
-            if (setsockopt (c, sol, TCP_NODELAY, &optval, sizeof (optval)) < 0)
+            if (setsockopt(c.value(), sol, TCP_NODELAY, &optval, sizeof (optval)) < 0)
             {
                 perror("setsockopt");
                 continue;
@@ -489,10 +486,7 @@ accept_loop(int s)
         //make_node();
 
 	g_conn_active ++;
-	if (tamer::fileio::make_nonblocking(c) < 0)
-	    fatal("can't set fd %d to nonblocking IO!!\n", c);
-	process_client (c);
-
+	process_client(c);
     }
 }
 
@@ -511,7 +505,7 @@ per_ival (unsigned long long n, long long i)
 }
 
 tamed static void 
-runloop (int s)
+runloop(tamer::fd s)
 {
     tvars {
 	long long ival ;
@@ -578,11 +572,11 @@ runloop (int s)
 }
 
 tamed static void
-exitloop(int s)
+exitloop(tamer::fd s)
 {
     twait { tamer::at_signal(SIGINT, make_event()); }
     printf ("Got shutdown signal...\n");
-    tamer::fileio::close(s);
+    s.close();
     clear_cache();
     exit(0);
 }
@@ -673,9 +667,11 @@ main2 (int argc, char **argv)
         exit(1);
     }
 
-    accept_loop(s);
-    runloop(s);
-    exitloop(s);
+    tamer::fd sx(s);
+    tamer::fd::make_nonblocking(s);
+    accept_loop(sx);
+    runloop(sx);
+    exitloop(sx);
     wakeloop();
 }
 

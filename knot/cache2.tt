@@ -3,7 +3,7 @@
 #include "cache2.hh"
 #include "httphdrs.h"
 #include <tamer/tamer.hh>
-#include <tamer/fileio.hh>
+#include <tamer/fd.hh>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -54,11 +54,11 @@ cache_new(const std::string &filename, tamer::event<refptr<cache_entry> > ev)
 {
     tvars {
 	refptr<cache_entry> result;
-	int fd;
+	tamer::fd f;
         struct stat fd_stat;
         size_t length(0);
         int hdrlen(0);
-	ssize_t ssrc;
+	size_t ssrc;
 	int rc(0);
 	char *data;
 	//#if LOCKS > 0
@@ -73,13 +73,13 @@ cache_new(const std::string &filename, tamer::event<refptr<cache_entry> > ev)
     //#endif
     
     twait {
-	tamer::fileio::open(filename.c_str(), O_RDONLY, make_event(fd));
+	tamer::fd::open(filename.c_str(), O_RDONLY, make_event(f));
     }
 
-    if (fd >= 0) {
+    if (f) {
 	// warn ("open %s\n", filename.cstr ());
 	twait {
-	    tamer::fileio::fstat(fd, fd_stat, make_event(rc));
+	    f.fstat(fd_stat, make_event(rc));
 	}
 
 	if (rc < 0) {
@@ -99,7 +99,7 @@ cache_new(const std::string &filename, tamer::event<refptr<cache_entry> > ev)
 	    }
 
 	    twait {
-		tamer::fileio::read(fd, data + hdrlen, length, ssrc, make_event(rc));
+		f.read(data + hdrlen, length, ssrc, make_event(rc));
 	    }
 
 	    if (rc >= 0)
@@ -109,11 +109,11 @@ cache_new(const std::string &filename, tamer::event<refptr<cache_entry> > ev)
 			filename.c_str(), strerror(-rc));
 
 	    twait {
-		tamer::fileio::close(fd, make_event(rc));
+		f.close(make_event(rc));
 	    }
 	}
     } else {
-	fprintf(stderr, "warning: error opening file %s: %s\n", filename.c_str(), strerror(-fd));
+	fprintf(stderr, "warning: error opening file %s: %s\n", filename.c_str(), strerror(-f.error()));
     }
     ev.trigger(result);
 }

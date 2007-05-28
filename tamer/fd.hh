@@ -19,7 +19,10 @@ class fd {
     inline fd(const fd &other);
     inline ~fd();
 
-    static int make_nonblocking(int fd);
+    static int make_nonblocking(int f);
+
+    static void open(const char *filename, int flags, mode_t mode, event<fd> f);
+    static inline void open(const char *filename, int flags, const event<fd> &f);
     static fd socket(int domain, int type, int protocol);
 
     typedef fdimp *fd::*unspecified_bool_type;
@@ -31,6 +34,8 @@ class fd {
 
     inline void at_close(event<> e);
 
+    void fstat(struct stat &stat_out, event<int> done);
+
     void read(void *buf, size_t size, size_t &nread, event<int> done);
     void write(const void *buf, size_t size, size_t &nwritten, event<int> done);
     inline void write(const void *buf, size_t size, const event<int> &done);
@@ -38,7 +43,7 @@ class fd {
     inline void write(const std::string &buf, const event<int> &done);
 
     int listen(int backlog = 32);
-    void accept(struct sockaddr *name, socklen_t *namelen, fd &newfd, event<int> done);
+    void accept(struct sockaddr *name, socklen_t *namelen, event<fd> done);
     void connect(const struct sockaddr *name, socklen_t namelen, event<int> done);
     
     void close(event<int> done);
@@ -59,11 +64,11 @@ class fd {
 
     fdimp *_p;
 
-    class closure__read__PvkRkQ; void read(closure__read__PvkRkQ &, unsigned);
-    class closure__write__PKvkRkQ; void write(closure__write__PKvkRkQ &, unsigned);
-    class closure__write__SsRkQ; void write(closure__write__SsRkQ &, unsigned);
-    class closure__accept__P8sockaddrP9socklen_tR2fdQ; void accept(closure__accept__P8sockaddrP9socklen_tR2fdQ &, unsigned);
-    class closure__connect__PK8sockaddr9socklen_tQ; void connect(closure__connect__PK8sockaddr9socklen_tQ &, unsigned);
+    class closure__read__PvkRkQi_; void read(closure__read__PvkRkQi_ &, unsigned);
+    class closure__write__PKvkRkQi_; void write(closure__write__PKvkRkQi_ &, unsigned);
+    class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &, unsigned);
+    class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_ &, unsigned);
+    class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_ &, unsigned);
 
     friend bool operator==(const fd &, const fd &);
     friend bool operator!=(const fd &, const fd &);
@@ -96,6 +101,10 @@ inline fd &fd::operator=(const fd &other) {
 	close();
     _p = other._p;
     return *this;
+}
+
+inline void fd::open(const char *filename, int flags, const event<fd> &f) {
+    open(filename, flags, 0777, f);
 }
 
 inline fd::operator unspecified_bool_type() const {

@@ -424,7 +424,8 @@ void mangler::do_base(const str &new_base)
 
 str mangler::s()
 {
-    make_base("");
+    if (_ptr.length() || _cvflag || _lflag)
+	make_base("");
     _result << _base;
     return _result.str();
 }
@@ -533,18 +534,20 @@ mangler::mangler(const str &s)
 	    if (i != s.end())
 		i++;
 	} else if (*i == '<') {
+	    str::const_iterator x = i+1;
 	    str::const_iterator j = i+1;
 	    int inner = 0;
 	    strbuf b;
-	    for (i++; i != s.end() && (*i != '>' || !inner); i++)
+	    for (++i; i != s.end() && (*i != '>' || inner); ++i)
 		if (*i == '<')
 		    inner++;
 		else if (*i == '>')
 		    inner--;
-		else if (*i == ',') {
+		else if (*i == ',' && !inner) {
 		    b << mangler(str(j, i)).s();
 		    j = i+1;
 		}
+	    b << mangler(str(j, i)).s();
 	    if (i != s.end())
 		i++;
 	    if (_base == "5event") {
@@ -552,7 +555,9 @@ mangler::mangler(const str &s)
 		_cvflag &= ~8;
 	    }
 	    str targs = b.str();
-	    if (_base != "Q" || targs.length())
+	    if (_base == "Q")
+		_base = _base + targs + "_";
+	    else
 		_base = _base + "I" + targs + "E";
 	} else if (*i == '.' && i+2 < s.end() && i[1] == '.' && i[2] == '.') {
 	    do_base("z");

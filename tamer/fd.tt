@@ -21,6 +21,21 @@ int fd::make_nonblocking(int f)
     return ::fcntl(f, F_SETFL, flags | O_NONBLOCK);
 }
 
+void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
+{
+    int f = ::open(filename, flags | O_NONBLOCK, mode);
+    done.trigger(fd(f == -1 ? -errno : f));
+}
+
+void fd::fstat(struct stat &stat_out, event<int> done)
+{
+    if (*this) {
+	int x = ::fstat(value(), &stat_out);
+	done.trigger(x == -1 ? -errno : 0);
+    } else
+	done.trigger(-EBADF);
+}
+
 tamed void fd::read(void *buf, size_t size, size_t &size_out, event<int> done)
 {
     tvars {
@@ -121,7 +136,7 @@ int fd::listen(int backlog)
 	return (::listen(_p->fd, backlog) == 0 ? 0 : -errno);
 }
 
-tamed void fd::accept(struct sockaddr *name_out, socklen_t *namelen_out, fd &newfd, event<int> done)
+tamed void fd::accept(struct sockaddr *name_out, socklen_t *namelen_out, event<fd> done)
 {
     tvars {
 	int f = -ECANCELED;
@@ -129,10 +144,8 @@ tamed void fd::accept(struct sockaddr *name_out, socklen_t *namelen_out, fd &new
 	event<> closewatch(r);
     }
 
-    newfd = fd();
-
     if (!*this) {
-	done.trigger(-EBADF);
+	done.trigger(fd());
 	return;
     }
 
@@ -143,7 +156,6 @@ tamed void fd::accept(struct sockaddr *name_out, socklen_t *namelen_out, fd &new
 	f = ::accept(_p->fd, name_out, namelen_out);
 	if (f >= 0) {
 	    make_nonblocking(f);
-	    newfd = fd(f); 
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
 	    tamer::at_fd_read(_p->fd, make_event(r));
@@ -155,7 +167,7 @@ tamed void fd::accept(struct sockaddr *name_out, socklen_t *namelen_out, fd &new
     }
 
     _p->rlock.release();
-    done.trigger(f >= 0 ? 0 : f);
+    done.trigger(fd(f));
 }
 
 tamed void fd::connect(const struct sockaddr *name, socklen_t namelen, event<int> done)

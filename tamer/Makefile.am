@@ -9,7 +9,6 @@ libtamer_la_SOURCES = \
 	dsignal.cc \
 	event.hh \
 	fd.hh fd.tt \
-	fileio.hh fileio.tt \
 	lock.hh lock.tt \
 	rendezvous.hh \
 	tamer.hh \
@@ -24,7 +23,6 @@ pkginclude_HEADERS = \
 	driver.hh \
 	event.hh \
 	fd.hh \
-	fileio.hh \
 	lock.hh \
 	rendezvous.hh \
 	tamer.hh \
@@ -41,9 +39,8 @@ TAMER = ../compiler/tamer
 	$(TAMER) -o $@ -c $< || (rm $@ && false)
 
 fd.cc: $(TAMER) fd.tt
-fileio.cc: $(TAMER) fileio.tt
 lock.cc: $(TAMER) lock.tt
 bufferedio.cc: $(TAMER) bufferedio.tt
 
 clean-local:
-	-rm -f fileio.cc lock.cc bufferedio.cc fd.cc
+	-rm -f lock.cc fd.cc bufferedio.cc
