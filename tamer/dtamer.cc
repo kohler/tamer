@@ -128,7 +128,7 @@ void driver_tamer::expand_timers()
 	_tfree = &ngroup->t[i];
     }
 
-    ttimer **t = new ttimer *[ncap];
+    ttimer **t = new ttimer *[_tcap + ncap];
     memcpy(t, _t, sizeof(ttimer *) * _nt);
     delete[] _t;
     _t = t;
