@@ -21,6 +21,24 @@ int fd::make_nonblocking(int f)
     return ::fcntl(f, F_SETFL, flags | O_NONBLOCK);
 }
 
+tamed static void fd_closer(fd f, event<> &e)
+{
+    tvars { rendezvous<> r; }
+    if (f) {
+	f.at_close(make_event(r));
+	e = make_event(r);
+	twait(r);
+	f.close();
+    }
+}
+
+event<> fd::closer()
+{
+    event<> e;
+    fd_closer(*this, e);
+    return e;
+}
+
 void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
 {
     int f = ::open(filename, flags | O_NONBLOCK, mode);

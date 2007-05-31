@@ -33,6 +33,7 @@ class fd {
     inline int value() const;
 
     inline void at_close(event<> e);
+    event<> closer();
 
     void fstat(struct stat &stat_out, event<int> done);
 
