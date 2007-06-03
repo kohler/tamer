@@ -36,7 +36,8 @@ event<> hard_distribute(const event<> &e1, const event<> &e2);
 class simple_event { public:
 
     inline simple_event()
-	: _refcount(1), _r(0), _rid(0), _r_next(0), _r_pprev(0), _canceler(0) {
+	: _refcount(1), _weak_refcount(0),
+	  _r(0), _rid(0), _r_next(0), _r_pprev(0), _canceler(0) {
     }
 
     template <typename R, typename I0, typename I1>
