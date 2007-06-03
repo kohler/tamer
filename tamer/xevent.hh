@@ -5,14 +5,14 @@ namespace tamer {
 namespace tamerpriv {
 
 template <typename R, typename I0, typename I1>
-simple_event::simple_event(R &r, const I0 &i0, const I1 &i1)
+inline simple_event::simple_event(R &r, const I0 &i0, const I1 &i1)
     : _refcount(1), _weak_refcount(0), _canceler(0)
 {
     r.add(this, i0, i1);
 }
 
 template <typename R, typename I0>
-simple_event::simple_event(R &r, const I0 &i0)
+inline simple_event::simple_event(R &r, const I0 &i0)
     : _refcount(1), _weak_refcount(0), _canceler(0)
 {
     r.add(this, i0);
