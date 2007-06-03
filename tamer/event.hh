@@ -1,6 +1,7 @@
 #ifndef TAMER_EVENT_HH
 #define TAMER_EVENT_HH 1
 #include <tamer/xevent.hh>
+#include <functional>
 namespace tamer {
 
 /** @file <tamer/event.hh>
@@ -86,7 +87,7 @@ class event { public:
      */
     template <typename R, typename I0, typename I1>
     event(R &r, const I0 &i0, const I1 &i1, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
-	: _e(new tamerpriv::eventx<T0, T1, T2, T3>(r, i0, i1, s0, s1, s2, s3)) {
+	: _e(new tamerpriv::eventx<T0, T1, T2, T3>(r, i0, i1, &s0, &s1, &s2, &s3)) {
     }
 
     /** @brief  Construct a one-ID, four-slot event on rendezvous @a r.
@@ -99,7 +100,7 @@ class event { public:
      */
     template <typename R, typename I0>
     event(R &r, const I0 &i0, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
-	: _e(new tamerpriv::eventx<T0, T1, T2, T3>(r, i0, s0, s1, s2, s3)) {
+	: _e(new tamerpriv::eventx<T0, T1, T2, T3>(r, i0, &s0, &s1, &s2, &s3)) {
     }
 
     /** @brief  Construct a no-ID, four-slot event on rendezvous @a r.
@@ -111,7 +112,7 @@ class event { public:
      */
     template <typename R>
     event(R &r, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
-	: _e(new tamerpriv::eventx<T0, T1, T2, T3>(r, s0, s1, s2, s3)) {
+	: _e(new tamerpriv::eventx<T0, T1, T2, T3>(r, &s0, &s1, &s2, &s3)) {
     }
 
     /** @brief  Construct event for the same occurrence as @a e.
@@ -150,27 +151,6 @@ class event { public:
 	return _e->empty();
     }
 
-    /** @brief  Register a cancel notifier.
-     *  @param  e  Cancel notifier.
-     *
-     *  If this event is empty, @a e is triggered immediately.  Otherwise,
-     *  when this event is triggered, cancels @a e; when this event is
-     *  canceled, triggers @a e.
-     */
-    void at_cancel(const event<> &e) {
-	_e->at_cancel(e);
-    }
-
-    /** @brief  Register a completion notifier.
-     *  @param  e  Completion notifier.
-     *
-     *  If this event is empty, @a e is triggered immediately.  Otherwise,
-     *  when this event is triggered or canceled, triggers @a e.
-     */
-    void at_complete(const event<> &e) {
-	_e->at_complete(e);
-    }
-
     /** @brief  Trigger event.
      *  @param  v0  First trigger value.
      *  @param  v1  Second trigger value.
@@ -182,6 +162,26 @@ class event { public:
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3) {
 	_e->trigger(v0, v1, v2, v3);
     }
+
+    /** @brief  Trigger event.
+     *  @param  v0  First trigger value.
+     *  @param  v1  Second trigger value.
+     *  @param  v2  Third trigger value.
+     *  @param  v3  Fourth trigger value.
+     *
+     *  Does nothing if event is empty.
+     *
+     *  @note   This is a synonym for trigger().
+     */
+    void operator()(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3) {
+	_e->trigger(v0, v1, v2, v3);
+    }
+
+    typedef void result_type;
+    typedef const T0 &first_argument_type;
+    typedef const T1 &second_argument_type;
+    typedef const T2 &third_argument_type;
+    typedef const T3 &fourth_argument_type;
 
     /** @brief  Trigger event without setting trigger values.
      *
@@ -198,6 +198,37 @@ class event { public:
     void cancel() {
 	_e->complete(false);
     }
+
+    /** @brief  Register a completion notifier.
+     *  @param  e  Completion notifier.
+     *
+     *  If this event is empty, @a e is triggered immediately.  Otherwise,
+     *  when this event is triggered or canceled, triggers @a e.
+     */
+    void at_complete(const event<> &e) {
+	_e->at_complete(e);
+    }
+
+    /** @brief  Register a cancel notifier.
+     *  @param  e  Cancel notifier.
+     *
+     *  If this event is empty, @a e is triggered immediately.  Otherwise,
+     *  when this event is triggered, cancels @a e; when this event is
+     *  canceled, triggers @a e.
+     */
+    void at_cancel(const event<> &e) {
+	_e->at_cancel(e);
+    }
+
+    /** @brief  Return a canceler event.
+     *  @return  An event that, when triggered, cancels this event.
+     *
+     *  If this event is empty, returns another empty event.  Otherwise,
+     *  when the returned event is triggered, this event will be canceled;
+     *  and when this event is triggered or canceled, the returned event will
+     *  be canceled.
+     */
+    inline event<> canceler();
 
     /** @brief  Transfer trigger slots to a new event on @a r.
      *  @param  r   Rendezvous.
@@ -286,17 +317,17 @@ class event<T0, T1, T2, void> { public:
 
     template <typename R, typename I0, typename I1>
     event(R &r, const I0 &i0, const I1 &i1, T0 &s0, T1 &s1, T2 &s2)
-	: _e(new tamerpriv::eventx<T0, T1, T2, void>(r, i0, i1, s0, s1, s2)) {
+	: _e(new tamerpriv::eventx<T0, T1, T2, void>(r, i0, i1, &s0, &s1, &s2)) {
     }
 
     template <typename R, typename I0>
     event(R &r, const I0 &i0, T0 &s0, T1 &s1, T2 &s2)
-	: _e(new tamerpriv::eventx<T0, T1, T2, void>(r, i0, s0, s1, s2)) {
+	: _e(new tamerpriv::eventx<T0, T1, T2, void>(r, i0, &s0, &s1, &s2)) {
     }
 
     template <typename R>
     event(R &r, T0 &s0, T1 &s1, T2 &s2)
-	: _e(new tamerpriv::eventx<T0, T1, T2, void>(r, s0, s1, s2)) {
+	: _e(new tamerpriv::eventx<T0, T1, T2, void>(r, &s0, &s1, &s2)) {
     }
 
     event(const event<T0, T1, T2> &e)
@@ -322,17 +353,18 @@ class event<T0, T1, T2, void> { public:
 	return _e->empty();
     }
 
-    void at_cancel(const event<> &e) {
-	_e->at_cancel(e);
-    }
-
-    void at_complete(const event<> &e) {
-	_e->at_complete(e);
-    }
-
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2) {
 	_e->trigger(v0, v1, v2);
     }
+
+    void operator()(const T0 &v0, const T1 &v1, const T2 &v2) {
+	_e->trigger(v0, v1, v2);
+    }
+
+    typedef void result_type;
+    typedef const T0 &first_argument_type;
+    typedef const T1 &second_argument_type;
+    typedef const T2 &third_argument_type;
 
     void unbound_trigger() {
 	_e->complete(true);
@@ -341,6 +373,16 @@ class event<T0, T1, T2, void> { public:
     void cancel() {
 	_e->complete(false);
     }
+
+    void at_complete(const event<> &e) {
+	_e->at_complete(e);
+    }
+
+    void at_cancel(const event<> &e) {
+	_e->at_cancel(e);
+    }
+
+    inline event<> canceler();
 
     template <typename R, typename I0, typename I1>
     event<T0, T1, T2> make_rebind(R &r, const I0 &i0, const I1 &i1) {
@@ -391,7 +433,8 @@ class event<T0, T1, T2, void> { public:
 
 
 template <typename T0, typename T1>
-class event<T0, T1, void, void> { public:
+class event<T0, T1, void, void>
+    : public std::binary_function<const T0 &, const T1 &, void> { public:
 
     event()
 	: _e(new tamerpriv::eventx<T0, T1, void, void>()) {
@@ -399,17 +442,17 @@ class event<T0, T1, void, void> { public:
 
     template <typename R, typename I0, typename I1>
     event(R &r, const I0 &i0, const I1 &i1, T0 &s0, T1 &s1)
-	: _e(new tamerpriv::eventx<T0, T1, void, void>(r, i0, i1, s0, s1)) {
+	: _e(new tamerpriv::eventx<T0, T1, void, void>(r, i0, i1, &s0, &s1)) {
     }
 
     template <typename R, typename I0>
     event(R &r, const I0 &i0, T0 &s0, T1 &s1)
-	: _e(new tamerpriv::eventx<T0, T1, void, void>(r, i0, s0, s1)) {
+	: _e(new tamerpriv::eventx<T0, T1, void, void>(r, i0, &s0, &s1)) {
     }
 
     template <typename R>
     event(R &r, T0 &s0, T1 &s1)
-	: _e(new tamerpriv::eventx<T0, T1, void, void>(r, s0, s1)) {
+	: _e(new tamerpriv::eventx<T0, T1, void, void>(r, &s0, &s1)) {
     }
 
     event(const event<T0, T1> &e)
@@ -435,15 +478,11 @@ class event<T0, T1, void, void> { public:
 	return _e->empty();
     }
 
-    void at_cancel(const event<> &e) {
-	_e->at_cancel(e);
-    }
-
-    void at_complete(const event<> &e) {
-	_e->at_complete(e);
-    }
-
     void trigger(const T0 &v0, const T1 &v1) {
+	_e->trigger(v0, v1);
+    }
+
+    void operator()(const T0 &v0, const T1 &v1) {
 	_e->trigger(v0, v1);
     }
 
@@ -454,6 +493,16 @@ class event<T0, T1, void, void> { public:
     void cancel() {
 	_e->complete(false);
     }
+
+    void at_complete(const event<> &e) {
+	_e->at_complete(e);
+    }
+
+    void at_cancel(const event<> &e) {
+	_e->at_cancel(e);
+    }
+
+    inline event<> canceler();
 
     template <typename R, typename I0, typename I1>
     event<T0, T1> make_rebind(R &r, const I0 &i0, const I1 &i1) {
@@ -504,7 +553,8 @@ class event<T0, T1, void, void> { public:
 
 
 template <typename T0>
-class event<T0, void, void, void> { public:
+class event<T0, void, void, void>
+    : public std::unary_function<const T0 &, void> { public:
 
     event()
 	: _e(new tamerpriv::eventx<T0, void, void, void>()) {
@@ -512,17 +562,32 @@ class event<T0, void, void, void> { public:
 
     template <typename R, typename I0, typename I1>
     event(R &r, const I0 &i0, const I1 &i1, T0 &s0)
-	: _e(new tamerpriv::eventx<T0, void, void, void>(r, i0, i1, s0)) {
+	: _e(new tamerpriv::eventx<T0, void, void, void>(r, i0, i1, &s0)) {
     }
 
     template <typename R, typename I0>
     event(R &r, const I0 &i0, T0 &s0)
-	: _e(new tamerpriv::eventx<T0, void, void, void>(r, i0, s0)) {
+	: _e(new tamerpriv::eventx<T0, void, void, void>(r, i0, &s0)) {
     }
 
     template <typename R>
     event(R &r, T0 &s0)
-	: _e(new tamerpriv::eventx<T0, void, void, void>(r, s0)) {
+	: _e(new tamerpriv::eventx<T0, void, void, void>(r, &s0)) {
+    }
+
+    template <typename R, typename I0, typename I1>
+    event(R &r, const I0 &i0, const I1 &i1, const empty_slot &)
+	: _e(new tamerpriv::eventx<T0, void, void, void>(r, i0, i1, 0)) {
+    }
+
+    template <typename R, typename I0>
+    event(R &r, const I0 &i0, const empty_slot &)
+	: _e(new tamerpriv::eventx<T0, void, void, void>(r, i0, 0)) {
+    }
+
+    template <typename R>
+    event(R &r, const empty_slot &)
+	: _e(new tamerpriv::eventx<T0, void, void, void>(r, 0)) {
     }
 
     event(const event<T0> &e)
@@ -548,15 +613,11 @@ class event<T0, void, void, void> { public:
 	return _e->empty();
     }
 
-    void at_cancel(const event<> &e) {
-	_e->at_cancel(e);
-    }
-
-    void at_complete(const event<> &e) {
-	_e->at_complete(e);
-    }
-
     void trigger(const T0 &v0) {
+	_e->trigger(v0);
+    }
+
+    void operator()(const T0 &v0) {
 	_e->trigger(v0);
     }
 
@@ -568,6 +629,16 @@ class event<T0, void, void, void> { public:
     void cancel() {
 	_e->complete(false);
     }
+
+    void at_complete(const event<> &e) {
+	_e->at_complete(e);
+    }
+
+    void at_cancel(const event<> &e) {
+	_e->at_cancel(e);
+    }
+
+    inline event<> canceler();
 
     template <typename R, typename I0, typename I1>
     event<T0> make_rebind(R &r, const I0 &i0, const I1 &i1) {
@@ -674,17 +745,15 @@ class event<void, void, void, void> { public:
 	return _e->empty();
     }
 
-    void at_cancel(const event<> &e) {
-	_e->at_cancel(e);
-    }
-
-    void at_complete(const event<> &e) {
-	_e->at_complete(e);
-    }
-
     void trigger() {
 	_e->complete(true);
     }
+
+    void operator()() {
+	_e->complete(true);
+    }
+
+    typedef void result_type;
 
     void unbound_trigger() {
 	_e->complete(true);
@@ -692,6 +761,18 @@ class event<void, void, void, void> { public:
 
     void cancel() {
 	_e->complete(false);
+    }
+
+    void at_complete(const event<> &e) {
+	_e->at_complete(e);
+    }
+
+    void at_cancel(const event<> &e) {
+	_e->at_cancel(e);
+    }
+
+    event<> canceler() {
+	return _e->canceler();
     }
 
     template <typename R, typename I0, typename I1>
@@ -854,6 +935,26 @@ inline event<> make_event(rendezvous<> &r)
 }
 
 /** @} */
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<> event<T0, T1, T2, T3>::canceler() {
+    return _e->canceler();
+}
+
+template <typename T0, typename T1, typename T2>
+inline event<> event<T0, T1, T2, void>::canceler() {
+    return _e->canceler();
+}
+
+template <typename T0, typename T1>
+inline event<> event<T0, T1, void, void>::canceler() {
+    return _e->canceler();
+}
+
+template <typename T0>
+inline event<> event<T0, void, void, void>::canceler() {
+    return _e->canceler();
+}
 
 }
 #endif /* TAMER__EVENT_HH */

@@ -153,6 +153,33 @@ void simple_event::at_complete(const event<> &e)
 }
 
 
+namespace {
+struct cancelfunc {
+    cancelfunc(simple_event *e)
+	: _e(e) {
+	_e->weak_use();
+    }
+    ~cancelfunc() {
+	_e->weak_unuse();
+    }
+    void operator()() {
+	_e->complete(false);
+    }
+    tamerpriv::simple_event *_e;
+};
+}
+
+event<> simple_event::canceler() {
+    if (_r) {
+	callback_rendezvous<cancelfunc> *r =
+	    new callback_rendezvous<cancelfunc>(this);
+	at_cancel(event<>(*r, r->canceler));
+	return event<>(*r, r->triggerer);
+    } else
+	return event<>();
+}
+
+
 namespace message {
 
 void rendezvous_dead(abstract_rendezvous *r) {

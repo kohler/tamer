@@ -783,7 +783,7 @@ tame_fn_t::output_stack_vars(strbuf &b)
 {
     for (unsigned i = 0; i < _stack_vars.size (); i++) {
 	const var_t &v = _stack_vars._vars[i];
-	b << "  TAMER_CLOSUREVARDECL(" << v.ref_decl() << ") = " 
+	b << "  " << v.ref_decl() << " TAMER_CLOSUREVARATTR = "
 	  << closure_nm () << "." << v.name () << ";\n" ;
     }
 }
@@ -793,7 +793,7 @@ tame_fn_t::output_arg_references(strbuf &b)
 {
     for (unsigned i = 0; _args && i < _args->size(); i++) {
 	const var_t &v = _args->_vars[i];
-	b << "  TAMER_CLOSUREVARDECL(" << v.ref_decl() << ") = "
+	b << "  " << v.ref_decl() << " TAMER_CLOSUREVARATTR = "
 	  << closure_nm() << "." << v.name() << ";\n";
     }
 }

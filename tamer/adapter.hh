@@ -73,36 +73,8 @@ event<> bind(const event<T0> &e, const V0 &v0) {
  */
 template <typename T0>
 event<T0> ignore_slot(const event<> &e) {
-    tamerpriv::unbind_rendezvous<T0> *ur = new tamerpriv::unbind_rendezvous<T0>(e);
-    return event<T0>(*ur, 1, *((T0 *) 0));
-}
-
-/** @brief  Create event that cancels @a e when triggered.
- *  @param  e  Event.
- *  @return  Canceler event.
- *
- *  When the canceler event is triggered, @a e is canceled instantly.  When
- *  @a e is canceled or triggered, the canceler event is itself canceled.
- */
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<> make_canceler(const event<T0, T1, T2, T3> &e) {
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e);
-    return event<>(*r);
-}
-
-/** @brief  Cause @a e1 to cancel when @a e2 is canceled.
- *  @param  e1  Cancel destination event.
- *  @param  e2  Cancel source event.
- *  @return  @a e1.
- *
- *  When @a e2 is canceled, @a e1 is canceled immediately.
- */
-template <typename T0, typename T1, typename T2, typename T3,
-	  typename U0, typename U1, typename U2, typename U3>
-inline event<T0, T1, T2, T3> spread_cancel(const event<U0, U1, U2, U3> &e1, event<T0, T1, T2, T3> e2) {
-    tamerpriv::canceler_rendezvous *r = new tamerpriv::canceler_rendezvous(e1);
-    e2.at_cancel(event<>(*r));
-    return e1;
+    tamerpriv::unbind_rendezvous *ur = new tamerpriv::unbind_rendezvous(e);
+    return event<T0>(*ur, 1, empty_slot());
 }
 
 /** @brief  Add a cancel notifier to an event.
@@ -483,6 +455,14 @@ inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterato
     for (; first != last; ++first)
 	at_signal(*first, event<>(*r, outcome::signal));
     return e.make_rebind(*r, outcome::success);
+}
+
+
+template <typename F>
+inline event<> make_callback_event(const F &f) {
+    tamerpriv::callback_rendezvous<F> *innerr =
+	new tamerpriv::callback_rendezvous<F>(f);
+    return event<>(*innerr, innerr->triggerer);
 }
 
 } /* namespace tamer */

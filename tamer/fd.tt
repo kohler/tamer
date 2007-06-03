@@ -7,8 +7,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <tamer/tamer.hh>
 
 namespace tamer {
+
+size_t fd::garbage_size;
 
 int fd::make_nonblocking(int f)
 {
@@ -21,22 +24,21 @@ int fd::make_nonblocking(int f)
     return ::fcntl(f, F_SETFL, flags | O_NONBLOCK);
 }
 
-tamed static void fd_closer(fd f, event<> &e)
-{
-    tvars { rendezvous<> r; }
-    if (f) {
-	f.at_close(make_event(r));
-	e = make_event(r);
-	twait(r);
-	f.close();
+namespace {
+struct fd_closer {
+    fd_closer(const fd &f)
+	: _f(f) {
     }
+    void operator()() {
+	_f.close();
+    }
+    fd _f;
+};
 }
 
 event<> fd::closer()
 {
-    event<> e;
-    fd_closer(*this, e);
-    return e;
+    return tamer::make_callback_event(fd_closer(*this));
 }
 
 void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
@@ -75,8 +77,7 @@ tamed void fd::read(void *buf, size_t size, size_t &size_out, event<int> done)
 	amt = ::read(_p->fd, static_cast<char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
-	    if (&size_out)
-		size_out = pos;
+	    size_out = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -113,8 +114,7 @@ tamed void fd::write(const void *buf, size_t size, size_t &size_out, event<int> 
 	amt = ::write(_p->fd, static_cast<const char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
-	    if (&size_out)
-		size_out = pos;
+	    size_out = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {

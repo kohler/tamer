@@ -7,7 +7,49 @@
 namespace tamer {
 namespace tamerpriv {
 
-template <typename T> class unbind_rendezvous : public abstract_rendezvous { public:
+template <typename F> class callback_rendezvous : public abstract_rendezvous { public:
+
+    callback_rendezvous()
+	: _f() {
+    }
+
+    template <typename X>
+    callback_rendezvous(X x)
+	: _f(x) {
+    }
+
+    template <typename X, typename Y>
+    callback_rendezvous(X x, Y y)
+	: _f(x, y) {
+    }
+
+    template <typename X, typename Y, typename Z>
+    callback_rendezvous(X x, Y y, Z z)
+	: _f(x, y, z) {
+    }
+
+    enum callback_type {
+	triggerer, canceler
+    };
+
+    void add(simple_event *e, callback_type t) {
+	e->initialize(this, t);
+    }
+
+    void complete(uintptr_t rid, bool success) {
+	if (rid == triggerer && success)
+	    _f();
+	delete this;
+    }
+
+  private:
+
+    F _f;
+
+};
+
+
+class unbind_rendezvous : public abstract_rendezvous { public:
 
     unbind_rendezvous(const event<> &ein)
 	: _ein(ein)
@@ -106,12 +148,12 @@ class canceler_rendezvous : public abstract_rendezvous { public:
     canceler_rendezvous(const event<T0, T1, T2, T3> &e)
 	: _e(e.__get_simple())
     {
-	_e->use();
+	_e->weak_use();
 	_e->at_cancel(event<>(*this));
     }
 
     ~canceler_rendezvous() {
-	_e->unuse();
+	_e->weak_unuse();
     }
 
     void add(simple_event *e) {

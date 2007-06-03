@@ -38,6 +38,8 @@ class fd {
     void fstat(struct stat &stat_out, event<int> done);
 
     void read(void *buf, size_t size, size_t &nread, event<int> done);
+    inline void read(void *buf, size_t size, const event<int> &done);
+
     void write(const void *buf, size_t size, size_t &nwritten, event<int> done);
     inline void write(const void *buf, size_t size, const event<int> &done);
     void write(std::string buf, size_t &nwritten, event<int> done);
@@ -64,6 +66,8 @@ class fd {
     };
 
     fdimp *_p;
+
+    static size_t garbage_size;
 
     class closure__read__PvkRkQi_; void read(closure__read__PvkRkQi_ &, unsigned);
     class closure__write__PKvkRkQi_; void write(closure__write__PKvkRkQi_ &, unsigned);
@@ -134,12 +138,16 @@ inline void fd::at_close(event<> e) {
 	_p->at_close = distribute(_p->at_close, e);
 }
 
+inline void fd::read(void *buf, size_t size, const event<int> &done) {
+    read(buf, size, garbage_size, done);
+}
+
 inline void fd::write(const void *buf, size_t size, const event<int> &done) {
-    write(buf, size, *(size_t *) 0, done);
+    write(buf, size, garbage_size, done);
 }
 
 inline void fd::write(const std::string &buf, const event<int> &done) {
-    write(buf, *(size_t *) 0, done);
+    write(buf, garbage_size, done);
 }
 
 inline void fd::close() {

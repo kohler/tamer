@@ -34,18 +34,18 @@ class eventx : public simple_event { public:
     }
     
     template <typename R, typename I0, typename I1>
-    eventx(R &r, const I0 &i0, const I1 &i1, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
-	: simple_event(r, i0, i1), _s0(&s0), _s1(&s1), _s2(&s2), _s3(&s3) {
+    eventx(R &r, const I0 &i0, const I1 &i1, T0 *s0, T1 *s1, T2 *s2, T3 *s3)
+	: simple_event(r, i0, i1), _s0(s0), _s1(s1), _s2(s2), _s3(s3) {
     }
 
     template <typename R, typename I0>
-    eventx(R &r, const I0 &i0, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
-	: simple_event(r, i0), _s0(&s0), _s1(&s1), _s2(&s2), _s3(&s3) {
+    eventx(R &r, const I0 &i0, T0 *s0, T1 *s1, T2 *s2, T3 *s3)
+	: simple_event(r, i0), _s0(s0), _s1(s1), _s2(s2), _s3(s3) {
     }
 
     template <typename R>
-    eventx(R &r, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
-	: simple_event(r), _s0(&s0), _s1(&s1), _s2(&s2), _s3(&s3) {
+    eventx(R &r, T0 *s0, T1 *s1, T2 *s2, T3 *s3)
+	: simple_event(r), _s0(s0), _s1(s1), _s2(s2), _s3(s3) {
     }
 
     void unuse() {
@@ -89,18 +89,18 @@ class eventx<T0, T1, T2, void> : public simple_event { public:
     }
     
     template <typename R, typename I0, typename I1>
-    eventx(R &r, const I0 &i0, const I1 &i1, T0 &s0, T1 &s1, T2 &s2)
-	: simple_event(r, i0, i1), _s0(&s0), _s1(&s1), _s2(&s2) {
+    eventx(R &r, const I0 &i0, const I1 &i1, T0 *s0, T1 *s1, T2 *s2)
+	: simple_event(r, i0, i1), _s0(s0), _s1(s1), _s2(s2) {
     }
 
     template <typename R, typename I0>
-    eventx(R &r, const I0 &i0, T0 &s0, T1 &s1, T2 &s2)
-	: simple_event(r, i0), _s0(&s0), _s1(&s1), _s2(&s2) {
+    eventx(R &r, const I0 &i0, T0 *s0, T1 *s1, T2 *s2)
+	: simple_event(r, i0), _s0(s0), _s1(s1), _s2(s2) {
     }
 
     template <typename R>
-    eventx(R &r, T0 &s0, T1 &s1, T2 &s2)
-	: simple_event(r), _s0(&s0), _s1(&s1), _s2(&s2) {
+    eventx(R &r, T0 *s0, T1 *s1, T2 *s2)
+	: simple_event(r), _s0(s0), _s1(s1), _s2(s2) {
     }
 
     void unuse() {
@@ -142,18 +142,18 @@ class eventx<T0, T1, void, void> : public simple_event { public:
     }
     
     template <typename R, typename I0, typename I1>
-    eventx(R &r, const I0 &i0, const I1 &i1, T0 &s0, T1 &s1)
-	: simple_event(r, i0, i1), _s0(&s0), _s1(&s1) {
+    eventx(R &r, const I0 &i0, const I1 &i1, T0 *s0, T1 *s1)
+	: simple_event(r, i0, i1), _s0(s0), _s1(s1) {
     }
 
     template <typename R, typename I0>
-    eventx(R &r, const I0 &i0, T0 &s0, T1 &s1)
-	: simple_event(r, i0), _s0(&s0), _s1(&s1) {
+    eventx(R &r, const I0 &i0, T0 *s0, T1 *s1)
+	: simple_event(r, i0), _s0(s0), _s1(s1) {
     }
 
     template <typename R>
-    eventx(R &r, T0 &s0, T1 &s1)
-	: simple_event(r), _s0(&s0), _s1(&s1) {
+    eventx(R &r, T0 *s0, T1 *s1)
+	: simple_event(r), _s0(s0), _s1(s1) {
     }
 
     void unuse() {
@@ -191,18 +191,18 @@ class eventx<T0, void, void, void> : public simple_event { public:
     }
     
     template <typename R, typename I0, typename I1>
-    eventx(R &r, const I0 &i0, const I1 &i1, T0 &s0)
-	: simple_event(r, i0, i1), _s0(&s0) {
+    eventx(R &r, const I0 &i0, const I1 &i1, T0 *s0)
+	: simple_event(r, i0, i1), _s0(s0) {
     }
 
     template <typename R, typename I0>
-    eventx(R &r, const I0 &i0, T0 &s0)
-	: simple_event(r, i0), _s0(&s0) {
+    eventx(R &r, const I0 &i0, T0 *s0)
+	: simple_event(r, i0), _s0(s0) {
     }
 
     template <typename R>
-    eventx(R &r, T0 &s0)
-	: simple_event(r), _s0(&s0) {
+    eventx(R &r, T0 *s0)
+	: simple_event(r), _s0(s0) {
     }
 
     void unuse() {

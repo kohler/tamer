@@ -141,4 +141,5 @@ int main(int, char **) {
     //waitsig();
     while (n > 0)
 	tamer::once();
+    fprintf(stderr, "!\n");
 }

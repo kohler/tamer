@@ -4,9 +4,9 @@
 namespace tamer {
 
 #if __GNUC__
-#define TAMER_CLOSUREVARDECL(decl) decl __attribute__((unused))
+#define TAMER_CLOSUREVARATTR __attribute__((unused))
 #else
-#define TAMER_CLOSUREVARDECL(decl) decl
+#define TAMER_CLOSUREVARATTR
 #endif
 
 template <typename I0=void, typename I1=void> class rendezvous;
@@ -20,6 +20,9 @@ class tamer_error : public std::runtime_error { public:
     explicit tamer_error(const std::string &arg)
 	: runtime_error(arg) {
     }
+};
+
+struct empty_slot {
 };
 
 namespace tamerpriv {
@@ -45,19 +48,30 @@ class simple_event { public:
     template <typename R>
     inline simple_event(R &r);
 
-    inline ~simple_event();
-
     void use() {
-	_refcount++;
+	++_refcount;
     }
     
     void unuse() {
-	if (!--_refcount)
+	if (!--_refcount) {
+	    if (_r)
+		complete(false);
+	    if (!_weak_refcount)
+		delete this;
+	}
+    }
+
+    void weak_use() {
+	++_weak_refcount;
+    }
+
+    void weak_unuse() {
+	if (!--_weak_refcount && !_refcount)
 	    delete this;
     }
 
     unsigned refcount() const {
-	return _refcount;
+	return _refcount + _weak_refcount;
     }
 
     typedef abstract_rendezvous *simple_event::*unspecified_bool_type;
@@ -79,22 +93,29 @@ class simple_event { public:
     uintptr_t rid() const {
 	return _rid;
     }
-    
-    inline void at_cancel(const event<> &e);
-
-    void at_complete(const event<> &e);
 
     inline bool complete(bool success);
 
+    void at_complete(const event<> &e);
+
+    inline void at_cancel(const event<> &e);
+
+    event<> canceler();
+    
   protected:
 
     unsigned _refcount;
+    unsigned _weak_refcount;
     abstract_rendezvous *_r;
     uintptr_t _rid;
     simple_event *_r_next;
     simple_event **_r_pprev;
     simple_event *_canceler;
 
+    inline ~simple_event() {
+	assert(!_r);
+    }
+    
     static simple_event *dead;
 
     static void make_dead();
@@ -209,12 +230,6 @@ void rendezvous_dead(abstract_rendezvous *r);
 void gather_rendezvous_dead(gather_rendezvous *r);
 }
 
-
-inline simple_event::~simple_event()
-{
-    if (_r)
-	complete(false);
-}
 
 inline void abstract_rendezvous::disconnect_all()
 {
