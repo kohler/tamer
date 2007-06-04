@@ -66,7 +66,7 @@ void fd::fstat(struct stat &stat_out, event<int> done)
 tamed void fd::read(void *buf, size_t size, size_t &size_out, event<int> done)
 {
     tvars {
-	size_t pos(0);
+	size_t pos = 0;
 	ssize_t amt;
 	rendezvous<> r;
 	event<> closewatch(r);
@@ -92,18 +92,18 @@ tamed void fd::read(void *buf, size_t size, size_t &size_out, event<int> done)
 	    twait(r);
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
-	    return;
+	    break;
 	}
     }
     
     _p->rlock.release();
-    done.trigger(pos < size || closewatch ? 0 : -ECANCELED);
+    done.trigger(pos == size || closewatch ? 0 : -ECANCELED);
 }
 
 tamed void fd::write(const void *buf, size_t size, size_t &size_out, event<int> done)
 {
     tvars {
-	size_t pos(0);
+	size_t pos = 0;
 	ssize_t amt;
 	rendezvous<> r;
 	event<> closewatch(r);
@@ -129,12 +129,12 @@ tamed void fd::write(const void *buf, size_t size, size_t &size_out, event<int> 
 	    twait(r);
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
-	    return;
+	    break;
 	}
     }
     
     _p->wlock.release();
-    done.trigger(pos < size || closewatch ? 0 : -ECANCELED);
+    done.trigger(pos == size || closewatch ? 0 : -ECANCELED);
 }
 
 tamed void fd::write(std::string s, size_t &size_out, event<int> done)

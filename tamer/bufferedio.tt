@@ -37,12 +37,12 @@ ssize_t buffer::fill_more(fd &f, const event<int> &done, const event<> &closewat
     }
 
     ssize_t amt;
-    if ((_tail & (_size - 1)) == 0 && (_head & (_size - 1)) == 0)
-	amt = ::read(f.value(), _buf, _size);
-    else if ((_tail & (_size - 1)) < (_head & (_size - 1)))
-	amt = ::read(f.value(), _buf + (_tail & (_size - 1)), (_head & (_size - 1)) - (_tail & (_size - 1)));
+    size_t headpos = _head & (_size - 1);
+    size_t tailpos = _tail & (_size - 1);
+    if (headpos <= tailpos)
+	amt = ::read(f.value(), _buf + tailpos, _size - tailpos);
     else
-	amt = ::read(f.value(), _buf + (_tail & (_size - 1)), _size - (_tail & (_size - 1)));
+	amt = ::read(f.value(), _buf + tailpos, headpos - tailpos);
 
     if (amt != (ssize_t) -1)
 	return amt;
