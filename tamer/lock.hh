@@ -42,11 +42,13 @@ namespace tamer {
  *         printf("%d: released shared\n", which);
  *     }
  *     int main(int argc, char *argv[]) {
+ *         tamer::initialize();
  *         exclusive(1);
  *         shared(2);
  *         shared(3);
  *         exclusive(4);
  *         shared(5);
+ *         tamer::loop();
  *     }
  *  </code>
  *
