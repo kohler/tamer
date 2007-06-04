@@ -28,6 +28,10 @@ template <typename F> class callback_rendezvous : public abstract_rendezvous { p
 	: _f(x, y, z) {
     }
 
+    ~callback_rendezvous() {
+	disconnect_all();
+    }
+
     enum callback_type {
 	triggerer, canceler
     };
