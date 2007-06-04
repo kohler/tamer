@@ -48,6 +48,7 @@ tamed void user_function(...) {
 }
 .sp
 twait { ... }
+twait volatile { ... }
 .sp
 twait(rendezvous<I0, I1> &\fIrendezvous\fB, I0 &\fIi0\fB, I1 &\fIi1\fB);
 twait(rendezvous<I0> &\fIrendezvous\fB, I0 &\fIi0\fB);
@@ -226,6 +227,24 @@ then block until the created event has triggered\*(rq\*Eor,
 since
 .B tamer::at_delay_sec
 triggers its event argument after the given number of seconds has passed, simply as \*(lqblock for 10 seconds\*(rq.
+.LP
+A
+.B twait{}
+statement will block forever if an event created by its
+.I statements
+is canceled.  Adapters such as
+.B with_cancel()
+and
+.B add_cancel()
+are useful to cancel events without blocking.  Alternately, use the
+\*(lq\fBtwait volatile\~{ \fIstatements\fB; }\fR\*(rq
+special form.  If an event created in its
+.I statements
+is canceled, the
+.B twait volatile
+block exits early: all other events created in its
+.I statements
+are canceled and the function resumes processing at its wait point.
 .LP
 The second, more flexible form of wait point explicitly names a
 .B rendezvous
