@@ -4,7 +4,7 @@
 
 var_t::var_t(const type_qualifier_t &t, declarator_t *d, const lstr &arrays, vartyp_t a)
     : _name(d->name()), _type(t.to_str(), d->pointer()), _asc(a), 
-      _initializer(d->initializer ()), _flags(t.flags()), _arrays(arrays.str())
+      _initializer(d->initializer()), _arrays(arrays.str())
 {
 }
 
@@ -951,6 +951,7 @@ tame_block_ev_t::output(outputter_t *o)
   str tmp;
 
   b << "  { {\n#define make_event(...) make_event(__cls._closure__block, ## __VA_ARGS__)\n";
+  b << "    __cls._closure__block.start_block(" << _isvolatile << ");\n";
   o->output_str(b.str());
 
   output_mode_t om = o->switch_to_mode(OUTPUT_TREADMILL);
@@ -1165,11 +1166,10 @@ parse_state_t::loc (unsigned l) const
 type_qualifier_t &
 type_qualifier_t::concat (const type_qualifier_t &m)
 {
-  _flags |= (m._flags);
-  for (size_t i = 0; i < m._v.size (); i++) {
-    _v.push_back (m._v[i]);
-  }
-  return (*this);
+    for (size_t i = 0; i < m._v.size (); i++) {
+	_v.push_back (m._v[i]);
+    }
+    return (*this);
 }
 
 str

@@ -1,5 +1,5 @@
 // -*-c++-*-
-/* $Id: tame.hh,v 1.10 2007-05-27 16:16:13 kohler Exp $ */
+/* $Id: tame.hh,v 1.11 2007-06-04 16:03:11 kohler Exp $ */
 
 /*
  *
@@ -110,7 +110,6 @@ inline strbuf &operator<<(strbuf &ostr, const lstr &l)
 }
 
 
-#define CONST_FLAG       (2 << 0)
 /*
  * object for holding type modifiers like "unsigned", "const",
  * "typename", etc, but also for holding some flags that should
@@ -118,11 +117,11 @@ inline strbuf &operator<<(strbuf &ostr, const lstr &l)
  * 'holdvar'.
  */
 struct type_qualifier_t {
-    type_qualifier_t () : _flags (0) {}
+    type_qualifier_t () {}
     type_qualifier_t (const type_qualifier_t &t) 
-	: _lineno (t._lineno), _v (t._v), _flags (t._flags) {}
-    type_qualifier_t (const lstr &s, unsigned f = 0) 
-	: _flags (f) { if (s.length()) add_lstr (s); }
+	: _lineno (t._lineno), _v (t._v) {}
+    type_qualifier_t (const lstr &s) 
+	{ if (s.length()) add_lstr (s); }
 
     void add_str(const str &s) { _v.push_back(s); }
     void add_lstr(const lstr &s) { add_str(s.str()); _lineno = s.lineno(); }
@@ -130,13 +129,11 @@ struct type_qualifier_t {
     type_qualifier_t &concat (const type_qualifier_t &m);
 
     str to_str () const;
-    unsigned flags () const { return _flags; }
     unsigned lineno() const { return _lineno; }
     
   private:
     unsigned _lineno;
     std::vector<str> _v;
-    unsigned _flags;
 };
 
 
@@ -314,14 +311,14 @@ class declarator_t;
 class var_t {
 public:
     var_t() : _initializer(0) {}
-    var_t(const str &n, vartyp_t a = NONE) : _name (n), _asc (a), _initializer(0), _flags (0) {}
+    var_t(const str &n, vartyp_t a = NONE) : _name (n), _asc (a), _initializer(0) {}
     var_t(const type_qualifier_t &m, declarator_t *d, const lstr &arrays, vartyp_t a = NONE);
     var_t(const str &t, const str &p, const str &n, vartyp_t a = NONE)
-	: _name(n), _type(t, p), _asc(a), _initializer(0), _flags(0) {}
+	: _name(n), _type(t, p), _asc(a), _initializer(0) {}
     var_t(const type_t &t, const str &n, vartyp_t a = NONE)
-	: _name(n), _type(t), _asc(a), _initializer(0), _flags(0) {}
+	: _name(n), _type(t), _asc(a), _initializer(0) {}
     var_t(const str &t, const str &p, const str &n, vartyp_t a, const str &ta)
-	: _name(n), _type(t, p, ta), _asc(a), _initializer(0), _flags(0) {}
+	: _name(n), _type(t, p, ta), _asc(a), _initializer(0) {}
 
     const type_t &type() const { return _type; }
     const str &name() const { return _name; }
@@ -347,7 +344,6 @@ protected:
     type_t _type;
     vartyp_t _asc;
     initializer_t *_initializer;
-    unsigned _flags;
     str _arrays;
 };
 
@@ -702,21 +698,22 @@ public:
 
 class tame_block_ev_t : public tame_block_t {
 public:
-  tame_block_ev_t (tame_fn_t *f, int l) 
-    : tame_block_t (l), _fn (f), _id (0) {}
-  ~tame_block_ev_t () {}
+    tame_block_ev_t(tame_fn_t *f, bool isvolatile, int l) 
+	: tame_block_t(l), _fn(f), _id(0), _isvolatile(isvolatile) {}
+    ~tame_block_ev_t() {}
   
-  void output(outputter_t *o);
-  bool is_jumpto () const { return true; }
-  void set_id (int i) { _id = i; }
-  int id () const { return _id; }
-  void add_class_var (const var_t &v) { _class_vars.add (v); }
-  bool needs_counter () const { return true; }
+    void output(outputter_t *o);
+    bool is_jumpto() const { return true; }
+    void set_id(int i) { _id = i; }
+    int id() const { return _id; }
+    void add_class_var(const var_t &v) { _class_vars.add (v); }
+    bool needs_counter() const { return true; }
   
-protected:
-  tame_fn_t *_fn;
-  int _id;
-  vartab_t _class_vars;
+  protected:
+    tame_fn_t *_fn;
+    int _id;
+    vartab_t _class_vars;
+    bool _isvolatile;
 };
 
 

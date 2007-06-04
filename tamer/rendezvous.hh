@@ -356,25 +356,36 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 class gather_rendezvous : public rendezvous<> { public:
 
     gather_rendezvous()
-	: _dead(false) {
+	: _state(state_live) {
+    }
+
+    void start_block(bool v) {
+	_state = (state_t) v;
     }
 
     inline void complete(uintptr_t, bool success) {
 	_nwaiting--;
 	if (success) {
 	    _nready++;
-	    if (_nwaiting == 0 && !_dead)
+	    if (_nwaiting == 0 && _state >= 0)
 		unblock();
-	} else if (!_dead) {
-	    _dead = true;
+	} else if (_state == state_live) {
+	    _state = state_dead;
 	    if (blocked_closure())
 		tamerpriv::message::gather_rendezvous_dead(this);
+	} else if (_state == state_volatile) {
+	    _state = state_finishing;
+	    cancel_all();
+	    unblock();
 	}
     }
 
   private:
 
-    bool _dead;
+    enum state_t {
+	state_dead = -1, state_live = 0, state_volatile = 1, state_finishing
+    };
+    state_t _state;
     
 };
 

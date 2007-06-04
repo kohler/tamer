@@ -74,8 +74,6 @@ tamed void fd::read(void *buf, size_t size, size_t &size_out, event<int> done)
     tvars {
 	size_t pos = 0;
 	ssize_t amt;
-	rendezvous<> r;
-	event<> closewatch(r);
     }
     
     if (!*this) {
@@ -84,9 +82,8 @@ tamed void fd::read(void *buf, size_t size, size_t &size_out, event<int> done)
     }
     
     twait { _p->rlock.acquire(make_event()); }
-    at_close(closewatch);
     
-    while (pos != size && done && closewatch) {
+    while (pos != size && done && *this) {
 	amt = ::read(_p->fd, static_cast<char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
@@ -94,8 +91,7 @@ tamed void fd::read(void *buf, size_t size, size_t &size_out, event<int> done)
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    tamer::at_fd_read(_p->fd, make_event(r));
-	    twait(r);
+	    twait volatile { tamer::at_fd_read(_p->fd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -103,7 +99,7 @@ tamed void fd::read(void *buf, size_t size, size_t &size_out, event<int> done)
     }
     
     _p->rlock.release();
-    done.trigger(pos == size || closewatch ? 0 : -ECANCELED);
+    done.trigger(pos == size || *this ? 0 : -ECANCELED);
 }
 
 tamed void fd::write(const void *buf, size_t size, size_t &size_out, event<int> done)
@@ -111,8 +107,6 @@ tamed void fd::write(const void *buf, size_t size, size_t &size_out, event<int> 
     tvars {
 	size_t pos = 0;
 	ssize_t amt;
-	rendezvous<> r;
-	event<> closewatch(r);
     }
 
     if (!*this) {
@@ -121,9 +115,8 @@ tamed void fd::write(const void *buf, size_t size, size_t &size_out, event<int> 
     }
     
     twait { _p->wlock.acquire(make_event()); }
-    at_close(closewatch);
     
-    while (pos != size && done && closewatch) {
+    while (pos != size && done && *this) {
 	amt = ::write(_p->fd, static_cast<const char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
@@ -131,8 +124,7 @@ tamed void fd::write(const void *buf, size_t size, size_t &size_out, event<int> 
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    tamer::at_fd_write(_p->fd, make_event(r));
-	    twait(r);
+	    twait volatile { tamer::at_fd_write(_p->fd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -140,7 +132,7 @@ tamed void fd::write(const void *buf, size_t size, size_t &size_out, event<int> 
     }
     
     _p->wlock.release();
-    done.trigger(pos == size || closewatch ? 0 : -ECANCELED);
+    done.trigger(pos == size || *this ? 0 : -ECANCELED);
 }
 
 tamed void fd::write(std::string s, size_t &size_out, event<int> done)
@@ -171,8 +163,6 @@ tamed void fd::accept(struct sockaddr *name_out, socklen_t *namelen_out, event<f
 {
     tvars {
 	int f = -ECANCELED;
-	rendezvous<> r;
-	event<> closewatch(r);
     }
 
     if (!*this) {
@@ -181,16 +171,14 @@ tamed void fd::accept(struct sockaddr *name_out, socklen_t *namelen_out, event<f
     }
 
     twait { _p->rlock.acquire(make_event()); }
-    at_close(closewatch);
     
-    while (done && closewatch) {
+    while (done && *this) {
 	f = ::accept(_p->fd, name_out, namelen_out);
 	if (f >= 0) {
 	    make_nonblocking(f);
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    tamer::at_fd_read(_p->fd, make_event(r));
-	    twait(r);
+	    twait volatile { tamer::at_fd_read(_p->fd, make_event()); }
 	} else if (errno != EINTR) {
 	    f = -errno;
 	    break;
@@ -205,8 +193,6 @@ tamed void fd::connect(const struct sockaddr *name, socklen_t namelen, event<int
 {
     tvars {
 	int x, ret(0);
-	rendezvous<> r;
-	event<> closewatch(r);
     }
 
     if (!*this) {
@@ -220,11 +206,9 @@ tamed void fd::connect(const struct sockaddr *name, socklen_t namelen, event<int
     if (x == -1 && errno != EINPROGRESS)
 	ret = -errno;
     else if (x == -1) {
-	at_close(closewatch);
-	tamer::at_fd_write(_p->fd, make_event(r));
-	twait(r);
+	twait volatile { tamer::at_fd_write(_p->fd, make_event()); }
 	socklen_t socklen = sizeof(x);
-	if (!done || !closewatch)
+	if (!done || !*this)
 	    ret = -ECANCELED;
 	else if (getsockopt(_p->fd, SOL_SOCKET, SO_ERROR, (void *) &x, &socklen) == -1)
 	    ret = -errno;

@@ -1,5 +1,5 @@
 /* -*-fundamental-*- */
-/* $Id: parse.yy,v 1.5 2007-05-25 15:43:04 kohler Exp $ */
+/* $Id: parse.yy,v 1.6 2007-06-04 16:03:11 kohler Exp $ */
 
 /*
  *
@@ -35,6 +35,7 @@ int vars_lineno;
 
 /* Tokens for C++ Variable Modifiers */
 %token T_CONST
+%token T_VOLATILE
 %token T_STRUCT
 %token T_TYPENAME
 %token T_VOID
@@ -82,7 +83,7 @@ int vars_lineno;
 %type <vars> parameter_type_list_opt parameter_type_list parameter_list
 %type <exprs> join_list id_list_opt id_list 
 
-%type <opt>  const_opt
+%type <opt>  const_opt volatile_opt
 %type <fn>   fn_declaration tame_decl
 
 %type <var>  parameter_declaration
@@ -166,6 +167,10 @@ const_opt: /* empty */		{ $$ = false; }
 	| T_CONST		{ $$ = true; }
 	;
 
+volatile_opt: /* empty */	{ $$ = false; }
+	| T_VOLATILE		{ $$ = true; }
+	;
+
 fn_statements: passthroughs			
 	{
 	  state->passthrough ($1);
@@ -227,19 +232,19 @@ return_statement: T_RETURN passthroughs ';'
 	}
 	;
 
-block_body: '{' 
+block_body: volatile_opt '{' 
 	{
 	  tame_fn_t *fn = state->function ();
 	  tame_block_t *bb;
 	  if (fn) {
- 	    bb = new tame_block_ev_t (fn, get_yy_lineno ());
-	    fn->add_env (bb);
-	    fn->hit_tame_block ();
+ 	    bb = new tame_block_ev_t(fn, $1, get_yy_lineno ());
+	    fn->add_env(bb);
+	    fn->hit_tame_block();
 	  } else {
-	    bb = new tame_block_thr_t (get_yy_lineno ());
+	    bb = new tame_block_thr_t(get_yy_lineno ());
 	  }
-	  state->new_block (bb);
-	  state->push_list (bb);
+	  state->new_block(bb);
+	  state->push_list(bb);
 	}
 	fn_statements '}'
 	{
@@ -488,7 +493,8 @@ type_specifier: T_VOID		{ $$ = lstr(get_yy_lineno(), "void"); }
 /*
  * hack for now -- not real C syntax
  */
-type_qualifier:	T_CONST	{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "const"), CONST_FLAG); }
+type_qualifier:	T_CONST	{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "const")); }
+	| T_VOLATILE	{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "volatile")); }
 	| T_STRUCT	{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "struct")); }
 	| T_TYPENAME	{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "typename")); }
 	;

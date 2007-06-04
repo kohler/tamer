@@ -10,15 +10,15 @@ int n;
 
 tamed void read_sucka(tamer::fd &f) {
     tvars {
-	int result(-1);
+	int ret(-1);
 	char buf[40];
 	size_t amt(0);
     }
     n++;
     twait {
-	f.read(buf, 40, amt, tamer::add_timeout_sec(2, make_event(result)));
+	f.read(buf, 40, amt, tamer::add_timeout_sec(2, make_event(ret)));
     }
-    fprintf(stderr, "got %d: %d: %.*s\n", result, amt, amt, buf);
+    fprintf(stderr, "got %d: %d: %.*s\n", ret, amt, amt, buf);
     n--;
 }
 
@@ -31,7 +31,7 @@ tamed void time_sucka() {
 tamed void close_sucka(tamer::fd &f) {
     n++;
     twait { tamer::at_delay_msec(500, make_event()); }
-    twait { f.close(); }
+    f.close();
     n--;
 }
 

@@ -1,5 +1,5 @@
 /* -*-fundamental-*- */
-/* $Id: scan.ll,v 1.6 2007-05-27 07:49:48 kohler Exp $ */
+/* $Id: scan.ll,v 1.7 2007-06-04 16:03:11 kohler Exp $ */
 
 /*
  *
@@ -88,6 +88,7 @@ XNUM 	[+-]?0x[0-9a-fA-F]
 <FULL_PARSE,HALF_PARSE,SIG_PARSE>{
 
 const		return T_CONST;
+volatile	return T_VOLATILE;
 struct		return T_STRUCT;
 typename	return T_TYPENAME;
 void		return T_VOID;
@@ -214,6 +215,7 @@ __LOC__         { return loc_return (); }
 
 
 <TWAIT_ENTER>{
+volatile	{ return T_VOLATILE; }
 [(]		{ yy_push_state(JOIN_LIST_BASE); return yytext[0]; }
 [{]		{ switch_to_state(TWAIT_BODY_BASE); return yytext[0]; }
 [;]		{ yy_pop_state(); return yytext[0]; }
