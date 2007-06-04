@@ -57,7 +57,7 @@ class simple_event { public:
 	if (--_refcount == 0) {
 	    if (_r)
 		complete(false);
-	    if (!_weak_refcount)
+	    if (_weak_refcount == 0)
 		delete this;
 	}
     }

@@ -29,7 +29,6 @@ template <typename F> class callback_rendezvous : public abstract_rendezvous { p
     }
 
     ~callback_rendezvous() {
-	disconnect_all();
     }
 
     enum callback_type {
@@ -41,6 +40,8 @@ template <typename F> class callback_rendezvous : public abstract_rendezvous { p
     }
 
     void complete(uintptr_t rid, bool success) {
+	// in case _f() refers to an event on this rendezvous:
+	disconnect_all();
 	if (rid == triggerer && success)
 	    _f();
 	delete this;
@@ -80,6 +81,24 @@ class unbind_rendezvous : public abstract_rendezvous { public:
     
 };
 
+
+template <typename T0> class bind_callback { public:
+
+    template <typename V0>
+    bind_callback(const event<T0> &ein, const V0 &v0)
+	: _ein(ein), _v0(v0) {
+    }
+    
+    void operator()() {
+	_ein.trigger(_v0);
+    }
+
+    event<T0> _ein;
+    T0 _v0;
+
+};
+
+
 template <typename T0> class bind_rendezvous : public abstract_rendezvous { public:
 
     template <typename V0>
@@ -111,6 +130,7 @@ template <typename T0> class bind_rendezvous : public abstract_rendezvous { publ
     T0 _v0;
 
 };
+
 
 class cancel_adapter_rendezvous : public abstract_rendezvous { public:
 
@@ -146,35 +166,6 @@ class cancel_adapter_rendezvous : public abstract_rendezvous { public:
 
 };
 
-class canceler_rendezvous : public abstract_rendezvous { public:
-
-    template <typename T0, typename T1, typename T2, typename T3>
-    canceler_rendezvous(const event<T0, T1, T2, T3> &e)
-	: _e(e.__get_simple())
-    {
-	_e->weak_use();
-	_e->at_cancel(event<>(*this));
-    }
-
-    ~canceler_rendezvous() {
-	_e->weak_unuse();
-    }
-
-    void add(simple_event *e) {
-	e->initialize(this, 0);
-    }
-    
-    void complete(uintptr_t, bool success) {
-	if (success)
-	    _e->complete(false);
-	delete this;
-    }
-    
-  private:
-
-    simple_event *_e;
-
-};
 
 inline void simple_event::at_cancel(const event<> &e)
 {

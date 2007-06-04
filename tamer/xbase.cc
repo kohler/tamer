@@ -88,10 +88,10 @@ class distribute_rendezvous : public abstract_rendezvous { public:
 	    if (_ncomplete > _es.size())
 		_ncomplete = _es.size();
 	} else if (!rid) {
-	    std::vector<event<> >::iterator i = _es.begin();
-	    std::vector<event<> >::iterator e = i + (success ? _es.size() : _ncomplete);
-	    for (; i != e; i++)
-		i->trigger();
+	    for (std::vector<event<> >::size_type i = 0;
+		 i < (success ? _es.size() : _ncomplete);
+		 i++)
+		_es[i].trigger();
 	}
 	if (!rid || !_es.size())
 	    delete this;
@@ -159,6 +159,10 @@ struct cancelfunc {
 	: _e(e) {
 	_e->weak_use();
     }
+    cancelfunc(const cancelfunc &other)
+	: _e(other._e) {
+	_e->weak_use();
+    }
     ~cancelfunc() {
 	_e->weak_unuse();
     }
@@ -166,6 +170,8 @@ struct cancelfunc {
 	_e->complete(false);
     }
     tamerpriv::simple_event *_e;
+  private:
+    cancelfunc &operator=(const cancelfunc &);
 };
 }
 

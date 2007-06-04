@@ -29,6 +29,10 @@ struct fd::fdcloser {
 	: _f(f) {
 	_f->weak_use();
     }
+    fdcloser(const fdcloser &other)
+	: _f(other._f) {
+	_f->weak_use();
+    }
     ~fdcloser() {
 	_f->weak_unuse();
     }
@@ -36,6 +40,8 @@ struct fd::fdcloser {
 	_f->close();
     }
     fd::fdimp *_f;
+  private:
+    fdcloser &operator=(const fdcloser &);
 };
 
 event<> fd::closer()

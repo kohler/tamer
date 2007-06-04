@@ -58,9 +58,11 @@ inline event<> distribute(const event<> &e1, const event<> &e2, const event<> &e
  *  canceled.
  */
 template <typename T0, typename V0>
-event<> bind(const event<T0> &e, const V0 &v0) {
-    tamerpriv::bind_rendezvous<T0> *ur = new tamerpriv::bind_rendezvous<T0>(e, v0);
-    return event<>(*ur, 1);
+event<> bind(event<T0> e, const V0 &v0) {
+    tamerpriv::callback_rendezvous<tamerpriv::bind_callback<T0> > *r =
+	new tamerpriv::callback_rendezvous<tamerpriv::bind_callback<T0> >(e, v0);
+    e.at_cancel(event<>(*r, r->canceler));
+    return event<>(*r, r->triggerer);
 }
 
 /** @brief  Create 1-slot event that triggers @a e when triggered.
@@ -72,9 +74,11 @@ event<> bind(const event<T0> &e, const V0 &v0) {
  *  event is itself canceled.
  */
 template <typename T0>
-event<T0> ignore_slot(const event<> &e) {
-    tamerpriv::unbind_rendezvous *ur = new tamerpriv::unbind_rendezvous(e);
-    return event<T0>(*ur, 1, empty_slot());
+event<T0> ignore_slot(event<> e) {
+    tamerpriv::callback_rendezvous<event<> > *r =
+	new tamerpriv::callback_rendezvous<event<> >(e);
+    e.at_cancel(event<>(*r, r->canceler));
+    return event<T0>(*r, r->triggerer, empty_slot());
 }
 
 /** @brief  Add a cancel notifier to an event.
