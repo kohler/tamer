@@ -234,10 +234,11 @@ tamed void fd::connect(const struct sockaddr *name, socklen_t namelen, event<int
 int fd::fdimp::close()
 {
     if (fd >= 0) {
-	int x = ::close(fd);
-	x = (x == -1 ? -errno : 0);
-	driver::main->kill_fd(fd);
+	int my_fd = fd;
 	fd = -1;
+	int x = ::close(my_fd);
+	x = (x == -1 ? -errno : 0);
+	driver::main->kill_fd(my_fd);
 	at_close.trigger();
 	at_close = event<>();
 	return x;
