@@ -186,7 +186,7 @@ inline event<int> add_timeout_sec(int delay, event<int> e) {
 inline event<int> add_timeout_msec(int delay, event<int> e) {
     timeval tv;
     tv.tv_sec = delay / 1000;
-    tv.tv_usec = delay % 1000;
+    tv.tv_usec = (delay % 1000) * 1000;
     return add_timeout(tv, e);
 }
 
@@ -295,7 +295,7 @@ template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> e) {
     timeval tv;
     tv.tv_sec = delay / 1000;
-    tv.tv_usec = delay % 1000;
+    tv.tv_usec = (delay % 1000) * 1000;
     return with_timeout(tv, e);
 }
 
@@ -409,7 +409,7 @@ template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> e, int &result) {
     timeval tv;
     tv.tv_sec = delay / 1000;
-    tv.tv_usec = delay % 1000;
+    tv.tv_usec = (delay % 1000) * 1000;
     return with_timeout(tv, e, result);
 }
 
