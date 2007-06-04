@@ -1,19 +1,17 @@
 // -*- mode: c++; related-file-name: "lock.hh" -*-
 #include <tamer/lock.hh>
 #include <tamer/adapter.hh>
-
-// ReiMBURSEMENTS!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 namespace tamer {
 
 void mutex::wake()
 {
-    while (event<> *e = _waiters.front()) {
-	bool done = *e;
-	e->trigger();
+    while (event<> *eptr = _waiters.front()) {
+	event<> e = *eptr;
 	_waiters.pop_front();
-	if (done)
+	if (e) {
+	    e.trigger();
 	    break;
+	}
     }
 }
 
@@ -26,8 +24,8 @@ tamed void mutex::acquire(int shared, event<> done)
 
     if (!done)
 	return;
-    if (!_waiters.size() && (shared > 0 ? _locked <= 0 : _locked == 0)) {
-	_locked -= shared;
+    if (!_waiters.size() && (shared > 0 ? _locked != -1 : _locked == 0)) {
+	_locked += shared;
 	done.trigger();
 	return;
     }
@@ -39,9 +37,13 @@ tamed void mutex::acquire(int shared, event<> done)
 	twait(r, result);
 	if (!result || !done) {
 	    done.cancel();
+	    // canceling an exclusive lock may let a shared lock through
+	    r.cancel_all();
+	    if (_waiters.front() && !*_waiters.front())
+		wake();
 	    return;
-	} else if (shared > 0 ? _locked <= 0 : _locked == 0) {
-	    _locked -= shared;
+	} else if (shared > 0 ? _locked != -1 : _locked == 0) {
+	    _locked += shared;
 	    done.trigger();
 	    if (shared > 0)	// next waiter might also want a shared lock
 		wake();
