@@ -63,8 +63,8 @@ class fd {
 
     /** @brief  Open a file descriptor.
      *  @param  filename  File name.
-     *  @param  flags     Open flags (O_RDONLY, O_RDWR, and so forth).
-     *  @param  mode      Open mode (used when creating a file).
+     *  @param  flags     Open flags (@c O_RDONLY, @c O_EXCL, and so forth).
+     *  @param  mode      Permissions mode (used when creating a file).
      *  @param  result    Event triggered on completion.
      *
      *  Opens a file descriptor for the named file, returning it via the
@@ -78,7 +78,7 @@ class fd {
     
     /** @brief  Open a file descriptor.
      *  @param  filename  File name.
-     *  @param  flags     Open flags (O_RDONLY, O_RDWR, and so forth).
+     *  @param  flags     Open flags (@c O_RDONLY, @c O_EXCL, and so forth).
      *  @param  result    Event triggered on completion.
      *
      *  Like open(const char *, int, mode_t, event<fd>), passing 0777
@@ -145,6 +145,8 @@ class fd {
      */
     event<> closer();
 
+    /** @brief  Fetch file status.
+     */
     void fstat(struct stat &stat_out, event<int> done);
 
     void read(void *buf, size_t size, size_t &nread, event<int> done);
