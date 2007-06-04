@@ -54,7 +54,7 @@ class simple_event { public:
     }
     
     void unuse() {
-	if (!--_refcount) {
+	if (--_refcount == 0) {
 	    if (_r)
 		complete(false);
 	    if (!_weak_refcount)
@@ -67,7 +67,7 @@ class simple_event { public:
     }
 
     void weak_unuse() {
-	if (!--_weak_refcount && !_refcount)
+	if (--_weak_refcount == 0 && _refcount == 0)
 	    delete this;
     }
 
@@ -148,6 +148,8 @@ class abstract_rendezvous { public:
     inline void unblock();
     inline void run();
 
+    inline void cancel_all();
+
     tamer_closure *blocked_closure() const {
 	return _blocked_closure;
     }
@@ -190,7 +192,7 @@ struct tamer_closure {
     }
 
     void unuse() {
-	if (!--_refcount)
+	if (--_refcount == 0)
 	    delete this;
     }
 
@@ -232,19 +234,21 @@ void gather_rendezvous_dead(gather_rendezvous *r);
 }
 
 
-inline void abstract_rendezvous::disconnect_all()
-{
+inline void abstract_rendezvous::cancel_all() {
+    while (_events)
+	_events->complete(false);
+}
+
+inline void abstract_rendezvous::disconnect_all() {
     for (simple_event *e = _events; e; e = e->_r_next)
 	e->_r = 0;
 }
 
-inline abstract_rendezvous::~abstract_rendezvous()
-{
+inline abstract_rendezvous::~abstract_rendezvous() {
     // first take all events off this rendezvous, so they don't call back
     disconnect_all();
     // then complete events, calling their cancelers
-    while (_events)
-	_events->complete(false);
+    cancel_all();
     
     if (_unblocked_prev)
 	_unblocked_prev->_unblocked_next = _unblocked_next;
@@ -270,8 +274,7 @@ inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
     r->_events = this;
 }
 
-inline bool simple_event::complete(bool success)
-{
+inline bool simple_event::complete(bool success) {
     abstract_rendezvous *r = _r;
     simple_event *canceler = _canceler;
 
@@ -295,16 +298,14 @@ inline bool simple_event::complete(bool success)
     return r != 0;
 }
 
-inline void abstract_rendezvous::block(tamer_closure &c, unsigned where)
-{
+inline void abstract_rendezvous::block(tamer_closure &c, unsigned where) {
     assert(!_blocked_closure && &c);
     c.use();
     _blocked_closure = &c;
     _blocked_closure_blockid = where;
 }
 
-inline void abstract_rendezvous::unblock()
-{
+inline void abstract_rendezvous::unblock() {
     if (_blocked_closure && !_unblocked_prev && unblocked != this) {
 	_unblocked_next = 0;
 	_unblocked_prev = unblocked_tail;
@@ -316,8 +317,7 @@ inline void abstract_rendezvous::unblock()
     }
 }
 
-inline void abstract_rendezvous::run()
-{
+inline void abstract_rendezvous::run() {
     tamer_closure *c = _blocked_closure;
     _blocked_closure = 0;
     if (_unblocked_prev)

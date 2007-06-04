@@ -24,21 +24,28 @@ int fd::make_nonblocking(int f)
     return ::fcntl(f, F_SETFL, flags | O_NONBLOCK);
 }
 
-namespace {
-struct fd_closer {
-    fd_closer(const fd &f)
+struct fd::fdcloser {
+    fdcloser(fd::fdimp *f)
 	: _f(f) {
+	_f->weak_use();
+    }
+    ~fdcloser() {
+	_f->weak_unuse();
     }
     void operator()() {
-	_f.close();
+	_f->close();
     }
-    fd _f;
+    fd::fdimp *_f;
 };
-}
 
 event<> fd::closer()
 {
-    return tamer::make_callback_event(fd_closer(*this));
+    if (*this) {
+	event<> e = tamer::make_callback_event(fdcloser(_p));
+	at_close(e.canceler());
+	return e;
+    } else
+	return event<>();
 }
 
 void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
@@ -223,17 +230,27 @@ tamed void fd::connect(const struct sockaddr *name, socklen_t namelen, event<int
     done.trigger(ret);
 }
 
+
+int fd::fdimp::close()
+{
+    if (fd >= 0) {
+	int x = ::close(fd);
+	x = (x == -1 ? -errno : 0);
+	driver::main->kill_fd(fd);
+	fd = -1;
+	at_close.trigger();
+	at_close = event<>();
+	return x;
+    } else
+	return -EBADF;
+}
+
+
 void fd::close(event<int> done)
 {
-    if (*this) {
-	int x = ::close(_p->fd);
-	x = (x == -1 ? -errno : 0);
-	driver::main->kill_fd(_p->fd);
-	_p->fd = -1;
-	_p->at_close.trigger();
-	_p->at_close = event<>();
-	done.trigger(x);
-    } else
+    if (*this)
+	done.trigger(_p->close());
+    else
 	done.trigger(-EBADF);
 }
 

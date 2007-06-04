@@ -50,21 +50,58 @@ class fd {
     void connect(const struct sockaddr *name, socklen_t namelen, event<int> done);
     
     void close(event<int> done);
-    inline void close();
+    inline int close();
     
     inline fd &operator=(const fd &other);
     
   private:
 
     struct fdimp {
+
 	int fd;
-	unsigned refcount;
 	mutex rlock;
 	mutex wlock;
 	event<> at_close;
-	fdimp(int fd_) : fd(fd_), refcount(1) { }
+	
+	fdimp(int fd_)
+	    : fd(fd_), _refcount(1), _weak_refcount(0) {
+	}
+	
+	void use() {
+	    ++_refcount;
+	}
+	
+	void unuse() {
+	    if (--_refcount == 0) {
+		if (fd >= 0)
+		    close();
+		if (_weak_refcount == 0)
+		    delete this;
+	    }
+	}
+	
+	void weak_use() {
+	    ++_weak_refcount;
+	}
+	
+	void weak_unuse() {
+	    if (--_weak_refcount == 0 && _refcount == 0)
+		delete this;
+	}
+	
+	int close();
+
+	struct closer;
+	
+      private:
+
+	unsigned _refcount;
+	unsigned _weak_refcount;
+	
     };
 
+    struct fdcloser;
+    
     fdimp *_p;
 
     static size_t garbage_size;
@@ -91,19 +128,19 @@ inline fd::fd(int value)
 inline fd::fd(const fd &other)
     : _p(other._p) {
     if (_p)
-	++_p->refcount;
+	_p->use();
 }
 
 inline fd::~fd() {
-    if (_p && --_p->refcount == 0)
-	close();
+    if (_p)
+	_p->unuse();
 }
 
 inline fd &fd::operator=(const fd &other) {
     if (other._p)
-	++other._p->refcount;
-    if (_p && --_p->refcount == 0)
-	close();
+	other._p->use();
+    if (_p)
+	_p->unuse();
     _p = other._p;
     return *this;
 }
@@ -150,8 +187,8 @@ inline void fd::write(const std::string &buf, const event<int> &done) {
     write(buf, garbage_size, done);
 }
 
-inline void fd::close() {
-    close(event<int>());
+inline int fd::close() {
+    return (*this ? _p->close() : -EBADF);
 }
 
 inline bool operator==(const fd &a, const fd &b) {
