@@ -255,10 +255,7 @@ int fd::fdimp::close()
 
 void fd::close(event<int> done)
 {
-    if (*this)
-	done.trigger(_p->close());
-    else
-	done.trigger(-EBADF);
+    done.trigger(*this ? _p->close() : -EBADF);
 }
 
 }

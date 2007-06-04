@@ -114,7 +114,7 @@ class simple_event { public:
     simple_event *_canceler;
 
     inline ~simple_event() {
-	assert(!_r);
+	assert(!_r && !_r_pprev);
     }
     
     static simple_event *dead;
