@@ -61,6 +61,7 @@ class driver_tamer : public driver { public:
 
     int _tcap;
     ttimer_group *_tgroup;
+    int _tgroup_cap;
     ttimer *_tfree;
 
     int _fdcap;
@@ -79,7 +80,7 @@ class driver_tamer : public driver { public:
 driver_tamer::driver_tamer()
     : _t(0), _nt(0),
       _fd(0), _nfds(0),
-      _tcap(0), _tgroup(0), _tfree(0),
+      _tcap(0), _tgroup(0), _tgroup_cap(7), _tfree(0),
       _fdcap(0), _fdgroup(0), _fdfree(0)
 {
     expand_timers();
@@ -118,21 +119,22 @@ driver_tamer::~driver_tamer()
 
 void driver_tamer::expand_timers()
 {
-    int ncap = (_tcap ? _tcap * 2 : 16);
+    if (_tgroup_cap <= 511)
+	_tgroup_cap = (_tgroup_cap * 2) + 1;
 
-    ttimer_group *ngroup = reinterpret_cast<ttimer_group *>(new unsigned char[sizeof(ttimer_group) + sizeof(ttimer) * (ncap - 1)]);
+    ttimer_group *ngroup = reinterpret_cast<ttimer_group *>(new unsigned char[sizeof(ttimer_group) + sizeof(ttimer) * (_tgroup_cap - 1)]);
     ngroup->next = _tgroup;
     _tgroup = ngroup;
-    for (int i = 0; i < ncap; i++) {
+    for (int i = 0; i < _tgroup_cap; i++) {
 	ngroup->t[i].u.next = _tfree;
 	_tfree = &ngroup->t[i];
     }
 
-    ttimer **t = new ttimer *[_tcap + ncap];
+    ttimer **t = new ttimer *[_tcap + _tgroup_cap];
     memcpy(t, _t, sizeof(ttimer *) * _nt);
     delete[] _t;
     _t = t;
-    _tcap = ncap;
+    _tcap = _tcap + _tgroup_cap;
 }
 
 void driver_tamer::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/)
@@ -141,7 +143,7 @@ void driver_tamer::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/
     while (pos > 0
 	   && (npos = (pos-1) >> 1, timercmp(&_t[npos]->expiry, &t->expiry, >))) {
 	_t[pos] = _t[npos];
-	_t[npos]->u.schedpos = pos;
+	_t[pos]->u.schedpos = pos;
 	pos = npos;
     }
 
@@ -150,11 +152,11 @@ void driver_tamer::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/
 	npos = 2*pos + 1;
 	if (npos < _nt && !timercmp(&_t[npos]->expiry, &smallest->expiry, >))
 	    smallest = _t[npos];
-	if (npos + 1 < _nt && !timercmp(&_t[npos+1]->expiry, &smallest->expiry, >))
+	if (npos+1 < _nt && !timercmp(&_t[npos+1]->expiry, &smallest->expiry, >))
 	    smallest = _t[npos+1], npos++;
 
-	smallest->u.schedpos = pos;
 	_t[pos] = smallest;
+	_t[pos]->u.schedpos = pos;
 
 	if (smallest == t)
 	    break;
@@ -252,7 +254,7 @@ void driver_tamer::at_time(const timeval &expiry, const event<> &e)
     _tfree = t->u.next;
     (void) new(static_cast<void *>(t)) ttimer(_nt, expiry, e);
     _t[_nt++] = 0;
-    timer_reheapify_from(_nt - 1, t, false);
+    timer_reheapify_from(_nt-1, t, false);
 }
 
 void driver_tamer::at_asap(const event<> &e)
