@@ -26,6 +26,13 @@
  *  Tamer core.
  */
 
+/** @brief Major version number for this Tamer release. */
+#define TAMER_MAJOR_VERSION   1
+/** @brief Minor version number for this Tamer release. */
+#define TAMER_MINOR_VERSION   1
+/** @brief Release level for this Tamer release. */
+#define TAMER_RELEASE_LEVEL   0
+
 #include <tamer/rendezvous.hh>
 #include <tamer/event.hh>
 #include <tamer/driver.hh>
