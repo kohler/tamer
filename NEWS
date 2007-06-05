@@ -1,6 +1,27 @@
 Tamer NEWS
 
-Version 1.0.1
+Version 1.1.0   5.Jun.2007
+
+* Remove tamer::fileio and tamer::at_fd_close in favor of a tamer::fd
+  object with a better interface.
+
+* Language improvements: Add "twait volatile { }" blocks.  Add name
+  mangling to closure names, allowing tamed overloaded functions.  Allow
+  tvars{} variable initialization with "type var = value".
+
+* Add support for a libevent back end.  When this back end is used, Tamer
+  functions like tamer::at_fd_read() compile into libevent "struct event"s,
+  and the Tamer driver is a wrapper for libevent's driver.  To use the
+  Tamer native driver, set the TAMER_NOLIBEVENT environment variable.
+
+* Add tamer::fun_event(), which wraps a function or function object in an
+  event.
+
+* Add event<T*>::canceler() and event<T*>::at_complete().
+
+* Bug fixes in tamer::mutex, tamer::at_time, tamer::with_timeout.
+
+* Include #defines for version numbers.
 
 * "make clean" fixes from Henrik Nordstrom.
 

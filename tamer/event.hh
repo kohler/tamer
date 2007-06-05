@@ -224,9 +224,8 @@ class event { public:
      *  @return  An event that, when triggered, cancels this event.
      *
      *  If this event is empty, returns another empty event.  Otherwise,
-     *  when the returned event is triggered, this event will be canceled;
-     *  and when this event is triggered or canceled, the returned event will
-     *  be canceled.
+     *  returns an event that, when triggered, will cancel this event.  The
+     *  returned event is canceled when this event completes.
      */
     inline event<> canceler();
 

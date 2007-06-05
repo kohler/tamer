@@ -483,6 +483,15 @@ is triggered immediately.  Otherwise,
 is triggered when this event is canceled, and canceled when this event is
 triggered.
 .RE
+.sp
+.nf
+.B event<> event<T*>::canceler()
+.fi
+.RS 5
+Returns an event that, when triggered, will cancel this event.  The
+returned event is canceled itself when this event completes.  If this event
+is empty, returns another empty event.
+.RE
 '
 .SH "RENDEZVOUS CLASS"
 The
@@ -588,17 +597,6 @@ Returns an event that, when triggered, will call
 The returned event's trigger value is ignored.  Additionally, if
 .I e
 is canceled, then the returned event will be canceled.
-.RE
-.sp
-.nf
-.B event<> make_canceler(const event<T*> &\fIe\fB)
-.fi
-.RS 5
-Returns an event that, when triggered, will call
-.BR \fIe\fB.cancel() .
-The returned event will be canceled itself if
-.I e
-is triggered or canceled first.
 .RE
 .sp
 .nf
