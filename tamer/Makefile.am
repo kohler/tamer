@@ -32,7 +32,7 @@ pkginclude_HEADERS = \
 	xdriver.hh \
 	xevent.hh
 
-INCLUDES = -I$(top_srcdir)
+INCLUDES = -I$(top_srcdir) -I$(top_builddir)
 TAMER = ../compiler/tamer
 
 .tt.cc:

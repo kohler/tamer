@@ -25,7 +25,7 @@ namespace tamer {
  *  Acquire requests are served strictly in order of their arrival.  For
  *  example, the following code:
  *
- *  <code>
+ *  @code
  *     tamer::mutex m;
  *     tamed void exclusive(int which) {
  *         twait { m.acquire(make_event()); }
@@ -50,7 +50,7 @@ namespace tamer {
  *         shared(5);
  *         tamer::loop();
  *     }
- *  </code>
+ *  @endcode
  *
  *  will generate this output:
  *

@@ -71,7 +71,7 @@ class fd {
     inline ~fd();
 
     /** @brief  Make a file descriptor use nonblocking I/O.
-     *  @param  f  File descriptor.
+     *  @param  f  File descriptor value.
      *  @note   This function's argument is a file descriptor value, not an
      *          fd wrapper object.  Particularly useful for e.g.
      *          standard input.
