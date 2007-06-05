@@ -30,6 +30,25 @@ namespace tamer {
  *  accept(), connect(), and similar pending fd methods will terminate with
  *  the @c -ECANCELED error code (or, equivalently, tamer::outcome::cancel).
  *  Any fd methods on a closed file descriptor return the @c -EBADF error code.
+ *
+ *  The fd object ensures that reads complete in the order they are called,
+ *  and similarly for writes.  Thus, the following code:
+ *
+ *  @code
+ *     tamed void greeting(tamer::fd f) {
+ *         tvars {
+ *             int ret;
+ *         }
+ *         twait {
+ *             f.write("Hello, ", make_event(ret));
+ *             f.write("world", make_event(ret));
+ *             f.write("!", make_event(ret));
+ *         }
+ *     }
+ *  @endcode
+ *
+ *  will always output "<code>Hello, world!</code>", even though the three
+ *  <code>f.write()</code> calls hypothetically happen in parallel.
  */
 class fd {
 
