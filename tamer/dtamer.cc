@@ -25,12 +25,22 @@ class driver_tamer : public driver { public:
     
     struct ttimer {
 	union {
-	    int schedpos;
+	    unsigned order;
 	    ttimer *next;
 	} u;
 	timeval expiry;
 	event<> trigger;
-	ttimer(int schedpos_, const timeval &expiry_, const event<> &trigger_) : expiry(expiry_), trigger(trigger_) { u.schedpos = schedpos_; }
+	ttimer(const timeval &expiry_, unsigned order_, const event<> &trigger_)
+	    : expiry(expiry_), trigger(trigger_) {
+	    u.order = order_;
+	}
+	bool operator>(const ttimer &o) const {
+	    if (expiry.tv_sec != o.expiry.tv_sec)
+		return expiry.tv_sec > o.expiry.tv_sec;
+	    if (expiry.tv_usec != o.expiry.tv_usec)
+		return expiry.tv_usec > o.expiry.tv_usec;
+	    return (int) (u.order - o.u.order) > 0;
+	}
     };
 
     struct ttimer_group {
@@ -52,6 +62,7 @@ class driver_tamer : public driver { public:
     
     ttimer **_t;
     int _nt;
+    unsigned _torder;
 
     tfd *_fd;
     int _nfds;
@@ -78,7 +89,7 @@ class driver_tamer : public driver { public:
 
 
 driver_tamer::driver_tamer()
-    : _t(0), _nt(0),
+    : _t(0), _nt(0), _torder(0),
       _fd(0), _nfds(0),
       _tcap(0), _tgroup(0), _tgroup_cap(7), _tfree(0),
       _fdcap(0), _fdgroup(0), _fdfree(0)
@@ -141,22 +152,20 @@ void driver_tamer::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/
 {
     int npos;
     while (pos > 0
-	   && (npos = (pos-1) >> 1, timercmp(&_t[npos]->expiry, &t->expiry, >))) {
+	   && (npos = (pos-1) >> 1, *_t[npos] > *t)) {
 	_t[pos] = _t[npos];
-	_t[pos]->u.schedpos = pos;
 	pos = npos;
     }
 
     while (1) {
 	ttimer *smallest = t;
 	npos = 2*pos + 1;
-	if (npos < _nt && !timercmp(&_t[npos]->expiry, &smallest->expiry, >))
+	if (npos < _nt && !(*_t[npos] > *smallest))
 	    smallest = _t[npos];
-	if (npos+1 < _nt && !timercmp(&_t[npos+1]->expiry, &smallest->expiry, >))
+	if (npos+1 < _nt && !(*_t[npos+1] > *smallest))
 	    smallest = _t[npos+1], npos++;
 
 	_t[pos] = smallest;
-	_t[pos]->u.schedpos = pos;
 
 	if (smallest == t)
 	    break;
@@ -181,7 +190,7 @@ void driver_tamer::check_timers() const
     
     for (int i = 0; i < _nt / 2; i++)
 	for (int j = 2*i + 1; j < 2*i + 3; j++)
-	    if (j < _nt && timercmp(&_t[i]->expiry, &_t[j]->expiry, >)) {
+	    if (j < _nt && *_t[i] > *_t[j]) {
 		fprintf(stderr, "***");
 		for (int k = 0; k < _nt; k++)
 		    fprintf(stderr, (k == i || k == j ? " **%d.%06d**" : " %d.%06d"), _t[k]->expiry.tv_sec, _t[k]->expiry.tv_usec);
@@ -252,7 +261,7 @@ void driver_tamer::at_time(const timeval &expiry, const event<> &e)
 	expand_timers();
     ttimer *t = _tfree;
     _tfree = t->u.next;
-    (void) new(static_cast<void *>(t)) ttimer(_nt, expiry, e);
+    (void) new(static_cast<void *>(t)) ttimer(expiry, ++_torder, e);
     _t[_nt++] = 0;
     timer_reheapify_from(_nt-1, t, false);
 }
