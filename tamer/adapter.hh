@@ -59,8 +59,8 @@ inline event<> distribute(const event<> &e1, const event<> &e2, const event<> &e
  */
 template <typename T0, typename V0>
 event<> bind(event<T0> e, const V0 &v0) {
-    tamerpriv::callback_rendezvous<tamerpriv::bind_callback<T0> > *r =
-	new tamerpriv::callback_rendezvous<tamerpriv::bind_callback<T0> >(e, v0);
+    tamerpriv::function_rendezvous<tamerpriv::bind_function<T0> > *r =
+	new tamerpriv::function_rendezvous<tamerpriv::bind_function<T0> >(e, v0);
     e.at_cancel(event<>(*r, r->canceler));
     return event<>(*r, r->triggerer);
 }
@@ -75,8 +75,8 @@ event<> bind(event<T0> e, const V0 &v0) {
  */
 template <typename T0>
 event<T0> ignore_slot(event<> e) {
-    tamerpriv::callback_rendezvous<event<> > *r =
-	new tamerpriv::callback_rendezvous<event<> >(e);
+    tamerpriv::function_rendezvous<event<> > *r =
+	new tamerpriv::function_rendezvous<event<> >(e);
     e.at_cancel(event<>(*r, r->canceler));
     return event<T0>(*r, r->triggerer, empty_slot());
 }
@@ -461,11 +461,17 @@ inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterato
     return e.make_rebind(*r, outcome::success);
 }
 
-
+/** @brief  Create event that calls a function when triggered.
+ *  @param  f  Function object.
+ *
+ *  Returns an event that calls @a f() immediately when it is triggered.  Once
+ *  the event is completed (triggered or canceled), the @a f object is
+ *  destroyed.
+ */
 template <typename F>
-inline event<> make_callback_event(const F &f) {
-    tamerpriv::callback_rendezvous<F> *innerr =
-	new tamerpriv::callback_rendezvous<F>(f);
+inline event<> fun_event(const F &f) {
+    tamerpriv::function_rendezvous<F> *innerr =
+	new tamerpriv::function_rendezvous<F>(f);
     return event<>(*innerr, innerr->triggerer);
 }
 

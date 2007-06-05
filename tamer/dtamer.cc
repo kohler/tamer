@@ -160,9 +160,9 @@ void driver_tamer::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/
     while (1) {
 	ttimer *smallest = t;
 	npos = 2*pos + 1;
-	if (npos < _nt && !(*_t[npos] > *smallest))
+	if (npos < _nt && *smallest > *_t[npos])
 	    smallest = _t[npos];
-	if (npos+1 < _nt && !(*_t[npos+1] > *smallest))
+	if (npos+1 < _nt && *smallest > *_t[npos+1])
 	    smallest = _t[npos+1], npos++;
 
 	_t[pos] = smallest;

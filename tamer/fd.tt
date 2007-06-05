@@ -47,7 +47,7 @@ struct fd::fdcloser {
 event<> fd::closer()
 {
     if (*this) {
-	event<> e = tamer::make_callback_event(fdcloser(_p));
+	event<> e = fun_event(fdcloser(_p));
 	at_close(e.canceler());
 	return e;
     } else

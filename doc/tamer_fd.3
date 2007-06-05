@@ -1,0 +1,76 @@
+.TH TAMER::FD 3 2007-06-05 Tamer "Tamer Manual"
+.ds E \-\-\-
+.if t .ds E \(em
+.de M
+.BR "\\$1" "(\\$2)\\$3"
+..
+.SH NAME
+tamer_fd \- Tamer file descriptor support
+.SH SYNOPSIS
+.nf
+.B #include <tamer/fd.hh>
+.B using namespace tamer;
+.sp
+\fBclass fd { public:
+    fd();
+    \&...
+}
+.fi
+.SH DESCRIPTION
+The
+.B tamer::fd
+class wraps file descriptors in a convenient interface for
+.M tamer 3
+event-based programming.  Its methods resemble Unix system calls, but
+adapted for Tamer events.
+.LP
+.B fd
+wrappers are reference-counted and may be freely passed as arguments,
+copied, assigned, and destroyed.  Many 
+.B fd
+wrappers may refer to the same underlying file descriptor.  This file
+descriptor is closed when the last wrapper to reference it is destroyed.
+Alternately, the 
+.B fd::close() 
+member function explicitly closes the underlying file descriptor.
+.M
+When a file descriptor is closed, any pending 
+.B tamer::at_fd_read() 
+and
+.B tamer::at_fd_write() 
+events are canceled, and any pending 
+.BR tamer::fd::read() , 
+.BR tamer::fd::write() ,
+.BR tamer::fd::accept() ,
+.BR tamer::fd::connect() ,
+and similar pending 
+.B fd
+methods will terminate with the
+.B \-ECANCELED 
+error code (or, equivalently,
+.BR tamer::outcome::cancel ). 
+Any 
+.B fd
+methods on a closed file descriptor return the
+.B \-EBADF
+error code.
+.LP
+For more information, please see the comments in the
+.B <tamer/fd.hh>
+header file.
+'
+.SH AUTHOR
+Eddie Kohler <kohler@cs.ucla.edu>
+.br
+Based on joint work on Tame with Maxwell Krohn <krohn@mit.edu> and Frans
+Kaashoek <kaashoek@mit.edu>
+'
+.SH "SEE ALSO"
+.M tamer 3 ,
+.M tamer 1
+.LP
+\*(lqEvents Can Make Sense\*(rq.  Maxwell Krohn, Eddie Kohler, and Frans
+Kaashoek.  In
+.I Proc. USENIX 2007 Annual Technical Conference.
+Also available at
+http://www.cs.ucla.edu/~kohler/pubs/krohn07events.pdf

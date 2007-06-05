@@ -177,8 +177,8 @@ struct cancelfunc {
 
 event<> simple_event::canceler() {
     if (_r) {
-	callback_rendezvous<cancelfunc> *r =
-	    new callback_rendezvous<cancelfunc>(this);
+	function_rendezvous<cancelfunc> *r =
+	    new function_rendezvous<cancelfunc>(this);
 	at_cancel(event<>(*r, r->canceler));
 	return event<>(*r, r->triggerer);
     } else

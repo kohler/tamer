@@ -14,6 +14,22 @@ namespace tamer {
 
 /** @class fd tamer/fd.hh <tamer/fd.hh>
  *  @brief  A file descriptor wrapper with event-based access functions.
+ *
+ *  The fd class wraps file descriptors in a convenient interface for Tamer
+ *  event-based programming.  Its methods resemble Unix system calls,
+ *  but adapted for Tamer events.
+ *
+ *  fd wrappers are reference-counted and may be freely passed as arguments,
+ *  copied, assigned, and destroyed.  Many fd wrappers may refer to the same
+ *  underlying file descriptor.  This file descriptor is closed when the last
+ *  wrapper to reference it is destroyed.  Alternately, the close() member
+ *  function explicitly closes the underlying file descriptor.
+ *
+ *  When a file descriptor is closed, any pending tamer::at_fd_read() and
+ *  tamer::at_fd_write() events are canceled, and any pending read(), write(),
+ *  accept(), connect(), and similar pending fd methods will terminate with
+ *  the @c -ECANCELED error code (or, equivalently, tamer::outcome::cancel).
+ *  Any fd methods on a closed file descriptor return the @c -EBADF error code.
  */
 class fd {
 
@@ -23,7 +39,8 @@ class fd {
 
     /** @brief  Default constructor creates an invalid file descriptor.
      *
-     *  The resulting file descriptor returns an error() of -EBADF.
+     *  The resulting file descriptor returns an error() of -EBADF.  This
+     *  error code is also returned by any file descriptor operation.
      */
     inline fd();
 
@@ -69,7 +86,8 @@ class fd {
      *
      *  Opens a file descriptor for the named file, returning it via the
      *  @a result event.  The returned file descriptor is made nonblocking.
-     *  To check whether the open succeeded, use valid() or error().
+     *  To check whether the open succeeded, use valid() or error() on the
+     *  resulting file descriptor.
      *
      *  @sa open(const char *, int, event<fd>)
      */
@@ -132,8 +150,9 @@ class fd {
      *  @param  e  Close notifier.
      *
      *  If this file descriptor is invalid, triggers @a e immediately.
-     *  Otherwise, triggers @a e when this file descriptor is closed
-     *  (either by close() or as a result of references going out of scope).
+     *  Otherwise, triggers @a e when this file descriptor is closed (either
+     *  by an explicit close() or as a result of file descriptor references
+     *  going out of scope).
      */
     inline void at_close(event<> e);
 
@@ -146,25 +165,134 @@ class fd {
     event<> closer();
 
     /** @brief  Fetch file status.
+     *  @param[out]  stat  Status structure.
+     *  @param       done  Event triggered on completion.
+     *
+     *  @a done is triggered with 0 on success, or a negative error code.
      */
-    void fstat(struct stat &stat_out, event<int> done);
+    void fstat(struct stat &stat, event<int> done);
 
+    /** @brief  Set socket file descriptor for listening.
+     *  @param  backlog  Maximum length of pending connection queue.
+     *
+     *  Returns 0 on success, or a negative error code.
+     */
+    int listen(int backlog = 32);
+
+    /** @brief  Accept new connection on listening socket file descriptor.
+     *  @param[out]     name     Socket address of connecting client.
+     *  @param[in,out]  namelen  Length of @a name.
+     *  @param          result   Event triggered on completion.
+     *
+     *  Accepts a new connection on a listening socket, returning it via the
+     *  @a result event.  The returned file descriptor is made nonblocking.
+     *  To check whether the accept succeeded, use valid() or error() on the
+     *  resulting file descriptor.
+     *
+     *  If @a name is not null, it is filled in with the connecting client's
+     *  address.  On input, @a namelen should equal the space available for @a
+     *  name; on output, it is set to the space used for @a name.
+     *
+     *  @sa accept(const event<fd> &)
+     */
+    void accept(struct sockaddr *name, socklen_t *namelen, event<fd> result);
+
+    /** @brief  Accept new connection on listening socket file descriptor.
+     *  @param  result  Event triggered on completion.
+     *
+     *  Equivalent to accept(NULL, NULL, result).
+     */
+    inline void accept(const event<fd> &result);
+
+    /** @brief  Connect socket file descriptor.
+     *  @param  name     Remote address.
+     *  @param  namelen  Length of remote address.
+     *  @param  done     Event triggered on completion.
+     *
+     *  @a done is triggered with 0 on success, or a negative error code.
+     */
+    void connect(const struct sockaddr *name, socklen_t namelen,
+		 event<int> done);
+    
+    /** @brief  Read from file descriptor.
+     *  @param[out]  buf     Buffer.
+     *  @param       size    Buffer size.
+     *  @param[out]  nread   Number of characters read.
+     *  @param       done    Event triggered on completion.
+     *
+     *  @a done is triggered with 0 on success or end-of-file, or a negative
+     *  error code.  @a nread is kept up to date as the read progresses.
+     */
     void read(void *buf, size_t size, size_t &nread, event<int> done);
+
+    /** @brief  Read from file descriptor.
+     *  @param[out]  buf     Buffer.
+     *  @param       size    Buffer size.
+     *  @param       done    Event triggered on completion.
+     *
+     *  Similar to read(void *, size_t, size_t &, event<int>), but does not
+     *  return the number of characters actually read.
+     */
     inline void read(void *buf, size_t size, const event<int> &done);
 
-    void write(const void *buf, size_t size, size_t &nwritten, event<int> done);
+    /** @brief  Write to file descriptor.
+     *  @param       buf       Buffer.
+     *  @param       size      Buffer size.
+     *  @param[out]  nwritten  Number of characters written.
+     *  @param       done      Event triggered on completion.
+     *
+     *  @a done is triggered with 0 on success or end-of-file, or a negative
+     *  error code.  @a nwritten is kept up to date as the write progresses.
+     *
+     *  @sa write(std::string, size_t, event<int>)
+     */
+    void write(const void *buf, size_t size, size_t &nwritten,
+	       event<int> done);
+
+    /** @brief  Write to file descriptor.
+     *  @param  buf   Buffer.
+     *  @param  size  Buffer size.
+     *  @param  done  Event triggered on completion.
+     *
+     *  Similar to write(const void *, size_t, size_t &, event<int>), but does
+     *  not return the number of characters actually written.
+     */
     inline void write(const void *buf, size_t size, const event<int> &done);
+
+    /** @brief  Write string to file descriptor.
+     *  @param       buf       Buffer.
+     *  @param[out]  nwritten  Number of characters written.
+     *  @param       done      Event triggered on completion.
+     *
+     *  Equivalent to write(buf.data(), buf.length(), nwritten, done).
+     */
     void write(std::string buf, size_t &nwritten, event<int> done);
+
+    /** @brief  Write string to file descriptor.
+     *  @param  buf   Buffer.
+     *  @param  done  Event triggered on completion.
+     *
+     *  Equivalent to write(buf.data(), buf.length(), done).
+     */
     inline void write(const std::string &buf, const event<int> &done);
 
-    int listen(int backlog = 32);
-    void accept(struct sockaddr *name, socklen_t *namelen, event<fd> done);
-    void connect(const struct sockaddr *name, socklen_t namelen, event<int> done);
-    
+    /** @brief  Close file descriptor.
+     *  @param  done  Event triggered on completion.
+     *
+     *  @a done is triggered with 0 on success, or a negative error code.
+     */
     void close(event<int> done);
-    inline int close();
-    
-    inline fd &operator=(const fd &other);
+
+    /** @brief  Close file descriptor.
+     *
+     *  Equivalent to close(event<int>()).
+     */
+    inline void close();
+
+    /** @brief  Assign this file descriptor to refer to @a f.
+     *  @param  f  Source file descriptor.
+     */
+    inline fd &operator=(const fd &f);
     
   private:
 
@@ -202,8 +330,6 @@ class fd {
 	}
 	
 	int close();
-
-	struct closer;
 	
       private:
 
@@ -291,6 +417,10 @@ inline void fd::at_close(event<> e) {
 	_p->at_close = distribute(_p->at_close, e);
 }
 
+inline void fd::accept(const event<fd> &result) {
+    accept(0, 0, result);
+}
+
 inline void fd::read(void *buf, size_t size, const event<int> &done) {
     read(buf, size, garbage_size, done);
 }
@@ -303,8 +433,9 @@ inline void fd::write(const std::string &buf, const event<int> &done) {
     write(buf, garbage_size, done);
 }
 
-inline int fd::close() {
-    return (*this ? _p->close() : -EBADF);
+inline void fd::close() {
+    if (*this)
+	_p->close();
 }
 
 inline bool operator==(const fd &a, const fd &b) {

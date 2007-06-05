@@ -16,11 +16,9 @@ buffer::~buffer()
     delete[] _buf;
 }
 
-ssize_t buffer::fill_more(fd &f, const event<int> &done, const event<> &closewatch)
+ssize_t buffer::fill_more(fd f, const event<int> &done)
 {
-    if (!f)
-	return -EOVERFLOW;
-    if (!done || !closewatch)
+    if (!done || !f)
 	return -ECANCELED;
     if (_head + _size == _tail) {
 	char *new_buf = new char[_size * 2];
@@ -52,19 +50,15 @@ ssize_t buffer::fill_more(fd &f, const event<int> &done, const event<> &closewat
 	return -errno;
 }
 
-tamed void buffer::fill_until(fd &f, char c, size_t max_size, size_t &out_size, event<int> done)
+tamed void buffer::fill_until(fd f, char c, size_t max_size, size_t &out_size, event<int> done)
 {
     tvars {
 	int ret = -ECANCELED;
 	size_t pos = this->_head;
 	ssize_t amt;
-	rendezvous<> r;
-	event<> closewatch(r);
     }
     
     out_size = 0;
-    if (f)
-	f.at_close(closewatch);
 
     while (done) {
 	for (; pos != _tail && pos != _head + max_size; pos++)
@@ -80,11 +74,10 @@ tamed void buffer::fill_until(fd &f, char c, size_t max_size, size_t &out_size, 
 	}
 
 	assert(pos == _tail);
-	amt = fill_more(f, done, closewatch);
+	amt = fill_more(f, done);
 	pos = _tail;
 	if (amt == -EAGAIN) {
-	    tamer::at_fd_read(f.value(), make_event(r));
-	    twait(r);
+	    twait volatile { tamer::at_fd_read(f.value(), make_event()); }
 	} else if (amt <= 0) {
 	    ret = (amt == 0 ? tamer::outcome::closed : amt);
 	    break;
@@ -97,7 +90,7 @@ tamed void buffer::fill_until(fd &f, char c, size_t max_size, size_t &out_size, 
     done.trigger(ret);
 }
 
-tamed void buffer::take_until(fd &f, char c, size_t max_size, std::string &str, event<int> done)
+tamed void buffer::take_until(fd f, char c, size_t max_size, std::string &str, event<int> done)
 {
     tvars {
 	size_t size;

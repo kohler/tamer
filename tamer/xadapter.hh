@@ -7,35 +7,35 @@
 namespace tamer {
 namespace tamerpriv {
 
-template <typename F> class callback_rendezvous : public abstract_rendezvous { public:
+template <typename F> class function_rendezvous : public abstract_rendezvous { public:
 
-    callback_rendezvous()
+    function_rendezvous()
 	: _f() {
     }
 
     template <typename X>
-    callback_rendezvous(X x)
+    function_rendezvous(X x)
 	: _f(x) {
     }
 
     template <typename X, typename Y>
-    callback_rendezvous(X x, Y y)
+    function_rendezvous(X x, Y y)
 	: _f(x, y) {
     }
 
     template <typename X, typename Y, typename Z>
-    callback_rendezvous(X x, Y y, Z z)
+    function_rendezvous(X x, Y y, Z z)
 	: _f(x, y, z) {
     }
 
-    ~callback_rendezvous() {
+    ~function_rendezvous() {
     }
 
-    enum callback_type {
+    enum function_type {
 	triggerer, canceler
     };
 
-    void add(simple_event *e, callback_type t) {
+    void add(simple_event *e, function_type t) {
 	e->initialize(this, t);
     }
 
@@ -82,10 +82,10 @@ class unbind_rendezvous : public abstract_rendezvous { public:
 };
 
 
-template <typename T0> class bind_callback { public:
+template <typename T0> class bind_function { public:
 
     template <typename V0>
-    bind_callback(const event<T0> &ein, const V0 &v0)
+    bind_function(const event<T0> &ein, const V0 &v0)
 	: _ein(ein), _v0(v0) {
     }
     
