@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 namespace tamer {
 
 /** @file <tamer/fd.hh>
@@ -70,6 +71,9 @@ class fd {
      *  control of its file descriptor argument.  In particular, when the
      *  last reference to the resulting object is destroyed, @a f is closed
      *  automatically.
+     *
+     *  @a f may be a negative error code, in which case error() will return
+     *  the given value.
      */
     explicit inline fd(int f);
 
@@ -136,6 +140,10 @@ class fd {
      */
     static fd socket(int domain, int type, int protocol);
 
+    static void tcp_listen(int port, int backlog, event<fd> result);
+    static inline void tcp_listen(int port, event<fd> result);
+    static void tcp_connect(struct in_addr addr, int port, event<fd> result);
+
     /** @brief  Test if file descriptor is valid.
      *  @return  True if file descriptor is valid, false if not.
      */
@@ -191,16 +199,26 @@ class fd {
      */
     void fstat(struct stat &stat, event<int> done);
 
+    enum { default_backlog = 128 };
+
     /** @brief  Set socket file descriptor for listening.
      *  @param  backlog  Maximum length of pending connection queue.
      *
      *  Returns 0 on success, or a negative error code.
      */
-    int listen(int backlog = 32);
+    int listen(int backlog = default_backlog);
+
+    /** @brief  Bind socket file descriptor to local address.
+     *  @param  addr     Local socket address.
+     *  @param  addrlen  Length of local socket address.
+     *
+     *  Returns 0 on success, or a negative error code.
+     */
+    int bind(const struct sockaddr *addr, socklen_t addrlen);
 
     /** @brief  Accept new connection on listening socket file descriptor.
-     *  @param[out]     name     Socket address of connecting client.
-     *  @param[in,out]  namelen  Length of @a name.
+     *  @param[out]     addr     Socket address of connecting client.
+     *  @param[in,out]  addrlen  Length of @a addr.
      *  @param          result   Event triggered on completion.
      *
      *  Accepts a new connection on a listening socket, returning it via the
@@ -208,13 +226,13 @@ class fd {
      *  To check whether the accept succeeded, use valid() or error() on the
      *  resulting file descriptor.
      *
-     *  If @a name is not null, it is filled in with the connecting client's
-     *  address.  On input, @a namelen should equal the space available for @a
-     *  name; on output, it is set to the space used for @a name.
+     *  If @a addr is not null, it is filled in with the connecting client's
+     *  address.  On input, @a addrlen should equal the space available for @a
+     *  addr; on output, it is set to the space used for @a addr.
      *
      *  @sa accept(const event<fd> &)
      */
-    void accept(struct sockaddr *name, socklen_t *namelen, event<fd> result);
+    void accept(struct sockaddr *addr, socklen_t *addrlen, event<fd> result);
 
     /** @brief  Accept new connection on listening socket file descriptor.
      *  @param  result  Event triggered on completion.
@@ -224,13 +242,13 @@ class fd {
     inline void accept(const event<fd> &result);
 
     /** @brief  Connect socket file descriptor.
-     *  @param  name     Remote address.
-     *  @param  namelen  Length of remote address.
+     *  @param  addr     Remote address.
+     *  @param  addrlen  Length of remote address.
      *  @param  done     Event triggered on completion.
      *
      *  @a done is triggered with 0 on success, or a negative error code.
      */
-    void connect(const struct sockaddr *name, socklen_t namelen,
+    void connect(const struct sockaddr *addr, socklen_t addrlen,
 		 event<int> done);
     
     /** @brief  Read from file descriptor.
@@ -348,7 +366,7 @@ class fd {
 		delete this;
 	}
 	
-	int close();
+	int close(int leave_error = -EBADF);
 	
       private:
 
@@ -368,6 +386,7 @@ class fd {
     class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &, unsigned);
     class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_ &, unsigned);
     class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_ &, unsigned);
+    class closure__tcp_connect__7in_addriQ2fd_; static void tcp_connect(closure__tcp_connect__7in_addriQ2fd_ &, unsigned);
 
     friend bool operator==(const fd &, const fd &);
     friend bool operator!=(const fd &, const fd &);
@@ -434,6 +453,10 @@ inline void fd::at_close(event<> e) {
 	e.trigger();
     else
 	_p->at_close = distribute(_p->at_close, e);
+}
+
+inline void fd::tcp_listen(int port, event<fd> result) {
+    tcp_listen(port, default_backlog, result);
 }
 
 inline void fd::accept(const event<fd> &result) {

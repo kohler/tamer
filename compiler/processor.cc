@@ -681,7 +681,7 @@ tame_fn_t::output_reenter (strbuf &b)
     b << "  void tamer_closure_activate(unsigned blockid) {\n    ";
     if (tamer_debug)
 	b << "tamer_debug_closure::set_block_landmark(0, 0);\n    ";
-    if (_class.length())
+    if (_class.length() && !(_opts & STATIC_DECL))
 	b << _self.name() << "->" << _method_name;
     else
 	b << _name;

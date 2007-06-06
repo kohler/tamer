@@ -8,7 +8,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <tamer/tamer.hh>
-
 namespace tamer {
 
 size_t fd::garbage_size;
@@ -159,7 +158,15 @@ int fd::listen(int backlog)
 	return (::listen(_p->fd, backlog) == 0 ? 0 : -errno);
 }
 
-tamed void fd::accept(struct sockaddr *name_out, socklen_t *namelen_out, event<fd> done)
+int fd::bind(const struct sockaddr *addr, socklen_t addrlen)
+{
+    if (!*this)
+	return -EBADF;
+    else
+	return (::bind(_p->fd, addr, addrlen) == 0 ? 0 : -errno);
+}
+
+tamed void fd::accept(struct sockaddr *addr_out, socklen_t *addrlen_out, event<fd> done)
 {
     tvars {
 	int f = -ECANCELED;
@@ -173,7 +180,7 @@ tamed void fd::accept(struct sockaddr *name_out, socklen_t *namelen_out, event<f
     twait { _p->rlock.acquire(make_event()); }
     
     while (done && *this) {
-	f = ::accept(_p->fd, name_out, namelen_out);
+	f = ::accept(_p->fd, addr_out, addrlen_out);
 	if (f >= 0) {
 	    make_nonblocking(f);
 	    break;
@@ -189,7 +196,7 @@ tamed void fd::accept(struct sockaddr *name_out, socklen_t *namelen_out, event<f
     done.trigger(fd(f));
 }
 
-tamed void fd::connect(const struct sockaddr *name, socklen_t namelen, event<int> done)
+tamed void fd::connect(const struct sockaddr *addr, socklen_t addrlen, event<int> done)
 {
     tvars {
 	int x, ret(0);
@@ -202,7 +209,7 @@ tamed void fd::connect(const struct sockaddr *name, socklen_t namelen, event<int
     
     twait { _p->wlock.acquire(make_event()); }
     
-    x = ::connect(_p->fd, name, namelen);
+    x = ::connect(_p->fd, addr, addrlen);
     if (x == -1 && errno != EINPROGRESS)
 	ret = -errno;
     else if (x == -1) {
@@ -221,13 +228,14 @@ tamed void fd::connect(const struct sockaddr *name, socklen_t namelen, event<int
 }
 
 
-int fd::fdimp::close()
+int fd::fdimp::close(int leave_error)
 {
     if (fd >= 0) {
 	int my_fd = fd;
-	fd = -1;
+	fd = leave_error;
 	int x = ::close(my_fd);
-	x = (x == -1 ? -errno : 0);
+	if (x == -1)
+	    x = fd = -errno;
 	driver::main->kill_fd(my_fd);
 	at_close.trigger();
 	at_close = event<>();
@@ -236,10 +244,52 @@ int fd::fdimp::close()
 	return -EBADF;
 }
 
-
 void fd::close(event<int> done)
 {
     done.trigger(*this ? _p->close() : -EBADF);
+}
+
+void fd::tcp_listen(int port, int backlog, event<fd> result)
+{
+    fd f = fd::socket(AF_INET, SOCK_STREAM, 0);
+    if (f) {
+	// Default to reusing port addresses.  Don't worry if it fails
+	int yes = 1;
+	(void) setsockopt(f.value(), SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+
+	struct sockaddr_in saddr;
+	saddr.sin_family = AF_INET;
+	saddr.sin_port = htons(port);
+	saddr.sin_addr.s_addr = INADDR_ANY;
+	int ret = f.bind((struct sockaddr *) &saddr, sizeof(saddr));
+	if (ret >= 0)
+	    ret = f.listen(backlog);
+    
+	if (ret < 0 && f)
+	    f._p->close(ret);
+    }
+    result.trigger(f);
+}
+
+tamed static void fd::tcp_connect(struct in_addr addr, int port,
+				  event<fd> result)
+{
+    tvars {
+	fd f = fd::socket(AF_INET, SOCK_STREAM, 0);
+	int ret = 0;
+	struct sockaddr_in saddr;
+    }
+    if (f)
+	twait volatile {
+	    memset(&saddr, 0, sizeof(saddr));
+	    saddr.sin_family = AF_INET;
+	    saddr.sin_addr = addr;
+	    saddr.sin_port = htons(port);
+	    f.connect((struct sockaddr *) &saddr, sizeof(saddr), make_event(ret));
+	}
+    if (ret < 0 && f)
+	f._p->close(ret);
+    result.trigger(f);
 }
 
 }
