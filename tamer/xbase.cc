@@ -136,7 +136,7 @@ void simple_event::at_complete(const event<> &e)
     else if (!_canceler) {
 	distribute_rendezvous *d = new distribute_rendezvous;
 	d->add_distribute(e, true);
-	_canceler = new simple_event(*d, 0);
+	_canceler = new simple_event(*d, 0, 0);
     } else {
 	abstract_rendezvous *r = _canceler->rendezvous();
 	if (r->is_distribute() && _canceler->refcount() == 1) {
@@ -147,7 +147,7 @@ void simple_event::at_complete(const event<> &e)
 	    distribute_rendezvous *d = new distribute_rendezvous;
 	    d->add_distribute(event<>::__take(_canceler), false);
 	    d->add_distribute(e, true);
-	    _canceler = new simple_event(*d, 0);
+	    _canceler = new simple_event(*d, 0, 0);
 	}
     }
 }
@@ -164,7 +164,7 @@ struct cancelfunc {
 	_e->weak_use();
     }
     ~cancelfunc() {
-	_e->weak_unuse();
+	_e->weak_unuse(); // XXX this is a bad idea!
     }
     void operator()() {
 	_e->complete(false);

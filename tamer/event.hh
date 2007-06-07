@@ -246,7 +246,7 @@ class event { public:
     template <typename R, typename I0, typename I1>
     event<T0, T1, T2, T3> make_rebind(R &r, const I0 &i0, const I1 &i1) {
 	if (*this) {
-	    event<T0, T1, T2, T3> e(r, i0, i1, *_e->_s0, *_e->_s1, *_e->_s2, *_e->_s3);
+	    event<T0, T1, T2, T3> e(r, i0, i1, *static_cast<T0 *>(_e->_s0), *_e->_s1, *_e->_s2, *_e->_s3);
 	    _e->unbind();
 	    return e;
 	} else
@@ -256,7 +256,7 @@ class event { public:
     template <typename R, typename I0>
     event<T0, T1, T2, T3> make_rebind(R &r, const I0 &i0) {
 	if (*this) {
-	    event<T0, T1, T2, T3> e(r, i0, *_e->_s0, *_e->_s1, *_e->_s2, *_e->_s3);
+	    event<T0, T1, T2, T3> e(r, i0, *static_cast<T0 *>(_e->_s0), *_e->_s1, *_e->_s2, *_e->_s3);
 	    _e->unbind();
 	    return e;
 	} else
@@ -266,7 +266,7 @@ class event { public:
     template <typename R>
     event<T0, T1, T2, T3> make_rebind(R &r) {
 	if (*this) {
-	    event<T0, T1, T2, T3> e(r, *_e->_s0, *_e->_s1, *_e->_s2, *_e->_s3);
+	    event<T0, T1, T2, T3> e(r, *static_cast<T0 *>(_e->_s0), *_e->_s1, *_e->_s2, *_e->_s3);
 	    _e->unbind();
 	    return e;
 	} else
@@ -386,7 +386,7 @@ class event<T0, T1, T2, void> { public:
     template <typename R, typename I0, typename I1>
     event<T0, T1, T2> make_rebind(R &r, const I0 &i0, const I1 &i1) {
 	if (*this) {
-	    event<T0, T1, T2> e(r, i0, i1, *_e->_s0, *_e->_s1, *_e->_s2);
+	    event<T0, T1, T2> e(r, i0, i1, *static_cast<T0 *>(_e->_s0), *_e->_s1, *_e->_s2);
 	    _e->unbind();
 	    return e;
 	} else
@@ -396,7 +396,7 @@ class event<T0, T1, T2, void> { public:
     template <typename R, typename I0>
     event<T0, T1, T2> make_rebind(R &r, const I0 &i0) {
 	if (*this) {
-	    event<T0, T1, T2> e(r, i0, *_e->_s0, *_e->_s1, *_e->_s2);
+	    event<T0, T1, T2> e(r, i0, *static_cast<T0 *>(_e->_s0), *_e->_s1, *_e->_s2);
 	    _e->unbind();
 	    return e;
 	} else
@@ -406,7 +406,7 @@ class event<T0, T1, T2, void> { public:
     template <typename R>
     event<T0, T1, T2> make_rebind(R &r) {
 	if (*this) {
-	    event<T0, T1, T2> e(r, *_e->_s0, *_e->_s1, *_e->_s2);
+	    event<T0, T1, T2> e(r, *static_cast<T0 *>(_e->_s0), *_e->_s1, *_e->_s2);
 	    _e->unbind();
 	    return e;
 	} else
@@ -506,7 +506,7 @@ class event<T0, T1, void, void>
     template <typename R, typename I0, typename I1>
     event<T0, T1> make_rebind(R &r, const I0 &i0, const I1 &i1) {
 	if (*this) {
-	    event<T0, T1> e(r, i0, i1, *_e->_s0, *_e->_s1);
+	    event<T0, T1> e(r, i0, i1, *static_cast<T0 *>(_e->_s0), *_e->_s1);
 	    _e->unbind();
 	    return e;
 	} else
@@ -516,7 +516,7 @@ class event<T0, T1, void, void>
     template <typename R, typename I0>
     event<T0, T1> make_rebind(R &r, const I0 &i0) {
 	if (*this) {
-	    event<T0, T1> e(r, i0, *_e->_s0, *_e->_s1);
+	    event<T0, T1> e(r, i0, *static_cast<T0 *>(_e->_s0), *_e->_s1);
 	    _e->unbind();
 	    return e;
 	} else
@@ -526,7 +526,7 @@ class event<T0, T1, void, void>
     template <typename R>
     event<T0, T1> make_rebind(R &r) {
 	if (*this) {
-	    event<T0, T1> e(r, *_e->_s0, *_e->_s1);
+	    event<T0, T1> e(r, *static_cast<T0 *>(_e->_s0), *_e->_s1);
 	    _e->unbind();
 	    return e;
 	} else
@@ -642,7 +642,7 @@ class event<T0, void, void, void>
     template <typename R, typename I0, typename I1>
     event<T0> make_rebind(R &r, const I0 &i0, const I1 &i1) {
 	if (*this) {
-	    event<T0> e(r, i0, i1, *_e->_s0);
+	    event<T0> e(r, i0, i1, *static_cast<T0 *>(_e->_s0));
 	    _e->unbind();
 	    return e;
 	} else
@@ -652,7 +652,7 @@ class event<T0, void, void, void>
     template <typename R, typename I0>
     event<T0> make_rebind(R &r, const I0 &i0) {
 	if (*this) {
-	    event<T0> e(r, i0, *_e->_s0);
+	    event<T0> e(r, i0, *static_cast<T0 *>(_e->_s0));
 	    _e->unbind();
 	    return e;
 	} else
@@ -662,7 +662,7 @@ class event<T0, void, void, void>
     template <typename R>
     event<T0> make_rebind(R &r) {
 	if (*this) {
-	    event<T0> e(r, *_e->_s0);
+	    event<T0> e(r, *static_cast<T0 *>(_e->_s0));
 	    _e->unbind();
 	    return e;
 	} else
@@ -703,17 +703,17 @@ class event<void, void, void, void> { public:
 
     template <typename R, typename I0, typename I1>
     event(R &r, const I0 &i0, const I1 &i1)
-	: _e(new tamerpriv::simple_event(r, i0, i1)) {
+	: _e(new tamerpriv::simple_event(r, i0, i1, 0)) {
     }
 
     template <typename R, typename I0>
     event(R &r, const I0 &i0)
-	: _e(new tamerpriv::simple_event(r, i0)) {
+	: _e(new tamerpriv::simple_event(r, i0, 0)) {
     }
 
     template <typename R>
     explicit event(R &r)
-	: _e(new tamerpriv::simple_event(r)) {
+	: _e(new tamerpriv::simple_event(r, 0)) {
     }
 
     event(const event<> &e)

@@ -37,17 +37,17 @@ class simple_event { public:
 
     inline simple_event()
 	: _refcount(1), _weak_refcount(0),
-	  _r(0), _rid(0), _r_next(0), _r_pprev(0), _canceler(0) {
+	  _r(0), _rid(0), _r_next(0), _r_pprev(0), _canceler(0), _s0(0) {
     }
 
     template <typename R, typename I0, typename I1>
-    inline simple_event(R &r, const I0 &i0, const I1 &i1);
+    inline simple_event(R &r, const I0 &i0, const I1 &i1, void *s0);
 
     template <typename R, typename I0>
-    inline simple_event(R &r, const I0 &i0);
+    inline simple_event(R &r, const I0 &i0, void *s0);
 
     template <typename R>
-    inline simple_event(R &r);
+    inline simple_event(R &r, void *s0);
 
     void use() {
 	++_refcount;
@@ -114,6 +114,7 @@ class simple_event { public:
     simple_event *_r_next;
     simple_event **_r_pprev;
     simple_event *_canceler;
+    void *_s0;
 
     inline ~simple_event() {
 	assert(!_r && !_r_pprev);
