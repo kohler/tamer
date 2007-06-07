@@ -42,6 +42,7 @@ template <typename F> class function_rendezvous : public abstract_rendezvous { p
     void complete(uintptr_t rid, bool success) {
 	// in case _f() refers to an event on this rendezvous:
 	disconnect_all();
+	cancel_all();
 	if (rid == triggerer && success)
 	    _f();
 	delete this;
@@ -88,43 +89,10 @@ template <typename T0> class bind_function { public:
     bind_function(const event<T0> &ein, const V0 &v0)
 	: _ein(ein), _v0(v0) {
     }
-    
+
     void operator()() {
 	_ein.trigger(_v0);
     }
-
-    event<T0> _ein;
-    T0 _v0;
-
-};
-
-
-template <typename T0> class bind_rendezvous : public abstract_rendezvous { public:
-
-    template <typename V0>
-    bind_rendezvous(const event<T0> &ein, const V0 &v0)
-	: _ein(ein), _v0(v0)
-    {
-	_ein.at_cancel(event<>(*this, 0));
-    }
-
-    ~bind_rendezvous() {
-    }
-
-    void add(simple_event *e, uintptr_t what) {
-	e->initialize(this, what);
-    }
-    
-    void complete(uintptr_t rid, bool success) {
-	if (success && rid)
-	    _ein.trigger(_v0);
-	else
-	    _ein.cancel();
-	if (success)
-	    delete this;
-    }
-    
-  private:
 
     event<T0> _ein;
     T0 _v0;

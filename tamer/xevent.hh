@@ -49,7 +49,7 @@ class eventx : public simple_event { public:
     }
 
     void unuse() {
-	if (!--_refcount)
+	if (__unuse())
 	    delete this;
     }
     
@@ -104,7 +104,7 @@ class eventx<T0, T1, T2, void> : public simple_event { public:
     }
 
     void unuse() {
-	if (!--_refcount)
+	if (__unuse())
 	    delete this;
     }
     
@@ -157,7 +157,7 @@ class eventx<T0, T1, void, void> : public simple_event { public:
     }
 
     void unuse() {
-	if (!--_refcount)
+	if (__unuse())
 	    delete this;
     }
     
@@ -206,7 +206,7 @@ class eventx<T0, void, void, void> : public simple_event { public:
     }
 
     void unuse() {
-	if (!--_refcount)
+	if (__unuse())
 	    delete this;
     }
     

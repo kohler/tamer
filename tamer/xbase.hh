@@ -53,13 +53,15 @@ class simple_event { public:
 	++_refcount;
     }
     
+    bool __unuse() {
+	if (--_refcount == 0 && _r)
+	    complete(false);
+	return _refcount == 0 && _weak_refcount == 0;
+    }
+
     void unuse() {
-	if (--_refcount == 0) {
-	    if (_r)
-		complete(false);
-	    if (_weak_refcount == 0)
-		delete this;
-	}
+	if (__unuse())
+	    delete this;
     }
 
     void weak_use() {
