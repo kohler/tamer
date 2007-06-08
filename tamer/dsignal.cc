@@ -80,6 +80,7 @@ void driver::at_signal(int signal, const event<> &trigger)
     if (sig_handlers[signal])
 	sig_handlers[signal] = distribute(sig_handlers[signal], trigger);
     else {
+	int old_sig_installing = sig_installing;
 	sig_installing = signal;
     
 	sig_handlers[signal] = trigger;
@@ -91,7 +92,7 @@ void driver::at_signal(int signal, const event<> &trigger)
 	sa.sa_flags = SA_RESETHAND;
 	sigaction(signal, &sa, 0);
 	
-	sig_installing = -1;
+	sig_installing = old_sig_installing;
     }
 }
 
@@ -111,7 +112,9 @@ void driver::dispatch_signals()
     for (int sig = 0; sig < NSIG; sig++)
 	if (sig_active[sig]) {
 	    sig_active[sig] = 0;
+	    sig_installing = sig;
 	    sig_handlers[sig].trigger();
+	    sig_installing = -1;
 	    sigaddset(&sigs_unblock, sig);
 	}
 
