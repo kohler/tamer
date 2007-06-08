@@ -75,10 +75,9 @@ event<> bind(event<T0> e, const V0 &v0) {
  */
 template <typename T0>
 event<T0> ignore_slot(event<> e) {
-    tamerpriv::function_rendezvous<event<> > *r =
-	new tamerpriv::function_rendezvous<event<> >(e);
-    e.at_cancel(event<>(*r, r->canceler));
-    return event<T0>(*r, r->triggerer, empty_slot());
+    e.__get_simple()->set_slots(0);
+    e.__get_simple()->use();
+    return event<T0>(e.__get_simple());
 }
 
 /** @brief  Add a cancel notifier to an event.

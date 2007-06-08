@@ -12,12 +12,14 @@ class driver { public:
 
     // basic functions
     enum { fdread = 0, fdwrite = 1 }; // the order is important
-    virtual void at_fd(int fd, int action, const event<> &e) = 0;
+    virtual void at_fd(int fd, int action, const event<int> &e) = 0;
     virtual void at_time(const timeval &expiry, const event<> &e) = 0;
     virtual void at_asap(const event<> &e);
     virtual void kill_fd(int fd);
 
+    inline void at_fd_read(int fd, const event<int> &e);
     inline void at_fd_read(int fd, const event<> &e);
+    inline void at_fd_write(int fd, const event<int> &e);
     inline void at_fd_write(int fd, const event<> &e);
 
     inline void at_delay(timeval delay, const event<> &e);
@@ -67,14 +69,24 @@ inline void driver::set_now()
     gettimeofday(&now, 0);
 }
 
-inline void driver::at_fd_read(int fd, const event<> &e)
+inline void driver::at_fd_read(int fd, const event<int> &e)
 {
     at_fd(fd, fdread, e);
 }
 
-inline void driver::at_fd_write(int fd, const event<> &e)
+inline void driver::at_fd_write(int fd, const event<int> &e)
 {
     at_fd(fd, fdwrite, e);
+}
+
+inline void driver::at_fd_read(int fd, const event<> &e)
+{
+    at_fd(fd, fdread, ignore_slot<int>(e));
+}
+
+inline void driver::at_fd_write(int fd, const event<> &e)
+{
+    at_fd(fd, fdwrite, ignore_slot<int>(e));
 }
 
 inline void driver::at_delay(timeval delay, const event<> &e)

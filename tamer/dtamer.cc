@@ -12,7 +12,7 @@ class driver_tamer : public driver { public:
     driver_tamer();
     ~driver_tamer();
 
-    virtual void at_fd(int fd, int action, const event<> &e);
+    virtual void at_fd(int fd, int action, const event<int> &e);
     virtual void at_time(const timeval &expiry, const event<> &e);
     virtual void at_asap(const event<> &e);
     virtual void kill_fd(int fd);
@@ -51,7 +51,7 @@ class driver_tamer : public driver { public:
     struct tfd {
 	int fd : 30;
 	unsigned action : 2;
-	event<> e;
+	event<int> e;
 	tfd *next;
     };
 
@@ -213,7 +213,7 @@ void driver_tamer::expand_fds()
     }
 }
 
-void driver_tamer::at_fd(int fd, int action, const event<> &trigger)
+void driver_tamer::at_fd(int fd, int action, const event<int> &trigger)
 {
     if (!_fdfree)
 	expand_fds();
@@ -227,7 +227,7 @@ void driver_tamer::at_fd(int fd, int action, const event<> &trigger)
 	
 	t->fd = fd;
 	t->action = action;
-	(void) new(static_cast<void *>(&t->e)) event<>(trigger);
+	(void) new(static_cast<void *>(&t->e)) event<int>(trigger);
 
 	FD_SET(fd, &_fdset[action]);
 	if (fd >= _nfds)
@@ -246,6 +246,7 @@ void driver_tamer::kill_fd(int fd)
 	tfd **pprev = &_fd, *t;
 	while ((t = *pprev))
 	    if (t->fd == fd) {
+		t->e.trigger(-ECANCELED);
 		t->e.~event();
 		*pprev = t->next;
 		t->next = _fdfree;
@@ -355,7 +356,7 @@ void driver_tamer::once()
 	while ((t = *pprev))
 	    if (t->action <= fdwrite && FD_ISSET(t->fd, &fds[t->action])) {
 		FD_CLR(t->fd, &_fdset[t->action]);
-		t->e.trigger();
+		t->e.trigger(0);
 		t->e.~event();
 		*pprev = t->next;
 		t->next = _fdfree;

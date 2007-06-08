@@ -64,6 +64,11 @@ inline void at_fd_read(int fd, const event<> &e)
     driver::main->at_fd_read(fd, e);
 }
 
+inline void at_fd_read(int fd, const event<int> &e)
+{
+    driver::main->at_fd_read(fd, e);
+}
+
 /** @brief  Register event for file descriptor writability.
  *  @param  fd  File descriptor.
  *  @param  e   Event.
@@ -72,6 +77,11 @@ inline void at_fd_read(int fd, const event<> &e)
  *  closed.
  */
 inline void at_fd_write(int fd, const event<> &e)
+{
+    driver::main->at_fd_write(fd, e);
+}
+
+inline void at_fd_write(int fd, const event<int> &e)
 {
     driver::main->at_fd_write(fd, e);
 }

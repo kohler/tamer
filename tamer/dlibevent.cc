@@ -13,7 +13,7 @@ class driver_libevent : public driver { public:
     driver_libevent();
     ~driver_libevent();
 
-    virtual void at_fd(int fd, int action, const event<> &e);
+    virtual void at_fd(int fd, int action, const event<int> &e);
     virtual void at_time(const timeval &expiry, const event<> &e);
     virtual void kill_fd(int fd);
 
@@ -23,7 +23,7 @@ class driver_libevent : public driver { public:
 
     struct eevent {
 	::event libevent;
-	event<> trigger;
+	event<int> trigger;
 	eevent *next;
 	eevent **pprev;
 	driver_libevent *driver;
@@ -51,7 +51,7 @@ extern "C" {
 void libevent_trigger(int, short, void *arg)
 {
     driver_libevent::eevent *e = static_cast<driver_libevent::eevent *>(arg);
-    e->trigger.trigger();
+    e->trigger.trigger(0);
     e->trigger.~event();
     *e->pprev = e->next;
     if (e->next)
@@ -122,7 +122,7 @@ void driver_libevent::expand_events()
     }
 }
 
-void driver_libevent::at_fd(int fd, int action, const event<> &trigger)
+void driver_libevent::at_fd(int fd, int action, const event<int> &trigger)
 {
     assert(fd >= 0);
     if (!_efree)
@@ -140,7 +140,7 @@ void driver_libevent::at_fd(int fd, int action, const event<> &trigger)
 	_efd->pprev = &e->next;
     _efd = e;
 
-    (void) new(static_cast<void *>(&e->trigger)) event<>(trigger);
+    (void) new(static_cast<void *>(&e->trigger)) event<int>(trigger);
 }
 
 void driver_libevent::kill_fd(int fd)
@@ -149,6 +149,7 @@ void driver_libevent::kill_fd(int fd)
     for (eevent *e = *ep; e; e = *ep)
 	if (e->libevent.ev_fd == fd) {
 	    event_del(&e->libevent);
+	    e->trigger.trigger(-ECANCELED);
 	    e->trigger.~event();
 	    *ep = e->next;
 	    if (*ep)
@@ -171,7 +172,7 @@ void driver_libevent::at_time(const timeval &expiry, const event<> &trigger)
     timersub(&timeout, &now, &timeout);
     evtimer_add(&e->libevent, &timeout);
 
-    (void) new(static_cast<void *>(&e->trigger)) event<>(trigger);
+    (void) new(static_cast<void *>(&e->trigger)) event<int>(ignore_slot<int>(trigger));
     e->next = _etimer;
     e->pprev = &_etimer;
     if (_etimer)

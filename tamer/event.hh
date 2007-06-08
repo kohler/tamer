@@ -73,7 +73,7 @@ class event { public:
 
     /** @brief  Default constructor creates an empty event. */
     event()
-	: _e(new tamerpriv::eventx<T0, T1, T2, T3>()) {
+	: _e(tamerpriv::simple_event::make_dead()) {
     }
 
     /** @brief  Construct a two-ID, four-slot event on rendezvous @a r.
@@ -87,7 +87,8 @@ class event { public:
      */
     template <typename R, typename I0, typename I1>
     event(R &r, const I0 &i0, const I1 &i1, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
-	: _e(new tamerpriv::eventx<T0, T1, T2, T3>(r, i0, i1, &s0, &s1, &s2, &s3)) {
+	: _e(new tamerpriv::simple_event(r, i0, i1)) {
+	_e->set_slots(&s0, &s1, &s2, &s3);
     }
 
     /** @brief  Construct a one-ID, four-slot event on rendezvous @a r.
@@ -100,7 +101,8 @@ class event { public:
      */
     template <typename R, typename I0>
     event(R &r, const I0 &i0, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
-	: _e(new tamerpriv::eventx<T0, T1, T2, T3>(r, i0, &s0, &s1, &s2, &s3)) {
+	: _e(new tamerpriv::simple_event(r, i0)) {
+	_e->set_slots(&s0, &s1, &s2, &s3);
     }
 
     /** @brief  Construct a no-ID, four-slot event on rendezvous @a r.
@@ -112,7 +114,8 @@ class event { public:
      */
     template <typename R>
     event(R &r, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
-	: _e(new tamerpriv::eventx<T0, T1, T2, T3>(r, &s0, &s1, &s2, &s3)) {
+	: _e(new tamerpriv::simple_event(r)) {
+	_e->set_slots(&s0, &s1, &s2, &s3);
     }
 
     /** @brief  Construct event for the same occurrence as @a e.
@@ -160,7 +163,8 @@ class event { public:
      *  Does nothing if event is empty.
      */
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3) {
-	_e->trigger(v0, v1, v2, v3);
+	if (_e->complete(true))
+	    _e->assign<T0, T1, T2, T3>(v0, v1, v2, v3);
     }
 
     /** @brief  Trigger event.
@@ -174,7 +178,7 @@ class event { public:
      *  @note   This is a synonym for trigger().
      */
     void operator()(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3) {
-	_e->trigger(v0, v1, v2, v3);
+	trigger(v0, v1, v2, v3);
     }
 
     typedef void result_type;
@@ -246,9 +250,10 @@ class event { public:
     template <typename R, typename I0, typename I1>
     event<T0, T1, T2, T3> make_rebind(R &r, const I0 &i0, const I1 &i1) {
 	if (*this) {
-	    event<T0, T1, T2, T3> e(r, i0, i1, *static_cast<T0 *>(_e->_s0), *_e->_s1, *_e->_s2, *_e->_s3);
-	    _e->unbind();
-	    return e;
+	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0, i1);
+	    e->set_slots(_e->slot0(), _e->slot1(), _e->slot2(), _e->slot3());
+	    _e->set_slots(0, 0, 0, 0);
+	    return event<T0, T1, T2, T3>(e);
 	} else
 	    return event<T0, T1, T2, T3>();
     }
@@ -256,9 +261,10 @@ class event { public:
     template <typename R, typename I0>
     event<T0, T1, T2, T3> make_rebind(R &r, const I0 &i0) {
 	if (*this) {
-	    event<T0, T1, T2, T3> e(r, i0, *static_cast<T0 *>(_e->_s0), *_e->_s1, *_e->_s2, *_e->_s3);
-	    _e->unbind();
-	    return e;
+	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0);
+	    e->set_slots(_e->slot0(), _e->slot1(), _e->slot2(), _e->slot3());
+	    _e->set_slots(0, 0, 0, 0);
+	    return event<T0, T1, T2, T3>(e);
 	} else
 	    return event<T0, T1, T2, T3>();
     }
@@ -266,9 +272,10 @@ class event { public:
     template <typename R>
     event<T0, T1, T2, T3> make_rebind(R &r) {
 	if (*this) {
-	    event<T0, T1, T2, T3> e(r, *static_cast<T0 *>(_e->_s0), *_e->_s1, *_e->_s2, *_e->_s3);
-	    _e->unbind();
-	    return e;
+	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r);
+	    e->set_slots(_e->slot0(), _e->slot1(), _e->slot2(), _e->slot3());
+	    _e->set_slots(0, 0, 0, 0);
+	    return event<T0, T1, T2, T3>(e);
 	} else
 	    return event<T0, T1, T2, T3>();
     }
@@ -293,7 +300,11 @@ class event { public:
     
   private:
 
-    tamerpriv::eventx<T0, T1, T2, T3> *_e;
+    tamerpriv::simple_event *_e;
+
+    event(tamerpriv::simple_event *e)
+	: _e(e) {
+    }
     
 };
 
@@ -311,22 +322,25 @@ template <typename T0, typename T1, typename T2>
 class event<T0, T1, T2, void> { public:
 
     event()
-	: _e(new tamerpriv::eventx<T0, T1, T2, void>()) {
+	: _e(tamerpriv::simple_event::make_dead()) {
     }
 
     template <typename R, typename I0, typename I1>
     event(R &r, const I0 &i0, const I1 &i1, T0 &s0, T1 &s1, T2 &s2)
-	: _e(new tamerpriv::eventx<T0, T1, T2, void>(r, i0, i1, &s0, &s1, &s2)) {
+	: _e(new tamerpriv::simple_event(r, i0, i1)) {
+	_e->set_slots(&s0, &s1, &s2);
     }
 
     template <typename R, typename I0>
     event(R &r, const I0 &i0, T0 &s0, T1 &s1, T2 &s2)
-	: _e(new tamerpriv::eventx<T0, T1, T2, void>(r, i0, &s0, &s1, &s2)) {
+	: _e(new tamerpriv::simple_event(r, i0)) {
+	_e->set_slots(&s0, &s1, &s2);
     }
 
     template <typename R>
     event(R &r, T0 &s0, T1 &s1, T2 &s2)
-	: _e(new tamerpriv::eventx<T0, T1, T2, void>(r, &s0, &s1, &s2)) {
+	: _e(new tamerpriv::simple_event(r)) {
+	_e->set_slots(&s0, &s1, &s2);
     }
 
     event(const event<T0, T1, T2> &e)
@@ -353,11 +367,12 @@ class event<T0, T1, T2, void> { public:
     }
 
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2) {
-	_e->trigger(v0, v1, v2);
+	if (_e->complete(true))
+	    _e->assign<T0, T1, T2>(v0, v1, v2);
     }
 
     void operator()(const T0 &v0, const T1 &v1, const T2 &v2) {
-	_e->trigger(v0, v1, v2);
+	trigger(v0, v1, v2);
     }
 
     typedef void result_type;
@@ -386,9 +401,10 @@ class event<T0, T1, T2, void> { public:
     template <typename R, typename I0, typename I1>
     event<T0, T1, T2> make_rebind(R &r, const I0 &i0, const I1 &i1) {
 	if (*this) {
-	    event<T0, T1, T2> e(r, i0, i1, *static_cast<T0 *>(_e->_s0), *_e->_s1, *_e->_s2);
-	    _e->unbind();
-	    return e;
+	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0, i1);
+	    e->set_slots(_e->slot0(), _e->slot1(), _e->slot2());
+	    _e->set_slots(0, 0, 0);
+	    return event<T0, T1, T2>(e);
 	} else
 	    return event<T0, T1, T2>();
     }
@@ -396,9 +412,10 @@ class event<T0, T1, T2, void> { public:
     template <typename R, typename I0>
     event<T0, T1, T2> make_rebind(R &r, const I0 &i0) {
 	if (*this) {
-	    event<T0, T1, T2> e(r, i0, *static_cast<T0 *>(_e->_s0), *_e->_s1, *_e->_s2);
-	    _e->unbind();
-	    return e;
+	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0);
+	    e->set_slots(_e->slot0(), _e->slot1(), _e->slot2());
+	    _e->set_slots(0, 0, 0);
+	    return event<T0, T1, T2>(e);
 	} else
 	    return event<T0, T1, T2>();
     }
@@ -406,9 +423,10 @@ class event<T0, T1, T2, void> { public:
     template <typename R>
     event<T0, T1, T2> make_rebind(R &r) {
 	if (*this) {
-	    event<T0, T1, T2> e(r, *static_cast<T0 *>(_e->_s0), *_e->_s1, *_e->_s2);
-	    _e->unbind();
-	    return e;
+	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r);
+	    e->set_slots(_e->slot0(), _e->slot1(), _e->slot2());
+	    _e->set_slots(0, 0, 0);
+	    return event<T0, T1, T2>(e);
 	} else
 	    return event<T0, T1, T2>();
     }
@@ -426,7 +444,11 @@ class event<T0, T1, T2, void> { public:
     
   private:
 
-    tamerpriv::eventx<T0, T1, T2, void> *_e;
+    tamerpriv::simple_event *_e;
+
+    event(tamerpriv::simple_event *e)
+	: _e(e) {
+    }
     
 };
 
@@ -436,22 +458,25 @@ class event<T0, T1, void, void>
     : public std::binary_function<const T0 &, const T1 &, void> { public:
 
     event()
-	: _e(new tamerpriv::eventx<T0, T1, void, void>()) {
+	: _e(tamerpriv::simple_event::make_dead()) {
     }
 
     template <typename R, typename I0, typename I1>
     event(R &r, const I0 &i0, const I1 &i1, T0 &s0, T1 &s1)
-	: _e(new tamerpriv::eventx<T0, T1, void, void>(r, i0, i1, &s0, &s1)) {
+	: _e(new tamerpriv::simple_event(r, i0, i1)) {
+	_e->set_slots(&s0, &s1);
     }
 
     template <typename R, typename I0>
     event(R &r, const I0 &i0, T0 &s0, T1 &s1)
-	: _e(new tamerpriv::eventx<T0, T1, void, void>(r, i0, &s0, &s1)) {
+	: _e(new tamerpriv::simple_event(r, i0)) {
+	_e->set_slots(&s0, &s1);
     }
 
     template <typename R>
     event(R &r, T0 &s0, T1 &s1)
-	: _e(new tamerpriv::eventx<T0, T1, void, void>(r, &s0, &s1)) {
+	: _e(new tamerpriv::simple_event(r)) {
+	_e->set_slots(&s0, &s1);
     }
 
     event(const event<T0, T1> &e)
@@ -478,11 +503,12 @@ class event<T0, T1, void, void>
     }
 
     void trigger(const T0 &v0, const T1 &v1) {
-	_e->trigger(v0, v1);
+	if (_e->complete(true))
+	    _e->assign<T0, T1>(v0, v1);
     }
 
     void operator()(const T0 &v0, const T1 &v1) {
-	_e->trigger(v0, v1);
+	trigger(v0, v1);
     }
 
     void unbound_trigger() {
@@ -506,9 +532,10 @@ class event<T0, T1, void, void>
     template <typename R, typename I0, typename I1>
     event<T0, T1> make_rebind(R &r, const I0 &i0, const I1 &i1) {
 	if (*this) {
-	    event<T0, T1> e(r, i0, i1, *static_cast<T0 *>(_e->_s0), *_e->_s1);
-	    _e->unbind();
-	    return e;
+	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0, i1);
+	    e->set_slots(_e->slot0(), _e->slot1());
+	    _e->set_slots(0, 0);
+	    return event<T0, T1>(e);
 	} else
 	    return event<T0, T1>();
     }
@@ -516,9 +543,10 @@ class event<T0, T1, void, void>
     template <typename R, typename I0>
     event<T0, T1> make_rebind(R &r, const I0 &i0) {
 	if (*this) {
-	    event<T0, T1> e(r, i0, *static_cast<T0 *>(_e->_s0), *_e->_s1);
-	    _e->unbind();
-	    return e;
+	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0);
+	    e->set_slots(_e->slot0(), _e->slot1());
+	    _e->set_slots(0, 0);
+	    return event<T0, T1>(e);
 	} else
 	    return event<T0, T1>();
     }
@@ -526,9 +554,10 @@ class event<T0, T1, void, void>
     template <typename R>
     event<T0, T1> make_rebind(R &r) {
 	if (*this) {
-	    event<T0, T1> e(r, *static_cast<T0 *>(_e->_s0), *_e->_s1);
-	    _e->unbind();
-	    return e;
+	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r);
+	    e->set_slots(_e->slot0(), _e->slot1());
+	    _e->set_slots(0, 0);
+	    return event<T0, T1>(e);
 	} else
 	    return event<T0, T1>();
     }
@@ -546,7 +575,11 @@ class event<T0, T1, void, void>
     
   private:
 
-    tamerpriv::eventx<T0, T1, void, void> *_e;
+    tamerpriv::simple_event *_e;
+
+    event(tamerpriv::simple_event *e)
+	: _e(e) {
+    }
     
 };
 
@@ -556,37 +589,43 @@ class event<T0, void, void, void>
     : public std::unary_function<const T0 &, void> { public:
 
     event()
-	: _e(new tamerpriv::eventx<T0, void, void, void>()) {
+	: _e(tamerpriv::simple_event::make_dead()) {
     }
 
     template <typename R, typename I0, typename I1>
     event(R &r, const I0 &i0, const I1 &i1, T0 &s0)
-	: _e(new tamerpriv::eventx<T0, void, void, void>(r, i0, i1, &s0)) {
+	: _e(new tamerpriv::simple_event(r, i0, i1)) {
+	_e->set_slots(&s0);
     }
 
     template <typename R, typename I0>
     event(R &r, const I0 &i0, T0 &s0)
-	: _e(new tamerpriv::eventx<T0, void, void, void>(r, i0, &s0)) {
+	: _e(new tamerpriv::simple_event(r, i0)) {
+	_e->set_slots(&s0);
     }
 
     template <typename R>
     event(R &r, T0 &s0)
-	: _e(new tamerpriv::eventx<T0, void, void, void>(r, &s0)) {
+	: _e(new tamerpriv::simple_event(r)) {
+	_e->set_slots(&s0);
     }
 
     template <typename R, typename I0, typename I1>
     event(R &r, const I0 &i0, const I1 &i1, const empty_slot &)
-	: _e(new tamerpriv::eventx<T0, void, void, void>(r, i0, i1, 0)) {
+	: _e(new tamerpriv::simple_event(r, i0, i1)) {
+	_e->set_slots(0);
     }
 
     template <typename R, typename I0>
     event(R &r, const I0 &i0, const empty_slot &)
-	: _e(new tamerpriv::eventx<T0, void, void, void>(r, i0, 0)) {
+	: _e(new tamerpriv::simple_event(r, i0)) {
+	_e->set_slots(0);
     }
 
     template <typename R>
     event(R &r, const empty_slot &)
-	: _e(new tamerpriv::eventx<T0, void, void, void>(r, 0)) {
+	: _e(new tamerpriv::simple_event(r)) {
+	_e->set_slots(0);
     }
 
     event(const event<T0> &e)
@@ -613,15 +652,15 @@ class event<T0, void, void, void>
     }
 
     void trigger(const T0 &v0) {
-	_e->trigger(v0);
+	if (_e->complete(true))
+	    _e->assign<T0>(v0);
     }
 
     void operator()(const T0 &v0) {
-	_e->trigger(v0);
+	trigger(v0);
     }
 
     void unbound_trigger() {
-	_e->unbind();
 	_e->complete(true);
     }
 
@@ -642,9 +681,10 @@ class event<T0, void, void, void>
     template <typename R, typename I0, typename I1>
     event<T0> make_rebind(R &r, const I0 &i0, const I1 &i1) {
 	if (*this) {
-	    event<T0> e(r, i0, i1, *static_cast<T0 *>(_e->_s0));
-	    _e->unbind();
-	    return e;
+	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0, i1);
+	    e->set_slots(_e->slot0());
+	    _e->set_slots(0);
+	    return event<T0>(e);
 	} else
 	    return event<T0>();
     }
@@ -652,9 +692,10 @@ class event<T0, void, void, void>
     template <typename R, typename I0>
     event<T0> make_rebind(R &r, const I0 &i0) {
 	if (*this) {
-	    event<T0> e(r, i0, *static_cast<T0 *>(_e->_s0));
-	    _e->unbind();
-	    return e;
+	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0);
+	    e->set_slots(_e->slot0());
+	    _e->set_slots(0);
+	    return event<T0>(e);
 	} else
 	    return event<T0>();
     }
@@ -662,15 +703,16 @@ class event<T0, void, void, void>
     template <typename R>
     event<T0> make_rebind(R &r) {
 	if (*this) {
-	    event<T0> e(r, *static_cast<T0 *>(_e->_s0));
-	    _e->unbind();
-	    return e;
+	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r);
+	    e->set_slots(_e->slot0());
+	    _e->set_slots(0);
+	    return event<T0>(e);
 	} else
 	    return event<T0>();
     }
 
     T0 *slot0() const {
-	return _e->slot0();
+	return static_cast<T0 *>(_e->slot0());
     }
     
     event<T0> &operator=(const event<T0> &e) {
@@ -686,7 +728,13 @@ class event<T0, void, void, void>
     
   private:
 
-    tamerpriv::eventx<T0, void, void, void> *_e;
+    tamerpriv::simple_event *_e;
+
+    event(tamerpriv::simple_event *e)
+	: _e(e) {
+    }
+
+    friend event<T0> ignore_slot<>(event<>);
     
 };
 
@@ -694,26 +742,23 @@ class event<T0, void, void, void>
 template <>
 class event<void, void, void, void> { public:
 
-    event() {
-	if (!tamerpriv::simple_event::dead)
-	    tamerpriv::simple_event::make_dead();
-	_e = tamerpriv::simple_event::dead;
-	_e->use();
+    event()
+	: _e(tamerpriv::simple_event::make_dead()) {
     }
 
     template <typename R, typename I0, typename I1>
     event(R &r, const I0 &i0, const I1 &i1)
-	: _e(new tamerpriv::simple_event(r, i0, i1, 0)) {
+	: _e(new tamerpriv::simple_event(r, i0, i1)) {
     }
 
     template <typename R, typename I0>
     event(R &r, const I0 &i0)
-	: _e(new tamerpriv::simple_event(r, i0, 0)) {
+	: _e(new tamerpriv::simple_event(r, i0)) {
     }
 
     template <typename R>
     explicit event(R &r)
-	: _e(new tamerpriv::simple_event(r, 0)) {
+	: _e(new tamerpriv::simple_event(r)) {
     }
 
     event(const event<> &e)
@@ -749,7 +794,7 @@ class event<void, void, void, void> { public:
     }
 
     void operator()() {
-	_e->complete(true);
+	trigger();
     }
 
     typedef void result_type;

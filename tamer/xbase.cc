@@ -10,7 +10,7 @@ abstract_rendezvous *abstract_rendezvous::unblocked_tail;
 
 simple_event *simple_event::dead;
 
-void simple_event::make_dead() {
+void simple_event::__make_dead() {
     if (!dead)
 	dead = new simple_event;
 }
@@ -136,7 +136,7 @@ void simple_event::at_complete(const event<> &e)
     else if (!_canceler) {
 	distribute_rendezvous *d = new distribute_rendezvous;
 	d->add_distribute(e, true);
-	_canceler = new simple_event(*d, 0, 0);
+	_canceler = new simple_event(*d, 0);
     } else {
 	abstract_rendezvous *r = _canceler->rendezvous();
 	if (r->is_distribute() && _canceler->refcount() == 1) {
@@ -147,7 +147,7 @@ void simple_event::at_complete(const event<> &e)
 	    distribute_rendezvous *d = new distribute_rendezvous;
 	    d->add_distribute(event<>::__take(_canceler), false);
 	    d->add_distribute(e, true);
-	    _canceler = new simple_event(*d, 0, 0);
+	    _canceler = new simple_event(*d, 0);
 	}
     }
 }
