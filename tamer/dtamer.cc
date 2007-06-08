@@ -233,7 +233,7 @@ void driver_tamer::at_fd(int fd, int action, const event<int> &trigger)
 	if (fd >= _nfds)
 	    _nfds = fd + 1;
 	if (action <= fdwrite)
-	    t->e.at_cancel(make_event(_fdcancelr));
+	    t->e.at_trigger(make_event(_fdcancelr));
     }
 }
 

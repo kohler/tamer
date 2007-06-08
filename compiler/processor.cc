@@ -951,7 +951,6 @@ tame_block_ev_t::output(outputter_t *o)
   str tmp;
 
   b << "  { {\n#define make_event(...) make_event(__cls._closure__block, ## __VA_ARGS__)\n";
-  b << "    __cls._closure__block.start_block(" << _isvolatile << ");\n";
   o->output_str(b.str());
 
   output_mode_t om = o->switch_to_mode(OUTPUT_TREADMILL);

@@ -12,7 +12,7 @@ tamer::mutex m;
 tamed void exclusive(int which) {
     tvars { int ret = 0; }
     if (which == 4 && 0)
-	twait { m.acquire(bind(add_timeout_msec(1200, make_event(ret)), 0)); }
+	twait { m.acquire(with_timeout_msec(1200, make_event(), ret)); }
     else
 	twait { m.acquire(make_event()); }
     if (ret >= 0) {

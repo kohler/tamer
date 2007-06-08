@@ -207,7 +207,7 @@ NOTE-- this code is probably broken
         size = fd_stat.st_size;
 
         buflen = snprintf(buf, HEADER_200_BUF_SIZE, HEADER_200,
-                          "text/html", size);
+                          "text/html", (long) size);
 
         if (buflen < 0 || buflen >= HEADER_200_BUF_SIZE)
         {

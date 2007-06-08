@@ -41,7 +41,6 @@ template <typename F> class function_rendezvous : public abstract_rendezvous { p
 
     void complete(uintptr_t rid, bool success) {
 	// in case _f() refers to an event on this rendezvous:
-	disconnect_all();
 	cancel_all();
 	if (rid == triggerer && success)
 	    _f();
@@ -52,34 +51,6 @@ template <typename F> class function_rendezvous : public abstract_rendezvous { p
 
     F _f;
 
-};
-
-
-class unbind_rendezvous : public abstract_rendezvous { public:
-
-    unbind_rendezvous(const event<> &ein)
-	: _ein(ein)
-    {
-	_ein.at_cancel(event<>(*this, 0));
-    }
-
-    void add(simple_event *e, uintptr_t what) {
-	e->initialize(this, what);
-    }
-    
-    void complete(uintptr_t rid, bool success) {
-	if (success && rid)
-	    _ein.trigger();
-	else
-	    _ein.cancel();
-	if (success)
-	    delete this;
-    }
-
-  private:
-
-    event<> _ein;
-    
 };
 
 
@@ -100,52 +71,47 @@ template <typename T0> class bind_function { public:
 };
 
 
-class cancel_adapter_rendezvous : public abstract_rendezvous { public:
+template <typename T0> class assign_trigger_function { public:
 
-    template <typename T0, typename T1, typename T2, typename T3>
-    cancel_adapter_rendezvous(const event<T0, T1, T2, T3> &e, int *result)
-	: _e(e.__get_simple()), _result(result)
-    {
-	_e->use();
-	_e->at_cancel(event<>(*this, -ECANCELED));
+    template <typename V0>
+    assign_trigger_function(simple_event *e, T0 *s0, const V0 &v0)
+	: _e(e), _s0(s0), _v0(v0) {
+	_e->weak_use();
     }
 
-    ~cancel_adapter_rendezvous() {
-	_e->unuse();
+    ~assign_trigger_function() {
+	_e->weak_unuse();
     }
 
-    void add(simple_event *e, uintptr_t what) {
-	e->initialize(this, what);
-    }
-    
-    void complete(uintptr_t rid, bool success) {
-	if (success || rid == (uintptr_t) 0) {
-	    if (_result)
-		*_result = (success ? (int) rid : -ECANCELED);
-	    _e->complete(true);
-	    delete this;
+    void operator()() {
+	if (_e->trigger(true)) {
+	    *_s0 = _v0;
 	}
     }
-    
+
   private:
 
     simple_event *_e;
-    int *_result;
+    T0 *_s0;
+    T0 _v0;
 
+    assign_trigger_function(const assign_trigger_function<T0> &);
+    assign_trigger_function<T0> &operator=(const assign_trigger_function<T0> &);
+    
 };
 
 
-inline void simple_event::at_cancel(const event<> &e)
+inline void simple_event::at_trigger(const event<> &e)
 {
-    if (!_r)
-	e._e->complete(true);
-    else if (!_canceler) {
-	_canceler = e._e;
-	_canceler->use();
+    if (!_r || !e)
+	e._e->trigger(true);
+    else if (!_at_trigger) {
+	_at_trigger = e._e;
+	_at_trigger->use();
     } else {
-	event<> comb = tamer::distribute(event<>::__take(_canceler), e);
-	_canceler = comb._e;
-	_canceler->use();
+	event<> comb = tamer::distribute(event<>::__take(_at_trigger), e);
+	_at_trigger = comb._e;
+	_at_trigger->use();
     }
 }
 

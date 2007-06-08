@@ -91,7 +91,7 @@ cache_new(const std::string &filename, tamer::event<refptr<cache_entry> > ev)
 	    data = new char[HEADER_200_BUF_SIZE + length];
 
 	    hdrlen = snprintf(data, HEADER_200_BUF_SIZE, 
-			      HEADER_200, "text/html", length);
+			      HEADER_200, "text/html", (long) length);
 	    
 	    if (hdrlen < 0 || hdrlen >= HEADER_200_BUF_SIZE) {
 		fprintf(stderr, "header buffer exceeded\n");

@@ -11,7 +11,7 @@ int n;
 tamed void delay1(int x, tamer::event<> e) {
     n++;
     twait { tamer::at_delay_msec(x, make_event()); }
-    fprintf(stderr, "%d.%06d: %d!\n", tamer::driver::main->now.tv_sec, tamer::driver::main->now.tv_usec, x);
+    fprintf(stderr, "%ld.%06d: %d!\n", (long int) tamer::driver::main->now.tv_sec, tamer::driver::main->now.tv_usec, x);
     n--;
     e.trigger();
 }
@@ -55,7 +55,7 @@ tamed void scatter() {
     tvars { int i(1); tamer::rendezvous<int> r; tamer::event<> e; }
     n++;
     tamer::at_delay_msec(500, e = tamer::distribute(tamer::distribute(tamer::make_event(r, i), tamer::make_event(r, 2)), tamer::make_event(r, 3)));
-    (void) tamer::distribute(e, tamer::make_event(r, 4));
+    (void) tamer::distribute(e, tamer::make_event(r, 0));
     while (r.nevents()) {
 	twait(r, i);
 	fprintf(stderr, "=== distributed %d\n", i);
@@ -67,13 +67,13 @@ tamed void cancellina() {
     tvars { int i(1); tamer::rendezvous<int> r; tamer::event<> e; }
     n++;
     tamer::at_delay_msec(500, e = tamer::make_event(r, 1));
-    e.at_cancel(tamer::make_event(r, 100));
-    e.at_cancel(tamer::make_event(r, 101));
-    e.at_cancel(tamer::make_event(r, 102));
-    e.cancel();
+    e.at_trigger(tamer::make_event(r, 100));
+    e.at_trigger(tamer::make_event(r, 101));
+    e.at_trigger(tamer::make_event(r, 102));
+    e.trigger();
     while (r.nevents()) {
 	twait(r, i);
-	fprintf(stderr, "=== cancelled %d\n", i);
+	fprintf(stderr, "=== triggered %d\n", i);
     }
     n--;
 }
@@ -86,12 +86,12 @@ tamed void cancellina2() {
     e2 = tamer::make_event(r, 2);
     e3 = tamer::make_event(r, 3);
     tamer::at_delay_msec(500, tamer::distribute(e1, e2, e3));
-    e1.cancel();
-    e2.cancel();
-    e3.cancel();
+    e1.trigger();
+    e2.trigger();
+    e3.trigger();
     while (r.nevents()) {
 	twait(r, i);
-	fprintf(stderr, "=== cancelled %d\n", i);
+	fprintf(stderr, "=== triggered %d\n", i);
     }
     fprintf(stderr, "=== done cancellina2\n");
     n--;
@@ -107,14 +107,14 @@ tamed void bindery() {
     }
     fprintf(stderr, "=== after bindery %d\n", i);
     tamer::at_delay_msec(600, tamer::bind(e = make_event(r, i), 3));
-    e.cancel();
+    e.make_unbound().trigger();
     while (r.nevents()) {
 	twait(r);
 	fprintf(stderr, "=== got bindery\n");
     }
     fprintf(stderr, "=== after bindery 2 %d\n", i);
     tamer::at_delay_msec(600, ee = tamer::bind(make_event(r, i), 4));
-    ee.cancel();
+    ee.make_unbound().trigger();
     while (r.nevents()) {
 	twait(r);
 	fprintf(stderr, "=== got bindery\n");

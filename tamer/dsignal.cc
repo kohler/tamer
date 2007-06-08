@@ -25,7 +25,7 @@ class sigcancel_rendezvous : public rendezvous<> { public:
     }
     
     void complete(uintptr_t rid, bool success) {
-	if ((int) rid != sig_installing && success) {
+	if ((int) rid != sig_installing) {
 	    struct sigaction sa;
 	    sa.sa_handler = SIG_DFL;
 	    sigemptyset(&sa.sa_mask);
@@ -83,7 +83,7 @@ void driver::at_signal(int signal, const event<> &trigger)
 	sig_installing = signal;
     
 	sig_handlers[signal] = trigger;
-	sig_handlers[signal].at_cancel(make_event(sigcancelr));
+	sig_handlers[signal].at_trigger(make_event(sigcancelr));
 	
 	struct sigaction sa;
 	sa.sa_handler = tame_signal_handler;

@@ -38,7 +38,7 @@ class simple_event { public:
 
     inline simple_event()
 	: _refcount(1), _weak_refcount(0),
-	  _r(0), _rid(0), _r_next(0), _r_pprev(0), _canceler(0) {
+	  _r(0), _rid(0), _r_next(0), _r_pprev(0), _at_trigger(0) {
     }
 
     template <typename R, typename I0, typename I1>
@@ -64,7 +64,7 @@ class simple_event { public:
     void unuse() {
 	if (--_refcount == 0) {
 	    if (_r)
-		complete(false);
+		trigger(false);
 	    if (_weak_refcount == 0)
 		delete this;
 	}
@@ -103,13 +103,9 @@ class simple_event { public:
 	return _rid;
     }
 
-    inline bool complete(bool success);
+    inline bool trigger(bool success);
 
-    void at_complete(const event<> &e);
-
-    inline void at_cancel(const event<> &e);
-
-    event<> canceler();
+    inline void at_trigger(const event<> &e);
 
     void *slot0() const {
 	return _s0;
@@ -183,7 +179,7 @@ class simple_event { public:
     uintptr_t _rid;
     simple_event *_r_next;
     simple_event **_r_pprev;
-    simple_event *_canceler;
+    simple_event *_at_trigger;
     void *_s0;
     void *_s1;
     void *_s2;
@@ -236,10 +232,6 @@ class abstract_rendezvous { public:
     
     static abstract_rendezvous *unblocked;
     static abstract_rendezvous *unblocked_tail;
-
-  protected:
-
-    inline void disconnect_all();
 
   private:
 
@@ -315,19 +307,14 @@ void gather_rendezvous_dead(gather_rendezvous *r);
 
 
 inline void abstract_rendezvous::cancel_all() {
-    while (_events)
-	_events->complete(false);
-}
-
-inline void abstract_rendezvous::disconnect_all() {
     for (simple_event *e = _events; e; e = e->_r_next)
 	e->_r = 0;
+    while (_events)
+	_events->trigger(false);
 }
 
 inline abstract_rendezvous::~abstract_rendezvous() {
-    // first take all events off this rendezvous, so they don't call back
-    disconnect_all();
-    // then complete events, calling their cancelers
+    // take all events off this rendezvous and call their triggerers
     cancel_all();
     
     if (_unblocked_prev)
@@ -354,9 +341,9 @@ inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
     r->_events = this;
 }
 
-inline bool simple_event::complete(bool success) {
+inline bool simple_event::trigger(bool success) {
     abstract_rendezvous *r = _r;
-    simple_event *canceler = _canceler;
+    simple_event *at_trigger = _at_trigger;
 
     if (_r_pprev)
 	*_r_pprev = _r_next;
@@ -364,16 +351,16 @@ inline bool simple_event::complete(bool success) {
 	_r_next->_r_pprev = _r_pprev;
     
     _r = 0;
-    _canceler = 0;
+    _at_trigger = 0;
     _r_pprev = 0;
     _r_next = 0;
 
     if (r)
 	r->complete(_rid, success);
-    if (canceler && !success)
-	canceler->complete(true);
-    if (canceler)
-	canceler->unuse();
+    if (at_trigger) {
+	at_trigger->trigger(true);
+	at_trigger->unuse();
+    }
 
     return r != 0;
 }

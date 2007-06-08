@@ -100,7 +100,7 @@ tamed void buffer::take_until(fd f, char c, size_t max_size, std::string &str, e
 
     str = std::string();
 
-    done.at_cancel(make_event(r));
+    done.at_trigger(make_event(r));
     fill_until(f, c, max_size, size, make_event(r, ret));
     twait(r);
 

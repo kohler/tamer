@@ -47,7 +47,7 @@ event<> fd::closer()
 {
     if (*this) {
 	event<> e = fun_event(fdcloser(_p));
-	at_close(e.canceler());
+	at_close(e);
 	return e;
     } else
 	return event<>();
@@ -137,7 +137,7 @@ tamed void fd::write(const void *buf, size_t size, size_t &size_out, event<int> 
 tamed void fd::write(std::string s, size_t &size_out, event<int> done)
 {
     twait {
-	done.at_complete(make_event());
+	done.at_trigger(make_event());
 	write(s.data(), s.length(), size_out, done);
     }
 }

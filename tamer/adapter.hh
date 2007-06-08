@@ -61,7 +61,7 @@ template <typename T0, typename V0>
 event<> bind(event<T0> e, const V0 &v0) {
     tamerpriv::function_rendezvous<tamerpriv::bind_function<T0> > *r =
 	new tamerpriv::function_rendezvous<tamerpriv::bind_function<T0> >(e, v0);
-    e.at_cancel(event<>(*r, r->canceler));
+    e.at_trigger(event<>(*r, r->canceler));
     return event<>(*r, r->triggerer);
 }
 
@@ -78,39 +78,6 @@ event<T0> ignore_slot(event<> e) {
     e.__get_simple()->set_slots(0);
     e.__get_simple()->use();
     return event<T0>(e.__get_simple());
-}
-
-/** @brief  Add a cancel notifier to an event.
- *  @param  r   Rendezvous.
- *  @param  i0  First event ID.
- *  @param  i1  Second event ID.
- *  @param  e   Event.
- *  @return  @a e.
- *
- *  Equivalent to
- *  @code
- *  e.at_cancel(make_event(r, i0, i1)); return e;
- *  @endcode
- *
- *  @note Versions of this function exist for rendezvous with two, one, and
- *  zero event IDs.
- */
-template <typename R, typename I0, typename I1, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_cancel(R &r, const I0 &i0, const I1 &i1, event<T0, T1, T2, T3> e) {
-    e.at_cancel(make_event(r, i0, i1));
-    return e;
-}
-
-template <typename R, typename I0, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_cancel(R &r, const I0 &i0, event<T0, T1, T2, T3> e) {
-    e.at_cancel(make_event(r, i0));
-    return e;
-}
-
-template <typename R, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_cancel(R &r, event<T0, T1, T2, T3> e) {
-    e.at_cancel(make_event(r));
-    return e;
 }
 
 
@@ -141,10 +108,8 @@ inline event<T0, T1, T2, T3> make_cancel(R &r, event<T0, T1, T2, T3> e) {
  *  event<>::unbound_trigger() in case of cancellation to trigger events
  *  without setting their trigger values.
  */
-inline event<int> add_cancel(event<int> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
-    return e.make_rebind(*r, outcome::success);
-}
+//XXXXXXXXXXXX
+
 
 /** @brief  Add timeout to an event.
  *  @param  delay  Timeout duration.
@@ -164,29 +129,23 @@ inline event<int> add_cancel(event<int> e) {
  *  respectively.
  */
 inline event<int> add_timeout(const timeval &delay, event<int> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
-    at_delay(delay, event<>(*r, outcome::timeout));
-    return e.make_rebind(*r, outcome::success);
+    at_delay(delay, bind(e, outcome::timeout));
+    return e;
 }
 
 inline event<int> add_timeout(double delay, event<int> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
-    at_delay(delay, event<>(*r, outcome::timeout));
-    return e.make_rebind(*r, outcome::success);
+    at_delay(delay, bind(e, outcome::timeout));
+    return e;
 }
 
 inline event<int> add_timeout_sec(int delay, event<int> e) {
-    timeval tv;
-    tv.tv_sec = delay;
-    tv.tv_usec = 0;
-    return add_timeout(tv, e);
+    at_delay_sec(delay, bind(e, outcome::timeout));
+    return e;
 }
 
 inline event<int> add_timeout_msec(int delay, event<int> e) {
-    timeval tv;
-    tv.tv_sec = delay / 1000;
-    tv.tv_usec = (delay % 1000) * 1000;
-    return add_timeout(tv, e);
+    at_delay_msec(delay, bind(e, outcome::timeout));
+    return e;
 }
 
 /** @brief  Add signal interruption to an event.
@@ -202,9 +161,8 @@ inline event<int> add_timeout_msec(int delay, event<int> e) {
  *  the adapter event is canceled.
  */
 inline event<int> add_signal(int sig, event<int> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
-    at_signal(sig, event<>(*r, outcome::signal));
-    return e.make_rebind(*r, outcome::success);
+    at_signal(sig, bind(e, outcome::signal));
+    return e;
 }
 
 /** @brief  Add signal interruption to an event.
@@ -222,10 +180,10 @@ inline event<int> add_signal(int sig, event<int> e) {
  */
 template <class SigInputIterator>
 inline event<int> add_signal(SigInputIterator first, SigInputIterator last, event<int> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, e.slot0());
+    event<> x = bind(e, outcome::signal);
     for (; first != last; ++first)
-	at_signal(*first, event<>(*r, outcome::signal));
-    return e.make_rebind(*r, outcome::success);
+	at_signal(*first, x);
+    return e;
 }
 
 
@@ -245,11 +203,7 @@ inline event<int> add_signal(SigInputIterator first, SigInputIterator last, even
  *  triggered.  The programmer should use trigger values to distinguish the
  *  cases.
  */
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> with_cancel(event<T0, T1, T2, T3> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
-    return e.make_rebind(*r, outcome::success);
-}
+// XXXXX
 
 /** @brief  Add silent timeout to an event.
  *  @param  delay  Timeout duration.
@@ -270,32 +224,26 @@ inline event<T0, T1, T2, T3> with_cancel(event<T0, T1, T2, T3> e) {
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2, T3> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
-    at_delay(delay, event<>(*r, outcome::timeout));
-    return e.make_rebind(*r, outcome::success);
+    at_delay(delay, e.make_unbound());
+    return e;
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(double delay, event<T0, T1, T2, T3> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
-    at_delay(delay, event<>(*r, outcome::timeout));
-    return e.make_rebind(*r, outcome::success);
+    at_delay(delay, e.make_unbound());
+    return e;
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_sec(int delay, event<T0, T1, T2, T3> e) {
-    timeval tv;
-    tv.tv_sec = delay;
-    tv.tv_usec = 0;
-    return with_timeout(tv, e);
+    at_delay_sec(delay, e.make_unbound());
+    return e;
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> e) {
-    timeval tv;
-    tv.tv_sec = delay / 1000;
-    tv.tv_usec = (delay % 1000) * 1000;
-    return with_timeout(tv, e);
+    at_delay_msec(delay, e.make_unbound());
+    return e;
 }
 
 /** @brief  Add silent signal interruption to an event.
@@ -312,9 +260,8 @@ inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> 
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
-    at_signal(sig, event<>(*r, outcome::signal));
-    return e.make_rebind(*r, outcome::success);
+    at_signal(sig, e.make_unbound());
+    return e;
 }
 
 /** @brief  Add silent signal interruption to an event.
@@ -333,10 +280,10 @@ inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e) {
  */
 template <typename T0, typename T1, typename T2, typename T3, typename SigInputIterator>
 inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e) {
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, 0);
+    event<> x = e.make_unbound();
     for (; first != last; ++first)
-	at_signal(*first, event<>(*r, outcome::signal));
-    return e.make_rebind(*r, outcome::success);
+	at_signal(*first, x);
+    return e;
 }
 
 
@@ -353,12 +300,7 @@ inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterato
  *  -ECANCELED.  Conversely, if @a e is triggered or canceled, then the
  *  adapter event is canceled.
  */
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> with_cancel(event<T0, T1, T2, T3> e, int &result) {
-    result = outcome::success;
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
-    return e.make_rebind(*r, outcome::success);
-}
+// XXXXXX
 
 /** @brief  Add timeout to an event.
  *  @param       delay   Timeout duration.
@@ -380,36 +322,37 @@ inline event<T0, T1, T2, T3> with_cancel(event<T0, T1, T2, T3> e, int &result) {
  *  with_timeout_msec(), @c int numbers of seconds and milliseconds,
  *  respectively.
  */
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<> __with_helper(event<T0, T1, T2, T3> e, int *result, int value) {
+    tamerpriv::function_rendezvous<tamerpriv::assign_trigger_function<int> > *r =
+	new tamerpriv::function_rendezvous<tamerpriv::assign_trigger_function<int> >(e.__get_simple(), result, value);
+    e.at_trigger(event<>(*r, r->canceler));
+    return event<>(*r, r->triggerer);
+}
+
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2, T3> e, int &result) {
-    result = outcome::success;
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
-    at_delay(delay, event<>(*r, outcome::timeout));
-    return e.make_rebind(*r, outcome::success);
+    at_delay(delay, __with_helper(e, &result, outcome::timeout));
+    return e;
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(double &delay, event<T0, T1, T2, T3> e, int &result) {
-    result = outcome::success;
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
-    at_delay(delay, event<>(*r, outcome::timeout));
-    return e.make_rebind(*r, outcome::success);
+    at_delay(delay, __with_helper(e, &result, outcome::timeout));
+    return e;
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_sec(int delay, event<T0, T1, T2, T3> e, int &result) {
-    timeval tv;
-    tv.tv_sec = delay;
-    tv.tv_usec = 0;
-    return with_timeout(tv, e, result);
+    at_delay_sec(delay, __with_helper(e, &result, outcome::timeout));
+    return e;
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> e, int &result) {
-    timeval tv;
-    tv.tv_sec = delay / 1000;
-    tv.tv_usec = (delay % 1000) * 1000;
-    return with_timeout(tv, e, result);
+    at_delay_msec(delay, __with_helper(e, &result, outcome::timeout));
+    return e;
 }
 
 /** @brief  Add signal interruption to an event.
@@ -429,10 +372,8 @@ inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> 
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e, int &result) {
-    result = outcome::success;
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
-    at_signal(sig, event<>(*r, outcome::signal));
-    return e.make_rebind(*r, outcome::success);
+    at_signal(sig, __with_helper(e, &result, outcome::signal));
+    return e;
 }
 
 /** @brief  Add signal interruption to an event.
@@ -453,12 +394,12 @@ inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e, int &
  */
 template <typename T0, typename T1, typename T2, typename T3, typename SigInputIterator>
 inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e, int &result) {
-    result = outcome::success;
-    tamerpriv::cancel_adapter_rendezvous *r = new tamerpriv::cancel_adapter_rendezvous(e, &result);
+    event<> x = __with_helper(e, &result, outcome::signal);
     for (; first != last; ++first)
-	at_signal(*first, event<>(*r, outcome::signal));
-    return e.make_rebind(*r, outcome::success);
+	at_signal(*first, x);
+    return e;
 }
+
 
 /** @brief  Create event that calls a function when triggered.
  *  @param  f  Function object.

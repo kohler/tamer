@@ -163,7 +163,7 @@ class event { public:
      *  Does nothing if event is empty.
      */
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3) {
-	if (_e->complete(true))
+	if (_e->trigger(true))
 	    _e->assign<T0, T1, T2, T3>(v0, v1, v2, v3);
     }
 
@@ -192,94 +192,21 @@ class event { public:
      *  Does nothing if event is empty.
      */
     void unbound_trigger() {
-	_e->complete(true);
+	_e->trigger(true);
     }
 
-    /** @brief  Cancel event.
-     *
-     *  Does nothing if event is empty.
-     */
-    void cancel() {
-	_e->complete(false);
-    }
-
-    /** @brief  Register a completion notifier.
-     *  @param  e  Completion notifier.
+    /** @brief  Register a trigger notifier.
+     *  @param  e  Trigger notifier.
      *
      *  If this event is empty, @a e is triggered immediately.  Otherwise,
-     *  when this event is triggered or canceled, triggers @a e.
+     *  when this event is triggered, triggers @a e.
      */
-    void at_complete(const event<> &e) {
-	_e->at_complete(e);
+    void at_trigger(const event<> &e) {
+	_e->at_trigger(e);
     }
 
-    /** @brief  Register a cancel notifier.
-     *  @param  e  Cancel notifier.
-     *
-     *  If this event is empty, @a e is triggered immediately.  Otherwise,
-     *  when this event is triggered, cancels @a e; when this event is
-     *  canceled, triggers @a e.
-     */
-    void at_cancel(const event<> &e) {
-	_e->at_cancel(e);
-    }
-
-    /** @brief  Return a canceler event.
-     *  @return  An event that, when triggered, cancels this event.
-     *
-     *  If this event is empty, returns another empty event.  Otherwise,
-     *  returns an event that, when triggered, will cancel this event.  The
-     *  returned event is canceled when this event completes.
-     */
-    inline event<> canceler();
-
-    /** @brief  Transfer trigger slots to a new event on @a r.
-     *  @param  r   Rendezvous.
-     *  @param  i0  First event ID.
-     *  @param  i1  Second event ID.
-     *  @return  Event on @a r with this event's slots.
-     *
-     *  If event is empty, returns an empty event.  Otherwise, transfers
-     *  this event's slots to a new event on @a r with event IDs @a i0 and
-     *  @a i1.  When this event is triggered, its trigger values will be
-     *  ignored.
-     *
-     *  @note Versions of this function exist for rendezvous with two, one,
-     *  and zero event IDs.
-     */
-    template <typename R, typename I0, typename I1>
-    event<T0, T1, T2, T3> make_rebind(R &r, const I0 &i0, const I1 &i1) {
-	if (*this) {
-	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0, i1);
-	    e->set_slots(_e->slot0(), _e->slot1(), _e->slot2(), _e->slot3());
-	    _e->set_slots(0, 0, 0, 0);
-	    return event<T0, T1, T2, T3>(e);
-	} else
-	    return event<T0, T1, T2, T3>();
-    }
-
-    template <typename R, typename I0>
-    event<T0, T1, T2, T3> make_rebind(R &r, const I0 &i0) {
-	if (*this) {
-	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0);
-	    e->set_slots(_e->slot0(), _e->slot1(), _e->slot2(), _e->slot3());
-	    _e->set_slots(0, 0, 0, 0);
-	    return event<T0, T1, T2, T3>(e);
-	} else
-	    return event<T0, T1, T2, T3>();
-    }
-
-    template <typename R>
-    event<T0, T1, T2, T3> make_rebind(R &r) {
-	if (*this) {
-	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r);
-	    e->set_slots(_e->slot0(), _e->slot1(), _e->slot2(), _e->slot3());
-	    _e->set_slots(0, 0, 0, 0);
-	    return event<T0, T1, T2, T3>(e);
-	} else
-	    return event<T0, T1, T2, T3>();
-    }
-
+    inline event<> make_unbound();
+    
     /** @brief  Assign this event to the same occurrence as @a e.
      *  @param  e  Source event.
      */
@@ -367,7 +294,7 @@ class event<T0, T1, T2, void> { public:
     }
 
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2) {
-	if (_e->complete(true))
+	if (_e->trigger(true))
 	    _e->assign<T0, T1, T2>(v0, v1, v2);
     }
 
@@ -381,56 +308,15 @@ class event<T0, T1, T2, void> { public:
     typedef const T2 &third_argument_type;
 
     void unbound_trigger() {
-	_e->complete(true);
+	_e->trigger(true);
     }
 
-    void cancel() {
-	_e->complete(false);
+    void at_trigger(const event<> &e) {
+	_e->at_trigger(e);
     }
 
-    void at_complete(const event<> &e) {
-	_e->at_complete(e);
-    }
-
-    void at_cancel(const event<> &e) {
-	_e->at_cancel(e);
-    }
-
-    inline event<> canceler();
-
-    template <typename R, typename I0, typename I1>
-    event<T0, T1, T2> make_rebind(R &r, const I0 &i0, const I1 &i1) {
-	if (*this) {
-	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0, i1);
-	    e->set_slots(_e->slot0(), _e->slot1(), _e->slot2());
-	    _e->set_slots(0, 0, 0);
-	    return event<T0, T1, T2>(e);
-	} else
-	    return event<T0, T1, T2>();
-    }
-
-    template <typename R, typename I0>
-    event<T0, T1, T2> make_rebind(R &r, const I0 &i0) {
-	if (*this) {
-	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0);
-	    e->set_slots(_e->slot0(), _e->slot1(), _e->slot2());
-	    _e->set_slots(0, 0, 0);
-	    return event<T0, T1, T2>(e);
-	} else
-	    return event<T0, T1, T2>();
-    }
-
-    template <typename R>
-    event<T0, T1, T2> make_rebind(R &r) {
-	if (*this) {
-	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r);
-	    e->set_slots(_e->slot0(), _e->slot1(), _e->slot2());
-	    _e->set_slots(0, 0, 0);
-	    return event<T0, T1, T2>(e);
-	} else
-	    return event<T0, T1, T2>();
-    }
-
+    inline event<> make_unbound();
+    
     event<T0, T1, T2> &operator=(const event<T0, T1, T2> &e) {
 	e._e->use();
 	_e->unuse();
@@ -503,7 +389,7 @@ class event<T0, T1, void, void>
     }
 
     void trigger(const T0 &v0, const T1 &v1) {
-	if (_e->complete(true))
+	if (_e->trigger(true))
 	    _e->assign<T0, T1>(v0, v1);
     }
 
@@ -512,56 +398,15 @@ class event<T0, T1, void, void>
     }
 
     void unbound_trigger() {
-	_e->complete(true);
+	_e->trigger(true);
     }
 
-    void cancel() {
-	_e->complete(false);
+    void at_trigger(const event<> &e) {
+	_e->at_trigger(e);
     }
 
-    void at_complete(const event<> &e) {
-	_e->at_complete(e);
-    }
-
-    void at_cancel(const event<> &e) {
-	_e->at_cancel(e);
-    }
-
-    inline event<> canceler();
-
-    template <typename R, typename I0, typename I1>
-    event<T0, T1> make_rebind(R &r, const I0 &i0, const I1 &i1) {
-	if (*this) {
-	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0, i1);
-	    e->set_slots(_e->slot0(), _e->slot1());
-	    _e->set_slots(0, 0);
-	    return event<T0, T1>(e);
-	} else
-	    return event<T0, T1>();
-    }
-
-    template <typename R, typename I0>
-    event<T0, T1> make_rebind(R &r, const I0 &i0) {
-	if (*this) {
-	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0);
-	    e->set_slots(_e->slot0(), _e->slot1());
-	    _e->set_slots(0, 0);
-	    return event<T0, T1>(e);
-	} else
-	    return event<T0, T1>();
-    }
-
-    template <typename R>
-    event<T0, T1> make_rebind(R &r) {
-	if (*this) {
-	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r);
-	    e->set_slots(_e->slot0(), _e->slot1());
-	    _e->set_slots(0, 0);
-	    return event<T0, T1>(e);
-	} else
-	    return event<T0, T1>();
-    }
-
+    inline event<> make_unbound();
+    
     event<T0, T1> &operator=(const event<T0, T1> &e) {
 	e._e->use();
 	_e->unuse();
@@ -652,7 +497,7 @@ class event<T0, void, void, void>
     }
 
     void trigger(const T0 &v0) {
-	if (_e->complete(true))
+	if (_e->trigger(true))
 	    _e->assign<T0>(v0);
     }
 
@@ -661,59 +506,14 @@ class event<T0, void, void, void>
     }
 
     void unbound_trigger() {
-	_e->complete(true);
+	_e->trigger(true);
     }
 
-    void cancel() {
-	_e->complete(false);
+    void at_trigger(const event<> &e) {
+	_e->at_trigger(e);
     }
 
-    void at_complete(const event<> &e) {
-	_e->at_complete(e);
-    }
-
-    void at_cancel(const event<> &e) {
-	_e->at_cancel(e);
-    }
-
-    inline event<> canceler();
-
-    template <typename R, typename I0, typename I1>
-    event<T0> make_rebind(R &r, const I0 &i0, const I1 &i1) {
-	if (*this) {
-	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0, i1);
-	    e->set_slots(_e->slot0());
-	    _e->set_slots(0);
-	    return event<T0>(e);
-	} else
-	    return event<T0>();
-    }
-
-    template <typename R, typename I0>
-    event<T0> make_rebind(R &r, const I0 &i0) {
-	if (*this) {
-	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r, i0);
-	    e->set_slots(_e->slot0());
-	    _e->set_slots(0);
-	    return event<T0>(e);
-	} else
-	    return event<T0>();
-    }
-
-    template <typename R>
-    event<T0> make_rebind(R &r) {
-	if (*this) {
-	    tamerpriv::simple_event *e = new tamerpriv::simple_event(r);
-	    e->set_slots(_e->slot0());
-	    _e->set_slots(0);
-	    return event<T0>(e);
-	} else
-	    return event<T0>();
-    }
-
-    T0 *slot0() const {
-	return static_cast<T0 *>(_e->slot0());
-    }
+    inline event<> make_unbound();
     
     event<T0> &operator=(const event<T0> &e) {
 	e._e->use();
@@ -790,7 +590,7 @@ class event<void, void, void, void> { public:
     }
 
     void trigger() {
-	_e->complete(true);
+	_e->trigger(true);
     }
 
     void operator()() {
@@ -800,38 +600,19 @@ class event<void, void, void, void> { public:
     typedef void result_type;
 
     void unbound_trigger() {
-	_e->complete(true);
+	_e->trigger(true);
     }
 
-    void cancel() {
-	_e->complete(false);
+    void at_trigger(const event<> &e) {
+	_e->at_trigger(e);
     }
 
-    void at_complete(const event<> &e) {
-	_e->at_complete(e);
+    event<> &make_unbound() {
+	return *this;
     }
 
-    void at_cancel(const event<> &e) {
-	_e->at_cancel(e);
-    }
-
-    event<> canceler() {
-	return _e->canceler();
-    }
-
-    template <typename R, typename I0, typename I1>
-    event<> make_rebind(R &r, const I0 &i0, const I1 &i1) {
-	return (*this ? event<>(r, i0, i1) : event<>());
-    }
-
-    template <typename R, typename I0>
-    event<> make_rebind(R &r, const I0 &i0) {
-	return (*this ? event<>(r, i0) : event<>());
-    }
-
-    template <typename R>
-    event<> make_rebind(R &r) {
-	return (*this ? event<>(r) : event<>());
+    const event<> &make_unbound() const {
+	return *this;
     }
 
     event<> &operator=(const event<> &e) {
@@ -981,23 +762,27 @@ inline event<> make_event(rendezvous<> &r)
 /** @} */
 
 template <typename T0, typename T1, typename T2, typename T3>
-inline event<> event<T0, T1, T2, T3>::canceler() {
-    return _e->canceler();
+inline event<> event<T0, T1, T2, T3>::make_unbound() {
+    _e->use();
+    return event<>::__take(_e);
 }
 
 template <typename T0, typename T1, typename T2>
-inline event<> event<T0, T1, T2, void>::canceler() {
-    return _e->canceler();
+inline event<> event<T0, T1, T2>::make_unbound() {
+    _e->use();
+    return event<>::__take(_e);
 }
 
 template <typename T0, typename T1>
-inline event<> event<T0, T1, void, void>::canceler() {
-    return _e->canceler();
+inline event<> event<T0, T1>::make_unbound() {
+    _e->use();
+    return event<>::__take(_e);
 }
 
 template <typename T0>
-inline event<> event<T0, void, void, void>::canceler() {
-    return _e->canceler();
+inline event<> event<T0>::make_unbound() {
+    _e->use();
+    return event<>::__take(_e);
 }
 
 }

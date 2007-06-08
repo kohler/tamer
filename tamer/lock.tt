@@ -30,13 +30,13 @@ tamed void mutex::acquire(int shared, event<> done)
 	return;
     }
 
-    done.at_cancel(make_event(r, false));
-    _waiters.push_back(make_cancel(r, false, make_event(r, true)));
+    done.at_trigger(make_event(r, false));
+    _waiters.push_back(make_event(r, true));
 
     while (1) {
 	twait(r, result);
 	if (!result || !done) {
-	    done.cancel();
+	    done.trigger();
 	    // canceling an exclusive lock may let a shared lock through
 	    r.cancel_all();
 	    if (_waiters.front() && !*_waiters.front())
@@ -49,7 +49,7 @@ tamed void mutex::acquire(int shared, event<> done)
 		wake();
 	    return;
 	} else
-	    _waiters.push_front(make_cancel(r, false, make_event(r, true)));
+	    _waiters.push_front(make_event(r, true));
     }
 }
 
