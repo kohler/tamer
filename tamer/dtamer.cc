@@ -358,6 +358,7 @@ void driver_tamer::once()
 		FD_CLR(t->fd, &_fdset[t->action]);
 		t->e.trigger(0);
 		t->e.~event();
+		_fdcancelr.join(); // reap the notifier we just triggered
 		*pprev = t->next;
 		t->next = _fdfree;
 		_fdfree = t;
