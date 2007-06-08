@@ -81,12 +81,12 @@ inline void driver::at_fd_write(int fd, const event<int> &e)
 
 inline void driver::at_fd_read(int fd, const event<> &e)
 {
-    at_fd(fd, fdread, ignore_slot<int>(e));
+    at_fd(fd, fdread, unbind<int>(e));
 }
 
 inline void driver::at_fd_write(int fd, const event<> &e)
 {
-    at_fd(fd, fdwrite, ignore_slot<int>(e));
+    at_fd(fd, fdwrite, unbind<int>(e));
 }
 
 inline void driver::at_delay(timeval delay, const event<> &e)

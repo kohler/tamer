@@ -13,7 +13,7 @@ template <typename I0=void, typename I1=void> class rendezvous;
 template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> class event;
 inline event<> distribute(const event<> &, const event<> &);
 inline event<> distribute(const event<> &, const event<> &, const event<> &);
-template <typename T0> event<T0> ignore_slot(event<>);
+template <typename T0> event<T0> unbind(const event<> &);
 class driver;
 class gather_rendezvous;
 
@@ -23,7 +23,7 @@ class tamer_error : public std::runtime_error { public:
     }
 };
 
-struct empty_slot {
+struct no_slot {
 };
 
 namespace tamerpriv {
@@ -36,9 +36,11 @@ event<> hard_distribute(const event<> &e1, const event<> &e2);
 
 class simple_event { public:
 
+    // DO NOT derive from this class!
+    
     inline simple_event()
-	: _refcount(1), _weak_refcount(0),
-	  _r(0), _rid(0), _r_next(0), _r_pprev(0), _at_trigger(0) {
+	: _refcount(1), _r(0), _rid(0), _r_next(0), _r_pprev(0),
+	  _at_trigger(0) {
     }
 
     template <typename R, typename I0, typename I1>
@@ -64,23 +66,13 @@ class simple_event { public:
     void unuse() {
 	if (--_refcount == 0) {
 	    if (_r)
-		trigger(false);
-	    if (_weak_refcount == 0)
-		delete this;
+		trigger();
+	    delete this;
 	}
     }
 
-    void weak_use() {
-	++_weak_refcount;
-    }
-
-    void weak_unuse() {
-	if (--_weak_refcount == 0 && _refcount == 0)
-	    delete this;
-    }
-
     unsigned refcount() const {
-	return _refcount + _weak_refcount;
+	return _refcount;
     }
 
     typedef abstract_rendezvous *simple_event::*unspecified_bool_type;
@@ -103,87 +95,18 @@ class simple_event { public:
 	return _rid;
     }
 
-    inline bool trigger(bool success);
+    inline bool trigger();
 
     inline void at_trigger(const event<> &e);
 
-    void *slot0() const {
-	return _s0;
-    }
-
-    void *slot1() const {
-	return _s1;
-    }
-
-    void *slot2() const {
-	return _s2;
-    }
-
-    void *slot3() const {
-	return _s3;
-    }
-    
-    void set_slots(void *s0, void *s1, void *s2, void *s3) {
-	_s0 = s0;
-	_s1 = s1;
-	_s2 = s2;
-	_s3 = s3;
-    }
-    
-    void set_slots(void *s0, void *s1, void *s2) {
-	_s0 = s0;
-	_s1 = s1;
-	_s2 = s2;
-    }
-    
-    void set_slots(void *s0, void *s1) {
-	_s0 = s0;
-	_s1 = s1;
-    }
-    
-    void set_slots(void *s0) {
-	_s0 = s0;
-    }
-
-    template <typename T0, typename T1, typename T2, typename T3>
-    void assign(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3) {
-	if (_s0) *static_cast<T0 *>(_s0) = v0;
-	if (_s1) *static_cast<T1 *>(_s1) = v1;
-	if (_s2) *static_cast<T2 *>(_s2) = v2;
-	if (_s3) *static_cast<T3 *>(_s3) = v3;
-    }
-
-    template <typename T0, typename T1, typename T2>
-    void assign(const T0 &v0, const T1 &v1, const T2 &v2) {
-	if (_s0) *static_cast<T0 *>(_s0) = v0;
-	if (_s1) *static_cast<T1 *>(_s1) = v1;
-	if (_s2) *static_cast<T2 *>(_s2) = v2;
-    }
-
-    template <typename T0, typename T1>
-    void assign(const T0 &v0, const T1 &v1) {
-	if (_s0) *static_cast<T0 *>(_s0) = v0;
-	if (_s1) *static_cast<T1 *>(_s1) = v1;
-    }
-
-    template <typename T0>
-    void assign(const T0 &v0) {
-	if (_s0) *static_cast<T0 *>(_s0) = v0;
-    }
-    
   protected:
 
     unsigned _refcount;
-    unsigned _weak_refcount;
     abstract_rendezvous *_r;
     uintptr_t _rid;
     simple_event *_r_next;
     simple_event **_r_pprev;
     simple_event *_at_trigger;
-    void *_s0;
-    void *_s1;
-    void *_s2;
-    void *_s3;
 
     simple_event(const simple_event &);
 
@@ -218,13 +141,13 @@ class abstract_rendezvous { public:
 	return false;
     }
     
-    virtual void complete(uintptr_t rid, bool success) = 0;
+    virtual void complete(uintptr_t rid) = 0;
 
     inline void block(tamer_closure &c, unsigned where);
     inline void unblock();
     inline void run();
 
-    inline void cancel_all();
+    inline void remove_all();
 
     tamer_closure *blocked_closure() const {
 	return _blocked_closure;
@@ -306,16 +229,16 @@ void gather_rendezvous_dead(gather_rendezvous *r);
 }
 
 
-inline void abstract_rendezvous::cancel_all() {
+inline void abstract_rendezvous::remove_all() {
     for (simple_event *e = _events; e; e = e->_r_next)
 	e->_r = 0;
     while (_events)
-	_events->trigger(false);
+	_events->trigger();
 }
 
 inline abstract_rendezvous::~abstract_rendezvous() {
     // take all events off this rendezvous and call their triggerers
-    cancel_all();
+    remove_all();
     
     if (_unblocked_prev)
 	_unblocked_prev->_unblocked_next = _unblocked_next;
@@ -341,7 +264,7 @@ inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
     r->_events = this;
 }
 
-inline bool simple_event::trigger(bool success) {
+inline bool simple_event::trigger() {
     abstract_rendezvous *r = _r;
     simple_event *at_trigger = _at_trigger;
 
@@ -356,9 +279,9 @@ inline bool simple_event::trigger(bool success) {
     _r_next = 0;
 
     if (r)
-	r->complete(_rid, success);
+	r->complete(_rid);
     if (at_trigger) {
-	at_trigger->trigger(true);
+	at_trigger->trigger();
 	at_trigger->unuse();
     }
 

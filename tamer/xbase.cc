@@ -68,10 +68,9 @@ class distribute_rendezvous : public abstract_rendezvous { public:
 	    _es.push_back(e);
     }
     
-    void complete(uintptr_t, bool success) {
-	if (success)
-	    for (std::vector<event<> >::iterator i = _es.begin(); i != _es.end(); ++i)
-		i->trigger();
+    void complete(uintptr_t) {
+	for (std::vector<event<> >::iterator i = _es.begin(); i != _es.end(); ++i)
+	    i->trigger();
 	delete this;
     }
     

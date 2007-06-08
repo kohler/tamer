@@ -24,7 +24,7 @@ class sigcancel_rendezvous : public rendezvous<> { public:
 	e->initialize(this, sig_installing);
     }
     
-    void complete(uintptr_t rid, bool success) {
+    void complete(uintptr_t rid) {
 	if ((int) rid != sig_installing) {
 	    struct sigaction sa;
 	    sa.sa_handler = SIG_DFL;
@@ -32,7 +32,7 @@ class sigcancel_rendezvous : public rendezvous<> { public:
 	    sa.sa_flags = SA_RESETHAND;
 	    sigaction(rid, &sa, 0);
 	}
-	rendezvous<>::complete(rid, success);
+	rendezvous<>::complete(rid);
     }
     
 };

@@ -11,7 +11,7 @@ int n;
 tamed void delay1(int x, tamer::event<> e) {
     n++;
     twait { tamer::at_delay_msec(x, make_event()); }
-    fprintf(stderr, "%ld.%06d: %d!\n", (long int) tamer::driver::main->now.tv_sec, tamer::driver::main->now.tv_usec, x);
+    fprintf(stderr, "%ld.%06d: %d!\n", (long int) tamer::driver::main->now.tv_sec, (int) tamer::driver::main->now.tv_usec, x);
     n--;
     e.trigger();
 }
@@ -107,14 +107,14 @@ tamed void bindery() {
     }
     fprintf(stderr, "=== after bindery %d\n", i);
     tamer::at_delay_msec(600, tamer::bind(e = make_event(r, i), 3));
-    e.make_unbound().trigger();
+    e.bind_all().trigger();
     while (r.nevents()) {
 	twait(r);
 	fprintf(stderr, "=== got bindery\n");
     }
     fprintf(stderr, "=== after bindery 2 %d\n", i);
     tamer::at_delay_msec(600, ee = tamer::bind(make_event(r, i), 4));
-    ee.make_unbound().trigger();
+    ee.bind_all().trigger();
     while (r.nevents()) {
 	twait(r);
 	fprintf(stderr, "=== got bindery\n");

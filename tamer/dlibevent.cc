@@ -172,7 +172,7 @@ void driver_libevent::at_time(const timeval &expiry, const event<> &trigger)
     timersub(&timeout, &now, &timeout);
     evtimer_add(&e->libevent, &timeout);
 
-    (void) new(static_cast<void *>(&e->trigger)) event<int>(ignore_slot<int>(trigger));
+    (void) new(static_cast<void *>(&e->trigger)) event<int>(trigger, no_slot());
     e->next = _etimer;
     e->pprev = &_etimer;
     if (_etimer)

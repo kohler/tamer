@@ -38,7 +38,7 @@ tamed void mutex::acquire(int shared, event<> done)
 	if (!result || !done) {
 	    done.trigger();
 	    // canceling an exclusive lock may let a shared lock through
-	    r.cancel_all();
+	    r.remove_all();
 	    if (_waiters.front() && !*_waiters.front())
 		wake();
 	    return;

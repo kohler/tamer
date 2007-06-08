@@ -74,10 +74,8 @@ event<> bind(event<T0> e, const V0 &v0) {
  *  event is itself canceled.
  */
 template <typename T0>
-event<T0> ignore_slot(event<> e) {
-    e.__get_simple()->set_slots(0);
-    e.__get_simple()->use();
-    return event<T0>(e.__get_simple());
+event<T0> unbind(const event<> &e) {
+    return event<T0>(e, no_slot());
 }
 
 
@@ -224,25 +222,25 @@ inline event<int> add_signal(SigInputIterator first, SigInputIterator last, even
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2, T3> e) {
-    at_delay(delay, e.make_unbound());
+    at_delay(delay, e.bind_all());
     return e;
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(double delay, event<T0, T1, T2, T3> e) {
-    at_delay(delay, e.make_unbound());
+    at_delay(delay, e.bind_all());
     return e;
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_sec(int delay, event<T0, T1, T2, T3> e) {
-    at_delay_sec(delay, e.make_unbound());
+    at_delay_sec(delay, e.bind_all());
     return e;
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> e) {
-    at_delay_msec(delay, e.make_unbound());
+    at_delay_msec(delay, e.bind_all());
     return e;
 }
 
@@ -260,7 +258,7 @@ inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> 
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e) {
-    at_signal(sig, e.make_unbound());
+    at_signal(sig, e.bind_all());
     return e;
 }
 
@@ -280,7 +278,7 @@ inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e) {
  */
 template <typename T0, typename T1, typename T2, typename T3, typename SigInputIterator>
 inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e) {
-    event<> x = e.make_unbound();
+    event<> x = e.bind_all();
     for (; first != last; ++first)
 	at_signal(*first, x);
     return e;

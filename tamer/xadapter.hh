@@ -39,10 +39,10 @@ template <typename F> class function_rendezvous : public abstract_rendezvous { p
 	e->initialize(this, t);
     }
 
-    void complete(uintptr_t rid, bool success) {
+    void complete(uintptr_t rid) {
 	// in case _f() refers to an event on this rendezvous:
-	cancel_all();
-	if (rid == triggerer && success)
+	remove_all();
+	if (rid == triggerer)
 	    _f();
 	delete this;
     }
@@ -76,15 +76,15 @@ template <typename T0> class assign_trigger_function { public:
     template <typename V0>
     assign_trigger_function(simple_event *e, T0 *s0, const V0 &v0)
 	: _e(e), _s0(s0), _v0(v0) {
-	_e->weak_use();
+	_e->use();
     }
 
     ~assign_trigger_function() {
-	_e->weak_unuse();
+	_e->unuse();
     }
 
     void operator()() {
-	if (_e->trigger(true)) {
+	if (_e->trigger()) {
 	    *_s0 = _v0;
 	}
     }
@@ -104,7 +104,7 @@ template <typename T0> class assign_trigger_function { public:
 inline void simple_event::at_trigger(const event<> &e)
 {
     if (!_r || !e)
-	e._e->trigger(true);
+	e._e->trigger();
     else if (!_at_trigger) {
 	_at_trigger = e._e;
 	_at_trigger->use();
