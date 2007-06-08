@@ -64,14 +64,21 @@ class distribute_rendezvous : public abstract_rendezvous { public:
     }
 
     void add_distribute(const event<> &e) {
-	if (e)
+	if (e) {
 	    _es.push_back(e);
+	    _es.back().at_trigger(event<>(*this, 1));
+	}
     }
     
-    void complete(uintptr_t) {
-	for (std::vector<event<> >::iterator i = _es.begin(); i != _es.end(); ++i)
-	    i->trigger();
-	delete this;
+    void complete(uintptr_t rid) {
+	while (_es.size() && !_es.back())
+	    _es.pop_back();
+	if (!_es.size() || !rid) {
+	    remove_all();
+	    for (std::vector<event<> >::iterator i = _es.begin(); i != _es.end(); ++i)
+		i->trigger();
+	    delete this;
+	}
     }
     
   private:

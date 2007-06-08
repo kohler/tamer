@@ -25,7 +25,7 @@ class sigcancel_rendezvous : public rendezvous<> { public:
     }
     
     void complete(uintptr_t rid) {
-	if ((int) rid != sig_installing) {
+	if (!sig_handlers[rid] && (int) rid != sig_installing) {
 	    struct sigaction sa;
 	    sa.sa_handler = SIG_DFL;
 	    sigemptyset(&sa.sa_mask);
@@ -77,9 +77,13 @@ void driver::at_signal(int signal, const event<> &trigger)
     if (!trigger)		// special case forces creation of signal pipe
 	return;
 
-    if (sig_handlers[signal])
+    if (sig_handlers[signal]) {
+	tamerpriv::simple_event *simple = sig_handlers[signal].__get_simple();
 	sig_handlers[signal] = distribute(sig_handlers[signal], trigger);
-    else {
+	if (simple != sig_handlers[signal].__get_simple())
+	    sig_handlers[signal].at_trigger(make_event(sigcancelr));
+	
+    } else {
 	int old_sig_installing = sig_installing;
 	sig_installing = signal;
     

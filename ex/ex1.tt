@@ -80,15 +80,18 @@ tamed void cancellina() {
 
 tamed void cancellina2() {
     tvars { int i(1); tamer::rendezvous<int> r; tamer::event<> e1;
-	tamer::event<> e2; tamer::event<> e3; }
+	tamer::event<> e2; tamer::event<> e3; tamer::event<> e4; }
     n++;
     e1 = tamer::make_event(r, 1);
     e2 = tamer::make_event(r, 2);
     e3 = tamer::make_event(r, 3);
-    tamer::at_delay_msec(500, tamer::distribute(e1, e2, e3));
+    e4 = tamer::distribute(e1, e2, e3);
+    tamer::at_delay_msec(500, e4);
     e1.trigger();
     e2.trigger();
     e3.trigger();
+    if (e4)
+	fprintf(stderr, "=== SHOULD NOT HAVE e4\n");
     while (r.nevents()) {
 	twait(r, i);
 	fprintf(stderr, "=== triggered %d\n", i);
