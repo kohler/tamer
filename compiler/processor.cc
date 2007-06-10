@@ -679,24 +679,14 @@ void
 tame_fn_t::output_reenter (strbuf &b)
 {
     b << "  void tamer_closure_activate(unsigned blockid) {\n    ";
-    if (tamer_debug)
-	b << "tamer_debug_closure::set_block_landmark(0, 0);\n    ";
+    //if (tamer_debug)
+    //	b << "tamer_debug_closure::set_block_landmark(0, 0);\n    ";
     if (_class.length() && !(_opts & STATIC_DECL))
 	b << _self.name() << "->" << _method_name;
     else
 	b << _name;
     b << "(*this, blockid);\n"
       << "  }\n";
-}
-
-static void
-output_is_onstack (strbuf &b)
-{
-  b << "  bool is_onstack (const void *p) const\n"
-    << "  {\n"
-    << "    return (static_cast<const void *> (this) <= p &&\n"
-    << "            static_cast<const void *> (this + 1) > p);\n"
-    << "  }\n";
 }
 
 void
@@ -751,10 +741,14 @@ tame_fn_t::output_closure(outputter_t *o)
       strbuf i;
       _stack_vars.initialize (i, false);
       str s (i.str());
-      if (s.length() > 0)
+      if (s.length() > 0) {
 	  b << separator << s << " ";
+	  separator = ", ";
+      }
   }
 
+  if (need_implicit_rendezvous())
+      b << separator << "_closure__block(this) ";
   
   b << " {}\n\n";
 
@@ -763,8 +757,6 @@ tame_fn_t::output_closure(outputter_t *o)
   if (_class.length() && !(_opts & STATIC_DECL))
       b << "  " << _self.decl() << ";\n";
   
-  //output_is_onstack (b);
-
   if (_args)
       _args->declarations (b, "    ");
   _stack_vars.declarations (b, "    ");
@@ -950,7 +942,10 @@ tame_block_ev_t::output(outputter_t *o)
   strbuf b;
   str tmp;
 
-  b << "  { {\n#define make_event(...) make_event(__cls._closure__block, ## __VA_ARGS__)\n";
+  b << "  { ";
+  if (tamer_debug)
+      b << TAME_CLOSURE_NAME << ".tamer_debug_closure::set_block_landmark(__FILE__, __LINE__); ";
+  b << "do {\n#define make_event(...) make_event(__cls._closure__block, ## __VA_ARGS__)\n";
   o->output_str(b.str());
 
   output_mode_t om = o->switch_to_mode(OUTPUT_TREADMILL);
@@ -966,18 +961,14 @@ tame_block_ev_t::output(outputter_t *o)
   }
 
   int lineno = o->lineno();
-  o->output_str(" }");
+  o->output_str(" } while (0);");
   o->switch_to_mode(OUTPUT_PASSTHROUGH);
   o->output_str("\n#undef make_event\n");
   o->switch_to_mode(OUTPUT_TREADMILL, lineno);
   b << _fn->label(_id) << ":\n"
     << "  while (" << TAME_CLOSURE_NAME << "._closure__block.nwaiting()) {\n"
-    << "      " << TAME_CLOSURE_NAME << "._closure__block.block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n";
-  if (tamer_debug)
-      b << "      " << TAME_CLOSURE_NAME << ".tamer_debug_closure::set_block_landmark(__FILE__, __LINE__);\n";
-  b << "      "
-    << _fn->return_expr ()
-    << "; }\n"
+    << "      " << TAME_CLOSURE_NAME << "._closure__block.block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n"
+    << "      " << _fn->return_expr() << "; }\n"
     << "  }\n";
 
   o->output_str(b.str());

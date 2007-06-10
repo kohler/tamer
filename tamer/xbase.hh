@@ -137,21 +137,25 @@ class abstract_rendezvous { public:
     
     virtual inline ~abstract_rendezvous();
 
+    virtual void complete(uintptr_t rid) = 0;
+
     virtual bool is_distribute() const {
 	return false;
     }
-    
-    virtual void complete(uintptr_t rid) = 0;
+
+    virtual tamer_closure *linked_closure() const {
+	return _blocked_closure;
+    }
+
+    tamer_closure *blocked_closure() const {
+	return _blocked_closure;
+    }
 
     inline void block(tamer_closure &c, unsigned where);
     inline void unblock();
     inline void run();
 
     inline void remove_all();
-
-    tamer_closure *blocked_closure() const {
-	return _blocked_closure;
-    }
     
     static abstract_rendezvous *unblocked;
     static abstract_rendezvous *unblocked_tail;
@@ -224,8 +228,7 @@ struct tamer_debug_closure : public tamer_closure {
 
 
 namespace message {
-void rendezvous_dead(abstract_rendezvous *r);
-void gather_rendezvous_dead(gather_rendezvous *r);
+void event_prematurely_dereferenced(simple_event *e, abstract_rendezvous *r);
 }
 
 
@@ -278,6 +281,8 @@ inline bool simple_event::trigger() {
     _r_pprev = 0;
     _r_next = 0;
 
+    if (r && _refcount == 0)
+	message::event_prematurely_dereferenced(this, r);
     if (r)
 	r->complete(_rid);
     if (at_trigger) {

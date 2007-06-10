@@ -11,22 +11,22 @@ namespace tamer {
 /** @class event tamer/event.hh <tamer/tamer.hh>
  *  @brief  A future occurrence.
  *
- *  Each event object represents a future occurrence, such as the completion
- *  of a network read.  When the expected occurrence actually happens---for
- *  instance, a packet arrives---the event is triggered via its trigger()
- *  method.  A function can wait for the event using @c twait special forms,
+ *  An event object represents a future occurrence, such as the completion of
+ *  a network read.  When the occurrence actually happens---for instance, a
+ *  packet arrives---the event is triggered via its trigger() method.  A
+ *  function can wait for the event to trigger using @c twait special forms,
  *  which allow event-driven code to block.
  *
  *  Events have from zero to four trigger slots of arbitrary type.  For
- *  example, an event of type <tt>event<int, char*, bool></tt> has three
- *  trigger slots with types <tt>int</tt>, <tt>char*</tt>, and <tt>bool</tt>.
- *  The main constructors for <tt>event<int, char*, bool></tt> take three
- *  reference arguments of types <tt>int&</tt>, <tt>char*&</tt>, and
- *  <tt>bool&</tt>, and its trigger() method takes value arguments of types
- *  <tt>int</tt>, <tt>char*</tt>, and <tt>bool</tt>.  Calling <tt>e.trigger(1,
- *  "Hi", false)</tt> will set the trigger slots to the corresponding values.
- *  This can be used to pass information back to the function waiting for the
- *  event.
+ *  example, an event of type <code>event<int, char*, bool></code> has three
+ *  trigger slots with types <code>int</code>, <code>char*</code>, and
+ *  <code>bool</code>.  The main constructors for <code>event<int, char*,
+ *  bool></code> take three reference arguments of types <code>int&</code>,
+ *  <code>char*&</code>, and <code>bool&</code>, and its trigger() method
+ *  takes value arguments of types <code>int</code>, <code>char*</code>, and
+ *  <code>bool</code>.  Calling <code>e.trigger(1, "Hi", false)</code> will
+ *  set the trigger slots to the corresponding values.  This can be used to
+ *  pass information back to the function waiting for the event.
  *
  *  Each event is in one of two states, active or empty.  An active event is
  *  ready to be triggered, while an empty event has already been triggered.
@@ -46,13 +46,15 @@ namespace tamer {
  *
  *  Multiple event objects may refer to the same underlying occurrence.
  *  Triggering an event can thus affect several event objects.  For instance,
- *  after an assignment <tt>e1 = e2</tt>, @c e1 and @c e2 refer to the same
- *  occurrence.  Either <tt>e1.trigger()</tt> or <tt>e2.trigger()</tt> would
- *  trigger the underlying occurrence, making both @c e1 and @c e2 empty.
+ *  after an assignment <code>e1 = e2</code>, @c e1 and @c e2 refer to the
+ *  same occurrence.  Either <code>e1.trigger()</code> or
+ *  <code>e2.trigger()</code> would trigger the underlying occurrence, making
+ *  both @c e1 and @c e2 empty.
  *
  *  The bind_all() method produces a version of the event that has no slots.
- *  Triggering this event triggers the underlying occurrence, but does not
- *  change the values stored in the trigger slots.  For instance:
+ *  The resulting event's trigger() method triggers the underlying occurrence,
+ *  but does not change the values stored in the original event's trigger
+ *  slots.  For instance:
  *
  *  @code
  *     tvars { event<int> e; int x = 0; }
@@ -61,23 +63,35 @@ namespace tamer {
  *        e = make_event(x);
  *        e.trigger(1);
  *     }
- *     printf("%d\n", x);           // will print 1
+ *     printf("%d\n", x);                   // will print 1
  *
  *     twait {
  *        e = make_event(x);
  *        e.bind_all().trigger();
- *        e.trigger(2);                  // ignored
+ *        e.trigger(2);    // ignored: occurrence triggered
  *     }
- *     printf("%d\n", x);           // will print 1
+ *     printf("%d\n", x);                   // will print 1
  *  @endcode
  *
- *  An event is automatically triggered when the last reference to its
- *  underlying occurrence goes out of scope.  As with bind_all(), no trigger
- *  slots are assigned in this case.
+ *  Tamer automatically triggers any active event when the last reference to
+ *  its underlying occurrence is deleted.  As with bind_all(), the values in
+ *  the trigger slots are not changed.  This case is considered an programming
+ *  error, and a message will be printed at run time to indicate that an event
+ *  triggered abnormally.  For example, the following code:
  *
- *  Events can have associated trigger notifiers, which are triggered when the
- *  event itself is triggered.  A trigger notifier is simply an
- *  <tt>event<></tt> object.
+ *  @code
+ *     twait { (void) make_event(); }
+ *  @endcode
+ *
+ *  will print a message like "<tt>ex4.tt:11: event on this rendezvous
+ *  dereferenced before trigger</tt>".
+ *
+ *  Deleting the last reference to an empty event is not an error and does not
+ *  produce an error message.
+ *
+ *  An event's <em>trigger notifiers</em> are triggered when the event itself
+ *  is triggered.  A trigger notifier is simply an <code>event<></code>
+ *  object.
  *
  *  Events are usually created with the make_event() helper function, which
  *  automatically detects the right type of event to return.
@@ -87,7 +101,8 @@ class event { public:
 
     /** @brief  Default constructor creates an empty event. */
     event()
-	: _e(tamerpriv::simple_event::make_dead()) {
+	: _e(tamerpriv::simple_event::make_dead()),
+	  _s0(0), _s1(0), _s2(0), _s3(0) {
     }
 
     /** @brief  Construct a two-ID, four-slot event on rendezvous @a r.
@@ -260,8 +275,8 @@ class event { public:
 /** @cond specialized_events
  *
  *  Events may be declared with three, two, one, or zero template arguments,
- *  as in <tt>event<T0, T1, T2></tt>, <tt>event<T0, T1></tt>,
- *  <tt>event<T0></tt>, and <tt>event<></tt>.  Each specialized event class
+ *  as in <code>event<T0, T1, T2></code>, <code>event<T0, T1></code>,
+ *  <code>event<T0></code>, and <code>event<></code>.  Each specialized event class
  *  has functions similar to the full-featured event, but with parameters to
  *  constructors and @c trigger methods appropriate to the template arguments.
  */
@@ -270,7 +285,7 @@ template <typename T0, typename T1, typename T2>
 class event<T0, T1, T2, void> { public:
 
     event()
-	: _e(tamerpriv::simple_event::make_dead()) {
+	: _e(tamerpriv::simple_event::make_dead()), _s0(0), _s1(0), _s2(0) {
     }
 
     template <typename R, typename I0, typename I1>
@@ -366,7 +381,7 @@ class event<T0, T1, void, void>
     : public std::binary_function<const T0 &, const T1 &, void> { public:
 
     event()
-	: _e(tamerpriv::simple_event::make_dead()) {
+	: _e(tamerpriv::simple_event::make_dead()), _s0(0), _s1(0) {
     }
 
     template <typename R, typename I0, typename I1>
@@ -451,7 +466,7 @@ class event<T0, void, void, void>
     : public std::unary_function<const T0 &, void> { public:
 
     event()
-	: _e(tamerpriv::simple_event::make_dead()) {
+	: _e(tamerpriv::simple_event::make_dead()), _s0(0) {
     }
 
     template <typename R, typename I0, typename I1>
@@ -653,9 +668,9 @@ class event<void, void, void, void> { public:
  *
  *  @note Versions of this function exist for any combination of two, one, or
  *  zero event IDs and four, three, two, one, or zero trigger slots.  For
- *  example, <tt>make_event(r)</tt> creates a zero-ID, zero-slot event on
- *  <tt>rendezvous<> r</tt>, while <tt>make_event(r, 1, i, j)</tt> might
- *  create a one-ID, two-slot event on <tt>rendezvous<int> r</tt>.
+ *  example, <code>make_event(r)</code> creates a zero-ID, zero-slot event on
+ *  <code>rendezvous<> r</code>, while <code>make_event(r, 1, i, j)</code>
+ *  might create a one-ID, two-slot event on <code>rendezvous<int> r</code>.
  */
 template <typename I0, typename I1, typename J0, typename J1, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_event(rendezvous<I0, I1> &r, const J0 &i0, const J1 &i1, T0 &s0, T1 &s1, T2 &s2, T3 &s3)

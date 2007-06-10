@@ -336,7 +336,12 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 
 class gather_rendezvous : public rendezvous<> { public:
 
-    gather_rendezvous() {
+    gather_rendezvous(tamerpriv::tamer_closure *c)
+	: _linked_closure(c) {
+    }
+
+    tamerpriv::tamer_closure *linked_closure() const {
+	return _linked_closure;
     }
 
     inline void complete(uintptr_t) {
@@ -345,6 +350,10 @@ class gather_rendezvous : public rendezvous<> { public:
 	if (_nwaiting == 0)
 	    unblock();
     }
+
+  private:
+
+    tamerpriv::tamer_closure *_linked_closure;
     
 };
 

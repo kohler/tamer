@@ -6,43 +6,14 @@
 #include <tamer/tamer.hh>
 using namespace tamer;
 
-tamed void f1(bool whatever, event<> done)
+tamed void test_error()
 {
-    twait { tamer::at_delay_msec(100, make_event()); }
-    (whatever ? done.trigger() : done.cancel());
-}
-
-tamed void f2(bool whatever, event<> done)
-{
-    twait {
-	done.at_complete(make_event());
-	f1(whatever, done);
-    }
-    fprintf(stderr, "Complete (%d)\n", (int) whatever);
-}
-
-tamed void f3(bool whatever, event<> done)
-{
-    twait {
-	done.at_cancel(make_event());
-	f1(whatever, done);
-    }
-    fprintf(stderr, "Canceled (%d)\n", (int) whatever);
-}
-
-tamed void g()
-{
-    twait {
-	f2(true, make_event());
-	f2(false, make_event());
-	f3(true, make_event());
-	f3(false, make_event());
-    }
+    twait { (void) make_event(); }
 }
 
 int main(int, char **) {
     tamer::initialize();
-    g();
+    test_error();
     while (!tamer::driver_empty())
 	tamer::once();
 }
