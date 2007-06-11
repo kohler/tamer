@@ -24,15 +24,6 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
     /** @brief  Default constructor creates a fresh rendezvous. */
     inline rendezvous();
 
-    /** @brief  Report the next ready event.
-     *  @param[out]  i0  Set to the first event ID of the ready event.
-     *  @param[out]  i1  Set to the second event ID of the ready event.
-     *  @return  True if there was a ready event, false otherwise.
-     *
-     *  @a i0 and @a i1 were modified if and only if @a join returns true.
-     */
-    inline bool join(I0 &i0, I1 &i1);
-
     /** @brief  Report how many events are ready.
      *  @return  The number of ready events.
      *
@@ -58,6 +49,22 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
     unsigned nevents() const {
 	return nready() + nwaiting();
     }
+
+    /** @brief  Report the next ready event.
+     *  @param[out]  i0  Set to the first event ID of the ready event.
+     *  @param[out]  i1  Set to the second event ID of the ready event.
+     *  @return  True if there was a ready event, false otherwise.
+     *
+     *  @a i0 and @a i1 were modified if and only if @a join returns true.
+     */
+    inline bool join(I0 &i0, I1 &i1);
+
+    /** @brief  Clear all events from this rendezvous.
+     *
+     *  Every event waiting on this rendezvous is made empty.  After clear(),
+     *  nevents() will return 0.
+     */
+    inline void clear();
 
     /** @internal
      *  @brief  Add an occurrence to this rendezvous.
@@ -119,6 +126,13 @@ bool rendezvous<I0, I1>::join(I0 &i0, I1 &i1)
 	return false;
 }
 
+template <typename I0, typename I1>
+inline void rendezvous<I0, I1>::clear()
+{
+    abstract_rendezvous::clear();
+    _bs.clear();
+}
+
 
 /** @cond specialized_rendezvous */
 
@@ -127,13 +141,15 @@ class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
 
     inline rendezvous();
     
-    inline void add(tamerpriv::simple_event *e, const I0 &i0);
-    inline void complete(uintptr_t rid);
     inline bool join(I0 &);
+    inline void clear();
 
     unsigned nready() const	{ return _bs.nactive(); }
     unsigned nwaiting() const	{ return _bs.npassive(); }
     unsigned nevents() const	{ return nready() + nwaiting(); }
+    
+    inline void add(tamerpriv::simple_event *e, const I0 &i0);
+    inline void complete(uintptr_t rid);
 
   private:
 
@@ -178,19 +194,28 @@ bool rendezvous<I0, void>::join(I0 &i0)
 	return false;
 }
 
+template <typename I0>
+void rendezvous<I0, void>::clear()
+{
+    abstract_rendezvous::clear();
+    _bs.clear();
+}
+
 
 template <>
 class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
 
     inline rendezvous();
 
-    inline void add(tamerpriv::simple_event *e, uintptr_t i0) throw ();
-    inline void complete(uintptr_t rid);
     inline bool join(uintptr_t &);
+    inline void clear();
 
     unsigned nready() const	{ return _buf.size(); }
     unsigned nwaiting() const	{ return _nwaiting; }
     unsigned nevents() const	{ return nready() + nwaiting(); }
+
+    inline void add(tamerpriv::simple_event *e, uintptr_t i0) throw ();
+    inline void complete(uintptr_t rid);
 
   protected:
 
@@ -227,6 +252,12 @@ inline bool rendezvous<uintptr_t>::join(uintptr_t &i0)
 	return false;
 }
 
+inline void rendezvous<uintptr_t>::clear()
+{
+    abstract_rendezvous::clear();
+    _buf.clear();
+    _nwaiting = 0;
+}
 
 
 template <typename T>
@@ -320,6 +351,11 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 	    return true;
 	} else
 	    return false;
+    }
+
+    inline void clear() {
+	abstract_rendezvous::clear();
+	_nwaiting = _nready = 0;
     }
 
     unsigned nready() const	{ return _nready; }

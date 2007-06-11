@@ -139,6 +139,8 @@ class abstract_rendezvous { public:
 
     virtual void complete(uintptr_t rid) = 0;
 
+    virtual inline void clear();
+    
     virtual bool is_distribute() const {
 	return false;
     }
@@ -154,8 +156,22 @@ class abstract_rendezvous { public:
     inline void block(tamer_closure &c, unsigned where);
     inline void unblock();
     inline void run();
-
     inline void remove_all();
+
+    class clearer { public:
+	clearer(abstract_rendezvous &r)
+	    : _r(&r) {
+	}
+	~clearer() {
+	    if (_r)
+		_r->clear();
+	}
+	void kill() {
+	    _r = 0;
+	}
+      private:
+	abstract_rendezvous *_r;
+    };
     
     static abstract_rendezvous *unblocked;
     static abstract_rendezvous *unblocked_tail;
@@ -237,6 +253,10 @@ inline void abstract_rendezvous::remove_all() {
 	e->_r = 0;
     while (_events)
 	_events->trigger();
+}
+
+inline void abstract_rendezvous::clear() {
+    remove_all();
 }
 
 inline abstract_rendezvous::~abstract_rendezvous() {

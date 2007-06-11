@@ -1,5 +1,5 @@
 // -*-c++-*-
-/* $Id: tame.hh,v 1.11 2007-06-04 16:03:11 kohler Exp $ */
+/* $Id: tame.hh,v 1.12 2007-06-11 21:32:28 kohler Exp $ */
 
 /*
  *
@@ -444,7 +444,7 @@ class tame_fn_t : public element_list_t {
 	  _name(d->name()),
 	  _method_name(strip_to_method(_name)),
 	  _class(strip_off_method(_name)), 
-	  _self(c ? str("const ") + _class : _class, "*", "_closure__self"),
+	  _self(c ? str("const ") + _class : _class, "*", "__tamer_self"),
 	  _isconst(c),
 	  _template(fn._template),
 	  _template_args(_class.length() ? template_args (_class) : ""),

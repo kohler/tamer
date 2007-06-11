@@ -36,7 +36,7 @@ void element_list_t::output(outputter_t *o) {
 // Must match "__CLS" in tame_const.h
 #define TAME_CLOSURE_NAME     "__cls"
 
-#define CLOSURE_GENERIC       "__cls_g"
+#define TWAIT_BLOCK_RENDEZVOUS "__gather_rendezvous"
 
 str
 type_t::type_without_pointer () const
@@ -274,7 +274,7 @@ tame_fn_t::add_env (tame_env_t *e)
 cpp_initializer_t::cpp_initializer_t(const lstr &v)
     : initializer_t(v)
 {
-    // rewrite "this" to "__self".  Do it the right way.
+    // rewrite "this" to "__tamer_self".  Do it the right way.
     strbuf b;
     int mode = 0;
     std::string::iterator last = _value.begin();
@@ -294,7 +294,7 @@ cpp_initializer_t::cpp_initializer_t(const lstr &v)
 	else if (mode == '*' && *a == '*' && a[1] == '/')
 	    mode = 0;
 	else if (mode == 0 && *a == 't' && a[1] == 'h' && a[2] == 'i' && a[3] == 's' && (a + 4 == _value.end() || (!isalnum(a[4]) && a[4] != '_' && a[4] != '$'))) {
-	    b << std::string(last, a) << "_closure__self";
+	    b << std::string(last, a) << "__tamer_self";
 	    last = a + 4;
 	    a += 3;
 	}
@@ -748,7 +748,7 @@ tame_fn_t::output_closure(outputter_t *o)
   }
 
   if (need_implicit_rendezvous())
-      b << separator << "_closure__block(this) ";
+      b << separator << TWAIT_BLOCK_RENDEZVOUS "(this) ";
   
   b << " {}\n\n";
 
@@ -762,7 +762,7 @@ tame_fn_t::output_closure(outputter_t *o)
   _stack_vars.declarations (b, "    ");
 
   if (need_implicit_rendezvous())
-      b << "  tamer::gather_rendezvous _closure__block;\n";
+      b << "  tamer::gather_rendezvous " TWAIT_BLOCK_RENDEZVOUS ";\n";
 
   b << "};\n\n";
 
@@ -942,10 +942,10 @@ tame_block_ev_t::output(outputter_t *o)
   strbuf b;
   str tmp;
 
-  b << "  { ";
+  b << "  do { ";
   if (tamer_debug)
-      b << TAME_CLOSURE_NAME << ".tamer_debug_closure::set_block_landmark(__FILE__, __LINE__); ";
-  b << "do {\n#define make_event(...) make_event(__cls._closure__block, ## __VA_ARGS__)\n";
+      b << TAME_CLOSURE_NAME ".tamer_debug_closure::set_block_landmark(__FILE__, __LINE__); ";
+  b << "do {\n#define make_event(...) make_event(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n    tamer::gather_rendezvous::clearer " TWAIT_BLOCK_RENDEZVOUS "_clear(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ");\n";
   o->output_str(b.str());
 
   output_mode_t om = o->switch_to_mode(OUTPUT_TREADMILL);
@@ -961,18 +961,17 @@ tame_block_ev_t::output(outputter_t *o)
   }
 
   int lineno = o->lineno();
-  o->output_str(" } while (0);");
+  o->switch_to_mode(OUTPUT_TREADMILL, lineno);
+  b << TWAIT_BLOCK_RENDEZVOUS "_clear.kill(); } while (0); "
+    << _fn->label(_id) << ":\n"
+    << "  while (" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".nwaiting()) {\n"
+    << "      " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".block(" TAME_CLOSURE_NAME ", " << _id << ");\n"
+    << "      " << _fn->return_expr() << "; }\n"
+    << "  } while (0);\n";
+  o->output_str(b.str());
   o->switch_to_mode(OUTPUT_PASSTHROUGH);
   o->output_str("\n#undef make_event\n");
-  o->switch_to_mode(OUTPUT_TREADMILL, lineno);
-  b << _fn->label(_id) << ":\n"
-    << "  while (" << TAME_CLOSURE_NAME << "._closure__block.nwaiting()) {\n"
-    << "      " << TAME_CLOSURE_NAME << "._closure__block.block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n"
-    << "      " << _fn->return_expr() << "; }\n"
-    << "  }\n";
-
-  o->output_str(b.str());
-  o->switch_to_mode (om);
+  o->switch_to_mode(om);
 }
 
 void
@@ -984,8 +983,8 @@ tame_block_thr_t::output (outputter_t *o)
 
   b << "  do {\n"
     << "      thread_implicit_rendezvous_t " 
-    << " _tirv (" CLOSURE_GENERIC ", __FL__);\n"
-    << "  thread_implicit_rendezvous_t *" CLOSURE_GENERIC " = &_tirv;\n";
+    << " _tirv (__cls, __FL__);\n"
+    << "  thread_implicit_rendezvous_t *__cls = &_tirv;\n";
 
   o->output_str(b.str());
   b.str(str());

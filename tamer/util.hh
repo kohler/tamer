@@ -19,6 +19,7 @@ template <typename T, typename A = std::allocator<T> > class blockset { public:
     inline T *active_front() const throw ();
     inline void pop_active();
     inline void kill(size_t i);
+    void clear();
 
   private:
 
@@ -47,15 +48,7 @@ blockset<T, A>::blockset() throw ()
 template <typename T, typename A>
 blockset<T, A>::~blockset()
 {
-    if (_npassive)
-	for (size_t i = 0; i < _cap; i++)
-	    if (_elts[i].next == tbpassive)
-		_alloc.destroy(&_elts[i]);
-    while (_active != tbnull) {
-	size_t i = _active;
-	_active = _elts[i].next;
-	_alloc.destroy(&_elts[i]);
-    }
+    clear();
     _alloc.deallocate(_elts, _cap);
 }
 
@@ -138,6 +131,16 @@ inline void blockset<T, A>::kill(size_t i)
     _npassive--;
 }
 
+template <typename T, typename A>
+inline void blockset<T, A>::clear()
+{
+    for (size_t i = 0; _npassive && i < _cap; i++)
+	if (_elts[i].next == tbpassive)
+	    kill(i);
+    while (_active != tbnull)
+	pop_active();
+}
+
 
 template <typename T, typename A = std::allocator<T> > class debuffer { public:
 
@@ -151,6 +154,7 @@ template <typename T, typename A = std::allocator<T> > class debuffer { public:
 
     inline T *front() const throw ();
     inline void pop_front();
+    void clear();
 
   private:
 
@@ -175,8 +179,7 @@ debuffer<T, A>::debuffer() throw ()
 template <typename T, typename A>
 debuffer<T, A>::~debuffer()
 {
-    for (size_t x = _head; x != _tail; x++)
-	_alloc.destroy(&_elts[x & (_cap - 1)]);
+    clear();
     if (_cap > nlocal)
 	_alloc.deallocate(_elts, _cap);
 }
@@ -226,6 +229,13 @@ inline void debuffer<T, A>::push_front(const T &t)
 	expand();
     _alloc.construct(&_elts[(_head - 1) & (_cap - 1)], t);
     _head--;
+}
+
+template <typename T, typename A>
+inline void debuffer<T, A>::clear()
+{
+    while (_head != _tail)
+	pop_front();
 }
 
 }}
