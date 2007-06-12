@@ -116,9 +116,9 @@ void event_prematurely_dereferenced(simple_event *, abstract_rendezvous *r) {
     const char *file;
     unsigned line;
     if (c && c->block_landmark(file, line))
-	fprintf(stderr, "%s:%d: event on this rendezvous dereferenced before trigger\n", file, line);
+	fprintf(stderr, "%s:%d: avoided leak of active event\n", file, line);
     else
-	fprintf(stderr, "event dereferenced before trigger\n");
+	fprintf(stderr, "avoided leak of active event\n");
 }
 
 }
