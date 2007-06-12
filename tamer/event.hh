@@ -63,14 +63,14 @@ namespace tamer {
  *        e = make_event(x);
  *        e.trigger(1);
  *     }
- *     printf("%d\n", x);                   // will print 1
+ *     printf("%d\n", x);        // will print 1
  *
  *     twait {
  *        e = make_event(x);
  *        e.bind_all().trigger();
- *        e.trigger(2);    // ignored: occurrence triggered
+ *        e.trigger(2);               // ignored
  *     }
- *     printf("%d\n", x);                   // will print 1
+ *     printf("%d\n", x);        // will print 1
  *  @endcode
  *
  *  Tamer automatically triggers any active event when the last reference to
