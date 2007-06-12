@@ -17,8 +17,7 @@ tamer \- C++ extensions for event-driven programming
     bool empty() const;
     void trigger(const T0 &\fIv0\fB, const T1 &\fIv1\fB,
                  const T2 &\fIv2\fB, const T3 &\fIv3\fB);
-    void cancel();
-    void at_cancel(const event<> &\fIcancel_evt\fB);
+    void at_trigger(const event<> &\fItrigger_evt\fB);
 }
 .sp
 class rendezvous<I0, I1> { public:
@@ -165,33 +164,16 @@ objects may be freely assigned, passed as arguments, and copied via copy
 constructors\*Eessentially, treated as primitive values.  They are
 automatically reference counted.  Each
 .B event
-may be triggered at most once; second and subsequent trigger attempts have
-no effect.
+may be triggered at most once.  An event that hasn't triggered yet is called
+.IR active .
+Triggering an active event makes it
+.IR empty ;
+triggering an empty event has no effect.
 .LP
-An event may be explicitly canceled by calling its
-.B cancel
-method.  Alternately, an event is automatically canceled when the last
-reference to the event goes out of scope.  The
-.B trigger
-method has no effect on a canceled event.  It is possible to detect when an
-event is canceled using the
-.B event<T*>::at_cancel
-method.  Consider the call
-.BR \fIe\fB.at_cancel(\fIe2\fB) ,
-where
-.I e2
-is an
-.BR event<> .
-If \fIe\fR is canceled before it is triggered,  then
-.B Tamer
-will automatically trigger
-.IR e2 .
-If, on the other hand, 
-.I e
-is triggered first, then
-.B Tamer
-will automatically cancel
-.IR e2 .
+Tamer automatically triggers an active event when its last reference goes
+out of scope.  This case is considered a programming error, however, and a
+message is printed to indicate the abnormal trigger.
+'
 .SS "Wait Points and Rendezvous"
 .LP
 The
@@ -227,24 +209,6 @@ then block until the created event has triggered\*(rq\*Eor,
 since
 .B tamer::at_delay_sec
 triggers its event argument after the given number of seconds has passed, simply as \*(lqblock for 10 seconds\*(rq.
-.LP
-A
-.B twait{}
-statement will block forever if an event created by its
-.I statements
-is canceled.  Adapters such as
-.B with_cancel()
-and
-.B add_cancel()
-are useful to cancel events without blocking.  Alternately, use the
-\*(lq\fBtwait volatile\~{ \fIstatements\fB; }\fR\*(rq
-special form.  If an event created in its
-.I statements
-is canceled, the
-.B twait volatile
-block exits early: all other events created in its
-.I statements
-are canceled and the function resumes processing at its wait point.
 .LP
 The second, more flexible form of wait point explicitly names a
 .B rendezvous
@@ -424,17 +388,17 @@ both to become empty.
 .B event<T*>::operator bool() const
 .fi
 .RS 5
-Returns true if the event is ready to be triggered.  Canceled events, empty
-events, and events that have already been triggered return false.
+Returns true if the event is ready to be triggered.  Empty events return
+false.
 .RE
 .sp
 .nf
 .B bool event<T*>::empty() const
 .fi
 .RS 5
-Returns true if the event is empty, meaning it was created empty, it has
-been canceled, or it has already been triggered.
-\*(lq\fIe\fB.empty()\fR\*(rq is equivalent to \*(lq\fB!(bool)\fIe\fR\*(rq.
+Returns true if the event is empty, meaning it was created empty or has
+already been triggered.  \*(lq\fIe\fB.empty()\fR\*(rq is equivalent to
+\*(lq\fB!(bool)\fIe\fR\*(rq.
 .RE
 .sp
 .nf
@@ -458,39 +422,16 @@ have types that match the template arguments.
 .RE
 .sp
 .nf
-.B void event<T*>::cancel()
-.fi
-.RS 5
-Explicitly cancels the event.  If the event is empty (it has already
-triggered or been canceled), this does nothing; otherwise, it informs the
-event's
-.B rendezvous 
-that the event will never complete, and triggers any cancel notifications
-previously attached with
-.BR at_cancel .
-.RE
-.sp
-.nf
-.B void event<T*>::at_cancel(const event<> &\fIcancel_evt\fB)
+.B void event<T*>::at_trigger(const event<> &\fItrigger_evt\fB)
 .fi
 .RS 5
 Registers
-.I cancel_evt
+.I trigger_evt
 for cancel notification.  If this event is already empty,
-.I cancel_evt
+.I trigger_evt
 is triggered immediately.  Otherwise,
-.I cancel_evt
-is triggered when this event is canceled, and canceled when this event is
-triggered.
-.RE
-.sp
-.nf
-.B event<> event<T*>::canceler()
-.fi
-.RS 5
-Returns an event that, when triggered, will cancel this event.  The
-returned event is canceled itself when this event completes.  If this event
-is empty, returns another empty event.
+.I trigger_evt
+is triggered when this event is triggered.
 .RE
 '
 .SH "RENDEZVOUS CLASS"
@@ -518,8 +459,8 @@ Creates a new rendezvous with no outstanding events.
 .fi
 .RS 5
 Returns the count of outstanding events.  This includes events that have
-not yet been triggered or canceled, and events that have been triggered,
-but the trigger notification has not been collected yet.
+not yet triggered, and events that have triggered, but the trigger
+notification has not been collected yet.
 .RE
 .sp
 .nf
@@ -538,7 +479,7 @@ is greater than 0.
 .fi
 .RS 5
 Returns the count of waiting events.  An event is waiting if it has not yet
-been triggered or canceled.
+triggered.
 .RE
 .sp
 .nf
@@ -570,11 +511,9 @@ Returns an event that distributes trigger operations over
 .IR e1 " and " e2 .
 Triggering the returned event will trigger both
 .IR e1 " and " e2
-automatically.  Canceling the returned event will release
-its references to
-.IR e1 " and " e2 ;
-if those were the only references remaining, the events will be canceled as
-usual.
+automatically.  The returned event is empty if and only if both
+.IR e1 " and " e2
+are empty.
 .RE
 .sp
 .nf
@@ -583,9 +522,6 @@ usual.
 .RS 5
 Returns an event that, when triggered, will call
 .BR \fIe\fB.trigger(\fIv0\fB) .
-Additionally, if
-.I e
-is canceled, then the returned event will be canceled.
 .RE
 .sp
 .nf
@@ -594,21 +530,7 @@ is canceled, then the returned event will be canceled.
 .RS 5
 Returns an event that, when triggered, will call
 .BR \fIe\fB.trigger() .
-The returned event's trigger value is ignored.  Additionally, if
-.I e
-is canceled, then the returned event will be canceled.
-.RE
-.sp
-.nf
-.B event<T*> spread_cancel(const event<U*> &\fIeto\fB, event<T*> \fIefrom\fB)
-.fi
-.RS 5
-When
-.I efrom
-is canceled,
-.I eto
-will immediately be canceled as well.  Returns
-.IR eto .
+The returned event's trigger value is ignored.
 .RE
 '
 .SH "DRIVER"
@@ -747,7 +669,7 @@ Returns the current cached timestamp.
 .fi
 .RS 5
 Runs through the driver's event loop once.  First, the driver removes any
-canceled timer and file descriptor events.  Then, the driver calls
+empty timer and file descriptor events.  Then, the driver calls
 .BR select
 and possibly blocks, waiting for the next event.  Then, the driver triggers
 and runs the appropriate signal events, file descriptor events, timer
@@ -847,21 +769,6 @@ and if the returned event is canceled,
 is triggered with value
 .BR \-ECANCELED .
 .RE
-.sp
-.nf
-.B event<int> add_cancel(event<int> \fIe\fB)
-.fi
-.RS 5
-Returns a cancel-adapted version of
-.IR e .
-When the returned event is triggered,
-.I e
-is triggered with the same trigger value.
-If, however, the returned event is canceled,
-.I e
-is triggered with value
-.BR \-ECANCELED .
-.RE
 .PP
 There is also a set of cancel adapters that don't set
 .IR e 's
@@ -899,7 +806,6 @@ This style of cancel adapter can handle any event type, not just
 .B event<T*> with_timeout_msec(int \fIdelay\fB, event<T*> \fIe\fB)
 .B event<T*> with_signal(int \fIsignal\fB, event<T*> \fIe\fB)
 .B event<T*> with_signal(const std::vector<int> &\fIsignals\fB, event<T*> \fIe\fB)
-.B event<T*> with_cancel(event<T*> \fIe\fB)
 .fi
 .RS 5
 Return cancel-adapted versions of
@@ -917,7 +823,6 @@ event triggered successfully.
 .B event<T*> with_signal(int \fIsignal\fB, event<T*> \fIe\fB, int &\fIresult\fB)
 .B event<T*> with_signal(const std::vector<int> &\fIsignals\fB, event<T*> \fIe\fB,
 .B "                      int &\fIresult\fB)"
-.B event<T*> with_cancel(event<T*> \fIe\fB, int &\fIresult\fB)
 .fi
 .RS 5
 Return cancel-adapted versions of

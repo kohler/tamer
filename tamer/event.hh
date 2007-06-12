@@ -28,11 +28,11 @@ namespace tamer {
  *  set the trigger slots to the corresponding values.  This can be used to
  *  pass information back to the function waiting for the event.
  *
- *  Each event is in one of two states, active or empty.  An active event is
- *  ready to be triggered, while an empty event has already been triggered.
- *  Events can be triggered at most once; triggering an empty event has no
- *  additional effect.  The empty() and operator unspecified_bool_type()
- *  member functions test whether an event is empty or active.
+ *  Events may be <em>active</em> or <em>empty</em>.  An active event is ready
+ *  to be triggered, while an empty event has already been triggered.  Events
+ *  can be triggered at most once; triggering an empty event has no additional
+ *  effect.  The empty() and operator unspecified_bool_type() member functions
+ *  test whether an event is empty or active.
  *
  *  <pre>
  *      Constructors               Default constructor
@@ -75,7 +75,7 @@ namespace tamer {
  *
  *  Tamer automatically triggers any active event when the last reference to
  *  its underlying occurrence is deleted.  As with bind_all(), the values in
- *  the trigger slots are not changed.  This case is considered an programming
+ *  the trigger slots are not changed.  This case is considered a programming
  *  error, and a message will be printed at run time to indicate that an event
  *  triggered abnormally.  For example, the following code:
  *
