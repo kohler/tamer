@@ -230,12 +230,16 @@ tamed void fd::connect(const struct sockaddr *addr, socklen_t addrlen, event<int
 
 int fd::fdimp::close(int leave_error)
 {
-    if (fd >= 0) {
-	int my_fd = fd;
+    int my_fd = fd;
+    if (my_fd >= 0 || leave_error != -EBADF)
 	fd = leave_error;
+    if (my_fd >= 0) {
 	int x = ::close(my_fd);
-	if (x == -1)
-	    x = fd = -errno;
+	if (x == -1) {
+	    x = -errno;
+	    if (fd == -EBADF)
+		fd = -errno;
+	}
 	driver::main->kill_fd(my_fd);
 	at_close.trigger();
 	at_close = event<>();
@@ -249,7 +253,10 @@ void fd::close(event<int> done)
     done.trigger(*this ? _p->close() : -EBADF);
 }
 
-void fd::tcp_listen(int port, int backlog, event<fd> result)
+
+namespace fdx {
+
+void tcp_listen(int port, int backlog, event<fd> result)
 {
     fd f = fd::socket(AF_INET, SOCK_STREAM, 0);
     if (f) {
@@ -266,13 +273,12 @@ void fd::tcp_listen(int port, int backlog, event<fd> result)
 	    ret = f.listen(backlog);
     
 	if (ret < 0 && f)
-	    f._p->close(ret);
+	    f.error_close(ret);
     }
     result.trigger(f);
 }
 
-tamed static void fd::tcp_connect(struct in_addr addr, int port,
-				  event<fd> result)
+tamed void tcp_connect(struct in_addr addr, int port, event<fd> result)
 {
     tvars {
 	fd f = fd::socket(AF_INET, SOCK_STREAM, 0);
@@ -288,8 +294,8 @@ tamed static void fd::tcp_connect(struct in_addr addr, int port,
 	    f.connect((struct sockaddr *) &saddr, sizeof(saddr), make_event(ret));
 	}
     if (ret < 0 && f)
-	f._p->close(ret);
+	f.error_close(ret);
     result.trigger(f);
 }
 
-}
+}}

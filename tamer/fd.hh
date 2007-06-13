@@ -140,10 +140,6 @@ class fd {
      */
     static fd socket(int domain, int type, int protocol);
 
-    static void tcp_listen(int port, int backlog, event<fd> result);
-    static inline void tcp_listen(int port, event<fd> result);
-    static void tcp_connect(struct in_addr addr, int port, event<fd> result);
-
     /** @brief  Test if file descriptor is valid.
      *  @return  True if file descriptor is valid, false if not.
      */
@@ -205,6 +201,8 @@ class fd {
      *  @param  backlog  Maximum length of pending connection queue.
      *
      *  Returns 0 on success, or a negative error code.
+     *
+     *  @sa tamer::fdx::tcp_listen
      */
     int listen(int backlog = default_backlog);
 
@@ -247,6 +245,8 @@ class fd {
      *  @param  done     Event triggered on completion.
      *
      *  @a done is triggered with 0 on success, or a negative error code.
+     *
+     *  @sa tamer::fdx::tcp_connect
      */
     void connect(const struct sockaddr *addr, socklen_t addrlen,
 		 event<int> done);
@@ -326,6 +326,14 @@ class fd {
      */
     inline void close();
 
+    /** @brief  Close file descriptor, marking it with an error.
+     *  @param  errcode  Negative error code.
+     *
+     *  After error_close(@a errcode), the valid() function will return false,
+     *  and error() will return @a errcode.
+     */
+    inline void error_close(int errcode);
+
     /** @brief  Assign this file descriptor to refer to @a f.
      *  @param  f  Source file descriptor.
      */
@@ -386,7 +394,6 @@ class fd {
     class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &, unsigned);
     class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_ &, unsigned);
     class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_ &, unsigned);
-    class closure__tcp_connect__7in_addriQ2fd_; static void tcp_connect(closure__tcp_connect__7in_addriQ2fd_ &, unsigned);
 
     friend bool operator==(const fd &, const fd &);
     friend bool operator!=(const fd &, const fd &);
@@ -455,10 +462,6 @@ inline void fd::at_close(event<> e) {
 	_p->at_close = distribute(_p->at_close, e);
 }
 
-inline void fd::tcp_listen(int port, event<fd> result) {
-    tcp_listen(port, default_backlog, result);
-}
-
 inline void fd::accept(const event<fd> &result) {
     accept(0, 0, result);
 }
@@ -480,6 +483,14 @@ inline void fd::close() {
 	_p->close();
 }
 
+inline void fd::error_close(int errcode) {
+    assert(errcode < 0);
+    if (_p)
+	_p->close(errcode);
+    else if (errcode != -EBADF)
+	_p = new fdimp(errcode);
+}
+
 inline bool operator==(const fd &a, const fd &b) {
     return a._p == b._p;
 }
@@ -488,5 +499,49 @@ inline bool operator!=(const fd &a, const fd &b) {
     return a._p != b._p;
 }
 
+
+namespace fdx {
+
+/** @namespace tamer::fdx
+ *  @brief  Namespace containing extensions to Tamer's file descriptor
+ *  support, such as helper functions for creating TCP connections.
+ */
+
+/** @brief  Open a nonblocking TCP connection on port @a port.
+ *  @param  port     Listening port (in host byte order).
+ *  @param  backlog  Maximum connection backlog.
+ *  @param  result   Event triggered on completion.
+ *
+ *  Returns the new listening file descriptor via the @a result event.  The
+ *  returned file descriptor is made nonblocking, and is opened with the @c
+ *  SO_REUSEADDR option.  To check whether the function succeeded, use valid()
+ *  or error() on the resulting file descriptor.
+ */
+void tcp_listen(int port, int backlog, event<fd> result);
+
+
+/** @brief  Open a nonblocking TCP connection on port @a port.
+ *  @param  port     Listening port (in host byte order).
+ *  @param  result   Event triggered on completion.
+ *
+ *  Equivalent to tcp_listen(port, fd::default_backlog, result).
+ */
+inline void tcp_listen(int port, event<fd> result) {
+    tcp_listen(port, fd::default_backlog, result);
 }
+
+
+/** @brief  Create a nonblocking TCP connection to @a addr:@a port.
+ *  @param  addr    Remote host.
+ *  @param  port    Remote port (in host byte order).
+ *  @param  result  Event triggered on completion.
+ *
+ *  Returns the connected file descriptor via the @a result event.  The
+ *  returned file descriptor is made nonblocking.  To check whether the
+ *  connect attempt succeeded, use valid() or error() on the resulting file
+ *  descriptor.
+ */
+void tcp_connect(struct in_addr addr, int port, event<fd> result);
+    
+}}
 #endif /* TAMER_FD_HH */
