@@ -1,5 +1,18 @@
 Tamer NEWS
 
+Version 1.2.0   13.Jun.2007
+
+* Eliminate event cancellation; after experience, it was a bad idea.  Now,
+  when the last reference to an active event is dropped, the event
+  automatically triggers (but this is considered an error and an error
+  message is printed).  This simplifies a lot of code.  (Max disagrees, and
+  would prefer a dereferenced event to silently disappear; we will see.)
+
+* event<T*>::at_trigger() replaces event<T*>::at_cancel() and
+  event<T*>::at_complete().  tamer::unbind() replaces tamer::ignore_slot().
+  event<T*>::bind_all() replaces event<T*>::make_unbound().
+
+
 Version 1.1.0   5.Jun.2007
 
 * Remove tamer::fileio and tamer::at_fd_close in favor of a tamer::fd
