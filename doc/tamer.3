@@ -47,7 +47,6 @@ tamed void user_function(...) {
 }
 .sp
 twait { ... }
-twait volatile { ... }
 .sp
 twait(rendezvous<I0, I1> &\fIrendezvous\fB, I0 &\fIi0\fB, I1 &\fIi1\fB);
 twait(rendezvous<I0> &\fIrendezvous\fB, I0 &\fIi0\fB);
@@ -86,13 +85,10 @@ packet arrives\*Ethe event is
 .I triggered
 via its
 .B trigger
-method.  A
+method.  Each active event is associated with exactly one
 .B rendezvous
-object represents a set of related events; each
-.B event
-associates with exactly one
-.BR rendezvous .
-A function can block until some event on a
+object, which represents a set of related events.  A function can block
+until some event on a
 .B rendezvous
 occurs using a
 .B twait
@@ -149,9 +145,8 @@ trigger value is stored in
 .IR i ,
 the
 .I trigger slot
-passed to
-.BR make_event
-when the event was created.
+passed earlier to
+.BR make_event .
 The type of
 .I i
 is echoed in
@@ -200,7 +195,7 @@ calls in the
 have triggered.  (Within the
 .IR statements ,
 .B make_event
-is redefined to a macro that automatically supplies the initial
+is redefined to a macro that automatically supplies a
 .B rendezvous
 argument.)
 For example, code like \*(lq\fBtwait { tamer::at_delay_sec(\fR10\fB, make_event()); }\fR\*(rq
@@ -261,8 +256,8 @@ must match the type(s) of the
 .BR rendezvous .
 .LP
 .B rendezvous
-objects are noncopyable: their copy constructors and assignment operators
-are private.
+objects have private copy constructors and assignment operators, preventing
+them from being copied.
 .LP
 A
 .B tamed
@@ -270,7 +265,9 @@ function's caller resumes when the called function
 .IR "either returns or blocks" .
 To allow its caller to distinguish returning from blocking, a 
 .B tamed
-function will often accept an event argument, which it triggers when it
+function will often accept an 
+.B event
+argument, which it triggers when it
 returns.  This trigger signals the function's completion.  Here is a
 .B tamed
 function that blocks, then returns an integer:
@@ -325,9 +322,8 @@ programmer marks local variables as safe by enclosing them in a
 .B tvars{}
 block, which preserves their values in a heap-allocated closure.  Function
 parameters are always safe.  Unsafe local variables have indeterminate
-values after a wait point; if you need to mark a variable as safe, the C++
-compiler will often give you an uninitialized-variable warning for that
-variable.
+values after a wait point.  The C++ compiler will often give you an
+uninitialized-variable warning when a variable needs to be made safe.
 '
 .SH EVENT CLASS
 The
@@ -380,16 +376,15 @@ match the template arguments.
 Events may be safely copied and assigned.  After an assignment
 \fIe1\fB\~=\~\fIe2\fR, the event objects
 .IR e1 " and " e2
-refer to the same underlying event; for example, triggering either causes
-both to become empty.
+refer to the same underlying occurrence; for example, triggering either
+causes both to become empty.
 .RE
 .sp
 .nf
 .B event<T*>::operator bool() const
 .fi
 .RS 5
-Returns true if the event is ready to be triggered.  Empty events return
-false.
+Returns true if the event is active.  Empty events return false.
 .RE
 .sp
 .nf
@@ -432,6 +427,18 @@ for cancel notification.  If this event is already empty,
 is triggered immediately.  Otherwise,
 .I trigger_evt
 is triggered when this event is triggered.
+.RE
+.sp
+.nf
+.B event<> event<T*>::bind_all() const
+.fi
+.RS 5
+Creates a version of this event that has no trigger slots.  The returned
+event refers to the same occurrence as this event, so triggering either
+event makes both events appear empty.  The returned event has no trigger
+slots, however, and
+.B bind_all().trigger()
+will leave this event's slots unchanged.
 .RE
 '
 .SH "RENDEZVOUS CLASS"
@@ -498,6 +505,20 @@ returns false.  The
 special forms are built around calls to
 .BR rendezvous<I*>::join .
 .RE
+.sp
+.nf
+.B void rendezvous<I*>::clear()
+.fi
+.RS 5
+Removes all pending events from this rendezvous.  Any active events on this
+rendezvous are effectively triggered, calling their
+.B at_trigger()
+notifiers and making the events themselves empty.  After
+.BR clear() ,
+the rendezvous's
+.B nevents()
+method returns 0.
+.RE
 '
 .SH "EVENT MODIFIERS"
 These functions manipulate events generically, for example by returning
@@ -525,7 +546,7 @@ Returns an event that, when triggered, will call
 .RE
 .sp
 .nf
-.B event<T0> ignore_slot(const event<> &\fIe\fB)
+.B event<T0> unbind(const event<> &\fIe\fB)
 .fi
 .RS 5
 Returns an event that, when triggered, will call
@@ -544,6 +565,7 @@ will use the single
 object, which is accessed through top-level functions as follows.
 .sp
 .nf
+.B void at_fd_read(int \fIfd\fB, const event<int> &\fIe\fB)
 .B void at_fd_read(int \fIfd\fB, const event<> &\fIe\fB)
 .fi
 .RS 5
@@ -551,13 +573,21 @@ Triggers event
 .I e
 when
 .I fd
-becomes readable.
+becomes readable, or when
+.I fd
+is closed or encounters an error, whichever comes first.
 .I fd
 must be a valid file descriptor less than
 .BR FD_SETSIZE .
+In the version taking
+.BR event<int> ,
+the trigger value is 0 when
+.I fd
+becomes readable, and a negative error code otherwise.
 .RE
 .sp
 .nf
+.B void at_fd_write(int \fIfd\fB, const event<int> &\fIe\fB)
 .B void at_fd_write(int \fIfd\fB, const event<> &\fIe\fB)
 .fi
 .RS 5
@@ -569,6 +599,8 @@ becomes writable.
 .I fd
 must be a valid file descriptor less than
 .BR FD_SETSIZE .
+The trigger value is as for
+.BR at_fd_read() .
 .RE
 .sp
 .nf
@@ -577,11 +609,8 @@ must be a valid file descriptor less than
 .RS 5
 Triggers event
 .I e
-at time
+on, or very soon after, time
 .IR expiry .
-(Actually, as with all timer events, the event is triggered on or after
-.IR expiry ;
-the system aims to trigger the event as soon as possible.)
 .RE
 .sp
 .nf
@@ -608,7 +637,7 @@ seconds have passed.
 .RE
 .sp
 .nf
-.B void at_delay_sec(double \fIdelay\fB, const event<> &\fIe\fB)
+.B void at_delay_sec(int \fIdelay\fB, const event<> &\fIe\fB)
 .fi
 .RS 5
 Triggers event
@@ -619,7 +648,7 @@ seconds have passed.
 .RE
 .sp
 .nf
-.B void at_delay_msec(double \fIdelay\fB, const event<> &\fIe\fB)
+.B void at_delay_msec(int \fIdelay\fB, const event<> &\fIe\fB)
 .fi
 .RS 5
 Triggers event
@@ -705,14 +734,6 @@ is set to
 .IR e 's
 trigger value.
 .IP \(bu 3
-.I e
-is canceled.
-.I i
-is set to
-.B \-ECANCELED
-(or, equivalently,
-.BR tamer::outcome::cancel ).
-.IP \(bu 3
 .I delay
 seconds elapse.
 .I i
@@ -721,7 +742,7 @@ is set to
 (or, equivalently,
 .BR tamer::outcome::timeout ).
 .LP
-Cancel adapters are available for cancellation, timeouts, and signals.
+Cancel adapters are available for timeouts and signals.
 .sp
 .nf
 .B event<int> add_timeout(const timeval &\fIdelay\fB, event<int> \fIe\fB)
@@ -739,11 +760,7 @@ If, however, the timeout of
 expires first, then
 .I e
 is triggered with value
-.BR \-ETIMEDOUT ;
-and if the returned event is canceled,
-.I e
-is triggered with value
-.BR \-ECANCELED .
+.BR \-ETIMEDOUT .
 .RE
 .sp
 .nf
@@ -763,11 +780,7 @@ If, however, the
 happens first, then
 .I e
 is triggered with value
-.BR \-EINTR ;
-and if the returned event is canceled,
-.I e
-is triggered with value
-.BR \-ECANCELED .
+.BR \-EINTR .
 .RE
 .PP
 There is also a set of cancel adapters that don't set
@@ -790,8 +803,6 @@ is set to
 .IR e 's
 trigger value.
 .IP \(bu 3
-.I e
-is canceled or
 .I delay
 seconds elapse.
 .I i
@@ -837,10 +848,6 @@ variable is set to one of the following constants to indicate why:
 if
 .I e
 triggered successfully.
-.IP "\fB\-ECANCELED\fR" 15
-if
-.I e
-canceled.
 .IP "\fB\-ETIMEDOUT\fR" 15
 if
 .I e
@@ -853,7 +860,6 @@ was interrupted by a signal.
 .LP
 The constants
 .BR tamer::outcome:: { success ,
-.BR cancel ,
 .BR timeout ,
 .BR signal }
 may be used instead of the error values.

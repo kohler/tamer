@@ -94,7 +94,8 @@ event<> hard_distribute(const event<> &e1, const event<> &e2) {
 	return e1;
     else {
 	abstract_rendezvous *r = e1.__get_simple()->rendezvous();
-	if (r->is_distribute() && e1.__get_simple()->refcount() == 1) {
+	if (r->is_distribute() && e1.__get_simple()->refcount() == 1
+	    && !e1.__get_simple()->at_trigger_empty()) {
 	    // safe to reuse e1
 	    distribute_rendezvous *d = static_cast<distribute_rendezvous *>(r);
 	    d->add_distribute(e2);

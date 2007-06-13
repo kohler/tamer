@@ -232,8 +232,9 @@ class event { public:
      *  @return  New event.
      *
      *  The returned event refers to the same occurrence as this event, so
-     *  triggering either event makes both events empty, but the returned
-     *  event has no trigger slots.
+     *  triggering either event makes both events empty.  The returned event
+     *  has no trigger slots, however, and bind_all().trigger() will leave
+     *  this event's slots unchanged.
      */
     inline event<> bind_all() const;
     

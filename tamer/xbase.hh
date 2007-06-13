@@ -99,6 +99,10 @@ class simple_event { public:
 
     inline void at_trigger(const event<> &e);
 
+    inline bool at_trigger_empty() const {
+	return !_at_trigger || _at_trigger->empty();
+    }
+
   protected:
 
     unsigned _refcount;

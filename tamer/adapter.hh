@@ -22,8 +22,9 @@ const int closed = -EPIPE;
  *  @return  Distributer event.
  *
  *  When the distributer event is triggered, @a e1 and @a e2 are both
- *  triggered instantly.  The distributer event is itself canceled when both
- *  @a e1 and @a e2 are canceled.
+ *  triggered instantly.  The distributer event is automatically triggered,
+ *  calling its trigger notifiers, if both @a e1 and @a e2 are triggered
+ *  themselves.
  */
 inline event<> distribute(const event<> &e1, const event<> &e2) {
     if (e1.empty())
@@ -40,9 +41,7 @@ inline event<> distribute(const event<> &e1, const event<> &e2) {
  *  @param  e3  Third event.
  *  @return  Distributer event.
  *
- *  When the distributer event is triggered, @a e1, @a e2, and @a e3 are all
- *  triggered instantly.  When @a e1, @a e2, and @a e3 are all canceled, the
- *  distributer event is itself canceled.
+ *  Equivalent to distribute(distribute(@a e1, @a e2), @a e3).
  */
 inline event<> distribute(const event<> &e1, const event<> &e2, const event<> &e3) {
     return distribute(distribute(e1, e2), e3);
@@ -54,8 +53,9 @@ inline event<> distribute(const event<> &e1, const event<> &e2, const event<> &e
  *  @return  Adapter event.
  *
  *  When the adapter event is triggered, @a e is triggered instantly with
- *  trigger value @a v0.  When @a e is canceled, the adapter event is itself
- *  canceled.
+ *  trigger value @a v0.  Conversely, if @a e triggers first, then the
+ *  returned event triggers instantly (as can be observed via its at_trigger()
+ *  notifiers).
  */
 template <typename T0, typename V0>
 event<> bind(event<T0> e, const V0 &v0) {
@@ -70,8 +70,9 @@ event<> bind(event<T0> e, const V0 &v0) {
  *  @return  Adapter event.
  *
  *  When the adapter event is triggered, its @c T0 trigger value is ignored
- *  and @a e is triggered instantly.  When @a e is canceled, the adapter
- *  event is itself canceled.
+ *  and @a e is triggered instantly.  Conversely, if @a e triggers first, then
+ *  the returned event triggers instantly (as can be observed via its
+ *  at_trigger() notifiers).
  */
 template <typename T0>
 event<T0> unbind(const event<> &e) {
@@ -79,47 +80,15 @@ event<T0> unbind(const event<> &e) {
 }
 
 
-/** @brief  Add cancellation notification to an event.
- *  @param  e  Event.
- *  @return  Adapter event.
- *
- *  Returns an adapter that adds cancellation support to @a e.  If the adapter
- *  event is triggered, then @a e is triggered with the same value.  If the
- *  adapter event is canceled, then @a e is triggered with value @c
- *  -ECANCELED.  Conversely, if @a e is triggered or canceled, then the
- *  adapter event is canceled.
- *
- *  @note Event adapter functions like add_cancel() are particularly useful in
- *  @c twait{} blocks.  Consider this code:
- *  @code
- *  twait { at_fd_read(fd, make_event()); }
- *  @endcode
- *  If @c fd is closed, the created event is canceled, preventing the @c
- *  twait{} block from ever completing.  This version, using with_cancel(),
- *  handles this correctly; the @c twait{} block will complete when @c fd
- *  either becomes readable or is closed.
- *  @code
- *  twait { at_fd_read(fd, with_cancel(make_event())); }
- *  @endcode
- *  The @c add_ versions set the event's trigger value based on whether
- *  cancellation occurred; the @c with_ versions use
- *  event<>::unbound_trigger() in case of cancellation to trigger events
- *  without setting their trigger values.
- */
-//XXXXXXXXXXXX
-
-
 /** @brief  Add timeout to an event.
  *  @param  delay  Timeout duration.
  *  @param  e      Event.
  *  @return  Adapter event.
  *
- *  Returns an adapter that adds a timeout and cancellation support to @a e.
- *  If the adapter event is triggered, then @a e is triggered with the same
- *  value.  If the adapter event is canceled, then @a e is triggered with
- *  value @c -ECANCELED.  If @a delay time passes, then @a e is triggered with
- *  value @c -ETIMEDOUT.  Conversely, if @a e is triggered or canceled, then
- *  the adapter event is canceled.
+ *  Returns an adapter that adds a timeout to @a e.  If the adapter event is
+ *  triggered before @a delay time passes, then @a e is triggered with the
+ *  same value.  If @a delay time passes first, then @a e is triggered with
+ *  value @c -ETIMEDOUT.
  *
  *  @note Versions of this function exist for @a delay values of types @c
  *  timeval, @c double, and under the names add_timeout_sec() and
@@ -151,12 +120,10 @@ inline event<int> add_timeout_msec(int delay, event<int> e) {
  *  @param  e    Event.
  *  @return  Adapter event.
  *
- *  Returns an adapter that adds signal interruption and cancellation support
- *  to @a e.  If the adapter event is triggered, then @a e is triggered with
- *  the same value.  If the adapter event is canceled, then @a e is triggered
- *  with value @c -ECANCELED.  If signal @a sig occurs, then @a e is triggered
- *  with value @c -EINTR.  Conversely, if @a e is triggered or canceled, then
- *  the adapter event is canceled.
+ *  Returns an adapter that adds signal interruption to @a e.  If the adapter
+ *  event is triggered before signal @a sig occurs, then @a e is triggered
+ *  with the same value.  If signal @a sig occurs first, then @a e is
+ *  triggered with value @c -EINTR.
  */
 inline event<int> add_signal(int sig, event<int> e) {
     at_signal(sig, bind(e, outcome::signal));
@@ -169,12 +136,10 @@ inline event<int> add_signal(int sig, event<int> e) {
  *  @param  e      Event.
  *  @return  Adapter event.
  *
- *  Returns an adapter that adds signal interruption and cancellation support
- *  to @a e.  If the adapter event is triggered, then @a e is triggered with
- *  the same value.  If the adapter event is canceled, then @a e is triggered
- *  with value @c -ECANCELED.  If any of the signals in [@a first, @a last)
- *  occur, then @a e is triggered with value @c -EINTR.  Conversely, if @a e
- *  is triggered or canceled, then the adapter event is canceled.
+ *  Returns an adapter that adds signal interruption to @a e.  If the adapter
+ *  event is triggered before any of the signals in [@a first, @a last) occur,
+ *  then @a e is triggered with the same value.  If a signal occurs first,
+ *  then @a e is triggered with value @c -EINTR.
  */
 template <class SigInputIterator>
 inline event<int> add_signal(SigInputIterator first, SigInputIterator last, event<int> e) {
@@ -185,40 +150,27 @@ inline event<int> add_signal(SigInputIterator first, SigInputIterator last, even
 }
 
 
-/** @brief  Add silent cancellation notification to an event.
- *  @param  e  Event.
- *  @return  Adapter event.
- *
- *  Returns an adapter that adds cancellation support to @a e.  If the adapter
- *  event is triggered, then @a e is triggered with the same values.  If the
- *  adapter event is canceled, then @a e is triggered via
- *  event<>::unbound_trigger(), which leaves the trigger slots unchanged.
- *  Conversely, if @a e is triggered or canceled, then the adapter event is
- *  canceled.
- *
- *  @note Unlike the @c add_ adapters, such as add_cancel(), the @c with_
- *  adapters don't provide any information about whether an event actually
- *  triggered.  The programmer should use trigger values to distinguish the
- *  cases.
- */
-// XXXXX
-
 /** @brief  Add silent timeout to an event.
  *  @param  delay  Timeout duration.
  *  @param  e      Event.
  *  @return  Adapter event.
  *
- *  Returns an adapter that adds a timeout and cancellation support to @a e.
- *  If the adapter event is triggered, then @a e is triggered with the same
- *  values.  If the adapter event is canceled, or if @a delay seconds pass
- *  first, then @a e is triggered via event<>::unbound_trigger(), which leaves
- *  the trigger slots unchanged.  Conversely, if @a e is triggered or
- *  canceled, then the adapter event is canceled.
+ *  Returns an adapter that adds a timeout to @a e.  If the adapter event is
+ *  triggered before the timeout expires, then @a e is triggered with the same
+ *  values.  If the @a delay timeout occurs first, then @a e.bind_all() is
+ *  triggered, which leaves @a e's trigger slots unchanged.  Conversely, if @a
+ *  e is triggered, the returned event is triggered as well (as can be
+ *  observed via empty() or at_trigger() notifiers).
  *
  *  @note Versions of this function exist for @a delay values of types @c
  *  timeval, @c double, and under the names with_timeout_sec() and
  *  with_timeout_msec(), @c int numbers of seconds and milliseconds,
  *  respectively.
+ *
+ *  @note Unlike the @c add_ adapters, such as add_cancel(), the @c with_
+ *  adapters don't provide any information about whether an event actually
+ *  triggered.  The programmer should use trigger values to distinguish the
+ *  cases.
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2, T3> e) {
@@ -249,12 +201,11 @@ inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> 
  *  @param  e    Event.
  *  @return  Adapter event.
  *
- *  Returns an adapter that adds signal interruption and cancellation support
- *  to @a e.  If the adapter event is triggered, then @a e is triggered with
- *  the same values.  If the adapter event is canceled, or signal @a sig is
- *  received first, then @a e is triggered via event<>::unbound_trigger(),
- *  which leaves the trigger slots unchanged.  Conversely, if @a e is
- *  triggered or canceled, then the adapter event is canceled.
+ *  Returns an adapter that adds signal interruption to @a e.  If the adapter
+ *  event is triggered before signal @a sig occurs, then @a e is triggered
+ *  with the same values.  If signal @a sig is received first, then @a
+ *  e.bind_all() is triggered, which leaves @a e's trigger slots unchanged.
+ *  Conversely, if @a e is triggered, the returned event is triggered as well.
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e) {
@@ -268,13 +219,12 @@ inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e) {
  *  @param  e      Event.
  *  @return  Adapter event.
  *
- *  Returns an adapter that adds signal interruption and cancellation support
- *  to @a e.  If the adapter event is triggered, then @a e is triggered with
- *  the same values.  If the adapter event is canceled, or one of the signals
- *  in [@a first, @a last) is received first, then @a e is triggered via
- *  event<>::unbound_trigger(), which leaves the trigger slots unchanged.
- *  Conversely, if @a e is triggered or canceled, then the adapter event is
- *  canceled.
+ *  Returns an adapter that adds signal interruption to @a e.  If the adapter
+ *  event is triggered before a signal in [@a first, @a last) occurs, then @a
+ *  e is triggered with the same values.  If one of the signals is received
+ *  first, then @a e.bind_all() is triggered, which leaves @a e's trigger
+ *  slots unchanged.  Conversely, if @a e is triggered, the returned
+ *  event is triggered as well.
  */
 template <typename T0, typename T1, typename T2, typename T3, typename SigInputIterator>
 inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e) {
@@ -285,42 +235,6 @@ inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterato
 }
 
 
-/** @brief  Add cancellation notification to an event.
- *  @param       e       Event.
- *  @param[out]  result  Result tracker.
- *  @return      Adapter event.
- *
- *  Returns an adapter that adds cancellation support to @a e.  The variable
- *  @a result is initially set to 0.  If the adapter event is triggered, then
- *  @a e is triggered with the same values.  If the adapter event is canceled,
- *  then @a e is triggered via event<>::unbound_trigger(), which leaves the
- *  trigger slots unchanged, and @a result is immediately set to @c
- *  -ECANCELED.  Conversely, if @a e is triggered or canceled, then the
- *  adapter event is canceled.
- */
-// XXXXXX
-
-/** @brief  Add timeout to an event.
- *  @param       delay   Timeout duration.
- *  @param       e       Event.
- *  @param[out]  result  Result tracker.
- *  @return  Adapter event.
- *
- *  Returns an adapter that adds a timeout and cancellation support to @a e.
- *  Initially sets the variable @a to 0.  If the adapter event is
- *  triggered, then @a e is triggered with the same values.  If the adapter
- *  event is canceled, or if @a delay seconds pass first, then @a e is
- *  triggered via event<>::unbound_trigger(), which leaves the trigger slots
- *  unchanged, and @a result is immediately set to @c -ECANCELED or @c
- *  -ETIMEDOUT, respectively.  Conversely, if @a e is triggered or canceled,
- *  then the adapter event is canceled.
- *
- *  @note Versions of this function exist for @a delay values of types @c
- *  timeval, @c double, and under the names with_timeout_sec() and
- *  with_timeout_msec(), @c int numbers of seconds and milliseconds,
- *  respectively.
- */
-
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<> __with_helper(event<T0, T1, T2, T3> e, int *result, int value) {
     tamerpriv::function_rendezvous<tamerpriv::assign_trigger_function<int> > *r =
@@ -329,6 +243,25 @@ inline event<> __with_helper(event<T0, T1, T2, T3> e, int *result, int value) {
     return event<>(*r, r->triggerer);
 }
 
+/** @brief  Add timeout to an event.
+ *  @param       delay   Timeout duration.
+ *  @param       e       Event.
+ *  @param[out]  result  Result tracker.
+ *  @return  Adapter event.
+ *
+ *  Returns an adapter that adds a timeout to @a e.  Initially sets the
+ *  variable @a result to 0.  If the adapter event is triggered before the
+ *  timeout expires, then @a e is triggered with the same values.  If the @a
+ *  delay seconds pass first, then @a e.bind_all() is triggered, which leaves
+ *  @a e's trigger slots unchanged, and @a result is immediately set to @c
+ *  -ETIMEDOUT.  Conversely, if @a e is triggered, the returned event is
+ *  triggered as well.
+ *
+ *  @note Versions of this function exist for @a delay values of types @c
+ *  timeval, @c double, and under the names with_timeout_sec() and
+ *  with_timeout_msec(), @c int numbers of seconds and milliseconds,
+ *  respectively.
+ */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2, T3> e, int &result) {
     at_delay(delay, __with_helper(e, &result, outcome::timeout));
@@ -359,14 +292,13 @@ inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> 
  *  @param[out]  result  Result tracker.
  *  @return      Adapter event.
  *
- *  Returns an adapter that adds signal interruption and cancellation support
- *  to @a e.  Initially sets the variable @a to 0.  If the adapter event is
- *  triggered, then @a e is triggered with the same values.  If the adapter
- *  event is canceled, or if signal @a sig is received first, then @a e is
- *  triggered via event<>::unbound_trigger(), which leaves the trigger slots
- *  unchanged, and @a result is immediately set to @c -ECANCELED or @c -EINTR,
- *  respectively.  Conversely, if @a e is triggered or canceled, then the
- *  adapter event is canceled.
+ *  Returns an adapter that adds signal interruption to @a e.  Initially sets
+ *  the variable @a result to 0.  If the adapter event is triggered before
+ *  signal @a sig occurs, then @a e is triggered with the same values.  If the
+ *  signal @a sig is received first, then @a e.bind_all() is triggered, which
+ *  leaves @a e's trigger slots unchanged, and @a result is immediately set to
+ *  @c -EINTR.  Conversely, if @a e is triggered, the returned event is
+ *  triggered as well.
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e, int &result) {
@@ -381,14 +313,13 @@ inline event<T0, T1, T2, T3> with_signal(int sig, event<T0, T1, T2, T3> e, int &
  *  @param[out]  result  Result tracker.
  *  @return      Adapter event.
  *
- *  Returns an adapter that adds signal interruption and cancellation support
- *  to @a e.  Initially sets the variable @a to 0.  If the adapter event is
- *  triggered, then @a e is triggered with the same values.  If the adapter
- *  event is canceled, or if any signal in [@a first, @a last) is received
- *  first, then @a e is triggered via event<>::unbound_trigger(), which leaves
- *  the trigger slots unchanged, and @a result is immediately set to @c
- *  -ECANCELED or @c -EINTR, respectively.  Conversely, if @a e is triggered
- *  or canceled, then the adapter event is canceled.
+ *  Returns an adapter that adds signal interruption to @a e.  Initially sets
+ *  the variable @a result to 0.  If the adapter event is triggered before a
+ *  signal in [@a first, @a last) occurs, then @a e is triggered with the same
+ *  values.  If one of the signals is received first, then @a e.bind_all() is
+ *  triggered, which leaves @a e's trigger slots unchanged, and @a result is
+ *  immediately set to @c -EINTR.  Conversely, if @a e is triggered, the
+ *  returned event is triggered as well.
  */
 template <typename T0, typename T1, typename T2, typename T3, typename SigInputIterator>
 inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e, int &result) {
@@ -405,6 +336,8 @@ inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterato
  *  Returns an event that calls @a f() immediately when it is triggered.  Once
  *  the event is completed (triggered or canceled), the @a f object is
  *  destroyed.
+ *
+ *  @note @a f must have a public copy constructor and a public destructor.
  */
 template <typename F>
 inline event<> fun_event(const F &f) {

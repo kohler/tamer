@@ -59,7 +59,7 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
      */
     inline bool join(I0 &i0, I1 &i1);
 
-    /** @brief  Clear all events from this rendezvous.
+    /** @brief  Remove all events from this rendezvous.
      *
      *  Every event waiting on this rendezvous is made empty.  After clear(),
      *  nevents() will return 0.
