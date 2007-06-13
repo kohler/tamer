@@ -491,10 +491,20 @@ inline void fd::error_close(int errcode) {
 	_p = new fdimp(errcode);
 }
 
+/** @brief  Test whether two file descriptors refer to the same object.
+ *  @param  a  First file descriptor.
+ *  @param  b  Second file descriptor.
+ *  @return  True iff @a a and @a b refer to the same file descriptor.
+ */
 inline bool operator==(const fd &a, const fd &b) {
     return a._p == b._p;
 }
 
+/** @brief  Test whether two file descriptors refer to the same object.
+ *  @param  a  First file descriptor.
+ *  @param  b  Second file descriptor.
+ *  @return  True iff @a a and @a b do not refer to the same file descriptor.
+ */
 inline bool operator!=(const fd &a, const fd &b) {
     return a._p != b._p;
 }
@@ -542,6 +552,6 @@ inline void tcp_listen(int port, event<fd> result) {
  *  descriptor.
  */
 void tcp_connect(struct in_addr addr, int port, event<fd> result);
-    
+
 }}
 #endif /* TAMER_FD_HH */
