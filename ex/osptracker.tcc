@@ -189,7 +189,6 @@ int havefile::remove_peer(const std::string &filename, peer *p)
 
 
 static void die(const char *format, ...) __attribute__((noreturn));
-static void error(const char *format, ...);
 
 static int xvalue(unsigned char c) {
 	if (c >= '0' && c <= '9')
@@ -799,18 +798,4 @@ die(const char *format, ...)
 	if (strchr(format, '\n') == NULL)
 		fprintf(stderr, ": %s\n", errstr);
 	exit(1);
-}
-
-// error(format, ...)
-//	Print an error message.
-static void
-error(const char *format, ...)
-{
-	const char *errstr = strerror(errno);
-	va_list val;
-	va_start(val, format);
-	vfprintf(stderr, format, val);
-	if (strchr(format, '\n') == NULL)
-		fprintf(stderr, ": %s\n", errstr);
-	va_end(val);
 }
