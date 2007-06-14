@@ -95,22 +95,26 @@ event<T0> unbind(const event<> &e) {
  *  add_timeout_msec(), @c int numbers of seconds and milliseconds,
  *  respectively.
  */
-inline event<int> add_timeout(const timeval &delay, event<int> e) {
+template <typename T0>
+inline event<T0> add_timeout(const timeval &delay, event<T0> e) {
     at_delay(delay, bind(e, outcome::timeout));
     return e;
 }
 
-inline event<int> add_timeout(double delay, event<int> e) {
+template <typename T0>
+inline event<T0> add_timeout(double delay, event<T0> e) {
     at_delay(delay, bind(e, outcome::timeout));
     return e;
 }
 
-inline event<int> add_timeout_sec(int delay, event<int> e) {
+template <typename T0>
+inline event<T0> add_timeout_sec(int delay, event<T0> e) {
     at_delay_sec(delay, bind(e, outcome::timeout));
     return e;
 }
 
-inline event<int> add_timeout_msec(int delay, event<int> e) {
+template <typename T0>
+inline event<T0> add_timeout_msec(int delay, event<T0> e) {
     at_delay_msec(delay, bind(e, outcome::timeout));
     return e;
 }
@@ -125,7 +129,8 @@ inline event<int> add_timeout_msec(int delay, event<int> e) {
  *  with the same value.  If signal @a sig occurs first, then @a e is
  *  triggered with value @c -EINTR.
  */
-inline event<int> add_signal(int sig, event<int> e) {
+template <typename T0>
+inline event<T0> add_signal(int sig, event<T0> e) {
     at_signal(sig, bind(e, outcome::signal));
     return e;
 }
@@ -141,8 +146,8 @@ inline event<int> add_signal(int sig, event<int> e) {
  *  then @a e is triggered with the same value.  If a signal occurs first,
  *  then @a e is triggered with value @c -EINTR.
  */
-template <class SigInputIterator>
-inline event<int> add_signal(SigInputIterator first, SigInputIterator last, event<int> e) {
+template <typename T0, typename SigInputIterator>
+inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, event<T0> e) {
     event<> x = bind(e, outcome::signal);
     for (; first != last; ++first)
 	at_signal(*first, x);
