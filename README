@@ -48,15 +48,15 @@ License and Non-Warranty
 ------------------------
 
    The Tamer libraries and examples are distributed under the BSD license.
-See the file "LICENSE".
+See the file "LICENSE", which is described in the source code as "the Tamer
+LICENSE file".
 
    The "tamer" preprocessor, which consists of the source code in the
 "compiler" subdirectory, is distributed under the GNU General Public
 License, Version 2.  See the file "COPYING" in that directory.  This means
 that any modifications to the compiler are subject to the terms of the GPL.
 The preprocessor's output is NOT a "derived work", however, so the tamer
-preprocessor may be used to compile software using any type of license,
-from GPL to BSD to proprietary.
+preprocessor may be used to compile software using any licensing terms.
 
    The "knot.tamer" server in the "knot" directory is derived from the
 "knot" server, distributed as part of the Capriccio system.  We believe

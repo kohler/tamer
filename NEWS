@@ -1,5 +1,10 @@
 Tamer NEWS
 
+Version 1.2.1   5.Jul.2007
+
+* Change licensing terms to the BSD license.
+
+
 Version 1.2.0   13.Jun.2007
 
 * Eliminate event cancellation; after experience, it was a bad idea.  Now,
