@@ -54,5 +54,5 @@ BUILT_SOURCES = parse.cc parse.hh scan.cc
 
 CLEANFILES = core *.core *~ *.rpo
 
-EXTRA_DIST = .cvsignore
+EXTRA_DIST = COPYING .cvsignore
 MAINTAINERCLEANFILES = parse.hh parse.cc scan.cc

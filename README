@@ -47,18 +47,20 @@ never block, or would benefit from built-in RPC support, try Tame.
 License and Non-Warranty
 ------------------------
 
-   Tamer is distributed under the GNU Public License, Version 2.  See the
-file "LICENSE".
+   The Tamer libraries and examples are distributed under the BSD license.
+See the file "LICENSE".
 
-   The tamer preprocessor transforms code using the Tamer extensions into
-conventional C++.  We explicitly state that preprocessor output does not
-add license requirements.  That is, the output of the tamer preprocessor
-need not be distributed under the GPL, and may use whatever license applies
-to the original code.  However, the Tamer library, including header files
-and other source files in the tamer/ subdirectory, is licensed under the
-GPL.  Since most Tamer source files will make integral use of the Tamer
-library, the effect is that most Tamer source files will generally need to
-be distributed under the GPL.
+   The "tamer" preprocessor, which consists of the source code in the
+"compiler" subdirectory, is distributed under the GNU General Public
+License, Version 2.  See the file "COPYING" in that directory.  This means
+that any modifications to the compiler are subject to the terms of the GPL.
+The preprocessor's output is NOT a "derived work", however, so the tamer
+preprocessor may be used to compile software using any type of license,
+from GPL to BSD to proprietary.
+
+   The "knot.tamer" server in the "knot" directory is derived from the
+"knot" server, distributed as part of the Capriccio system.  We believe
+this server was released under the BSD license.  See "knot/README".
 
 
 Bugs and Contributing

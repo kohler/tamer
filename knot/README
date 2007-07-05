@@ -1,0 +1,16 @@
+The "knot.tamer" server in this directory was derived by Maxwell Krohn and
+Eddie Kohler from the "knot" server distributed as part of Capriccio:
+
+http://capriccio.cs.berkeley.edu/downloads.html
+http://capriccio.cs.berkeley.edu/
+
+The contributors to the Capriccio project are:
+
+Rob von Behren
+Jeremy Condit
+Feng Zhou
+Bill McCloskey
+Eric Brewer
+George Necula
+
+We believe Capriccio is distributed under the BSD license.
