@@ -95,7 +95,7 @@ void blockset<T, A>::expand()
 	_alloc.destroy(&_elts[x]);
     }
     for (size_t i = _cap; i != new_cap; i++) {
-	_elts[i].next = _free;
+	new_elts[i].next = _free;
 	_free = i;
     }
     _alloc.deallocate(_elts, _cap);
@@ -127,10 +127,11 @@ template <typename T, typename A>
 inline void blockset<T, A>::pop_active()
 {
     assert(_active != tbnull);
+    size_t next = _elts[_active].next;
     _alloc.destroy(&_elts[_active]);
-    _active = _elts[_active].next;
     _elts[_active].next = _free;
     _free = _active;
+    _active = next;
     _nactive--;
 }
 
