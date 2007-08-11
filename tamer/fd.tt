@@ -81,73 +81,77 @@ void fd::fstat(struct stat &stat_out, event<int> done)
 	done.trigger(-EBADF);
 }
 
-tamed void fd::read(void *buf, size_t size, size_t &size_out, event<int> done)
+tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> done)
 {
     tvars {
 	size_t pos = 0;
 	ssize_t amt;
     }
     
-    if (!*this) {
+    if (_fd < 0) {
 	done.trigger(-EBADF);
 	return;
     }
+
+    weak_use();
+    twait { _rlock.acquire(make_event()); }
     
-    twait { _p->rlock.acquire(make_event()); }
-    
-    while (pos != size && done && *this) {
-	amt = ::read(_p->fd, static_cast<char *>(buf) + pos, size - pos);
+    while (pos != size && done && _fd >= 0) {
+	amt = ::read(_fd, static_cast<char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
 	    size_out = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait volatile { tamer::at_fd_read(_p->fd, make_event()); }
+	    twait volatile { tamer::at_fd_read(_fd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
     
-    _p->rlock.release();
-    done.trigger(pos == size || *this ? 0 : -ECANCELED);
+    _rlock.release();
+    done.trigger(pos == size || _fd >= 0 ? 0 : -ECANCELED);
+    weak_unuse();
 }
 
-tamed void fd::write(const void *buf, size_t size, size_t &size_out, event<int> done)
+tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, event<int> done)
 {
     tvars {
 	size_t pos = 0;
 	ssize_t amt;
     }
 
-    if (!*this) {
+    if (_fd < 0) {
 	done.trigger(-EBADF);
 	return;
     }
+
+    weak_use();
+    twait { _wlock.acquire(make_event()); }
     
-    twait { _p->wlock.acquire(make_event()); }
-    
-    while (pos != size && done && *this) {
-	amt = ::write(_p->fd, static_cast<const char *>(buf) + pos, size - pos);
+    while (pos != size && done && _fd >= 0) {
+	amt = ::write(_fd, static_cast<const char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
 	    size_out = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait volatile { tamer::at_fd_write(_p->fd, make_event()); }
+	    twait volatile { tamer::at_fd_write(_fd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
     
-    _p->wlock.release();
-    done.trigger(pos == size || *this ? 0 : -ECANCELED);
+    _wlock.release();
+    done.trigger(pos == size || _fd >= 0 ? 0 : -ECANCELED);
+    weak_unuse();
 }
 
-tamed void fd::write(std::string s, size_t &size_out, event<int> done)
+tamed void fd::fdimp::write(std::string s, size_t &size_out, event<int> done)
 {
     twait {
 	done.at_trigger(make_event());
@@ -165,97 +169,101 @@ fd fd::socket(int domain, int type, int protocol)
 
 int fd::listen(int backlog)
 {
-    if (!*this)
-	return -EBADF;
+    if (*this)
+	return (::listen(_p->_fd, backlog) == 0 ? 0 : -errno);
     else
-	return (::listen(_p->fd, backlog) == 0 ? 0 : -errno);
+	return -EBADF;
 }
 
 int fd::bind(const struct sockaddr *addr, socklen_t addrlen)
 {
-    if (!*this)
-	return -EBADF;
+    if (*this)
+	return (::bind(_p->_fd, addr, addrlen) == 0 ? 0 : -errno);
     else
-	return (::bind(_p->fd, addr, addrlen) == 0 ? 0 : -errno);
+	return -EBADF;
 }
 
-tamed void fd::accept(struct sockaddr *addr_out, socklen_t *addrlen_out, event<fd> done)
+tamed void fd::fdimp::accept(struct sockaddr *addr_out, socklen_t *addrlen_out, event<fd> done)
 {
     tvars {
 	int f = -ECANCELED;
     }
 
-    if (!*this) {
+    if (_fd < 0) {
 	done.trigger(fd());
 	return;
     }
 
-    twait { _p->rlock.acquire(make_event()); }
+    weak_use();
+    twait { _rlock.acquire(make_event()); }
     
-    while (done && *this) {
-	f = ::accept(_p->fd, addr_out, addrlen_out);
+    while (done && _fd >= 0) {
+	f = ::accept(_fd, addr_out, addrlen_out);
 	if (f >= 0) {
 	    make_nonblocking(f);
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait volatile { tamer::at_fd_read(_p->fd, make_event()); }
+	    twait volatile { tamer::at_fd_read(_fd, make_event()); }
 	} else if (errno != EINTR) {
 	    f = -errno;
 	    break;
 	}
     }
 
-    _p->rlock.release();
+    _rlock.release();
     done.trigger(fd(f));
+    weak_unuse();
 }
 
-tamed void fd::connect(const struct sockaddr *addr, socklen_t addrlen, event<int> done)
+tamed void fd::fdimp::connect(const struct sockaddr *addr, socklen_t addrlen, event<int> done)
 {
     tvars {
 	int x, ret(0);
     }
 
-    if (!*this) {
+    if (_fd < 0) {
 	done.trigger(-EBADF);
 	return;
     }
+
+    weak_use();
+    twait { _wlock.acquire(make_event()); }
     
-    twait { _p->wlock.acquire(make_event()); }
-    
-    x = ::connect(_p->fd, addr, addrlen);
+    x = ::connect(_fd, addr, addrlen);
     if (x == -1 && errno != EINPROGRESS)
 	ret = -errno;
     else if (x == -1) {
-	twait volatile { tamer::at_fd_write(_p->fd, make_event()); }
+	twait volatile { tamer::at_fd_write(_fd, make_event()); }
 	socklen_t socklen = sizeof(x);
-	if (!done || !*this)
+	if (!done || _fd < 0)
 	    ret = -ECANCELED;
-	else if (getsockopt(_p->fd, SOL_SOCKET, SO_ERROR, (void *) &x, &socklen) == -1)
+	else if (getsockopt(_fd, SOL_SOCKET, SO_ERROR, (void *) &x, &socklen) == -1)
 	    ret = -errno;
 	else if (ret > 0)
 	    ret = -x;
     }
 
-    _p->wlock.release();
+    _wlock.release();
     done.trigger(ret);
+    weak_unuse();
 }
 
 
 int fd::fdimp::close(int leave_error)
 {
-    int my_fd = fd;
+    int my_fd = _fd;
     if (my_fd >= 0 || leave_error != -EBADF)
-	fd = leave_error;
+	_fd = leave_error;
     if (my_fd >= 0) {
 	int x = ::close(my_fd);
 	if (x == -1) {
 	    x = -errno;
-	    if (fd == -EBADF)
-		fd = -errno;
+	    if (_fd == -EBADF)
+		_fd = -errno;
 	}
 	driver::main->kill_fd(my_fd);
-	at_close.trigger();
-	at_close = event<>();
+	_at_close.trigger();
+	_at_close = event<>();
 	return x;
     } else
 	return -EBADF;

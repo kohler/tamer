@@ -140,8 +140,7 @@ class fd {
      *
      *  @sa open(const char *, int, mode_t, event<fd>)
      */
-    static inline void open(const char *filename, int flags,
-			    const event<fd> &result);
+    static inline void open(const char *filename, int flags, event<fd> result);
 
     /** @brief  Create a socket file descriptor.
      *  @param  domain    Socket domain.
@@ -243,7 +242,8 @@ class fd {
      *
      *  @sa accept(const event<fd> &)
      */
-    void accept(struct sockaddr *addr, socklen_t *addrlen, event<fd> result);
+    inline void accept(struct sockaddr *addr, socklen_t *addrlen,
+		       event<fd> result);
 
     /** @brief  Accept new connection on listening socket file descriptor.
      *  @param  result  Event triggered on completion.
@@ -261,8 +261,8 @@ class fd {
      *
      *  @sa tamer::fdx::tcp_connect
      */
-    void connect(const struct sockaddr *addr, socklen_t addrlen,
-		 event<int> done);
+    inline void connect(const struct sockaddr *addr, socklen_t addrlen,
+			event<int> done);
     
     /** @brief  Read from file descriptor.
      *  @param[out]  buf     Buffer.
@@ -273,7 +273,7 @@ class fd {
      *  @a done is triggered with 0 on success or end-of-file, or a negative
      *  error code.  @a nread is kept up to date as the read progresses.
      */
-    void read(void *buf, size_t size, size_t &nread, event<int> done);
+    inline void read(void *buf, size_t size, size_t &nread, event<int> done);
 
     /** @brief  Read from file descriptor.
      *  @param[out]  buf     Buffer.
@@ -296,8 +296,8 @@ class fd {
      *
      *  @sa write(std::string, size_t, event<int>)
      */
-    void write(const void *buf, size_t size, size_t &nwritten,
-	       event<int> done);
+    inline void write(const void *buf, size_t size, size_t &nwritten,
+		      event<int> done);
 
     /** @brief  Write to file descriptor.
      *  @param  buf   Buffer.
@@ -316,7 +316,7 @@ class fd {
      *
      *  Equivalent to write(buf.data(), buf.length(), nwritten, done).
      */
-    void write(std::string buf, size_t &nwritten, event<int> done);
+    inline void write(std::string buf, size_t &nwritten, event<int> done);
 
     /** @brief  Write string to file descriptor.
      *  @param  buf   Buffer.
@@ -356,13 +356,13 @@ class fd {
 
     struct fdimp {
 
-	int fd;
-	mutex rlock;
-	mutex wlock;
-	event<> at_close;
+	int _fd;
+	mutex _rlock;
+	mutex _wlock;
+	event<> _at_close;
 	
-	fdimp(int fd_)
-	    : fd(fd_), _refcount(1), _weak_refcount(0) {
+	fdimp(int fd)
+	    : _fd(fd), _refcount(1), _weak_refcount(0) {
 	}
 	
 	void use() {
@@ -371,7 +371,7 @@ class fd {
 	
 	void unuse() {
 	    if (--_refcount == 0) {
-		if (fd >= 0)
+		if (_fd >= 0)
 		    close();
 		if (_weak_refcount == 0)
 		    delete this;
@@ -387,6 +387,14 @@ class fd {
 		delete this;
 	}
 	
+	void accept(struct sockaddr *addr, socklen_t *addrlen,
+		    event<fd> result);
+	void connect(const struct sockaddr *addr, socklen_t addrlen,
+		     event<int> done);
+	void read(void *buf, size_t size, size_t &nread, event<int> done);
+	void write(const void *buf, size_t size, size_t &nwritten,
+		   event<int> done);
+	void write(std::string buf, size_t &nwritten, event<int> done);
 	int close(int leave_error = -EBADF);
 	
       private:
@@ -394,6 +402,12 @@ class fd {
 	unsigned _refcount;
 	unsigned _weak_refcount;
 	
+	class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_ &, unsigned);
+	class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_ &, unsigned);
+	class closure__read__PvkRkQi_; void read(closure__read__PvkRkQi_ &, unsigned);
+	class closure__write__PKvkRkQi_; void write(closure__write__PKvkRkQi_ &, unsigned);
+	class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &, unsigned);
+
     };
 
     struct fdcloser;
@@ -401,12 +415,6 @@ class fd {
     fdimp *_p;
 
     static size_t garbage_size;
-
-    class closure__read__PvkRkQi_; void read(closure__read__PvkRkQi_ &, unsigned);
-    class closure__write__PKvkRkQi_; void write(closure__write__PKvkRkQi_ &, unsigned);
-    class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &, unsigned);
-    class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_ &, unsigned);
-    class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_ &, unsigned);
 
     friend bool operator==(const fd &, const fd &);
     friend bool operator!=(const fd &, const fd &);
@@ -441,51 +449,86 @@ inline fd &fd::operator=(const fd &other) {
     return *this;
 }
 
-inline void fd::open(const char *filename, int flags, const event<fd> &f) {
+inline void fd::open(const char *filename, int flags, event<fd> f) {
     open(filename, flags, 0777, f);
 }
 
 inline fd::operator unspecified_bool_type() const {
-    return _p && _p->fd >= 0 ? &fd::_p : 0;
+    return _p && _p->_fd >= 0 ? &fd::_p : 0;
 }
 
 inline bool fd::valid() const {
-    return _p && _p->fd >= 0;
+    return _p && _p->_fd >= 0;
 }
 
 inline bool fd::operator!() const {
-    return !_p || _p->fd < 0;
+    return !_p || _p->_fd < 0;
 }
 
 inline int fd::error() const {
     if (_p)
-	return (_p->fd >= 0 ? 0 : _p->fd);
+	return (_p->_fd >= 0 ? 0 : _p->_fd);
     else
 	return -EBADF;
 }
 
 inline int fd::value() const {
-    return (_p ? _p->fd : -EBADF);
+    return (_p ? _p->_fd : -EBADF);
 }
 
 inline void fd::at_close(event<> e) {
-    if (!*this)
-	e.trigger();
+    if (*this)
+	_p->_at_close = distribute(_p->_at_close, e);
     else
-	_p->at_close = distribute(_p->at_close, e);
+	e.trigger();
+}
+
+inline void fd::accept(struct sockaddr *addr, socklen_t *addrlen, event<fd> result) {
+    if (_p)
+	_p->accept(addr, addrlen, result);
+    else
+	result.trigger(fd());
 }
 
 inline void fd::accept(const event<fd> &result) {
     accept(0, 0, result);
 }
 
+inline void fd::connect(const struct sockaddr *addr, socklen_t addrlen, event<int> done) {
+    if (_p)
+	_p->connect(addr, addrlen, done);
+    else
+	done.trigger(-EBADF);
+}
+
+inline void fd::read(void *buf, size_t size, size_t &nread, event<int> done) {
+    if (_p)
+	_p->read(buf, size, nread, done);
+    else
+	done.trigger(-EBADF);
+}
+
 inline void fd::read(void *buf, size_t size, const event<int> &done) {
     read(buf, size, garbage_size, done);
+}
+
+inline void fd::write(const void *buf, size_t size, size_t &nwritten, event<int> done) {
+    if (_p)
+	_p->write(buf, size, nwritten, done);
+    else
+	done.trigger(-EBADF);
 }
 
 inline void fd::write(const void *buf, size_t size, const event<int> &done) {
     write(buf, size, garbage_size, done);
 }
+
+inline void fd::write(std::string buf, size_t &nwritten, event<int> done) {
+    if (_p)
+	_p->write(buf, nwritten, done);
+    else
+	done.trigger(-EBADF);
+}	
 
 inline void fd::write(const std::string &buf, const event<int> &done) {
     write(buf, garbage_size, done);
