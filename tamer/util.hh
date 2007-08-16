@@ -212,14 +212,16 @@ void debuffer<T, A>::expand()
 {
     size_t new_cap = (_cap ? _cap * 4 : 8); // XXX integer overflow
     T *new_elts = _alloc.allocate(new_cap, this);
-    for (size_t x = _head; x != _tail; x++) {
-	_alloc.construct(&new_elts[x & (new_cap - 1)], _elts[x & (_cap - 1)]);
+    for (size_t x = _head, y = 0; x != _tail; ++x, ++y) {
+	_alloc.construct(&new_elts[y], _elts[x & (_cap - 1)]);
 	_alloc.destroy(&_elts[x & (_cap - 1)]);
     }
     if (_cap > nlocal)
 	_alloc.deallocate(_elts, _cap);
     _elts = new_elts;
     _cap = new_cap;
+    _tail = size();
+    _head = 0;
 }
 
 template <typename T, typename A>
