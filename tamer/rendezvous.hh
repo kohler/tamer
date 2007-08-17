@@ -40,7 +40,7 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
      *  An event is waiting until it is either triggered or canceled.
      */
     unsigned nwaiting() const {
-	return _bs.set_size();
+	return _bs.multiset_size();
     }
 
     /** @brief  Report how many events are ready or waiting.
@@ -108,7 +108,7 @@ void rendezvous<I0, I1>::add(tamerpriv::simple_event *e, const I0 &i0, const I1 
 template <typename I0, typename I1>
 void rendezvous<I0, I1>::complete(uintptr_t rid)
 {
-    _bs.make_ready(rid);
+    _bs.push_back_element(rid);
     unblock();
 }
 
@@ -143,7 +143,7 @@ class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
     inline void clear();
 
     unsigned nready() const	{ return _bs.size(); }
-    unsigned nwaiting() const	{ return _bs.set_size(); }
+    unsigned nwaiting() const	{ return _bs.multiset_size(); }
     unsigned nevents() const	{ return nready() + nwaiting(); }
     
     inline void add(tamerpriv::simple_event *e, const I0 &i0);
@@ -169,7 +169,7 @@ void rendezvous<I0, void>::add(tamerpriv::simple_event *e, const I0 &i0)
 template <typename I0>
 void rendezvous<I0, void>::complete(uintptr_t rid)
 {
-    _bs.make_ready(rid);
+    _bs.push_back_element(rid);
     unblock();
 }
 

@@ -32,9 +32,9 @@ template <typename T> struct ready_set_element {
  *
  *  A ready_set is a multiset coupled with a queue.  Elements are allocated as
  *  part of the multiset.  Allocation returns a unique index identifying the
- *  element.  Later, the make_ready function, which takes an index, shifts an
- *  element from the multiset to the end of the queue.  front_ptr() and
- *  pop_front() operations operate on the queue.
+ *  element.  Later, the push_back_element function, which takes an index,
+ *  shifts an element from the multiset to the end of the queue.  front_ptr()
+ *  and pop_front() operations operate on the queue.
  *
  *  The type T must have a usable copy constructor and a usable destructor.
  *
@@ -55,7 +55,7 @@ class ready_set { public:
 
     /** @brief  Return number of elements in the multiset.
      *  @note   Does not count elements in the associated queue. */
-    inline size_t set_size() const throw () {
+    inline size_t multiset_size() const throw () {
 	return _nunready;
     }
 
@@ -87,7 +87,7 @@ class ready_set { public:
 
     /** @brief  Shift a multiset element to the end of the queue.
      *  @param  i  Index of element to shift. */
-    inline void make_ready(index_type i) throw ();
+    inline void push_back_element(index_type i) throw ();
 
     /** @brief  Return number of elements in the queue. */
     inline size_type size() const throw () {
@@ -185,7 +185,7 @@ void ready_set<T, A>::expand()
 }
 
 template <typename T, typename A>
-inline void ready_set<T, A>::make_ready(index_type i) throw ()
+inline void ready_set<T, A>::push_back_element(index_type i) throw ()
 {
     assert(i < _cap && _elts[i].next == rsunready);
     if (_front != rsnull)
