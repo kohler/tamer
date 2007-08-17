@@ -3,4 +3,4 @@ AUTOMAKE_OPTIONS = foreign check-news
 
 EXTRA_DIST = LICENSE
 
-SUBDIRS = compiler tamer ex knot doc
+SUBDIRS = compiler tamer ex knot doc test

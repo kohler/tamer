@@ -81,7 +81,7 @@ class driver_tamer : public driver { public:
     int _nfds;
     fd_set _fdset[2];
 
-    tamerpriv::debuffer<event<> > _asap;
+    tamerutil::debuffer<event<> > _asap;
 
     int _tcap;
     ttimer_group *_tgroup;
@@ -358,7 +358,7 @@ void driver_tamer::once()
 	dispatch_signals();
 
     // run asaps
-    while (event<> *e = _asap.front()) {
+    while (event<> *e = _asap.front_ptr()) {
 	e->trigger();
 	_asap.pop_front();
     }

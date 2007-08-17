@@ -128,7 +128,7 @@ class mutex { public:
   private:
 
     int _locked;
-    tamerpriv::debuffer<event<> > _waiters;
+    tamerutil::debuffer<event<> > _waiters;
 
     class closure__acquire__iQ_;
     void acquire(int shared, event<> done);

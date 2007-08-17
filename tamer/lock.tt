@@ -18,7 +18,7 @@ namespace tamer {
 
 void mutex::wake()
 {
-    while (event<> *eptr = _waiters.front()) {
+    while (event<> *eptr = _waiters.front_ptr()) {
 	event<> e = *eptr;
 	_waiters.pop_front();
 	if (e) {
@@ -52,7 +52,7 @@ tamed void mutex::acquire(int shared, event<> done)
 	    done.trigger();
 	    // canceling an exclusive lock may let a shared lock through
 	    r.clear();
-	    if (_waiters.front() && !*_waiters.front())
+	    if (_waiters.front_ptr() && !_waiters.front())
 		wake();
 	    return;
 	} else if (shared > 0 ? _locked != -1 : _locked == 0) {
