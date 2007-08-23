@@ -22,13 +22,18 @@ namespace tamerutil {
  *  @brief  Utility classes for the tamer implementation.
  */
 
+/** @namespace tamer::util
+ *  @brief  Namespace containing utility classes useful for Tamer
+ *  implementation, and possibly elsewhere.
+ */
+
 template <typename T> struct ready_set_element {
     size_t next;
     T value;
 };
 
 /** @class ready_set tamer/util.hh <tamer/util.hh>
- *  @brief  A combination of set and queue.
+ *  @brief  Utility class: A combination of set and queue.
  *
  *  A ready_set is a multiset coupled with a queue.  Elements are allocated as
  *  part of the multiset.  Allocation returns a unique index identifying the
@@ -222,7 +227,7 @@ inline void ready_set<T, A>::clear()
 
 
 /** @class debuffer tamer/util.hh <tamer/util.hh>
- *  @brief  A simple deque.
+ *  @brief  Utility class: A simple deque.
  *
  *  This double-ended buffer supports front(), push_back(), push_front(), and
  *  pop_front() operations, like a doubly linked list.  Unlike a doubly linked
