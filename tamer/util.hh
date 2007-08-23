@@ -22,7 +22,7 @@ namespace tamerutil {
  *  @brief  Utility classes for the tamer implementation.
  */
 
-/** @namespace tamer::util
+/** @namespace tamer::tamerutil
  *  @brief  Namespace containing utility classes useful for Tamer
  *  implementation, and possibly elsewhere.
  */
