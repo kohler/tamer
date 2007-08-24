@@ -278,7 +278,7 @@ cpp_initializer_t::cpp_initializer_t(const lstr &v)
     strbuf b;
     int mode = 0;
     std::string::iterator last = _value.begin();
-    for (std::string::iterator a = last; a + 4 < _value.end(); a++)
+    for (std::string::iterator a = last; a + 4 <= _value.end(); a++)
 	if (*a == '\\')
 	    a++;
 	else if (mode == 0 && (*a == '\"' || *a == '\''))
