@@ -1,3 +1,4 @@
+// -*- mode: c++ -*-
 #include <tamer/dns.hh>
 
 using namespace tamer;
@@ -75,7 +76,7 @@ tamed void test2() {
 int main(int, char **) {
   initialize();
 
-  test2();
+  test();
 
   loop();
 }

@@ -3,6 +3,7 @@
 
 #include <tamer/tamer.hh>
 #include <tamer/fd.hh>
+#include <tamer/ref.hh>
 #include <unistd.h>
 #include <errno.h>
 #include <arpa/inet.h>
@@ -601,58 +602,59 @@ inline int request::tx_count() const {
 
 class nameserver {
   
-  struct nameserver_state {
-    int refcnt;
+    struct nameserver_state : public enable_ref_ptr_with_full_release<nameserver_state> {
     
-    int conn;
-    int timeouts;
+    int _conn;
+    int _timeouts;
     
-    tamer::rendezvous<int> r;
-    std::map<uint16_t, event<reply> > reqs;
+    tamer::rendezvous<int> _r;
+    std::map<uint16_t, event<reply> > _reqs;
     
-    tamer::fd socket;
-    uint32_t addr;
-    int port;
+    tamer::fd _socket;
+    uint32_t _addr;
+    int _port;
     
     nameserver_state(uint32_t addr, int port) 
-    : refcnt(1), timeouts(0), addr(addr), port(port) {
-    }
-
-    void use() {
-      refcnt++;
-    }
-
-    void unuse() {
-      refcnt--;
-      if (!refcnt)
-        delete this;
-    }
-
-    operator bool() {
-      return socket && r.nwaiting();
-    }
-
-    void unblock() {
-      if (r.nwaiting())
-        at_asap(make_event(r, 1));
+    : _timeouts(0), _addr(addr), _port(port) {
     }
 
     ~nameserver_state() {
       unblock();
-      if (socket)
-        socket.close();
+      if (_socket)
+        _socket.close();
     }
-  };
+    
+    operator bool() {
+      return _socket && _r.nwaiting();
+    }
 
-  struct nameserver_state * _n;
+    void unblock() {
+      if (_r.nwaiting())
+        at_asap(make_event(_r, 1));
+    }
+
+	void full_release() {
+	    _socket.close();
+	}
+
+	inline void flush();
+	
+	void loop_udp(event<> e);
+	void loop_tcp(event<> e);
+	void query(request q, int timeout, event<int, reply> e);
+	void probe(event<> e);
+	
+	class closure__loop_udp__Q_; void loop_udp(closure__loop_udp__Q_ &, unsigned);
+	class closure__loop_tcp__Q_; void loop_tcp(closure__loop_tcp__Q_ &, unsigned);
+	class closure__query__7requestiQi5reply_; void query(closure__query__7requestiQi5reply_ &, unsigned);
+	class closure__probe__Q_; void probe(closure__probe__Q_ &, unsigned);
+    };
+
+  ref_ptr<nameserver_state> _n;
   
-  class closure__loop_udp__Q_; void loop_udp(closure__loop_udp__Q_ &, unsigned);
-  class closure__loop_tcp__Q_; void loop_tcp(closure__loop_tcp__Q_ &, unsigned);
-  class closure__query__7requestiQi5reply_; void query(closure__query__7requestiQi5reply_ &, unsigned);
-  class closure__probe__Q_; void probe(closure__probe__Q_ &, unsigned);
 
 public:
-  typedef nameserver_state *nameserver::*unspecified_bool_type;
+  typedef ref_ptr<nameserver_state> nameserver::*unspecified_bool_type;
   
   inline nameserver();
   inline nameserver(uint32_t addr, int port = 53);
@@ -667,16 +669,27 @@ public:
   
   inline bool operator==(uint32_t i) const; 
 
-  void loop_udp(event<> e);
-  void loop_tcp(event<> e);
-  void query(request q, int timeout, event<int, reply> e);
-  void probe(event<> e);
+    void loop_udp(const event<> &e) {
+	_n->loop_udp(e);
+    }
+    
+    void loop_tcp(const event<> &e) {
+	_n->loop_tcp(e);
+    }
+    
+    void query(request q, int timeout, const event<int, reply> &e) {
+	_n->query(q, timeout, e);
+    }
+    
+    void probe(const event<> &e) {
+	_n->probe(e);
+    }
+    
   inline void unblock();
-  inline void flush();
 };
 
 inline nameserver::nameserver()
-  : _n(0) {
+  : _n() {
 }
 
 inline nameserver::nameserver(uint32_t addr, int port)
@@ -685,22 +698,14 @@ inline nameserver::nameserver(uint32_t addr, int port)
 
 inline nameserver::nameserver(const nameserver &o) {
   _n = o._n;
-  if (_n)
-    _n->use();
 }
 
 inline nameserver &nameserver::operator=(const nameserver &o) {
-    if (o._n)
-	o._n->use();
-    if (_n)
-	_n->unuse();
     _n = o._n;
     return *this;
 }
 
 inline nameserver::~nameserver(){
-  if (_n)
-    _n->unuse();
 }
 
 inline nameserver::operator unspecified_bool_type() const {
@@ -712,11 +717,11 @@ inline bool nameserver::operator!() const {
 }
 
 inline bool nameserver::operator==(uint32_t i) const {
-  return _n ? (i == _n->addr) : 0;
+  return _n ? (i == _n->_addr) : 0;
 }
 
 inline int nameserver::timeouts() const {
-  return _n ? _n->timeouts : 0;
+  return _n ? _n->_timeouts : 0;
 }
 
 inline void nameserver::unblock() {

@@ -276,67 +276,69 @@ int request::dnsname_to_labels(const char *name, const int name_len){
   return 0;
 }
 
-tamed void nameserver::loop_udp(event<> e) {
+tamed void nameserver::nameserver_state::loop_udp(event<> e) {
   tvars { 
     struct in_addr addr; uint8_t packet[1500]; 
     int i(), j(); size_t size; reply p;
+    passive_ref_ptr<nameserver_state> hold(this);
   }
 
-  _n->conn = DNS_QUERY_UDP;
-  addr.s_addr = _n->addr;
+  _conn = DNS_QUERY_UDP;
+  addr.s_addr = _addr;
   
-  if (_n->r.nevents()) { e.trigger(); return; } 
+  if (_r.nevents()) { e.trigger(); return; } 
   
-  twait { fdx::udp_connect(addr, _n->port, make_event(_n->socket)); }
+  twait { fdx::udp_connect(addr, _port, make_event(_socket)); }
   e.trigger();
 
-  if (!_n->socket) return; 
+  if (!_socket) return; 
 
   while (1) {
-    _n->socket.read_once(packet, 1500, size, make_event(_n->r, 0, j));
-    twait(_n->r, i);
+    _socket.read_once(packet, 1500, size, make_event(_r, 0, j));
+    twait(_r, i);
 
     if (i || j) break;
      
     p = reply(packet, size);
-    if (_n->reqs[p.trans_id()]) {
-      _n->reqs[p.trans_id()].trigger(p);
-      _n->timeouts = 0;
+    if (_reqs[p.trans_id()]) {
+      _reqs[p.trans_id()].trigger(p);
+      _timeouts = 0;
     }
   }
 
   flush(); 
 }
 
-tamed void nameserver::loop_tcp(event<> e) {
+tamed void nameserver::nameserver_state::loop_tcp(event<> e) {
   tvars { 
     struct in_addr addr; uint8_t packet[1500]; 
     int i(), j(); size_t size; uint16_t rsize; reply p; off_t off();
+    passive_ref_ptr<nameserver_state> hold(this);
   }
   
-  _n->conn = DNS_QUERY_TCP;
-  addr.s_addr = _n->addr;
+  _conn = DNS_QUERY_TCP;
+  addr.s_addr = _addr;
   
-  if (_n->r.nevents()) { e.trigger(); return; } 
+  if (_r.nevents()) { e.trigger(); return; } 
   
-  twait { fdx::tcp_connect(addr, _n->port, make_event(_n->socket)); }
+  twait { fdx::tcp_connect(addr, _port, make_event(_socket)); }
   e.trigger();
 
-  if (!_n->socket) return; 
+  if (!_socket) return; 
 
   while (1) {
     off = 0;
-    _n->socket.read_once(packet, 1500, size, make_event(_n->r, 0, j));
-    twait(_n->r, i);
+    _socket.read_once(packet, 1500, size, make_event(_r, 0, j));
+    twait(_r, i);
 
     if (i || j) break;
    
     while ((size_t)off < size) {
       get16(packet, size, off, rsize);
       p = reply(packet + off, rsize);
-      if (_n->reqs[p.trans_id()]) {
-        _n->reqs[p.trans_id()].trigger(p);
-        _n->timeouts = 0;
+      if (_reqs[p.trans_id()]) {
+        _reqs[p.trans_id()].trigger(p);
+        _timeouts = 0;
       }
       off += rsize;
     }
@@ -345,27 +347,31 @@ tamed void nameserver::loop_tcp(event<> e) {
   flush(); 
 }
 
-tamed void nameserver::query(request q, int timeout, event<int, reply> e) {
-  tvars { int i (), j (); rendezvous<> r; reply p; }
+tamed void nameserver::nameserver_state::query(request q, int timeout, event<int, reply> e) {
+  tvars { int i (), j (); rendezvous<> r; reply p;
+      passive_ref_ptr<nameserver_state> hold(this);
+  }
   
   if (!*this) { e.trigger(-EBADF, reply()); return; }
   
-  _n->reqs[q.trans_id()] = with_timeout_sec(timeout, make_event(r, p), j);  
-  twait { q.send(_n->socket, _n->conn, make_event(i)); }
+  _reqs[q.trans_id()] = with_timeout_sec(timeout, make_event(r, p), j);  
+  twait { q.send(_socket, _conn, make_event(i)); }
   
-  if (i) { _n->reqs.erase(q.trans_id()); e.trigger(-EBADF, reply()); return; }
+  if (i) { _reqs.erase(q.trans_id()); e.trigger(-EBADF, reply()); return; }
   
   twait(r);
   
-  if (j) { _n->timeouts++; e.trigger(-ETIMEDOUT, reply()); printf("timeout\n");} 
+  if (j) { _timeouts++; e.trigger(-ETIMEDOUT, reply()); printf("timeout\n");} 
   else if (p.error() == -1) e.trigger(-ECANCELED, reply());
   else e.trigger(0, p);
   
-  _n->reqs.erase(q.trans_id());
+  _reqs.erase(q.trans_id());
 }
 
-tamed void nameserver::probe(event<> e) {
-  tvars { int i (), j(); reply p; }
+tamed void nameserver::nameserver_state::probe(event<> e) {
+  tvars { int i (), j(); reply p;
+      passive_ref_ptr<nameserver_state> hold(this);
+  }
   static search s(1);
   const static search n = s.new_search("www.google.com", DNS_QUERY_NO_SEARCH);
   static request q(TYPE_A, 0x0000, n);
@@ -373,7 +379,7 @@ tamed void nameserver::probe(event<> e) {
   const static int tvals[] = {10, 60, 300, 900, 3600};
   
   while (!*this) {
-    if (_n->conn == DNS_QUERY_UDP)
+    if (_conn == DNS_QUERY_UDP)
       twait { loop_tcp(make_event()); }
     else {
       twait { loop_udp(make_event()); }
@@ -391,9 +397,9 @@ tamed void nameserver::probe(event<> e) {
   e.trigger();
 }
 
-void nameserver::flush() {
-  for (std::map<uint16_t, event<reply> >::iterator i = _n->reqs.begin(); 
-        i != _n->reqs.end(); 
+void nameserver::nameserver_state::flush() {
+  for (std::map<uint16_t, event<reply> >::iterator i = _reqs.begin(); 
+        i != _reqs.end(); 
         i++)
     i->second.trigger(reply());
 }
