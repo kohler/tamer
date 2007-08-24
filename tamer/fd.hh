@@ -270,8 +270,12 @@ class fd {
      *  @param[out]  nread   Number of characters read.
      *  @param       done    Event triggered on completion.
      *
-     *  @a done is triggered with 0 on success or end-of-file, or a negative
-     *  error code.  @a nread is kept up to date as the read progresses.
+     *  Reads @a size bytes from the file descriptor, blocking until @a size
+     *  bytes are available (or end-of-file or an error condition).  @a done
+     *  is triggered with 0 on success or end-of-file, or a negative error
+     *  code.  @a nread is kept up to date as the read progresses.
+     *
+     *  @sa read_once(void *, size_t, size_t &, event<int>)
      */
     inline void read(void *buf, size_t size, size_t &nread, event<int> done);
 
@@ -280,8 +284,10 @@ class fd {
      *  @param       size    Buffer size.
      *  @param       done    Event triggered on completion.
      *
-     *  Similar to read(void *, size_t, size_t &, event<int>), but does not
-     *  return the number of characters actually read.
+     *  Reads @a size bytes from the file descriptor, blocking until @a size
+     *  bytes are available (or end-of-file or an error condition).  Similar
+     *  to read(void *, size_t, size_t &, event<int>), but does not return the
+     *  number of characters actually read.
      */
     inline void read(void *buf, size_t size, const event<int> &done);
     
@@ -291,10 +297,17 @@ class fd {
      *  @param[out]  nread   Number of characters read.
      *  @param       done    Event triggered on completion.
      *
-     *  @a done is triggered with 0 on success, or a negative
-     *  error code.  @a nread is kept up to date as the read progresses.
+     *  Reads at most @a size bytes from the file descriptor.  Blocks until at
+     *  least one byte is read (or end-of-file or an error condition), but
+     *  unlike read(), @a done is triggered after the @em first successful
+     *  read, even if less than @a size bytes are read.  @a done is triggered
+     *  with 0 on success, or a negative error code.  @a nread is kept up to
+     *  date as the read progresses.
+     *
+     *  @sa read(void *, size_t, size_t &, event<int>)
      */
-    inline void read_once(void *buf, size_t size, size_t &nread, event<int> done);
+    inline void read_once(void *buf, size_t size, size_t &nread,
+			  event<int> done);
 
     /** @brief  Write to file descriptor.
      *  @param       buf       Buffer.
