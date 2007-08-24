@@ -37,7 +37,7 @@ ex2.cc: ex2.tt $(TAMER)
 ex3.cc: ex3.tt $(TAMER)
 ex4.cc: ex4.tt $(TAMER)
 ex5.cc: ex5.tt $(TAMER)
-ex5.cc: ex6.tt $(TAMER)
+ex6.cc: ex6.tt $(TAMER)
 osptracker.cc: osptracker.tcc $(TAMER)
 
 clean-local:
