@@ -194,12 +194,11 @@ inline reply::reply(const reply &o) {
 } 
 
 inline reply &reply::operator=(const reply &o) {
+  if (o._p)
+    o._p->use();
   if (_p)
     _p->unuse();
   _p = o._p;
-  if (_p)
-    _p->use();
-
   return *this;
 }
 
@@ -409,21 +408,21 @@ inline search::search(const search &sr) {
   }
 }
 
-inline search &search::operator=(const search &sr) {
+inline search &search::operator=(const search &o) {
+  if (o._s) {
+    o._s->use();
+    if (o._b)
+      o._b->use();
+  }
+  
   if (_s) {
     _s->unuse();
     if (_b)
       _b->unuse();
   }
 
-  _s = sr._s;
-  _b = sr._b;
-  
-  if (_s) {
-    _s->use();
-    if (_b)
-      _b->use();
-  }
+  _s = o._s;
+  _b = o._b;
   
   return *this;
 }
@@ -555,12 +554,11 @@ inline request::request(const request &o) {
 }
 
 inline request &request::operator=(const request &o) {
+  if (o._q)
+    o._q->use();
   if (_q)
     _q->unuse();
   _q = o._q;
-  if (_q)
-    _q->use();
-  
   return *this;
 }
 
@@ -856,12 +854,11 @@ inline resolver::resolver(const resolver &o) {
 }
 
 inline resolver &resolver::operator=(const resolver &o) {
+  if (o._r)
+    o._r->use();
   if (_r)
     _r->unuse();
   _r = o._r;
-  if (_r)
-    _r->use();
-  
   return *this;
 }
 
