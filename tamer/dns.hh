@@ -692,13 +692,12 @@ inline nameserver::nameserver(const nameserver &o) {
 }
 
 inline nameserver &nameserver::operator=(const nameserver &o) {
-  if (_n)
-    _n->unuse();
-  _n = o._n;
-  if (_n)
-    _n->use();
-  
-  return *this;
+    if (o._n)
+	o._n->use();
+    if (_n)
+	_n->unuse();
+    _n = o._n;
+    return *this;
 }
 
 inline nameserver::~nameserver(){
@@ -715,7 +714,7 @@ inline bool nameserver::operator!() const {
 }
 
 inline bool nameserver::operator==(uint32_t i) const {
-  return _n ? (i = _n->addr) : 0;
+  return _n ? (i == _n->addr) : 0;
 }
 
 inline int nameserver::timeouts() const {
