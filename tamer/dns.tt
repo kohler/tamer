@@ -1,0 +1,710 @@
+// -*- mode: c++ -*-
+#include <tamer/dns.hh>
+#include <sys/select.h>
+#include <sys/ioctl.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <errno.h>
+#include <tamer/tamer.hh>
+#include <tamer/fd.hh>
+#include <arpa/inet.h>
+#include <map>
+#include <list>
+
+namespace tamer {
+namespace dns {
+
+int reply::process(uint8_t * buf, int len) {
+	char tmp_name[256];
+
+  off_t off = 0;
+	uint16_t flags, questions, answers, authority, additional, datalength;
+	uint32_t ttl, ttl_r = 0xffffffff;
+	unsigned int i;
+
+	get16(buf, len, off, _p->trans_id);
+	get16(buf, len, off, flags);
+	get16(buf, len, off, questions);
+	get16(buf, len, off, answers);
+	get16(buf, len, off, authority);
+	if (get16(buf, len, off, additional)) return -1;
+
+	if (!(flags & 0x8000)) return -1;
+	
+  if (flags & 0x020f) {
+    if (flags & 0x0200)
+			return DNS_ERR_TRUNCATED;
+	  else {
+			uint16_t error_code = (flags & 0x000f) - 1;
+			if (error_code > 5)
+				return DNS_ERR_UNKNOWN;
+			else
+        return error_code; 
+		}
+  }
+
+	for (i = 0; i < questions; ++i) {
+		tmp_name[0] = '\0';
+    if (name_parse(buf, len, off, tmp_name, sizeof(tmp_name)) < 0) return -1;
+    off += 4;
+		if (off >= len) return -1;
+	}
+
+	for (i = 0; i < answers; ++i) {
+		uint16_t type, class_;
+
+		if (name_parse(buf, len, off, tmp_name, sizeof(tmp_name)) < 0) return -1;
+
+		get16(buf, len, off, type);
+		get16(buf, len, off, class_);
+		get32(buf, len, off, ttl);
+
+		if (get16(buf, len, off, datalength)) return -1;
+
+		if (type == TYPE_A && class_ == CLASS_INET) {
+      int addrcount;
+
+			_p->type = TYPE_A;
+      if ((datalength & 3) != 0) return -1;
+
+      addrcount = datalength >> 2;
+			ttl_r = min(ttl_r, ttl);
+
+			if (off + 4*addrcount > len) return -1;
+			
+			for (int j = 0; j < addrcount; j++) {
+        _p->addrs.push_back(*((uint32_t *) (buf + off)));
+        off += 4;
+      }
+
+			_p->have_answer = 1;
+/*		} else if (type == TYPE_PTR && class == CLASS_INET) {
+			if (req->request_type != TYPE_PTR) {
+				j += datalength; continue;
+			}
+			if (name_parse(packet, length, &j, reply.data.ptr.name,
+						   sizeof(reply.data.ptr.name))<0)
+				return -1;
+			ttl_r = MIN(ttl_r, ttl);
+			reply.have_answer = 1;
+			break;*/
+		} else
+			off += datalength;
+	}
+  _p->ttl = ttl_r;
+
+	return DNS_ERR_NONE;
+}
+
+int reply::name_parse(uint8_t * buf, int len, off_t &off, char * name, size_t size) const{
+ 	int name_end = -1;
+	int ptr_count = 0;
+  off_t j = off;
+
+	char * cp = name;
+	const char * const end = name + size;
+
+	for(;;) {
+		uint8_t label_len = 0;
+		if (j >= len) return -1;
+		if (get8(buf, len, j, label_len)) return -1;
+		if (!label_len) break;
+		if (label_len & 0xc0) {
+			uint8_t ptr_low = 0;
+		  if (get8(buf, len, j, ptr_low)) return -1;
+			if (name_end < 0) name_end = j;
+			j = (((int)label_len & 0x3f) << 8) + ptr_low;
+			if (j < 0 || j >= len) return -1;
+			if (++ptr_count > len) return -1;
+			continue;
+		}
+		if (label_len > 63) return -1;
+		if (cp != name) {
+			if (cp + 1 >= end) return -1;
+			*cp++ = '.';
+		}
+		if (cp + label_len >= end) return -1;
+		memcpy(cp, buf + j, label_len);
+		cp += label_len;
+		j += label_len;
+	}
+	if (cp >= end) return -1;
+	*cp = '\0';
+	if (name_end < 0)
+		off = j;
+	else
+		off = name_end;
+	
+  return 0;
+}
+
+const char * search::next() {
+  search_state::search_domain * sdom;
+  char * newname;
+  int dlen;
+
+  if (!_b || !*_b)
+    return NULL;
+
+  if (!_b->sent_raw && (!_b->is_search || (_b->ndots >= _s->ndots) || !*_b->index)) {
+    newname = new char[_b->len + 1];
+    if (!newname) return NULL;
+    memcpy(newname, _b->dom, _b->len);
+    newname[_b->len] = 0;
+    _b->sent_raw = 1;
+    return newname;
+  }
+
+  sdom = *_b->index;
+  _b->index = &sdom->next;
+  
+  dlen = (_b->dom[_b->len-1] == '.') ? 0 : 1;
+ 
+  newname = new char[_b->len + dlen + sdom->len + 1];
+  if (!newname)
+    return NULL;
+
+  memcpy(newname, _b->dom, _b->len);
+  if (dlen)
+    newname[_b->len] = '.';
+  memcpy(newname + _b->len + dlen, sdom->dom, sdom->len);
+  newname[_b->len + dlen + sdom->len] = 0;
+
+  return newname;
+}
+
+search search::new_search(const char * dom, int flags) {
+  search sr = search(*this);
+
+  if (!_s)
+    return sr;
+  sr._b = new base(dom, &(_s->head), flags);
+
+  return sr; 
+}
+
+request request::next_search_request(uint16_t trans_id) {
+  request o;
+
+  if (!this || !_q->s)
+    return o;
+
+  o._q = new request_state(_q->type, trans_id, _q->s);
+  
+  if (o._q && *o._q)
+    o.build();
+
+  return o; 
+}
+
+request &request::reissue(uint16_t trans_id) {
+  uint16_t x;
+
+  if (!*this)
+    return *this;
+
+  _q->trans_id = trans_id;
+  x = htons(trans_id);
+  memcpy(_q->req, &x, 2);
+
+  return *this;
+}
+
+void request::send(fd socket, int conn, event<int> result) {
+  int x = conn ? 0 : 2;
+  _q->tx_count_++;
+  socket.write(_q->req + x, _q->offset - x, result);
+}
+
+void request::build() {
+  off_t offset = 0;
+  memset(_q->req, 0, _q->max_len); 
+  
+  append16(_q->req, _q->max_len, _q->offset, _q->trans_id);
+  append16(_q->req, _q->max_len, _q->offset, 0x0100);
+  append16(_q->req, _q->max_len, _q->offset, 1);
+  append16(_q->req, _q->max_len, _q->offset, 0);
+  append16(_q->req, _q->max_len, _q->offset, 0);
+
+  if ((_q->err = append16(_q->req, _q->max_len, _q->offset, 0)))
+    return;
+
+  if ((_q->err = dnsname_to_labels(_q->req_name, _q->name_len)))
+    return;
+
+  append16(_q->req, _q->max_len, _q->offset, _q->type);
+  _q->err = append16(_q->req, _q->max_len, _q->offset, CLASS_INET);
+  append16(_q->req, _q->max_len, offset, (uint16_t)(_q->offset - 2));
+}
+
+
+int request::dnsname_to_labels(const char *name, const int name_len){
+  const char *end = name + name_len;
+
+  if (name_len > 255)
+    return -2;
+  
+	for (;;) {
+		const char *const start = name;
+		name = strchr(name, '.');
+		if (!name) {
+			const unsigned int label_len = end - start;
+			if (label_len > 63) return -1;
+			if ((size_t)(_q->offset+label_len+1) > _q->max_len) return -2;
+			_q->req[_q->offset++] = label_len;
+
+			memcpy(_q->req + _q->offset, start, end - start);
+			_q->offset += end - start;
+      
+			break;
+		} else {
+			const unsigned int label_len = name - start;
+			if (label_len > 63) return -1;
+			if ((size_t)(_q->offset+label_len+1) > _q->max_len) return -2;
+			_q->req[_q->offset++] = label_len;
+
+			memcpy(_q->req + _q->offset, start, name - start);
+			_q->offset += name - start;
+			name++;
+		}
+	}
+
+  if (!_q->offset || _q->req[_q->offset-1]) _q->req[_q->offset++] = 0;
+
+  return 0;
+}
+
+tamed void nameserver::loop_udp(event<> e) {
+  tvars { 
+    struct in_addr addr; uint8_t packet[1500]; 
+    int i(), j(); size_t size; reply p;
+  }
+
+  _n->conn = DNS_QUERY_UDP;
+  addr.s_addr = _n->addr;
+  
+  if (_n->r.nevents()) { e.trigger(); return; } 
+  
+  twait { fdx::udp_connect(addr, _n->port, make_event(_n->socket)); }
+  e.trigger();
+
+  if (!_n->socket) return; 
+
+  while (1) {
+    _n->socket.read_once(packet, 1500, size, make_event(_n->r, 0, j));
+    twait(_n->r, i);
+
+    if (i || j) break;
+     
+    p = reply(packet, size);
+    if (_n->reqs[p.trans_id()]) {
+      _n->reqs[p.trans_id()].trigger(p);
+      _n->timeouts = 0;
+    }
+  }
+
+  flush(); 
+}
+
+tamed void nameserver::loop_tcp(event<> e) {
+  tvars { 
+    struct in_addr addr; uint8_t packet[1500]; 
+    int i(), j(); size_t size; uint16_t rsize; reply p; off_t off();
+  }
+  
+  _n->conn = DNS_QUERY_TCP;
+  addr.s_addr = _n->addr;
+  
+  if (_n->r.nevents()) { e.trigger(); return; } 
+  
+  twait { fdx::tcp_connect(addr, _n->port, make_event(_n->socket)); }
+  e.trigger();
+
+  if (!_n->socket) return; 
+
+  while (1) {
+    off = 0;
+    _n->socket.read_once(packet, 1500, size, make_event(_n->r, 0, j));
+    twait(_n->r, i);
+
+    if (i || j) break;
+   
+    while ((size_t)off < size) {
+      get16(packet, size, off, rsize);
+      p = reply(packet + off, rsize);
+      if (_n->reqs[p.trans_id()]) {
+        _n->reqs[p.trans_id()].trigger(p);
+        _n->timeouts = 0;
+      }
+      off += rsize;
+    }
+  }
+
+  flush(); 
+}
+
+tamed void nameserver::query(request q, int timeout, event<int, reply> e) {
+  tvars { int i (), j (); rendezvous<> r; reply p; }
+  
+  if (!*this) { e.trigger(-EBADF, reply()); return; }
+  
+  _n->reqs[q.trans_id()] = with_timeout_sec(timeout, make_event(r, p), j);  
+  twait { q.send(_n->socket, _n->conn, make_event(i)); }
+  
+  if (i) { _n->reqs.erase(q.trans_id()); e.trigger(-EBADF, reply()); return; }
+  
+  twait(r);
+  
+  if (j) { _n->timeouts++; e.trigger(-ETIMEDOUT, reply()); printf("timeout\n");} 
+  else if (p.error() == -1) e.trigger(-ECANCELED, reply());
+  else e.trigger(0, p);
+  
+  _n->reqs.erase(q.trans_id());
+}
+
+tamed void nameserver::probe(event<> e) {
+  tvars { int i (), j(); reply p; }
+  static search s(1);
+  const static search n = s.new_search("www.google.com", DNS_QUERY_NO_SEARCH);
+  static request q(TYPE_A, 0x0000, n);
+
+  const static int tvals[] = {10, 60, 300, 900, 3600};
+  
+  while (!*this) {
+    if (_n->conn == DNS_QUERY_UDP)
+      twait { loop_tcp(make_event()); }
+    else {
+      twait { loop_udp(make_event()); }
+      i++;
+    }
+
+    if (!*this) continue; 
+    
+    twait { query(q.reissue(tvals[i]), tvals[i], make_event(j, p)); }
+    
+    if (!j || !p) continue;
+    if (i == 5) break;
+  }
+
+  e.trigger();
+}
+
+void nameserver::flush() {
+  for (std::map<uint16_t, event<reply> >::iterator i = _n->reqs.begin(); 
+        i != _n->reqs.end(); 
+        i++)
+    i->second.trigger(reply());
+}
+
+tamed void resolver::parse_loop() {
+  tvars { rendezvous<> r; }
+
+  for (;;) {
+    parse(make_event(r));
+    twait(r);
+    pump();
+    at_delay_sec(DNS_REPARSE_TIME, make_event(r)); 
+    twait(r);
+  }
+}
+
+tamed void resolver::pump() {
+  tvars { int i(); reply p; rendezvous<request,nameserver> r; nameserver ns; request q;}
+
+  if (r.nevents() || !_r->nameservers.size()) return;
+  
+  while (_r->waiting.size() || _r->reqs_inflight) {
+    if (_r->waiting.size() && _r->reqs_inflight < _r->max_reqs_inflight) {
+      if (_r->nsindex == _r->nameservers.end())
+        _r->nsindex = _r->nameservers.begin();
+      q = _r->waiting.front();
+      ns = *_r->nsindex;
+      ns.query(q, _r->timeout, make_event(r, q, ns, i, p));
+      _r->waiting.pop_front();
+      _r->reqs_inflight++;
+      _r->nsindex++;
+    } else {
+      twait(r, q, ns); 
+      switch (i) {
+        case 0:
+          switch (p.error()) {
+            case DNS_ERR_NONE:
+              pop(p);
+              break;
+            //case DNS_ERR_TRUNCATED:
+              // switch to tcp as defined in
+              // RFC1123 6.1.3.2
+              //break;
+            case DNS_ERR_SERVERFAILED:
+            case DNS_ERR_NOTIMPL:
+            case DNS_ERR_REFUSED:
+              failed(ns);
+              reissue(q);
+              break;
+            default:
+              next(q);
+          }
+          break;
+        case -EBADF:
+          failed(ns);
+          reissue(q);
+          break;
+        case -ETIMEDOUT:
+          if (ns.timeouts() > _r->max_timeouts)
+            failed(ns);
+          reissue(q);
+          break;
+        case -ECANCELED:
+        default:
+          pop(q);
+          break;
+        }
+      _r->reqs_inflight--; 
+    }
+  }
+}
+
+void resolver::push(request q, event<reply> e) {
+  _r->requests[q.trans_id()] = e;
+  _r->waiting.push_back(q);
+}
+
+void resolver::pop(request q) {
+  event<reply> e;
+  if (!(e = _r->requests[q.trans_id()])) return;
+  e.trigger(reply());
+  _r->requests.erase(q.trans_id());
+}
+
+void resolver::pop(reply p) {
+  event<reply> e;
+  if (!(e = _r->requests[p.trans_id()])) return;
+  e.trigger(p);
+  _r->requests.erase(p.trans_id()); 
+}
+
+void resolver::reissue(request q) {
+  if (q.tx_count() < _r->max_retransmits) {
+    push(q.reissue(get_trans_id()), _r->requests[q.trans_id()]);
+    _r->requests.erase(q.trans_id());
+  } else
+    pop(q);
+}
+
+void resolver::next(request q) {
+  request o;
+
+  if ((o = q.next_search_request(get_trans_id()))) {
+    push(o, _r->requests[q.trans_id()]);
+    _r->requests.erase(q.trans_id());
+  } else
+    pop(q);
+}
+
+tamed void resolver::resolve_ipv4(const char * name, int flags, event<reply> e) {
+  tvars { request q; reply p; }
+  q = request(TYPE_A, get_trans_id(), _r->global_search.new_search(name, flags));
+
+  if (!q) { e.trigger(reply()); return; }
+  
+  push(q, e); 
+  pump();
+}
+
+tamed void resolver::failed(nameserver ns) {
+  _r->nameservers.remove(ns);
+  _r->nameservers_failed.push_back(ns);
+
+  twait { ns.probe(make_event()); }
+  
+  _r->nameservers_failed.remove(ns);
+
+  if (ns)
+    _r->nameservers.push_back(ns);
+}
+
+uint16_t resolver::get_trans_id() {
+	struct timeval tv;
+	uint16_t trans_id;
+  
+	for(;;){
+    gettimeofday(&tv, NULL);
+    trans_id = tv.tv_usec & 0xffff;
+    
+		if (trans_id == 0xffff) continue;
+    if (!_r->requests[trans_id]) return trans_id;
+	}
+
+  return 0xffff;
+}
+
+tamed void resolver::parse(event<> e) {
+  char *curr, *next = NULL, *tok;
+  static const char *const delims = " \t";
+  tvars { fd fin; int i; char * buf; size_t size; struct stat nfst;
+          std::list<nameserver>::iterator t; std::list<nameserver> nss; }
+  
+  twait { fd::open(_r->rcname.c_str(), O_RDONLY, 0, make_event(fin)); }
+  
+  if (!fin) {
+    set_default_options();
+    clr_domains();
+    set_from_hostname();
+    if (_r->flags & DNS_OPTION_NAMESERVERS)
+      twait { add_nameserver("127.0.0.1", nss, make_event()); }
+    e.trigger();
+    return;
+  }
+  
+  twait { fin.fstat(nfst, make_event(i)); }
+  
+  if (i < 0) {
+    _r->err = 2;
+    goto out1;
+  } 
+
+  if (nfst.st_ino == _r->fst.st_ino ||
+      nfst.st_mtime == _r->fst.st_mtime) {
+    goto out1;
+  }
+
+  _r->fst = nfst;
+
+  if (!nfst.st_size) {
+    set_default_options();
+    clr_domains();
+    set_from_hostname();
+    if (_r->flags & DNS_OPTION_NAMESERVERS)
+      twait { add_nameserver("127.0.0.1", nss, make_event()); }
+    goto out1;
+  }
+
+  if (nfst.st_size > 65535) {
+    _r->err = 3;
+    goto out1;
+  }
+  
+  buf = new char[nfst.st_size + 1];
+ 
+  twait {
+    fin.read(buf, nfst.st_size, size, make_event(i));
+  } 
+
+  if (i < 0 || (size_t)nfst.st_size != size) {
+    _r->err = 5;
+    goto out2;
+  }
+
+  buf[nfst.st_size] = 0;
+
+  set_default_options();
+  clr_domains();
+
+  curr = buf;
+  do {
+    next = next_line(curr);
+    if (!(tok = strtok(curr, delims)) || *tok == '#' || *tok == ';')
+      continue;
+
+    if (!strcmp(tok, "nameserver") && (_r->flags & DNS_OPTION_NAMESERVERS)) {
+      twait { add_nameserver(strtok(NULL, delims), nss, make_event()); }
+    
+    } else if (!strcmp(tok, "domain") && (_r->flags & DNS_OPTION_SEARCH)) {
+      tok = strtok(NULL, delims);
+      if (!tok)
+        continue;
+      clr_domains();
+      add_domain(tok);
+    
+    } else if (!strcmp(tok, "search") && (_r->flags & DNS_OPTION_SEARCH)) {
+      tok = strtok(NULL, delims);
+      if (!tok)
+        continue;
+      clr_domains();
+      do {
+   			add_domain(tok);
+      } while ((tok = strtok(NULL, delims)));
+   	
+    } else if (!strcmp(tok, "options")) {
+   		while ((tok = strtok(NULL, delims)))
+        set_option(tok);
+   	}
+  } while ((curr = next));
+
+  if (!_r->global_search && _r->flags & DNS_OPTION_NAMESERVERS)
+    set_from_hostname();
+  
+  if (!nss.size() && _r->flags & DNS_OPTION_SEARCH)
+    twait { add_nameserver("127.0.0.1", nss, make_event()); }
+  
+  _r->nameservers = nss;
+  _r->nsindex = _r->nameservers.begin();
+ 
+out2:
+  delete [] buf;
+out1:
+  fin.close();
+  e.trigger();
+}
+
+tamed void resolver::add_nameserver(const char * str_addr, std::list<nameserver> &nss, event<> e) {
+  tvars { nameserver ns; std::list<nameserver>::iterator i; } 
+  struct in_addr ina;
+ 
+  printf("ns: %s\n", str_addr); 
+  if (!inet_aton(str_addr, &ina)) goto out;
+ 
+  for (i = _r->nameservers.begin(); i != _r->nameservers.end(); i++)
+    if (*i == ina.s_addr) { nss.push_back(*i); goto out; }
+  
+  for (i = _r->nameservers_failed.begin(); 
+      i != _r->nameservers_failed.end(); i++)
+    if (*i == ina.s_addr)  goto out;
+  
+  ns = nameserver(ina.s_addr);
+  twait { ns.loop_udp(make_event()); }
+  
+  if (ns)
+    nss.push_back(ns);
+  else
+    failed(ns); 
+out:
+   e.trigger();
+}
+
+void resolver::set_option(const char * option) {
+  const char * val = strchr(option, ':');
+  if (!val || !*val)
+    return;
+
+	if (!strncmp(option, "ndots", 6)) {
+		const int ndots = strtoint(val, 0, HOST_NAME_MAX);
+		if (ndots == -1) return;
+		if (!(_r->flags & DNS_OPTION_SEARCH)) return;
+		_r->global_search.set_ndots(_r->ndots = ndots);
+	} else if (!strncmp(option, "timeout:", 8)) {
+		const int timeout = strtoint(val, 1, 3600);
+		if (timeout == -1) return;
+		if (!(_r->flags & DNS_OPTION_MISC)) return;
+	  _r->timeout = timeout;
+	} else if (!strncmp(option, "max-timeouts:", 12)) {
+		const int maxtimeout = strtoint(val, 1, 255);
+		if (maxtimeout == -1) return;
+		if (!(_r->flags & DNS_OPTION_MISC)) return;
+		_r->max_timeouts = maxtimeout;
+	} else if (!strncmp(option, "max-inflight:", 13)) {
+		const int maxinflight = strtoint(val, 1, 65000);
+		if (maxinflight == -1) return;
+		if (!(_r->flags & DNS_OPTION_MISC)) return;
+		_r->max_reqs_inflight = maxinflight;
+	} else if (!strncmp(option, "attempts:", 9)) {
+		int retries = strtoint(val, 1, 255);
+		if (retries == -1) return;
+		if (!(_r->flags & DNS_OPTION_MISC)) return;
+		_r->max_retransmits = retries;
+	}
+}
+
+}}
