@@ -224,7 +224,10 @@ bool driver_libevent::empty()
 
 void driver_libevent::once()
 {
-    ::event_loop(EVLOOP_ONCE);
+    if (tamerpriv::abstract_rendezvous::unblocked)
+	::event_loop(EVLOOP_ONCE | EVLOOP_NONBLOCK);
+    else
+	::event_loop(EVLOOP_ONCE);
     set_now();
     while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::unblocked)
 	r->run();

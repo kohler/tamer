@@ -309,7 +309,8 @@ void driver_tamer::once()
     struct timeval to, *toptr;
     if (_asap.size()
 	|| (_nt > 0 && !timercmp(&_t[0]->expiry, &now, >))
-	|| sig_any_active) {
+	|| sig_any_active
+	|| tamerpriv::abstract_rendezvous::unblocked) {
 	timerclear(&to);
 	toptr = &to;
     } else if (_nt == 0)
