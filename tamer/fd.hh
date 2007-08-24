@@ -15,6 +15,7 @@
  */
 #include <tamer/tamer.hh>
 #include <tamer/lock.hh>
+#include <tamer/ref.hh>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -157,7 +158,7 @@ class fd {
      */
     inline bool valid() const;
     
-    typedef fdimp *fd::*unspecified_bool_type;
+    typedef ref_ptr<fdimp> fd::*unspecified_bool_type;
 
     /** @brief  Test if file descriptor is valid.
      *  @return  True if file descriptor is valid, false if not.
@@ -378,7 +379,20 @@ class fd {
     
   private:
 
-    struct fdimp {
+    struct fdcloser {
+	fdcloser(fd::fdimp *f)
+	    : _f(f) {
+	}
+	fdcloser(const ref_ptr<fd::fdimp> &f)
+	    : _f(f) {
+	}
+	void operator()() {
+	    _f->close();
+	}
+	passive_ref_ptr<fd::fdimp> _f;
+    };
+    
+    struct fdimp : public enable_ref_ptr_with_full_release<fdimp> {
 
 	int _fd;
 	mutex _rlock;
@@ -386,29 +400,7 @@ class fd {
 	event<> _at_close;
 	
 	fdimp(int fd)
-	    : _fd(fd), _refcount(1), _weak_refcount(0) {
-	}
-	
-	void use() {
-	    ++_refcount;
-	}
-	
-	void unuse() {
-	    if (--_refcount == 0) {
-		if (_fd >= 0)
-		    close();
-		if (_weak_refcount == 0)
-		    delete this;
-	    }
-	}
-	
-	void weak_use() {
-	    ++_weak_refcount;
-	}
-	
-	void weak_unuse() {
-	    if (--_weak_refcount == 0 && _refcount == 0)
-		delete this;
+	    : _fd(fd) {
 	}
 	
 	void accept(struct sockaddr *addr, socklen_t *addrlen,
@@ -420,12 +412,13 @@ class fd {
 	void write(const void *buf, size_t size, size_t &nwritten,
 		   event<int> done);
 	void write(std::string buf, size_t &nwritten, event<int> done);
+	void full_release() {
+	    if (_fd >= 0)
+		close();
+	}
 	int close(int leave_error = -EBADF);
 	
       private:
-
-	unsigned _refcount;
-	unsigned _weak_refcount;
 	
 	class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_ &, unsigned);
 	class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_ &, unsigned);
@@ -438,7 +431,7 @@ class fd {
 
     struct fdcloser;
     
-    fdimp *_p;
+    ref_ptr<fdimp> _p;
 
     static size_t garbage_size;
 
@@ -448,7 +441,7 @@ class fd {
 };
 
 inline fd::fd()
-    : _p(0) {
+    : _p() {
 }
 
 inline fd::fd(int value)
@@ -457,20 +450,12 @@ inline fd::fd(int value)
 
 inline fd::fd(const fd &other)
     : _p(other._p) {
-    if (_p)
-	_p->use();
 }
 
 inline fd::~fd() {
-    if (_p)
-	_p->unuse();
 }
 
 inline fd &fd::operator=(const fd &other) {
-    if (other._p)
-	other._p->use();
-    if (_p)
-	_p->unuse();
     _p = other._p;
     return *this;
 }
@@ -577,7 +562,7 @@ inline void fd::error_close(int errcode) {
     if (_p)
 	_p->close(errcode);
     else if (errcode != -EBADF)
-	_p = new fdimp(errcode);
+	_p = ref_ptr<fdimp>(new fdimp(errcode));
 }
 
 /** @brief  Test whether two file descriptors refer to the same object.

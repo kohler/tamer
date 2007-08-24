@@ -36,26 +36,6 @@ int fd::make_nonblocking(int f)
     return ::fcntl(f, F_SETFL, flags | O_NONBLOCK);
 }
 
-struct fd::fdcloser {
-    fdcloser(fd::fdimp *f)
-	: _f(f) {
-	_f->weak_use();
-    }
-    fdcloser(const fdcloser &other)
-	: _f(other._f) {
-	_f->weak_use();
-    }
-    ~fdcloser() {
-	_f->weak_unuse();
-    }
-    void operator()() {
-	_f->close();
-    }
-    fd::fdimp *_f;
-  private:
-    fdcloser &operator=(const fdcloser &);
-};
-
 event<> fd::closer()
 {
     if (*this) {
@@ -86,6 +66,7 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
     tvars {
 	size_t pos = 0;
 	ssize_t amt;
+	passive_ref_ptr<fd::fdimp> hold(this);
     }
     
     if (_fd < 0) {
@@ -93,7 +74,6 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
 	return;
     }
 
-    weak_use();
     twait { _rlock.acquire(make_event()); }
     
     while (pos != size && done && _fd >= 0) {
@@ -104,7 +84,7 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait volatile { tamer::at_fd_read(_fd, make_event()); }
+	    twait { tamer::at_fd_read(_fd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -113,13 +93,13 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
     
     _rlock.release();
     done.trigger(pos == size || _fd >= 0 ? 0 : -ECANCELED);
-    weak_unuse();
 }
 
 tamed void fd::fdimp::read_once(void *buf, size_t size, size_t &size_out, event<int> done)
 {
     tvars {
 	ssize_t amt;
+	passive_ref_ptr<fd::fdimp> hold(this);
     }
     
     if (_fd < 0) {
@@ -127,7 +107,6 @@ tamed void fd::fdimp::read_once(void *buf, size_t size, size_t &size_out, event<
 	return;
     }
 
-    weak_use();
     twait { _rlock.acquire(make_event()); }
     
     while (done && _fd >= 0) {
@@ -136,7 +115,7 @@ tamed void fd::fdimp::read_once(void *buf, size_t size, size_t &size_out, event<
 	    size_out = amt;
       break;
   } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait volatile { tamer::at_fd_read(_fd, make_event()); }
+	    twait { tamer::at_fd_read(_fd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -145,7 +124,6 @@ tamed void fd::fdimp::read_once(void *buf, size_t size, size_t &size_out, event<
     
     _rlock.release();
     done.trigger(0);
-    weak_unuse();
 }
 
 tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, event<int> done)
@@ -153,6 +131,7 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
     tvars {
 	size_t pos = 0;
 	ssize_t amt;
+	passive_ref_ptr<fd::fdimp> hold(this);
     }
 
     if (_fd < 0) {
@@ -160,7 +139,6 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
 	return;
     }
 
-    weak_use();
     twait { _wlock.acquire(make_event()); }
     
     while (pos != size && done && _fd >= 0) {
@@ -171,7 +149,7 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait volatile { tamer::at_fd_write(_fd, make_event()); }
+	    twait { tamer::at_fd_write(_fd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -180,7 +158,6 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
     
     _wlock.release();
     done.trigger(pos == size || _fd >= 0 ? 0 : -ECANCELED);
-    weak_unuse();
 }
 
 tamed void fd::fdimp::write(std::string s, size_t &size_out, event<int> done)
@@ -219,6 +196,7 @@ tamed void fd::fdimp::accept(struct sockaddr *addr_out, socklen_t *addrlen_out, 
 {
     tvars {
 	int f = -ECANCELED;
+	passive_ref_ptr<fd::fdimp> hold(this);
     }
 
     if (_fd < 0) {
@@ -226,7 +204,6 @@ tamed void fd::fdimp::accept(struct sockaddr *addr_out, socklen_t *addrlen_out, 
 	return;
     }
 
-    weak_use();
     twait { _rlock.acquire(make_event()); }
     
     while (done && _fd >= 0) {
@@ -235,7 +212,7 @@ tamed void fd::fdimp::accept(struct sockaddr *addr_out, socklen_t *addrlen_out, 
 	    make_nonblocking(f);
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait volatile { tamer::at_fd_read(_fd, make_event()); }
+	    twait { tamer::at_fd_read(_fd, make_event()); }
 	} else if (errno != EINTR) {
 	    f = -errno;
 	    break;
@@ -244,13 +221,13 @@ tamed void fd::fdimp::accept(struct sockaddr *addr_out, socklen_t *addrlen_out, 
 
     _rlock.release();
     done.trigger(fd(f));
-    weak_unuse();
 }
 
 tamed void fd::fdimp::connect(const struct sockaddr *addr, socklen_t addrlen, event<int> done)
 {
     tvars {
 	int x, ret(0);
+	passive_ref_ptr<fd::fdimp> hold(this);
     }
 
     if (_fd < 0) {
@@ -258,14 +235,13 @@ tamed void fd::fdimp::connect(const struct sockaddr *addr, socklen_t addrlen, ev
 	return;
     }
 
-    weak_use();
     twait { _wlock.acquire(make_event()); }
     
     x = ::connect(_fd, addr, addrlen);
     if (x == -1 && errno != EINPROGRESS)
 	ret = -errno;
     else if (x == -1) {
-	twait volatile { tamer::at_fd_write(_fd, make_event()); }
+	twait { tamer::at_fd_write(_fd, make_event()); }
 	socklen_t socklen = sizeof(x);
 	if (!done || _fd < 0)
 	    ret = -ECANCELED;
@@ -277,7 +253,6 @@ tamed void fd::fdimp::connect(const struct sockaddr *addr, socklen_t addrlen, ev
 
     _wlock.release();
     done.trigger(ret);
-    weak_unuse();
 }
 
 
@@ -339,7 +314,7 @@ tamed void tcp_connect(struct in_addr addr, int port, event<fd> result)
 	struct sockaddr_in saddr;
     }
     if (f)
-	twait volatile {
+	twait {
 	    memset(&saddr, 0, sizeof(saddr));
 	    saddr.sin_family = AF_INET;
 	    saddr.sin_addr = addr;
@@ -358,7 +333,7 @@ tamed void udp_connect(struct in_addr addr, int port, event<fd> result) {
 	  struct sockaddr_in saddr;
   }
   if (f)
-	  twait volatile {
+	  twait {
 	    memset(&saddr, 0, sizeof(saddr));
 	    saddr.sin_family = AF_INET;
 	    saddr.sin_addr = addr;
