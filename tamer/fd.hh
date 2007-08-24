@@ -284,6 +284,17 @@ class fd {
      *  return the number of characters actually read.
      */
     inline void read(void *buf, size_t size, const event<int> &done);
+    
+    /** @brief  Read once from file descriptor.
+     *  @param[out]  buf     Buffer.
+     *  @param       size    Buffer size.
+     *  @param[out]  nread   Number of characters read.
+     *  @param       done    Event triggered on completion.
+     *
+     *  @a done is triggered with 0 on success, or a negative
+     *  error code.  @a nread is kept up to date as the read progresses.
+     */
+    inline void read_once(void *buf, size_t size, size_t &nread, event<int> done);
 
     /** @brief  Write to file descriptor.
      *  @param       buf       Buffer.
@@ -392,6 +403,7 @@ class fd {
 	void connect(const struct sockaddr *addr, socklen_t addrlen,
 		     event<int> done);
 	void read(void *buf, size_t size, size_t &nread, event<int> done);
+	void read_once(void *buf, size_t size, size_t &nread, event<int> done);
 	void write(const void *buf, size_t size, size_t &nwritten,
 		   event<int> done);
 	void write(std::string buf, size_t &nwritten, event<int> done);
@@ -405,6 +417,7 @@ class fd {
 	class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_ &, unsigned);
 	class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_ &, unsigned);
 	class closure__read__PvkRkQi_; void read(closure__read__PvkRkQi_ &, unsigned);
+	class closure__read_once__PvkRkQi_; void read_once(closure__read_once__PvkRkQi_ &, unsigned);
 	class closure__write__PKvkRkQi_; void write(closure__write__PKvkRkQi_ &, unsigned);
 	class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &, unsigned);
 
@@ -512,6 +525,13 @@ inline void fd::read(void *buf, size_t size, const event<int> &done) {
     read(buf, size, garbage_size, done);
 }
 
+inline void fd::read_once(void *buf, size_t size, size_t &nread, event<int> done) {
+    if (_p)
+	_p->read_once(buf, size, nread, done);
+    else
+	done.trigger(-EBADF);
+}
+
 inline void fd::write(const void *buf, size_t size, size_t &nwritten, event<int> done) {
     if (_p)
 	_p->write(buf, size, nwritten, done);
@@ -608,6 +628,8 @@ inline void tcp_listen(int port, event<fd> result) {
  *  descriptor.
  */
 void tcp_connect(struct in_addr addr, int port, event<fd> result);
+
+void udp_connect(struct in_addr addr, int port, event<fd> result);
 
 }}
 #endif /* TAMER_FD_HH */

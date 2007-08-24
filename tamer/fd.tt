@@ -116,6 +116,38 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
     weak_unuse();
 }
 
+tamed void fd::fdimp::read_once(void *buf, size_t size, size_t &size_out, event<int> done)
+{
+    tvars {
+	ssize_t amt;
+    }
+    
+    if (_fd < 0) {
+	done.trigger(-EBADF);
+	return;
+    }
+
+    weak_use();
+    twait { _rlock.acquire(make_event()); }
+    
+    while (done && _fd >= 0) {
+	amt = ::read(_fd, static_cast<char *>(buf), size);
+	if (amt != 0 && amt != (ssize_t) -1) {
+	    size_out = amt;
+      break;
+  } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+	    twait volatile { tamer::at_fd_read(_fd, make_event()); }
+	} else if (errno != EINTR) {
+	    done.trigger(-errno);
+	    break;
+	}
+    }
+    
+    _rlock.release();
+    done.trigger(0);
+    weak_unuse();
+}
+
 tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, event<int> done)
 {
     tvars {
@@ -317,6 +349,25 @@ tamed void tcp_connect(struct in_addr addr, int port, event<fd> result)
     if (ret < 0 && f)
 	f.error_close(ret);
     result.trigger(f);
+}
+
+tamed void udp_connect(struct in_addr addr, int port, event<fd> result) {
+  tvars {
+    fd f = fd::socket(AF_INET, SOCK_DGRAM, 0);
+	  int ret = 0;
+	  struct sockaddr_in saddr;
+  }
+  if (f)
+	  twait volatile {
+	    memset(&saddr, 0, sizeof(saddr));
+	    saddr.sin_family = AF_INET;
+	    saddr.sin_addr = addr;
+	    saddr.sin_port = htons(port);
+	    f.connect((struct sockaddr *) &saddr, sizeof(saddr), make_event(ret));
+	  }
+  if (ret < 0 && f)
+	  f.error_close(ret);
+  result.trigger(f);
 }
 
 }}
