@@ -263,12 +263,13 @@ A
 .B tamed
 function's caller resumes when the called function
 .IR "either returns or blocks" .
-To allow its caller to distinguish returning from blocking, a 
+A
 .B tamed
-function will often accept an 
+function will often accept an
 .B event
-argument, which it triggers when it
-returns.  This trigger signals the function's completion.  Here is a
+argument, which it triggers when it completes its processing.
+This lets the caller block until the function truly returns.
+Here is a
 .B tamed
 function that blocks, then returns an integer:
 .nf
@@ -403,10 +404,10 @@ already been triggered.  \*(lq\fIe\fB.empty()\fR\*(rq is equivalent to
 .fi
 .RS 5
 Triggers the event.  If the event is empty, this does nothing; otherwise,
-it assigns the event's trigger slots (defined at creation time) to the
+it sets the event's trigger slots (defined at creation time) to the
 trigger values
 .IR v0 ... v3
-and wakes the relevant blocked closure, if any.  Events become empty after
+and wakes any blocked closure.  Events become empty after
 they are triggered.  Each
 .B event
 type has a
@@ -433,10 +434,9 @@ is triggered when this event is triggered.
 .B event<> event<T*>::bind_all() const
 .fi
 .RS 5
-Creates a version of this event that has no trigger slots.  The returned
+Returns a version of this event that has no trigger slots.  The returned
 event refers to the same occurrence as this event, so triggering either
-event makes both events appear empty.  The returned event has no trigger
-slots, however, and
+event makes both events appear empty.  However,
 .B bind_all().trigger()
 will leave this event's slots unchanged.
 .RE
