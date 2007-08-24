@@ -1,0 +1,81 @@
+#include <tamer/dns.hh>
+
+using namespace tamer;
+using namespace tamer::dns;
+
+void print_rep(reply p) {
+  struct in_addr ina;
+  printf("--\n");
+  if (p.addrcount())
+    for (int j = 0; j < p.addrcount() ; j++){
+      ina.s_addr = p[j];
+      printf("%s\n", inet_ntoa(ina));
+    }
+  else
+    printf("error reply\n");
+}
+
+
+tamed void test() {
+  tvars { reply p, m; }
+  static resolver r(DNS_OPTIONS_ALL);
+
+  twait {
+   // r.resolve_ipv4("www.derpy.com", DNS_QUERY_NO_SEARCH, make_event(m));
+   // r.resolve_ipv4("www.hotmail.com", DNS_QUERY_NO_SEARCH, make_event(m));
+    r.resolve_ipv4("www.gmail.com", DNS_QUERY_NO_SEARCH, make_event(m));
+    r.resolve_ipv4("www.seas.ucla.edu", DNS_QUERY_NO_SEARCH, make_event(p));
+  }
+  printf("--------\n");
+  print_rep(m);
+  print_rep(p);
+
+
+}
+
+tamed void test2() {
+  tvars {
+    reply p, m, o, l;
+    struct in_addr ina;
+    nameserver ns;
+    request q;
+    search s, n;
+    event<reply> e;
+    int i;
+  }
+    
+  //inet_aton("66.75.164.90", &ina);
+  inet_aton("164.67.128.1", &ina);
+  ns = nameserver(ina.s_addr);
+    
+  s = search(1);
+  s.add_domain("google.com");
+  s.add_domain("yahoo.com");
+  s.add_domain("ucla.edu");
+  s.add_domain("hotmail.com");
+  n = s.new_search("mail", DNS_QUERY_SEARCH);
+
+  q = request(TYPE_A, 0x1010, n);
+                 
+  twait { ns.loop_tcp(make_event()); }
+                    
+  twait {
+    ns.query(q, 2, make_event(i,p));
+    ns.query(q.next_search_request(0x1141), 2, make_event(i,m));
+    ns.query(q.next_search_request(0x1511), 2, make_event(i,l));
+    ns.query(q.next_search_request(0x1111), 2, make_event(i,o));
+  }
+
+  print_rep(p);
+  print_rep(m);
+  print_rep(l);
+  print_rep(o);
+}
+
+int main(int, char **) {
+  initialize();
+
+  test2();
+
+  loop();
+}
