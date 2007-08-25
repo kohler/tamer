@@ -127,14 +127,21 @@ class mutex { public:
     
   private:
 
+    struct wait : public tamerutil::dlist_element {
+	event<> e;
+    };
+    
     int _locked;
-    tamerutil::debuffer<event<> > _waiters;
+    tamerutil::dlist<wait> _wait;
 
     class closure__acquire__iQ_;
     void acquire(int shared, event<> done);
     void acquire(closure__acquire__iQ_ &, unsigned);
 
-    void wake();
+    void wake() {
+	if (wait *w = _wait.front())
+	    w->e.trigger();
+    }
     
     mutex(const mutex &);
     mutex &operator=(const mutex &);

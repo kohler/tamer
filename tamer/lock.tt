@@ -16,54 +16,46 @@
 #include <tamer/adapter.hh>
 namespace tamer {
 
-void mutex::wake()
-{
-    while (event<> *eptr = _waiters.front_ptr()) {
-	event<> e = *eptr;
-	_waiters.pop_front();
-	if (e) {
-	    e.trigger();
-	    break;
-	}
-    }
-}
-
 tamed void mutex::acquire(int shared, event<> done)
 {
     tvars {
-	rendezvous<bool> r;
-	bool result;
+	rendezvous<> r;
+	wait w;
     }
 
     if (!done)
 	return;
-    if (!_waiters.size() && (shared > 0 ? _locked != -1 : _locked == 0)) {
+    if (_wait.empty() && (shared > 0 ? _locked != -1 : _locked == 0)) {
 	_locked += shared;
 	done.trigger();
 	return;
     }
 
-    done.at_trigger(make_event(r, false));
-    _waiters.push_back(make_event(r, true));
+    done.at_trigger(make_event(r));
+    w.e = make_event(r);
+    _wait.push_back(&w);
 
     while (1) {
-	twait(r, result);
-	if (!result || !done) {
-	    done.trigger();
-	    // canceling an exclusive lock may let a shared lock through
-	    r.clear();
-	    if (_waiters.front_ptr() && !_waiters.front())
-		wake();
-	    return;
+	twait(r);
+	if (!done) {
+	    // canceling an exclusive lock may let a shared lock through,
+	    // so always count canceled locks as shared
+	    shared = 1;
+	    break;
 	} else if (shared > 0 ? _locked != -1 : _locked == 0) {
+	    // obtained lock
 	    _locked += shared;
-	    done.trigger();
-	    if (shared > 0)	// next waiter might also want a shared lock
-		wake();
-	    return;
+	    break;
 	} else
-	    _waiters.push_front(make_event(r, true));
+	    // must try again
+	    w.e = make_event(r); // w is still on front
     }
+
+    done.trigger();		// lock was obtained (or done is empty)
+    r.clear();			// not interested in r events, so clean up
+    w.remove();			// remove wait object from list
+    if (shared > 0)		// next waiter might also get a shared lock
+	wake();
 }
 
 }
