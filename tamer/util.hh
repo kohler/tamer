@@ -368,5 +368,72 @@ void debuffer<T, A>::expand()
     _head = 0;
 }
 
+
+template <typename T> class dlist;
+
+class dlist_element { public:
+
+    dlist_element()
+	: _next(0), _prev(0) {
+    }
+
+    void remove() {
+	if (_next) {
+	    _next->_prev = _prev;
+	    _prev->_next = _next;
+	    _next = _prev = 0;
+	}
+    }
+    
+  private:
+    
+    dlist_element *_next;
+    dlist_element *_prev;
+
+    template <typename T> friend class dlist;
+    
+};
+
+template <typename T> class dlist : public dlist_element { public:
+
+    dlist() {
+	_next = _prev = this;
+    }
+
+    bool empty() const {
+	return _next == this;
+    }
+    
+    void push_back(T *e) {
+	assert(!e->_prev && !e->_next);
+	e->_prev = _prev;
+	e->_next = this;
+	e->_prev->_next = _prev = e;
+    }
+
+    void push_front(T *e) {
+	assert(!e->_prev && !e->_next);
+	e->_next = _next;
+	e->_prev = this;
+	e->_next->_prev = _next = e;
+    }
+
+    T *front() const {
+	return (_next != this ? static_cast<T *>(_next) : 0);
+    }
+
+    T *pop_front() {
+	if (_next != this) {
+	    dlist_element *e = _next;
+	    e->_prev->_next = e->_next;
+	    e->_next->_prev = e->_prev;
+	    e->_prev = e->_next = 0;
+	    return static_cast<T *>(e);
+	} else
+	    return 0;
+    }
+
+};
+
 }}
 #endif /* TAMER__UTIL_HH */
