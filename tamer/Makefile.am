@@ -11,6 +11,7 @@ libtamer_la_SOURCES = \
 	fd.hh fd.tt \
 	dns.hh dns.tt \
 	lock.hh lock.tt \
+	ref.hh \
 	rendezvous.hh \
 	tamer.hh \
 	util.hh \
@@ -26,6 +27,7 @@ pkginclude_HEADERS = \
 	fd.hh \
 	dns.hh \
 	lock.hh \
+	ref.hh \
 	rendezvous.hh \
 	tamer.hh \
 	util.hh \
