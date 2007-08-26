@@ -279,25 +279,27 @@ int request::dnsname_to_labels(const char *name, const int name_len){
 tamed void nameserver::nameserver_state::loop_udp(event<> e) {
   tvars { 
     struct in_addr addr; uint8_t packet[1500]; 
-    int i(), j(); size_t size; reply p;
+    int i(), j(); size_t size; reply p; tamer::fd udp_socket;
+    rendezvous<> r;
     passive_ref_ptr<nameserver_state> hold(this);
   }
 
   _conn = DNS_QUERY_UDP;
   addr.s_addr = _addr;
-  
-  if (_r.nevents()) { e.trigger(); return; } 
-  
-  twait { fdx::udp_connect(addr, _port, make_event(_socket)); }
+
+  e.at_trigger(make_event(r));
+  fdx::udp_connect(addr, _port, make_event(r, udp_socket));
+  twait(r);
+  if (!e)			// no longer interested in result
+      return;
+
+  _socket = udp_socket;
   e.trigger();
 
-  if (!_socket) return; 
+  while (udp_socket && _port >= 0) {
+    twait { udp_socket.read_once(packet, 1500, size, make_event(j)); }
 
-  while (1) {
-    _socket.read_once(packet, 1500, size, make_event(_r, 0, j));
-    twait(_r, i);
-
-    if (i || j) break;
+    if (!udp_socket || j < 0) break;
      
     p = reply(packet, size);
     if (_reqs[p.trans_id()]) {
@@ -313,25 +315,27 @@ tamed void nameserver::nameserver_state::loop_tcp(event<> e) {
   tvars { 
     struct in_addr addr; uint8_t packet[1500]; 
     int i(), j(); size_t size; uint16_t rsize; reply p; off_t off();
+    tamer::fd tcp_socket; rendezvous<> r;
     passive_ref_ptr<nameserver_state> hold(this);
   }
   
   _conn = DNS_QUERY_TCP;
   addr.s_addr = _addr;
-  
-  if (_r.nevents()) { e.trigger(); return; } 
-  
-  twait { fdx::tcp_connect(addr, _port, make_event(_socket)); }
+
+  e.at_trigger(make_event(r));
+  fdx::tcp_connect(addr, _port, make_event(r, tcp_socket));
+  twait(r);
+  if (!e)			// no longer interested in result
+      return;
+
+  _socket = tcp_socket;
   e.trigger();
 
-  if (!_socket) return; 
-
-  while (1) {
+  while (tcp_socket && _port >= 0) {
     off = 0;
-    _socket.read_once(packet, 1500, size, make_event(_r, 0, j));
-    twait(_r, i);
+    twait { tcp_socket.read_once(packet, 1500, size, make_event(j)); }
 
-    if (i || j) break;
+    if (!tcp_socket || j < 0) break;
    
     while ((size_t)off < size) {
       get16(packet, size, off, rsize);

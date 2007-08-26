@@ -607,34 +607,27 @@ class nameserver {
     int _conn;
     int _timeouts;
     
-    tamer::rendezvous<int> _r;
     std::map<uint16_t, event<reply> > _reqs;
     
     tamer::fd _socket;
     uint32_t _addr;
-    int _port;
+    int _port;			// < 0 means nameserver object is shutting down
     
     nameserver_state(uint32_t addr, int port) 
     : _timeouts(0), _addr(addr), _port(port) {
     }
 
     ~nameserver_state() {
-      unblock();
-      if (_socket)
         _socket.close();
     }
     
     operator bool() {
-      return _socket && _r.nwaiting();
-    }
-
-    void unblock() {
-      if (_r.nwaiting())
-        at_asap(make_event(_r, 1));
+      return _socket;
     }
 
 	void full_release() {
 	    _socket.close();
+	    _port = -1;
 	}
 
 	inline void flush();
