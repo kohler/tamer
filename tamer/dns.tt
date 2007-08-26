@@ -669,8 +669,7 @@ tamed void resolver::add_nameserver(const char * str_addr, std::list<nameserver>
       i != _r->nameservers_failed.end(); i++)
     if (*i == ina.s_addr)  goto out;
   
-  ns = nameserver(ina.s_addr);
-  twait { ns.loop_udp(make_event()); }
+  twait { ns = nameserver(ina.s_addr, 53, false, make_event()); }
   
   if (ns)
     nss.push_back(ns);

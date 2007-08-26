@@ -45,10 +45,6 @@ tamed void test2() {
     int i;
   }
     
-  //inet_aton("66.75.164.90", &ina);
-  inet_aton("164.67.128.1", &ina);
-  ns = nameserver(ina.s_addr);
-    
   s = search(1);
   s.add_domain("google.com");
   s.add_domain("yahoo.com");
@@ -58,7 +54,9 @@ tamed void test2() {
 
   q = request(TYPE_A, 0x1010, n);
                  
-  twait { ns.loop_tcp(make_event()); }
+  //inet_aton("66.75.164.90", &ina);
+  inet_aton("164.67.128.1", &ina);
+  twait { ns = nameserver(ina.s_addr, 53, true, make_event()); }
                     
   twait {
     ns.query(q, 2, make_event(i,p));

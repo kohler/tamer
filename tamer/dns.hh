@@ -657,7 +657,7 @@ public:
   typedef ref_ptr<nameserver_state> nameserver::*unspecified_bool_type;
   
   inline nameserver();
-  inline nameserver(uint32_t addr, int port = 53);
+  inline nameserver(uint32_t addr, int port, bool tcp, const event<> &done);
   inline nameserver(const nameserver &ns);
   inline nameserver &operator=(const nameserver &ns);
   inline ~nameserver();
@@ -669,14 +669,6 @@ public:
   
   inline bool operator==(uint32_t i) const; 
 
-    void loop_udp(const event<> &e) {
-	_n->loop_udp(e);
-    }
-    
-    void loop_tcp(const event<> &e) {
-	_n->loop_tcp(e);
-    }
-    
     void query(request q, int timeout, const event<int, reply> &e) {
 	_n->query(q, timeout, e);
     }
@@ -691,8 +683,12 @@ inline nameserver::nameserver()
   : _n() {
 }
 
-inline nameserver::nameserver(uint32_t addr, int port)
+inline nameserver::nameserver(uint32_t addr, int port, bool tcp, const event<> &done)
   : _n(new nameserver_state(addr, port)) {
+    if (tcp)
+	_n->loop_tcp(done);
+    else
+	_n->loop_udp(done);
 }
 
 inline nameserver::nameserver(const nameserver &o) {
