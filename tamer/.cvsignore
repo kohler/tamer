@@ -1,4 +1,13 @@
-Makefile Makefile.in config.h config.h.in stamp-h1
-.deps .libs
-*.la *.lo
-lock.cc bufferedio.cc fd.cc
+Makefile
+Makefile.in
+config.h
+config.h.in
+stamp-h1
+.deps
+.libs
+*.la
+*.lo
+lock.cc
+bufferedio.cc
+fd.cc
+dns.cc

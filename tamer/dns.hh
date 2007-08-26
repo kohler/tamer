@@ -685,7 +685,6 @@ public:
 	_n->probe(e);
     }
     
-  inline void unblock();
 };
 
 inline nameserver::nameserver()
@@ -722,10 +721,6 @@ inline bool nameserver::operator==(uint32_t i) const {
 
 inline int nameserver::timeouts() const {
   return _n ? _n->_timeouts : 0;
-}
-
-inline void nameserver::unblock() {
-  _n->unblock();
 }
 
 class resolver {
