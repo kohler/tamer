@@ -1,3 +1,7 @@
+bin_PROGRAMS = tamerfdh
+
+tamerfdh_SOURCES = fdhelp.cc
+
 lib_LTLIBRARIES = libtamer.la
 libtamer_la_SOURCES = \
 	adapter.hh \
