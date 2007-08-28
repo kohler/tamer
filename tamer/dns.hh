@@ -247,124 +247,59 @@ inline std::string reply::name() {
 class search {
 
   struct search_state {
-    int refcnt;
+    int _refcnt;
     
-    int ndomains;
-    int ndots;
-    
-    struct search_domain {  
-      int len;
-      search_domain * next;
-      char * dom;
-    };
-
-    search_domain * head;
-    search_domain * tail;
+    int _ndots;
+    std::list<std::string> _doms;
 
     search_state(int ndots) 
-      : refcnt(1), ndomains(0), ndots(ndots), head(0) {
+      : _refcnt(1), _ndots(ndots) {
     }
 
     void use() {
-      refcnt++;
+      _refcnt++;
     }
 
     void unuse() {
-      refcnt--;
-      if (!refcnt)
+      _refcnt--;
+      if (!_refcnt)
         delete this;
     }
 
-    ~search_state() {
-      search_domain * curr, * next;
-      curr = head;
-
-      for (int i = 0; i < ndomains; i++) {
-        next = curr->next;
-        delete [] curr->dom;
-        delete curr;
-        curr = next;
-      }
-    }
-
-    void add_domain(const char * dom) {
-      search_domain * sdom;
-      int len;
-
-      len = strlen(dom);
-      
-      sdom = new search_domain;
-      if (!sdom) return;
-      
-      sdom->dom = new char[len + 1];
-      if (!(sdom->dom)) { delete sdom; return; }
-      memcpy(sdom->dom, dom, len);
-      
-      sdom->len = len;
-      sdom->next = NULL;
-
-      if (!head) {
-        head = sdom;
-        tail = sdom;
-      } else {
-        tail->next = sdom;
-        tail = sdom;
-      }
-
-      ndomains++;
+    void add_domain(std::string dom) {
+      _doms.push_back(dom);
     }
   };
   
   search_state * _s;
 
   struct base {
-    int refcnt;
+    int _refcnt;
     
-    int len;
-    int ndots;
-    
-    search_state::search_domain ** index;
-    char * dom;
-    
-    bool sent_raw;
-    bool is_search;
+    int _ndots;
+    std::string _dom; 
+    std::list<std::string>::iterator _it;
 
-    base(const char * name, search_state::search_domain ** index, int flags) 
-      : refcnt(1), len(strlen(name)), ndots(0), index(index),  
-      sent_raw(0), is_search((flags & DNS_QUERY_NO_SEARCH) ? 0 : 1)
-    {
-      dom = new char[len +1];
+    bool _sent_raw;
+    bool _is_search;
 
-      if (!(dom))
-        return; 
-	    
-      const char * s = name;
-      while ((s = strchr(s, '.'))) {
-    		s++;
-		    ndots++;
-    	}
+    base(std::string dom, std::list<std::string>::iterator it, int flags) 
+      : _refcnt(1), _ndots(0), _dom(dom), _it(it),  
+      _sent_raw(0), _is_search((flags & DNS_QUERY_NO_SEARCH) ? 0 : 1) {
 
-      memcpy(dom, name, len);
-      dom[len] = 0;
+      for (std::string::iterator i = dom.begin(); i != dom.end(); i++)
+        if (*i == '.')
+          _ndots++;
     }
 
     void use() {
-      refcnt++;
+      _refcnt++;
     }
 
     void unuse() {
-      refcnt--;
-      if (!refcnt)
+      _refcnt--;
+      if (!_refcnt)
         delete this;
-    }
-
-    operator bool() {
-      return dom && (!sent_raw || (is_search && *index));
-    }
-    
-    ~base() {
-      if (dom)
-        delete [] dom;
     }
   };
   
@@ -382,12 +317,11 @@ public:
   inline operator unspecified_bool_type() const;
   inline bool operator!() const;
 
-  inline void add_domain(const char * domain);
+  inline void add_domain(std::string dom);
   inline void set_ndots(int ndots);
   
-  const char * next();
-  
-  search new_search(const char * base, int flags);
+  std::string next();
+  search new_search(std::string dom, int flags);
 };
 
 inline search::search()
@@ -437,21 +371,24 @@ inline search::~search() {
 }
 
 inline search::operator unspecified_bool_type() const {
-  return ((_s && !_b) || (_s && _b && *_b)) ? &search::_s : 0;
+  return (_s && _b && 
+    (!_b->_sent_raw || (_b->_is_search && _b->_it != _s->_doms.end())))
+      ? &search::_s : 0;
 }
 
 inline bool search::operator!() const {
-  return !((_s && !_b) || (_s && _b && *_b));
+  return !(_s && _b && 
+    (!_b->_sent_raw || (_b->_is_search && _b->_it != _s->_doms.end())));
 }
 
-inline void search::add_domain(const char * dom) {
+inline void search::add_domain(std::string dom) {
   if (_s)
     _s->add_domain(dom);
 }
 
 inline void search::set_ndots(int ndots) {
   if (_s)
-    _s->ndots = ndots;
+    _s->_ndots = ndots;
 }
 
 class request {
@@ -466,7 +403,7 @@ class request {
     uint32_t max_len;
     
     int name_len;
-    const char * req_name;
+    std::string _name;
     search s;
     
     uint32_t type;
@@ -479,9 +416,9 @@ class request {
       if (!s) 
         return;
      
-      req_name = s.next();
+      _name = s.next();
 
-      name_len = strlen(req_name);
+      name_len = _name.size();
       max_len = name_len + 96 + 2 + 4;   
 
       req = new uint8_t[max_len];
@@ -504,8 +441,6 @@ class request {
     ~request_state() {
       if (req)
         delete [] req;
-      if (req_name)
-        delete [] req_name;
     }
   };
 

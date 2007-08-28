@@ -140,47 +140,35 @@ int reply::name_parse(uint8_t * buf, int len, off_t &off, char * name, size_t si
   return 0;
 }
 
-const char * search::next() {
-  search_state::search_domain * sdom;
-  char * newname;
-  int dlen;
+std::string search::next() {
+  std::string ndom;
 
-  if (!_b || !*_b)
-    return NULL;
-
-  if (!_b->sent_raw && (!_b->is_search || (_b->ndots >= _s->ndots) || !*_b->index)) {
-    newname = new char[_b->len + 1];
-    if (!newname) return NULL;
-    memcpy(newname, _b->dom, _b->len);
-    newname[_b->len] = 0;
-    _b->sent_raw = 1;
-    return newname;
+  if (!*this)
+    return std::string();
+  
+  ndom = _b->_dom;
+  
+  if (!_b->_sent_raw && (!_b->_is_search || (_b->_ndots >= _s->_ndots) || 
+        _b->_it == _s->_doms.end())) {
+    _b->_sent_raw = 1;
+    return _b->_dom;
   }
 
-  sdom = *_b->index;
-  _b->index = &sdom->next;
+  if (_b->_dom[_b->_dom.size()-1] != '.')
+    ndom += '.';
   
-  dlen = (_b->dom[_b->len-1] == '.') ? 0 : 1;
- 
-  newname = new char[_b->len + dlen + sdom->len + 1];
-  if (!newname)
-    return NULL;
+  ndom += *_b->_it;
+  _b->_it++;
 
-  memcpy(newname, _b->dom, _b->len);
-  if (dlen)
-    newname[_b->len] = '.';
-  memcpy(newname + _b->len + dlen, sdom->dom, sdom->len);
-  newname[_b->len + dlen + sdom->len] = 0;
-
-  return newname;
+  return ndom;
 }
 
-search search::new_search(const char * dom, int flags) {
+search search::new_search(std::string dom, int flags) {
   search sr = search(*this);
 
   if (!_s)
     return sr;
-  sr._b = new base(dom, &(_s->head), flags);
+  sr._b = new base(dom, _s->_doms.begin(), flags);
 
   return sr; 
 }
@@ -231,7 +219,7 @@ void request::build() {
   if ((_q->err = append16(_q->req, _q->max_len, _q->offset, 0)))
     return;
 
-  if ((_q->err = dnsname_to_labels(_q->req_name, _q->name_len)))
+  if ((_q->err = dnsname_to_labels(_q->_name.c_str(), _q->name_len)))
     return;
 
   append16(_q->req, _q->max_len, _q->offset, _q->type);
@@ -663,7 +651,6 @@ tamed void resolver::add_nameserver(const char * str_addr, std::list<nameserver>
   tvars { nameserver ns; std::list<nameserver>::iterator i; } 
   struct in_addr ina;
  
-  printf("ns: %s\n", str_addr); 
   if (!inet_aton(str_addr, &ina)) goto out;
  
   for (i = _r->nameservers.begin(); i != _r->nameservers.end(); i++)
