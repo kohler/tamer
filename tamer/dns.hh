@@ -742,7 +742,7 @@ class resolver {
 
   class closure__parse_loop; void parse_loop(closure__parse_loop &, unsigned);
   class closure__pump; void pump(closure__pump &, unsigned);
-  class closure__resolve_ipv4__PKciQ5reply_; void resolve_ipv4(closure__resolve_ipv4__PKciQ5reply_ &, unsigned);
+  class closure__resolve_ipv4__SsiQ5reply_; void resolve_ipv4(closure__resolve_ipv4__SsiQ5reply_ &, unsigned);
   class closure__failed__10nameserver; void failed(closure__failed__10nameserver &, unsigned);
   class closure__parse__Q_; void parse(closure__parse__Q_&, unsigned);
   class closure__add_nameserver__PKcRNSt4listI10nameserverEEQ_; void add_nameserver(closure__add_nameserver__PKcRNSt4listI10nameserverEEQ_ &, unsigned);
@@ -750,6 +750,7 @@ class resolver {
 public:
   typedef resolve_state *resolver::*unspecified_bool_type;
   
+  inline resolver();
   inline resolver(int flags, std::string rc = "/etc/resolv.conf");
   inline resolver(const resolver &o);
   inline resolver &operator=(const resolver &o);
@@ -759,9 +760,13 @@ public:
   inline bool operator!() const;
   inline int error() const;
   
-  void resolve_ipv4(const char * name, int flags, event<reply> e);
+  void resolve_ipv4(std::string name, int flags, event<reply> e);
   //void resolve_reverse();
 };
+
+inline resolver::resolver() 
+  : _r() {
+}
 
 inline resolver::resolver(int flags, std::string rc){
   _r = new struct resolve_state(flags, rc);
@@ -848,6 +853,11 @@ inline char* resolver::next_line(char * buf) {
   char *r;
   return (r = strchr(buf, '\n')) ? (*r = 0) + r + 1 : 0;
 }
+}
 
-}}
+static dns::resolver resolver;
+
+void gethostbyname(std::string name, int flag, event<dns::reply> result);
+
+}
 #endif /* TAMER_DNS_HH */

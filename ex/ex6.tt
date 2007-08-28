@@ -19,19 +19,14 @@ void print_rep(reply p) {
 
 tamed void test() {
   tvars { reply p, m; }
-  static resolver r(DNS_OPTIONS_ALL);
 
   twait {
-   // r.resolve_ipv4("www.derpy.com", DNS_QUERY_NO_SEARCH, make_event(m));
-   // r.resolve_ipv4("www.hotmail.com", DNS_QUERY_NO_SEARCH, make_event(m));
-    r.resolve_ipv4("www.gmail.com", DNS_QUERY_NO_SEARCH, make_event(m));
-    r.resolve_ipv4("www.seas.ucla.edu", DNS_QUERY_NO_SEARCH, make_event(p));
+    gethostbyname("www.gmail.com", DNS_QUERY_NO_SEARCH, make_event(m));
+    gethostbyname("www.google.com", DNS_QUERY_NO_SEARCH, make_event(p));
   }
-  printf("--------\n");
+  
   print_rep(m);
   print_rep(p);
-
-
 }
 
 tamed void test2() {

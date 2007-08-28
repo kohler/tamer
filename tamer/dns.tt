@@ -14,6 +14,14 @@
 #include <list>
 
 namespace tamer {
+
+void gethostbyname(std::string name, int flags, event<dns::reply> result) {
+  if (!resolver)
+    resolver = dns::resolver(DNS_OPTIONS_ALL);
+  
+  resolver.resolve_ipv4(name, flags, result);
+}
+
 namespace dns {
 
 int reply::process(uint8_t * buf, int len) {
@@ -501,7 +509,7 @@ void resolver::next(request q) {
     pop(q);
 }
 
-tamed void resolver::resolve_ipv4(const char * name, int flags, event<reply> e) {
+tamed void resolver::resolve_ipv4(std::string name, int flags, event<reply> e) {
   tvars { request q; reply p; }
   q = request(TYPE_A, get_trans_id(), _r->global_search.new_search(name, flags));
 
