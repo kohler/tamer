@@ -37,8 +37,11 @@ tamed void test2() {
     request q;
     search s, n;
     event<reply> e;
-    int i;
+    int i, j;
+    timeval tv;
   }
+
+  tv.tv_sec = 2;
     
   s = search(1);
   s.add_domain("google.com");
@@ -51,13 +54,13 @@ tamed void test2() {
                  
   //inet_aton("66.75.164.90", &ina);
   inet_aton("164.67.128.1", &ina);
-  twait { ns = nameserver(ina.s_addr, 53, true, make_event()); }
+  twait { ns = nameserver(ina.s_addr, 53, tv, make_event(j)); }
                     
   twait {
-    ns.query(q, 2, make_event(i,p));
-    ns.query(q.next_search_request(0x1141), 2, make_event(i,m));
-    ns.query(q.next_search_request(0x1511), 2, make_event(i,l));
-    ns.query(q.next_search_request(0x1111), 2, make_event(i,o));
+    ns.query(q, make_event(i,p));
+    ns.query(q.next_search_request(0x1141), make_event(i,m));
+    ns.query(q.next_search_request(0x1511), make_event(i,l));
+    ns.query(q.next_search_request(0x1111), make_event(i,o));
   }
 
   print_rep(p);
