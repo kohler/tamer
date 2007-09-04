@@ -20,6 +20,8 @@ int main (int argc, char *argv[]) {
   
   FD_ZERO(&rset);
 
+  printf("great success!\n");
+
   for (;;) {
     FD_SET(0, &rset); 
     select(1, &rset, NULL, NULL, NULL); 

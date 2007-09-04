@@ -537,86 +537,83 @@ inline int request::tx_count() const {
 
 class nameserver {
   
-    struct nameserver_state : public enable_ref_ptr_with_full_release<nameserver_state> {
-    
-    int _conn;
+  struct nameserver_state 
+    : public enable_ref_ptr_with_full_release<nameserver_state> {
+     
     int _timeouts;
-    
-    std::map<uint16_t, event<reply> > _reqs;
-    
-    tamer::fd _socket;
+    timeval _timeout;
+
     uint32_t _addr;
-    int _port;			// < 0 means nameserver object is shutting down
+    int _port;
+
+    std::list<request> _reqs;
+    std::map<uint16_t, event<int, reply> > _events;
     
-    nameserver_state(uint32_t addr, int port) 
-    : _timeouts(0), _addr(addr), _port(port) {
+    event<> _pump;
+    event<> _kill;
+
+    nameserver_state(uint32_t addr, int port, timeval timeout) 
+    : _timeouts(0), _timeout(timeout), _addr(addr), _port(port) {
     }
 
     ~nameserver_state() {
-        _socket.close();
+      _kill.trigger();
     }
     
     operator bool() {
-      return _socket;
+      return _pump;//TODO
     }
 
-	void full_release() {
-	    _socket.close();
-	    _port = -1;
-	}
+    void full_release() {
+      _kill.trigger();
+    }     
 
-	inline void flush();
+	void loop(bool tcp, event<int> e);
+    void query(request q, event<int, reply> e);
+	//void probe(event<> e);
 	
-	void loop_udp(event<> e);
-	void loop_tcp(event<> e);
-	void query(request q, int timeout, event<int, reply> e);
-	void probe(event<> e);
-	
-	class closure__loop_udp__Q_; void loop_udp(closure__loop_udp__Q_ &, unsigned);
-	class closure__loop_tcp__Q_; void loop_tcp(closure__loop_tcp__Q_ &, unsigned);
-	class closure__query__7requestiQi5reply_; void query(closure__query__7requestiQi5reply_ &, unsigned);
-	class closure__probe__Q_; void probe(closure__probe__Q_ &, unsigned);
-    };
+    class closure__loop__bQi_;
+    void loop(closure__loop__bQi_&, unsigned);
+
+    class closure__query__7requestQi5reply_; 
+    void query(closure__query__7requestQi5reply_ &, unsigned);
+    
+    //class closure__probe__Q_; 
+    //void probe(closure__probe__Q_ &, unsigned);
+  };
 
   ref_ptr<nameserver_state> _n;
-  
 
 public:
   typedef ref_ptr<nameserver_state> nameserver::*unspecified_bool_type;
   
   inline nameserver();
-  inline nameserver(uint32_t addr, int port, bool tcp, const event<> &done);
+  inline nameserver(uint32_t addr, int port, timeval timeout, const event<int> &done);
   inline nameserver(const nameserver &ns);
   inline nameserver &operator=(const nameserver &ns);
-  inline ~nameserver();
   
   inline operator unspecified_bool_type() const;
   inline bool operator!() const;
   inline int error() const;
   inline int timeouts() const;
-  
+  inline void set_timeout(timeval timeout);
+
   inline bool operator==(uint32_t i) const; 
 
-    void query(request q, int timeout, const event<int, reply> &e) {
-	_n->query(q, timeout, e);
-    }
-    
-    void probe(const event<> &e) {
-	_n->probe(e);
-    }
-    
+  void query(request q, const event<int, reply> &e) {
+      _n->query(q, e);
+  }
+  //inline void probe(const event<> &e);
 };
 
 inline nameserver::nameserver()
   : _n() {
 }
 
-inline nameserver::nameserver(uint32_t addr, int port, bool tcp, const event<> &done)
-  : _n(new nameserver_state(addr, port)) {
-    if (tcp)
-	_n->loop_tcp(done);
-    else
-	_n->loop_udp(done);
+inline nameserver::nameserver(uint32_t addr, int port, 
+    timeval timeout, const event<int> &done)
+  : _n(new nameserver_state(addr, port, timeout)) {
+	_n->loop(false, done);
 }
 
 inline nameserver::nameserver(const nameserver &o) {
@@ -626,9 +623,6 @@ inline nameserver::nameserver(const nameserver &o) {
 inline nameserver &nameserver::operator=(const nameserver &o) {
     _n = o._n;
     return *this;
-}
-
-inline nameserver::~nameserver(){
 }
 
 inline nameserver::operator unspecified_bool_type() const {
@@ -647,11 +641,23 @@ inline int nameserver::timeouts() const {
   return _n ? _n->_timeouts : 0;
 }
 
-class resolver {
-  struct resolve_state {
-    int refcnt;
+inline void nameserver::set_timeout(timeval timeout) {
+  if (_n)
+    _n->_timeout = timeout;
+}
 
-    int timeout;
+/*
+inline void nameserver::probe(const event<> &e) {
+  if (_n)
+    _n->probe(e);
+}
+*/
+	
+class resolver {
+  struct resolver_state
+    : public enable_ref_ptr_with_full_release<resolver_state> {
+
+    timeval timeout;
     int ndots;
     int max_retransmits;
     int max_timeouts;
@@ -673,32 +679,24 @@ class resolver {
     std::list<nameserver> nameservers_failed;
     std::list<nameserver>::iterator nsindex;
 
-    resolve_state(int flags, std::string rc) 
-      : refcnt(1), rcname(rc), reqs_inflight(0), flags(flags), err(0) {
+    resolver_state(int flags, std::string rc) 
+      : rcname(rc), reqs_inflight(0), flags(flags), err(0) {
       
       fst.st_ino = 0;
       fst.st_mtime = 0;
       
       nsindex = nameservers.begin();
       global_search = search(1);//TODO
-
     }
 
-    void use() {
-      refcnt++;
-    } 
-
-    void unuse() {
-      refcnt--;
-      if (!refcnt)
-        delete this;
+    ~resolver_state() {      
     }
-
+    
     operator bool() { 
       return !err;
     }
 
-    ~resolve_state() {
+    void full_release() {
       nameservers.clear();
       for (std::map<uint16_t, event<reply> >::iterator i = requests.begin();
           i != requests.end();
@@ -707,49 +705,61 @@ class resolver {
       requests.clear();
       waiting.clear();
     }
+  
+    // untamed wild horses
+    void push(request q, event<reply> e);
+    void pop(reply p);
+    void pop(request q);
+    void reissue(request q);
+    void next(request q);
+  
+    uint16_t get_trans_id();
+
+    inline void add_domain(const char * name);
+    inline void clr_domains();
+    inline void set_from_hostname();
+
+    inline void set_default_options();
+    inline void set_option(const char * option);
+  
+    inline int strtoint(const char * val, int min, int max);
+    inline char * next_line(char *buf);
+
+    // tamed
+    void resolve_ipv4(std::string name, int flags, event<reply> e);
+    
+    void pump();
+    void failed(nameserver ns);
+  
+    void parse_loop();
+    void parse(event<> e);
+    void add_nameserver(const char * str_addr, std::list<nameserver> &nss, event<> e);
+  
+    class closure__parse_loop; 
+    void parse_loop(closure__parse_loop &, unsigned);
+    
+    class closure__pump; 
+    void pump(closure__pump &, unsigned);
+    
+    class closure__resolve_ipv4__SsiQ5reply_; 
+    void resolve_ipv4(closure__resolve_ipv4__SsiQ5reply_ &, unsigned);
+    
+    class closure__failed__10nameserver; 
+    void failed(closure__failed__10nameserver &, unsigned);
+    
+    class closure__parse__Q_; 
+    void parse(closure__parse__Q_&, unsigned);
+    
+    class closure__add_nameserver__PKcRNSt4listI10nameserverEEQ_; 
+    void add_nameserver(
+        closure__add_nameserver__PKcRNSt4listI10nameserverEEQ_ &, unsigned);
   };
-
-  struct resolve_state * _r;
-
-  /* pump */
-  void pump();
   
-  void push(request q, event<reply> e);
-  void pop(reply p);
-  void pop(request q);
-  void reissue(request q);
-  void next(request q);
+  ref_ptr<resolver_state> _r;
   
-  uint16_t get_trans_id();
-
-  void failed(nameserver ns);
-  
-  /* parse */
-  void parse_loop();
-  void parse(event<> e);
-  
-  void add_nameserver(const char * str_addr, std::list<nameserver> &nss, event<> e);
-  
-  inline void add_domain(const char * name);
-  inline void clr_domains();
-  inline void set_from_hostname();
-
-  inline void set_default_options();
-  inline void set_option(const char * option);
-  
-  inline int strtoint(const char * val, int min, int max);
-  inline char * next_line(char *buf);
-
-  class closure__parse_loop; void parse_loop(closure__parse_loop &, unsigned);
-  class closure__pump; void pump(closure__pump &, unsigned);
-  class closure__resolve_ipv4__SsiQ5reply_; void resolve_ipv4(closure__resolve_ipv4__SsiQ5reply_ &, unsigned);
-  class closure__failed__10nameserver; void failed(closure__failed__10nameserver &, unsigned);
-  class closure__parse__Q_; void parse(closure__parse__Q_&, unsigned);
-  class closure__add_nameserver__PKcRNSt4listI10nameserverEEQ_; void add_nameserver(closure__add_nameserver__PKcRNSt4listI10nameserverEEQ_ &, unsigned);
-
 public:
-  typedef resolve_state *resolver::*unspecified_bool_type;
-  
+  typedef ref_ptr<resolver_state> resolver::*unspecified_bool_type;
+
   inline resolver();
   inline resolver(int flags, std::string rc = "/etc/resolv.conf");
   inline resolver(const resolver &o);
@@ -759,8 +769,12 @@ public:
   inline operator unspecified_bool_type() const;
   inline bool operator!() const;
   inline int error() const;
-  
-  void resolve_ipv4(std::string name, int flags, event<reply> e);
+
+  void resolve_ipv4(std::string name, int flags, event<reply> e) {
+    if (_r)
+      _r->resolve_ipv4(name, flags, e);
+  }
+
   //void resolve_reverse();
 };
 
@@ -768,31 +782,21 @@ inline resolver::resolver()
   : _r() {
 }
 
-inline resolver::resolver(int flags, std::string rc){
-  _r = new struct resolve_state(flags, rc);
-
-  if (!_r)
-    return;
-  parse_loop();
+inline resolver::resolver(int flags, std::string rc)
+  : _r(new struct resolver_state(flags, rc)) {
+  _r->parse_loop();
 }
 
 inline resolver::resolver(const resolver &o) {
   _r = o._r;
-  if (o._r)
-    _r->use();
 }
 
 inline resolver &resolver::operator=(const resolver &o) {
-  if (o._r)
-    o._r->use();
-  if (_r)
-    _r->unuse();
   _r = o._r;
   return *this;
 }
 
 inline resolver::~resolver() {
-  _r->unuse();
 }
 
 inline resolver::operator unspecified_bool_type() const {
@@ -807,19 +811,19 @@ inline int resolver::error() const {
   return _r ? _r->err : -1;
 }
 
-inline void resolver::set_default_options() {
-  _r->ndots = 1;
-  _r->timeout = 5;
-  _r->max_retransmits = 1;
-  _r->max_timeouts = 3;
-  _r->max_reqs_inflight = 64;
+inline void resolver::resolver_state::set_default_options() {
+  ndots = 1;
+  timeout.tv_sec = 5;
+  max_retransmits = 1;
+  max_timeouts = 3;
+  max_reqs_inflight = 64;
 }
 
-inline void resolver::set_from_hostname() {
+inline void resolver::resolver_state::set_from_hostname() {
   char hostname[HOST_NAME_MAX + 1];
   char * domainname;
 
-  if (_r->flags & DNS_OPTION_SEARCH) {
+  if (flags & DNS_OPTION_SEARCH) {
 	  if (gethostname(hostname, sizeof(hostname))) return;
   	domainname = strchr(hostname, '.');
   	if (!domainname) return;
@@ -827,15 +831,15 @@ inline void resolver::set_from_hostname() {
   }
 }
 
-inline void resolver::clr_domains() {
-  _r->global_search = search(_r->ndots);
+inline void resolver::resolver_state::clr_domains() {
+  global_search = search(ndots);
 }
 
-inline void resolver::add_domain(const char * name) {
-  _r->global_search.add_domain(name);
+inline void resolver::resolver_state::add_domain(const char * name) {
+  global_search.add_domain(name);
 }
 
-inline int resolver::strtoint(const char * val, int min, int max) {
+inline int resolver::resolver_state::strtoint(const char * val, int min, int max) {
   char *end;
   int r = strtol(val, &end, 10);
   
@@ -849,7 +853,7 @@ inline int resolver::strtoint(const char * val, int min, int max) {
     return r;
 }
 
-inline char* resolver::next_line(char * buf) {
+inline char* resolver::resolver_state::next_line(char * buf) {
   char *r;
   return (r = strchr(buf, '\n')) ? (*r = 0) + r + 1 : 0;
 }
