@@ -540,6 +540,9 @@ class nameserver {
   struct nameserver_state 
     : public enable_ref_ptr_with_full_release<nameserver_state> {
      
+    enum state {ALIVE, PROBING, DEAD};
+    state _state;
+
     int _timeouts;
     timeval _timeout;
 
@@ -553,7 +556,7 @@ class nameserver {
     event<> _kill;
 
     nameserver_state(uint32_t addr, int port, timeval timeout) 
-    : _timeouts(0), _timeout(timeout), _addr(addr), _port(port) {
+    : _state(DEAD), _timeouts(0), _timeout(timeout), _addr(addr), _port(port) {
     }
 
     ~nameserver_state() {
@@ -561,7 +564,7 @@ class nameserver {
     }
     
     operator bool() {
-      return _pump;//TODO
+      return _state == ALIVE;
     }
 
     void full_release() {
@@ -570,7 +573,7 @@ class nameserver {
 
 	void loop(bool tcp, event<int> e);
     void query(request q, event<int, reply> e);
-	//void probe(event<> e);
+	void probe(event<> e);
 	
     class closure__loop__bQi_;
     void loop(closure__loop__bQi_&, unsigned);
@@ -578,8 +581,8 @@ class nameserver {
     class closure__query__7requestQi5reply_; 
     void query(closure__query__7requestQi5reply_ &, unsigned);
     
-    //class closure__probe__Q_; 
-    //void probe(closure__probe__Q_ &, unsigned);
+    class closure__probe__Q_; 
+    void probe(closure__probe__Q_ &, unsigned);
   };
 
   ref_ptr<nameserver_state> _n;
@@ -600,10 +603,15 @@ public:
 
   inline bool operator==(uint32_t i) const; 
 
-  void query(request q, const event<int, reply> &e) {
+  inline void query(request q, const event<int, reply> &e) {
+    if (_n)
       _n->query(q, e);
   }
-  //inline void probe(const event<> &e);
+
+  inline void probe(const event<> &e) {
+    if (_n)
+      _n->probe(e);
+  }
 };
 
 inline nameserver::nameserver()

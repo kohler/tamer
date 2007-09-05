@@ -294,37 +294,49 @@ tamed void nameserver::nameserver_state::loop(bool tcp, event<int> e) {
     reply p; request q;
     std::map<uint16_t, event<int, reply> >::iterator it;
     passive_ref_ptr<nameserver_state> hold(this);
-    event<> _pump_;
+    event<> _pump_, _kill_;
   }
 
   addr.s_addr = _addr;
   e.at_trigger(make_event(z));
   if (tcp)
     fdx::tcp_connect(addr, _port, make_event(z, socket));
-  else
+  else {
     fdx::udp_connect(addr, _port, make_event(z, socket));
+    // try tcp!
+    if (!socket) {
+      tcp = true;
+      fdx::tcp_connect(addr, _port, make_event(z, socket));
+    }
+  }
   twait(z);
   
   if (!e)
     return;
   e.trigger(socket.error());
-  
+  if (!socket)
+    return;
+
   alive = true;
+  if (_state == DEAD)
+    _state = ALIVE;
   _pump = make_event(r, (int)SEND, request());
   _kill = make_event(r, (int)KILL, request());
  
-  while (alive || r.nevents()) {
+  while (alive || r.nevents() > 2) {
+    // _kill_ + _pump_ = 2
     twait(r, i, q);
     switch (i) {
       case KILL:
         r.clear();
         for (it = _events.begin(); it != _events.end(); it++)
           it->second.trigger(-ECANCELED, reply());
+        _state = DEAD;
         return;
       case SEND:
         if (!alive)
           // we cannot make new events
-          // (i.e.) handle previous events, die gracefully
+          // i.e. handle previous events, die gracefully
           break;
         while (_reqs.size()) {
           _reqs.front().send(socket, tcp,
@@ -358,26 +370,26 @@ tamed void nameserver::nameserver_state::loop(bool tcp, event<int> e) {
             _events.erase(q.trans_id());
           } else if (!tcp && p.error() == DNS_ERR_TRUNCATED) {
             alive = false;
+            // keep temporary a pump and kill
+            // inorder to prevent event leaks due to 
+            // unreferenced events after the switch
+            // (Eddie I emailed you about this)
             _pump_ = _pump;
+            _kill_ = _kill;
             twait{ loop(true, make_event(i)); }
             if (i) {
+              // failed to create new tcp conn.
               _events[q.trans_id()].trigger(0, p);
               _events.erase(q.trans_id());
-              _pump = _pump_;
             } else {
               // push to the front of the queue
               // and try with new shiny tcp connection
               _reqs.push_front(q);
-              // if you have a better way of 
-              // clearing 'pump' without calling
-              // r.clear() (doing so would result in 
-              // an ungraceful death) let me know as
-              // it would remove the need for 
-              // 'bool alive'
-              _pump_.trigger();
+              _pump.trigger();
             }
-            _pump.trigger();
           } else {
+            if (_state == PROBING)
+              _state = ALIVE;
             _timeouts = 0;
             _events[q.trans_id()].trigger(0, p);
             _events.erase(q.trans_id());
@@ -386,9 +398,13 @@ tamed void nameserver::nameserver_state::loop(bool tcp, event<int> e) {
         break;
     }
   }
+  // this code is reached only if a switch to tcp
+  // occurs due to DNS_ERR_TRUNCATE
+  assert(alive == false && r.nwaiting() == 2);
+  // prevent leak of _pump_ & _kill_
+  r.clear(); 
 }
 
-/*
 tamed void nameserver::nameserver_state::probe(event<> e) {
   tvars { int i (), j(); reply p;
       passive_ref_ptr<nameserver_state> hold(this);
@@ -399,25 +415,22 @@ tamed void nameserver::nameserver_state::probe(event<> e) {
 
   const static int tvals[] = {10, 60, 300, 900, 3600};
   
+  _state = PROBING;
+
   while (!*this) {
-    if (_conn == DNS_QUERY_UDP)
-      twait { loop_tcp(make_event()); }
-    else {
-      twait { loop_udp(make_event()); }
-      i++;
-    }
-
-    if (!*this) continue; 
+    twait { at_delay_sec(tvals[i], make_event()); }
+    twait { loop(false, make_event(j)); }
+    i++;
+    if (j) continue; // fail try again later 
     
-    twait { query(q.reissue(tvals[i]), tvals[i], make_event(j, p)); }
+    // Dirty: get_trans_id is out of scope, tvals[i] is used
+    // as trans_id 
+    twait { query(q.reissue(tvals[i]), make_event(j, p)); }
     
-    if (!j || !p) continue;
-    if (i == 5) break;
+    if (i == 4) break;
   }
-
   e.trigger();
 }
-*/
 
 tamed void resolver::resolver_state::parse_loop() {
   tvars { rendezvous<> r; }
@@ -543,7 +556,7 @@ tamed void resolver::resolver_state::failed(nameserver ns) {
   nameservers.remove(ns);
   nameservers_failed.push_back(ns);
 
-  //twait { ns.probe(make_event()); }
+  twait { ns.probe(make_event()); }
   
   nameservers_failed.remove(ns);
 
