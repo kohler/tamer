@@ -166,8 +166,11 @@ Triggering an active event makes it
 triggering an empty event has no effect.
 .LP
 Tamer automatically triggers an active event when its last reference goes
-out of scope.  This case is considered a programming error, however, and a
-message is printed to indicate the abnormal trigger.
+out of scope.  This case is considered a programming error, however, and an
+"avoided leak" message is printed to indicate the abnormal trigger.
+Explicitly calling
+.B rendezvous::clear
+on the event's rendezvous will avoid the message.
 '
 .SS "Wait Points and Rendezvous"
 .LP
