@@ -13,7 +13,6 @@ libtamer_la_SOURCES = \
 	dsignal.cc \
 	event.hh \
 	fd.hh fd.tt \
-	fdh.hh fdh.tt \
 	dns.hh dns.tt \
 	lock.hh lock.tt \
 	ref.hh \
@@ -48,10 +47,9 @@ TAMER = ../compiler/tamer
 	$(TAMER) -o $@ -c $< || (rm $@ && false)
 
 fd.cc: $(TAMER) fd.tt
-fdh.cc: $(TAMER) fdh.tt
 dns.cc: $(TAMER) dns.tt
 lock.cc: $(TAMER) lock.tt
 bufferedio.cc: $(TAMER) bufferedio.tt
 
 clean-local:
-	-rm -f lock.cc fd.cc fdh.cc dns.cc bufferedio.cc
+	-rm -f lock.cc fd.cc dns.cc bufferedio.cc
