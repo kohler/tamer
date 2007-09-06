@@ -266,9 +266,11 @@ parse_state_t::new_nonblock (tame_nonblock_t *b)
 void
 tame_fn_t::add_env (tame_env_t *e)
 {
-  _envs.push_back (e); 
-  if (e->is_jumpto ()) 
-    e->set_id (++_n_labels);
+    _envs.push_back(e); 
+    if (e->is_jumpto()) 
+	e->set_id(++_n_labels);
+    if (e->is_volatile())
+	_any_volatile_envs = true;
 }
 
 cpp_initializer_t::cpp_initializer_t(const lstr &v)
@@ -945,6 +947,8 @@ tame_block_ev_t::output(outputter_t *o)
   b << "  do { ";
   if (tamer_debug)
       b << TAME_CLOSURE_NAME ".tamer_debug_closure::set_block_landmark(__FILE__, __LINE__); ";
+  if (_fn->any_volatile_envs())
+      b << TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".set_volatile(" << _isvolatile << "); ";
   b << "do {\n#define make_event(...) make_event(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n    tamer::gather_rendezvous::clearer " TWAIT_BLOCK_RENDEZVOUS "_clear(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ");\n";
   o->output_str(b.str());
 

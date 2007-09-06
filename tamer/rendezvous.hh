@@ -21,8 +21,13 @@ namespace tamer {
 template <typename I0, typename I1>
 class rendezvous : public tamerpriv::abstract_rendezvous { public:
 
-    /** @brief  Default constructor creates a fresh rendezvous. */
-    inline rendezvous();
+    /** @brief  Default constructor creates a fresh rendezvous.
+     *  @param  flags  tamer::rnormal (default) or tamer::rvolatile
+     *
+     *  Pass tamer::rvolatile as the @a flags parameter to create a volatile
+     *  rendezvous.  Volatile rendezvous do not generate error messages when
+     *  their events are dereferenced before trigger. */
+    inline rendezvous(rendezvous_flags flags = rnormal);
 
     /** @brief  Report how many events are ready.
      *  @return  The number of ready events.
@@ -95,7 +100,8 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
 };
 
 template <typename I0, typename I1>
-rendezvous<I0, I1>::rendezvous()
+rendezvous<I0, I1>::rendezvous(rendezvous_flags flags)
+    : abstract_rendezvous(flags)
 {
 }
 
@@ -137,7 +143,7 @@ inline void rendezvous<I0, I1>::clear()
 template <typename I0>
 class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
 
-    inline rendezvous();
+    inline rendezvous(rendezvous_flags flags = rnormal);
     
     inline bool join(I0 &);
     inline void clear();
@@ -156,7 +162,8 @@ class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
 };
 
 template <typename I0>
-rendezvous<I0, void>::rendezvous()
+rendezvous<I0, void>::rendezvous(rendezvous_flags flags)
+    : abstract_rendezvous(flags)
 {
 }
 
@@ -195,7 +202,7 @@ void rendezvous<I0, void>::clear()
 template <>
 class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
 
-    inline rendezvous();
+    inline rendezvous(rendezvous_flags flags = rnormal);
 
     inline bool join(uintptr_t &);
     inline void clear();
@@ -214,8 +221,8 @@ class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
     
 };
 
-inline rendezvous<uintptr_t>::rendezvous()
-    : _nwaiting(0)
+inline rendezvous<uintptr_t>::rendezvous(rendezvous_flags flags)
+    : abstract_rendezvous(flags), _nwaiting(0)
 {
 }
 
@@ -255,7 +262,9 @@ class rendezvous<T *> : public rendezvous<uintptr_t> { public:
 
     typedef rendezvous<uintptr_t> inherited;
 
-    rendezvous() { }
+    rendezvous(rendezvous_flags flags = rnormal)
+	: inherited(flags) {
+    }
 
     inline void add(tamerpriv::simple_event *e, T *i0) throw () {
 	inherited::add(e, reinterpret_cast<uintptr_t>(i0));
@@ -278,7 +287,9 @@ class rendezvous<int> : public rendezvous<uintptr_t> { public:
 
     typedef rendezvous<uintptr_t> inherited;
 
-    rendezvous() { }
+    rendezvous(rendezvous_flags flags = rnormal)
+	: inherited(flags) {
+    }
 
     inline void add(tamerpriv::simple_event *e, int i0) throw () {
 	inherited::add(e, static_cast<uintptr_t>(i0));
@@ -301,7 +312,9 @@ class rendezvous<bool> : public rendezvous<uintptr_t> { public:
 
     typedef rendezvous<uintptr_t> inherited;
 
-    rendezvous() { }
+    rendezvous(rendezvous_flags flags = rnormal)
+	: inherited(flags) {
+    }
 
     inline void add(tamerpriv::simple_event *e, bool i0) throw () {
 	inherited::add(e, static_cast<uintptr_t>(i0));
@@ -322,7 +335,9 @@ class rendezvous<bool> : public rendezvous<uintptr_t> { public:
 template <>
 class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 
-    rendezvous() : _nwaiting(0), _nready(0) { }
+    rendezvous(rendezvous_flags flags = rnormal)
+	: abstract_rendezvous(flags), _nwaiting(0), _nready(0) {
+    }
 
     inline void add(tamerpriv::simple_event *e) throw () {
 	_nwaiting++;

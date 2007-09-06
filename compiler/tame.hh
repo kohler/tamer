@@ -1,5 +1,5 @@
 // -*-c++-*-
-/* $Id: tame.hh,v 1.12 2007-06-11 21:32:28 kohler Exp $ */
+/* $Id: tame.hh,v 1.13 2007-09-06 01:01:07 kohler Exp $ */
 
 /*
  *
@@ -218,11 +218,12 @@ class element_list_t : public tame_el_t {
 
 class tame_env_t : public element_list_t {
 public:
-  virtual void output(outputter_t *o) { element_list_t::output(o); }
-  virtual bool is_jumpto () const { return false; }
-  virtual void set_id (int) {}
-  virtual int id () const { return 0; }
-  virtual bool needs_counter () const { return false; }
+    virtual void output(outputter_t *o) { element_list_t::output(o); }
+    virtual bool is_jumpto() const { return false; }
+    virtual bool is_volatile() const { return false; }
+    virtual void set_id (int) {}
+    virtual int id () const { return 0; }
+    virtual bool needs_counter () const { return false; }
 };
 
 class tame_fn_t; 
@@ -451,6 +452,7 @@ class tame_fn_t : public element_list_t {
 	  _the_closure(0),
 	  _declaration_only(false),
 	  _args(d->params()), 
+	  _any_volatile_envs(false),
 	  _opts(fn._opts),
 	  _lineno(l),
 	  _n_labels(0),
@@ -471,7 +473,11 @@ class tame_fn_t : public element_list_t {
     void set_declaration_only() {
 	_declaration_only = true;
     }
-    
+
+    bool any_volatile_envs() const {
+	return _any_volatile_envs;
+    }
+
     void push_hook(tame_el_t *el) {
 	if (el->goes_after_vars())
 	    _after_vars_el_encountered = true;
@@ -557,6 +563,7 @@ class tame_fn_t : public element_list_t {
     vartab_t _stack_vars;
     vartab_t _class_vars_tmp;
     std::vector<tame_env_t *> _envs;
+    bool _any_volatile_envs;
 
     void output_reenter(strbuf &b);
     void output_closure(outputter_t *o);
@@ -704,6 +711,7 @@ public:
   
     void output(outputter_t *o);
     bool is_jumpto() const { return true; }
+    bool is_volatile() const { return _isvolatile; }
     void set_id(int i) { _id = i; }
     int id() const { return _id; }
     void add_class_var(const var_t &v) { _class_vars.add (v); }

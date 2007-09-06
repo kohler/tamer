@@ -21,7 +21,7 @@ tamer \- C++ extensions for event-driven programming
 }
 .sp
 class rendezvous<I0, I1> { public:
-    rendezvous();
+    rendezvous(rendezvous_flags \fIflags\fB = rnormal);
     unsigned nevents() const;
     unsigned nready() const;
     unsigned nwaiting() const;
@@ -47,6 +47,7 @@ tamed void user_function(...) {
 }
 .sp
 twait { ... }
+twait volatile { ... }
 .sp
 twait(rendezvous<I0, I1> &\fIrendezvous\fB, I0 &\fIi0\fB, I1 &\fIi1\fB);
 twait(rendezvous<I0> &\fIrendezvous\fB, I0 &\fIi0\fB);
@@ -94,7 +95,7 @@ occurs using a
 .B twait
 special form.  For example, this function uses
 .B Tamer
-to print "Done!" after 10 seconds have elapsed.  During that 10 seconds,
+to print \*(lqDone!\*(rq after 10 seconds have elapsed.  During that 10 seconds,
 the function blocks, allowing other application code to continue
 processing.
 .sp
@@ -167,10 +168,11 @@ triggering an empty event has no effect.
 .LP
 Tamer automatically triggers an active event when its last reference goes
 out of scope.  This case is considered a programming error, however, and an
-"avoided leak" message is printed to indicate the abnormal trigger.
+\*(lqavoided leak\*(rq message is printed to indicate the abnormal trigger.
 Explicitly calling
 .B rendezvous::clear
-on the event's rendezvous will avoid the message.
+on the event's rendezvous will avoid the message, as will using a volatile
+rendezvous.
 '
 .SS "Wait Points and Rendezvous"
 .LP
@@ -315,6 +317,13 @@ If one exists, it is dequeued and returned.  Otherwise, the function blocks
 at that wait point; it will unblock and recheck the rendezvous once someone
 triggers a corresponding event.  The top-level event loop cycles through
 unblocked functions, calling them in some order.
+.LP
+.I Volatile
+rendezvous do not generate \*(lqavoided leak of active event\*(rq messages.
+Create a volatile rendezvous either by passing
+.B tamer::rvolatile
+to the rendezvous constructor, or with a \*(lq\fBtwait volatile {}\fR\*(rq
+block.
 .LP
 Multiple functions cannot simultaneously block on the same rendezvous.
 .SS "Safe Local Variables"
@@ -462,6 +471,13 @@ assignable.
 .fi
 .RS 5
 Creates a new rendezvous with no outstanding events.
+.RE
+.sp
+.nf
+.B rendezvous<I*>::rendezvous(tamer::rvolatile)
+.fi
+.RS 5
+Creates a new volatile rendezvous with no outstanding events.
 .RE
 .sp
 .nf

@@ -129,7 +129,9 @@ void event_prematurely_dereferenced(simple_event *, abstract_rendezvous *r) {
     tamer_closure *c = r->linked_closure();
     const char *file;
     unsigned line;
-    if (c && c->block_landmark(file, line))
+    if (r->is_volatile())
+	/* no error message */;
+    else if (c && c->block_landmark(file, line))
 	fprintf(stderr, "%s:%d: avoided leak of active event\n", file, line);
     else
 	fprintf(stderr, "avoided leak of active event\n");

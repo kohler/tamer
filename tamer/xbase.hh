@@ -39,6 +39,11 @@ class tamer_error : public std::runtime_error { public:
 struct no_slot {
 };
 
+enum rendezvous_flags {
+    rnormal,
+    rvolatile
+};
+
 namespace tamerpriv {
 
 class simple_event;
@@ -147,9 +152,9 @@ class simple_event { public:
 
 class abstract_rendezvous { public:
 
-    abstract_rendezvous()
+    abstract_rendezvous(rendezvous_flags flags = rnormal)
 	: _events(0), _unblocked_next(0), _unblocked_prev(0),
-	  _blocked_closure(0) {
+	  _blocked_closure(0), _flags(flags) {
     }
     
     virtual inline ~abstract_rendezvous();
@@ -160,6 +165,14 @@ class abstract_rendezvous { public:
     
     virtual bool is_distribute() const {
 	return false;
+    }
+
+    bool is_volatile() const {
+	return _flags == rvolatile;
+    }
+
+    void set_volatile(bool v) {
+	_flags = (v ? rvolatile : rnormal);
     }
 
     virtual tamer_closure *linked_closure() const {
@@ -200,6 +213,7 @@ class abstract_rendezvous { public:
     abstract_rendezvous *_unblocked_prev;
     tamer_closure *_blocked_closure;
     unsigned _blocked_closure_blockid;
+    rendezvous_flags _flags;
 
     abstract_rendezvous(const abstract_rendezvous &);
     abstract_rendezvous &operator=(const abstract_rendezvous &);

@@ -75,16 +75,26 @@ namespace tamer {
  *
  *  Tamer automatically triggers any active event when the last reference to
  *  its underlying occurrence is deleted.  As with bind_all(), the values in
- *  the trigger slots are not changed.  Leaking an active event is considered
- *  a programming error, and a message will be printed at run time to indicate
- *  that an event triggered abnormally.  For example, the following code:
+ *  the trigger slots are not changed.  Leaking an active event is usually
+ *  considered a programming error, and a message is printed at run time to
+ *  indicate that an event triggered abnormally.  For example, the following
+ *  code:
  *
  *  @code
  *     twait { (void) make_event(); }
  *  @endcode
  *
  *  will print a message like "<tt>ex4.tt:11: avoided leak of active
- *  event</tt>".  Deleting the last reference to an empty event is not an
+ *  event</tt>".  However, it is sometimes convenient to rely on this
+ *  triggering behavior, so the error message is turned off for rendezvous
+ *  declared as volatile:
+ *
+ *  @code
+ *     twait volatile { (void) make_event(); }
+ *     tamer::rendezvous<> r(tamer::rvolatile);
+ *  @endcode
+ *
+ *  In any case, deleting the last reference to an empty event is not an
  *  error and does not produce an error message.
  *
  *  An event's <em>trigger notifiers</em> are triggered when the event itself
