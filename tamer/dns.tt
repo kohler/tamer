@@ -390,7 +390,7 @@ tamed void nameserver::nameserver_state::loop_tcp() {
     switch (i) {
       case KILL:
         r.clear();
-        //TODO BUG
+        // TODO BUG
         for (it = _events.begin(); it != _events.end(); it++)
           it->second.trigger(-ECANCELED, reply());
         socket.close();
@@ -398,18 +398,20 @@ tamed void nameserver::nameserver_state::loop_tcp() {
       case CLOSE:
         // tear down after keep-alive
         if (r.nevents())
-          //requests pending, try again later
-          at_delay_sec(3600, make_event(r, (int)CLOSE, request()));
+          // requests pending, try again later
+          at_delay_sec(DNS_TCP_KEEP_ALIVE, make_event(r, (int)CLOSE, 
+                request()));
         else
           socket.close();
         break;
       case SEND:
         if (!socket) {
-          //connect on demand
+          // connect on demand
           fdx::tcp_connect(addr, _port, make_event(z, socket));
-          //keep-alive
           twait(z);
-          at_delay_sec(3600, make_event(r, (int)CLOSE, request()));
+          // keep-alive
+          at_delay_sec(DNS_TCP_KEEP_ALIVE, make_event(r, (int)CLOSE, 
+                request()));
         }
         if (socket)
           while (_reqs_tcp.size()) {
@@ -420,7 +422,8 @@ tamed void nameserver::nameserver_state::loop_tcp() {
         else
           // can't connect
           while (_reqs_tcp.size()) {
-            //TODO is 0 appropriate?
+            // TODO is 0 appropriate?
+            // TODO should previous truncated result be sent instead?
             _events[_reqs_tcp.front().trans_id()].trigger(0, reply());
             _events.erase(_reqs_tcp.front().trans_id());
             _reqs_tcp.pop_front();
@@ -429,7 +432,7 @@ tamed void nameserver::nameserver_state::loop_tcp() {
         break;
       case RECV:
         if (issent) {
-          //TODO is 0 appropriate?
+          // TODO is 0 appropriate?
           _events[q.trans_id()].trigger(0, reply());
           _events.erase(q.trans_id());
         } else
@@ -439,22 +442,22 @@ tamed void nameserver::nameserver_state::loop_tcp() {
         break;
       case TRIGGER:
         off = 0;
-        // timeout can only imply one request
+        // timeout implies one request
         if (istimeout) {
-          //TODO should tcp timeouts be counted?
+          // TODO should tcp timeouts be counted?
           _events[q.trans_id()].trigger(-ETIMEDOUT, reply());
           _events.erase(q.trans_id());
         } else 
-        // there maybe more than one response/packet
+        // there may be more than one response/packet
           while ((size_t)off < size) {
-            //build reply
+            // build reply
             get16(packet, size, off, size_);
             p = reply(packet + off, size_);
             off += size_;
-            //handle reply
+            // handle reply
             _events[p.trans_id()].trigger(0, p);
             _events.erase(p.trans_id());
-            //TODO make sure we do not leave behind events
+            // TODO make sure we do not leave behind events
           }
         break;
     }

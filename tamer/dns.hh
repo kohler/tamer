@@ -11,6 +11,7 @@
 #include <list>
 
 #define DNS_TCP_ENABLED 1
+#define DNS_TCP_KEEP_ALIVE 3600
 #define DNS_REPARSE_TIME 600
 
 #define DNS_QUERY_UDP 0
@@ -154,7 +155,8 @@ class reply {
   
   reply_state * _p;
 
-  int name_parse(uint8_t * buf, int len, off_t &off, char * name, size_t size) const;
+  int name_parse(uint8_t * buf, int len, off_t &off, char * name, 
+      size_t size) const;
   int process(uint8_t * buf, int len);
 
 public:
@@ -563,7 +565,8 @@ class nameserver {
 #endif
 
     nameserver_state(uint32_t addr, int port, timeval timeout) 
-    : _state(DEAD), _timeouts(0), _timeout(timeout), _addr(addr), _port(port) {
+    : _state(DEAD), _timeouts(0), _timeout(timeout), _addr(addr), 
+        _port(port) {
     }
 
     ~nameserver_state() {
@@ -580,7 +583,6 @@ class nameserver {
       _kill_tcp.trigger();
 #endif 
     }     
-
 
 	void loop(event<int> e);
     class closure__loop__Qi_;
@@ -607,7 +609,8 @@ public:
   typedef ref_ptr<nameserver_state> nameserver::*unspecified_bool_type;
   
   inline nameserver();
-  inline nameserver(uint32_t addr, int port, timeval timeout, const event<int> &done);
+  inline nameserver(uint32_t addr, int port, timeval timeout, 
+      const event<int> &done);
   inline nameserver(const nameserver &ns);
   inline nameserver &operator=(const nameserver &ns);
   
@@ -636,9 +639,9 @@ inline nameserver::nameserver()
 inline nameserver::nameserver(uint32_t addr, int port, 
     timeval timeout, const event<int> &done)
   : _n(new nameserver_state(addr, port, timeout)) {
-	_n->loop(done);
+  _n->loop(done);
 #ifdef DNS_TCP_ENABLED
-    _n->loop_tcp();
+  _n->loop_tcp();
 #endif
 }
 
@@ -647,8 +650,8 @@ inline nameserver::nameserver(const nameserver &o) {
 }
 
 inline nameserver &nameserver::operator=(const nameserver &o) {
-    _n = o._n;
-    return *this;
+  _n = o._n;
+  return *this;
 }
 
 inline nameserver::operator unspecified_bool_type() const {
