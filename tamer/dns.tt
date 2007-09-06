@@ -281,34 +281,22 @@ tamed void nameserver::nameserver_state::query(request q, event<int, reply> e) {
   _pump.trigger();
 }
 
-tamed void nameserver::nameserver_state::loop(bool tcp, event<int> e) {
+tamed void nameserver::nameserver_state::loop(event<int> e) {
   enum query { KILL, SEND, RECV, TRIGGER };
   tvars {
     rendezvous<> z; 
     rendezvous<int, request> r;
-    bool alive;
     int i(), issent(), istimeout(); 
-    tamer::fd socket, socket_; struct in_addr addr;
+    tamer::fd socket; struct in_addr addr;
     uint8_t packet[1500]; size_t size;
-    uint16_t size_; off_t off;
     reply p; request q;
     std::map<uint16_t, event<int, reply> >::iterator it;
     passive_ref_ptr<nameserver_state> hold(this);
-    event<> _pump_, _kill_;
   }
 
   addr.s_addr = _addr;
   e.at_trigger(make_event(z));
-  if (tcp)
-    fdx::tcp_connect(addr, _port, make_event(z, socket));
-  else {
-    fdx::udp_connect(addr, _port, make_event(z, socket));
-    // try tcp!
-    if (!socket) {
-      tcp = true;
-      fdx::tcp_connect(addr, _port, make_event(z, socket));
-    }
-  }
+  fdx::udp_connect(addr, _port, make_event(z, socket));
   twait(z);
   
   if (!e)
@@ -317,14 +305,12 @@ tamed void nameserver::nameserver_state::loop(bool tcp, event<int> e) {
   if (!socket)
     return;
 
-  alive = true;
   if (_state == DEAD)
     _state = ALIVE;
   _pump = make_event(r, (int)SEND, request());
   _kill = make_event(r, (int)KILL, request());
  
-  while (alive || r.nevents() > 2) {
-    // _kill_ + _pump_ = 2
+  for(;;) {
     twait(r, i, q);
     switch (i) {
       case KILL:
@@ -332,14 +318,11 @@ tamed void nameserver::nameserver_state::loop(bool tcp, event<int> e) {
         for (it = _events.begin(); it != _events.end(); it++)
           it->second.trigger(-ECANCELED, reply());
         _state = DEAD;
+        socket.close();
         return;
       case SEND:
-        if (!alive)
-          // we cannot make new events
-          // i.e. handle previous events, die gracefully
-          break;
         while (_reqs.size()) {
-          _reqs.front().send(socket, tcp,
+          _reqs.front().send(socket, DNS_QUERY_UDP,
               make_event(r, (int)RECV, _reqs.front(), issent));
           _reqs.pop_front();
         }
@@ -355,55 +338,129 @@ tamed void nameserver::nameserver_state::loop(bool tcp, event<int> e) {
                 make_event(r, (int)TRIGGER, q, i), istimeout));
         break;
       case TRIGGER:
-        off = 0;
-        size_ = size;
-        do {
-          //build reply
-          if (tcp)
-            get16(packet, size, off, size_);
-          p = reply(packet + off, size_);
-          off += size_;
-          //handle reply
-          if (istimeout) {
-            _timeouts++;
-            _events[q.trans_id()].trigger(-ETIMEDOUT, reply());
-            _events.erase(q.trans_id());
-          } else if (!tcp && p.error() == DNS_ERR_TRUNCATED) {
-            alive = false;
-            // keep temporary a pump and kill
-            // inorder to prevent event leaks due to 
-            // unreferenced events after the switch
-            // (Eddie I emailed you about this)
-            _pump_ = _pump;
-            _kill_ = _kill;
-            twait{ loop(true, make_event(i)); }
-            if (i) {
-              // failed to create new tcp conn.
-              _events[q.trans_id()].trigger(0, p);
-              _events.erase(q.trans_id());
-            } else {
-              // push to the front of the queue
-              // and try with new shiny tcp connection
-              _reqs.push_front(q);
-              _pump.trigger();
-            }
-          } else {
-            if (_state == PROBING)
-              _state = ALIVE;
-            _timeouts = 0;
-            _events[q.trans_id()].trigger(0, p);
-            _events.erase(q.trans_id());
-          }
-        } while (tcp && (size_t)off < size);
+        p = reply(packet, size);
+        if (istimeout) {
+          _timeouts++;
+          _events[q.trans_id()].trigger(-ETIMEDOUT, reply());
+          _events.erase(q.trans_id());
+#ifdef DNS_TCP_ENABLED
+        } else if (p.error() == DNS_ERR_TRUNCATED) {
+          _reqs_tcp.push_back(q);
+          _pump_tcp.trigger();
+#endif
+        } else {
+          if (_state == PROBING)
+            _state = ALIVE;
+          _timeouts = 0;
+          _events[q.trans_id()].trigger(0, p);
+          _events.erase(q.trans_id());
+        }
         break;
     }
   }
-  // this code is reached only if a switch to tcp
-  // occurs due to DNS_ERR_TRUNCATE
-  assert(alive == false && r.nwaiting() == 2);
-  // prevent leak of _pump_ & _kill_
-  r.clear(); 
 }
+
+#ifdef DNS_TCP_ENABLED
+
+tamed void nameserver::nameserver_state::loop_tcp() {
+  // TODO BUG!! read_once events can accumulate since several tcp responses 
+  // can be grouped into one packet! this will cause the timeout portion of 
+  // TRIGGER to be accessed unnecessarily!
+
+  enum query { CLOSE, KILL, SEND, RECV, TRIGGER };
+  tvars {
+    rendezvous<> z; 
+    rendezvous<int, request> r;
+    int i(), issent(), istimeout(); 
+    tamer::fd socket; struct in_addr addr;
+    uint8_t packet[1500]; size_t size;
+    uint16_t size_; off_t off;
+    reply p; request q;
+    std::map<uint16_t, event<int, reply> >::iterator it;
+    passive_ref_ptr<nameserver_state> hold(this);
+  }
+  
+  addr.s_addr = _addr;
+
+  _pump_tcp = make_event(r, (int)SEND, request());
+  _kill_tcp = make_event(r, (int)KILL, request());
+ 
+  for (;;) {  
+    twait(r, i, q);
+    switch (i) {
+      case KILL:
+        r.clear();
+        //TODO BUG
+        for (it = _events.begin(); it != _events.end(); it++)
+          it->second.trigger(-ECANCELED, reply());
+        socket.close();
+        return;
+      case CLOSE:
+        // tear down after keep-alive
+        if (r.nevents())
+          //requests pending, try again later
+          at_delay_sec(3600, make_event(r, (int)CLOSE, request()));
+        else
+          socket.close();
+        break;
+      case SEND:
+        if (!socket) {
+          //connect on demand
+          fdx::tcp_connect(addr, _port, make_event(z, socket));
+          //keep-alive
+          twait(z);
+          at_delay_sec(3600, make_event(r, (int)CLOSE, request()));
+        }
+        if (socket)
+          while (_reqs_tcp.size()) {
+            _reqs_tcp.front().send(socket, DNS_QUERY_TCP,
+                make_event(r, (int)RECV, _reqs_tcp.front(), issent));
+            _reqs_tcp.pop_front();
+          }
+        else
+          // can't connect
+          while (_reqs_tcp.size()) {
+            //TODO is 0 appropriate?
+            _events[_reqs_tcp.front().trans_id()].trigger(0, reply());
+            _events.erase(_reqs_tcp.front().trans_id());
+            _reqs_tcp.pop_front();
+          }
+        _pump_tcp = make_event(r, (int)SEND, request());
+        break;
+      case RECV:
+        if (issent) {
+          //TODO is 0 appropriate?
+          _events[q.trans_id()].trigger(0, reply());
+          _events.erase(q.trans_id());
+        } else
+          socket.read_once(packet, 1500, size, 
+              with_timeout(_timeout,
+                make_event(r, (int)TRIGGER, q, i), istimeout));
+        break;
+      case TRIGGER:
+        off = 0;
+        // timeout can only imply one request
+        if (istimeout) {
+          //TODO should tcp timeouts be counted?
+          _events[q.trans_id()].trigger(-ETIMEDOUT, reply());
+          _events.erase(q.trans_id());
+        } else 
+        // there maybe more than one response/packet
+          while ((size_t)off < size) {
+            //build reply
+            get16(packet, size, off, size_);
+            p = reply(packet + off, size_);
+            off += size_;
+            //handle reply
+            _events[p.trans_id()].trigger(0, p);
+            _events.erase(p.trans_id());
+            //TODO make sure we do not leave behind events
+          }
+        break;
+    }
+  }
+}
+#endif
 
 tamed void nameserver::nameserver_state::probe(event<> e) {
   tvars { int i (), j(); reply p;
@@ -419,7 +476,7 @@ tamed void nameserver::nameserver_state::probe(event<> e) {
 
   while (!*this) {
     twait { at_delay_sec(tvals[i], make_event()); }
-    twait { loop(false, make_event(j)); }
+    twait { loop(make_event(j)); }
     i++;
     if (j) continue; // fail try again later 
     
@@ -474,7 +531,6 @@ tamed void resolver::resolver_state::pump() {
             case DNS_ERR_NONE:
               pop(p);
               break;
-              //break;
             case DNS_ERR_SERVERFAILED:
             case DNS_ERR_NOTIMPL:
             case DNS_ERR_REFUSED:

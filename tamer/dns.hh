@@ -10,6 +10,7 @@
 #include <map>
 #include <list>
 
+#define DNS_TCP_ENABLED 1
 #define DNS_REPARSE_TIME 600
 
 #define DNS_QUERY_UDP 0
@@ -549,11 +550,17 @@ class nameserver {
     uint32_t _addr;
     int _port;
 
-    std::list<request> _reqs;
     std::map<uint16_t, event<int, reply> > _events;
     
+    std::list<request> _reqs;
     event<> _pump;
     event<> _kill;
+
+#ifdef DNS_TCP_ENABLED
+    std::list<request> _reqs_tcp;
+    event<> _pump_tcp;
+    event<> _kill_tcp;
+#endif
 
     nameserver_state(uint32_t addr, int port, timeval timeout) 
     : _state(DEAD), _timeouts(0), _timeout(timeout), _addr(addr), _port(port) {
@@ -569,18 +576,27 @@ class nameserver {
 
     void full_release() {
       _kill.trigger();
+#ifdef DNS_TCP_ENABLED
+      _kill_tcp.trigger();
+#endif 
     }     
 
-	void loop(bool tcp, event<int> e);
-    void query(request q, event<int, reply> e);
-	void probe(event<> e);
-	
-    class closure__loop__bQi_;
-    void loop(closure__loop__bQi_&, unsigned);
 
+	void loop(event<int> e);
+    class closure__loop__Qi_;
+    void loop(closure__loop__Qi_ &, unsigned);
+
+#ifdef DNS_TCP_ENABLED
+    void loop_tcp();
+    class closure__loop_tcp;
+    void loop_tcp(closure__loop_tcp &, unsigned);
+#endif
+
+    void query(request q, event<int, reply> e);
     class closure__query__7requestQi5reply_; 
     void query(closure__query__7requestQi5reply_ &, unsigned);
     
+	void probe(event<> e);
     class closure__probe__Q_; 
     void probe(closure__probe__Q_ &, unsigned);
   };
@@ -617,11 +633,13 @@ public:
 inline nameserver::nameserver()
   : _n() {
 }
-
 inline nameserver::nameserver(uint32_t addr, int port, 
     timeval timeout, const event<int> &done)
   : _n(new nameserver_state(addr, port, timeout)) {
-	_n->loop(false, done);
+	_n->loop(done);
+#ifdef DNS_TCP_ENABLED
+    _n->loop_tcp();
+#endif
 }
 
 inline nameserver::nameserver(const nameserver &o) {
@@ -654,13 +672,6 @@ inline void nameserver::set_timeout(timeval timeout) {
     _n->_timeout = timeout;
 }
 
-/*
-inline void nameserver::probe(const event<> &e) {
-  if (_n)
-    _n->probe(e);
-}
-*/
-	
 class resolver {
   struct resolver_state
     : public enable_ref_ptr_with_full_release<resolver_state> {
