@@ -1,8 +1,5 @@
 bin_PROGRAMS = tamerfdh
 
-#fdtest_SOURCES  = fdtest.cc fdhmsg.hh fdhmsg.cc
-#fdtest_CPPFLAGS = $(AM_CPPFLAGS)
-
 tamerfdh_SOURCES = fdhelp.cc fdhmsg.hh fdhmsg.cc
 tamerfdh_CPPFLAGS = $(AM_CPPFLAGS)
 
