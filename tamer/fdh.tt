@@ -1,0 +1,236 @@
+#include <tamer/fdh.hh>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <tamer/tamer.hh>
+
+namespace tamer {
+
+fdh::fdh_state::fdh_state() {
+  int socks[2];
+
+
+  if (::socketpair(AF_UNIX, SOCK_STREAM, 0, socks) < 0) {
+    _fd = -1;
+    return;
+  }
+
+  _fd = socks[0];
+  _pid = ::fork();
+
+  if (_pid < 0) {
+    ::close(socks[0]);
+    ::close(socks[1]);
+    return;
+  } else if (_pid == 0) {
+    ::close(socks[0]);
+    if (::dup2(socks[1], 0) < 0)
+      goto child_err;
+    if (::execv("../tamer/tamerfdh", NULL) < 0)
+      goto child_err;
+child_err:
+    ::close(socks[1]);
+    exit(0);
+  }
+  
+  ::close(socks[1]);
+  
+  make_nonblocking();
+}
+
+fdh::fdh_state::fdh_state(int fd, pid_t pid)
+  : _fd(fd), _pid(pid) {
+  if (*this)
+    make_nonblocking();    
+}
+
+int fdh::fdh_state::make_nonblocking() {
+  int flags = 1;
+  if (::ioctl(_fd, FIONBIO, &flags) == 0)
+    return 0;
+  flags = ::fcntl(_fd, F_GETFL);
+  if (flags < 0)
+    return flags;
+  return ::fcntl(_fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+tamed void fdh::fdh_state::send(int fd, char * buf, size_t size, event<int> done) {
+  tvars { int amt; }
+  
+  while (done) {//TODO check fd
+    amt = ::fdh_send(_fd, fd, buf, size);
+    if (amt == (ssize_t)size)
+      break;
+    else if (amt >= 0) {//TODO allow partial writes?
+      perror("fdh: open: partial write");
+      done.trigger(-1);
+      return;
+    } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      twait { tamer::at_fd_write(_fd, make_event()); }
+    } else if (errno != EINTR) {
+      perror("fdh: open: send");
+      done.trigger(-errno);
+      return;
+    }
+  }
+  
+  done.trigger(0);
+}
+
+tamed void fdh::fdh_state::recv(int * fd, char * buf, size_t size, event<int> done) {
+  tvars { int amt; }
+  
+  while (done) {
+    amt = ::fdh_recv(_fd, fd, buf, size);
+    if (amt > 0) 
+      break;
+    else if (amt == 0)
+      continue;
+    else if (errno == EAGAIN || errno == EWOULDBLOCK)
+      twait { tamer::at_fd_read(_fd, make_event()); }
+    else if (errno != EINTR) {
+      perror("fdh: open: recv");
+      done.trigger(-errno);
+      return;
+    }
+  }
+  
+  done.trigger(0);
+}
+
+tamed void fdh::fdh_state::kill(event<> done) {
+  tvars { int fdo, r; }
+
+  twait { _lock.acquire(make_event()); }
+
+  _msg.query.req = FDH_KILL;
+  
+  twait { send(-1, _buf, FDH_MSG_SIZE, make_event(r)); }
+  
+  done.trigger();  
+
+  _lock.release();
+}
+
+tamed void fdh::fdh_state::clone(event<fdh> done) {
+  tvars { int fdo, r; }
+
+  twait { _lock.acquire(make_event()); }
+
+  _msg.query.req = FDH_KILL;
+  
+  twait { send(-1, _buf, FDH_MSG_SIZE, make_event(r)); }
+  if (r) {
+    done.trigger(fdh(-1,-1));
+    goto release;
+  }
+  twait { recv(&fdo, _buf, FDH_MSG_SIZE, make_event(r)); }
+
+  if (r)
+    done.trigger(fdh(-1,-1));
+  else
+    done.trigger((_msg.reply.err) ? fdh(-1,-1) : 
+        fdh(_msg.reply.pid, fdo));
+
+release:
+  _lock.release();
+}   
+
+tamed void fdh::fdh_state::open(std::string fname, int flags, mode_t mode, event<int> fd) {
+  tvars { int fdo, r; }
+
+  twait { _lock.acquire(make_event()); } // since only one buf
+
+  _msg.query.req = FDH_OPEN;
+  _msg.query.flags =  flags;
+  _msg.query.mode = mode;
+  strcpy(&_buf[FDH_MSG_SIZE], fname.c_str());
+  
+  twait { send(-1, _buf, FDH_MSG_SIZE + fname.length() + 1, make_event(r)); }
+  if (r) {
+    fd.trigger(r);
+    goto release;
+  }
+  twait { recv(&fdo, _buf, FDH_MSG_SIZE, make_event(r)); }
+
+  if (r)
+    fd.trigger(r);
+  else
+    fd.trigger((_msg.reply.err) ? -_msg.reply.err : fdo);
+
+release:
+  _lock.release();
+}
+
+tamed void fdh::fdh_state::fstat(int fd, struct stat & stat_out, event<int> done) {
+  tvars { int r; }
+  
+  twait { _lock.acquire(make_event()); }
+
+  _msg.query.req = FDH_STAT;
+  
+  twait { send(fd, _buf, FDH_MSG_SIZE, make_event(r)); }
+  if (r) {
+    done.trigger(r);
+    goto release;
+  }
+  twait { recv(NULL, _buf, FDH_MSG_SIZE + sizeof(struct stat), make_event(r)); }
+
+  if (r)
+    done.trigger(r);
+  else
+    if (_msg.reply.err)
+      done.trigger(-_msg.reply.err);
+    else {
+      done.trigger(0);
+      memcpy((void *)&stat_out, &_buf[FDH_MSG_SIZE], sizeof(struct stat));
+    }
+
+release:
+  _lock.release(); 
+}
+
+//returns new non blocked fd!
+//(in reality it returns _fd which is being sendfiled to by the helper)
+//TODO would it be better to have child return a brand new stream
+//    inorder to do away with the event release?
+//NOTE/ASSERTION: read must be called until size == amount received
+tamed void fdh::fdh_state::read(int fd, size_t size, event<int> fdo, event<> release) {
+  tvars { int r; }
+
+  twait { _lock.acquire(make_event()); }
+
+  _msg.query.req = FDH_READ;
+  _msg.query.size = size;
+
+  twait { send(fd, _buf, FDH_MSG_SIZE, make_event(r)); }
+  if (r)
+    fdo.trigger(r);
+  else
+    fdo.trigger(_fd);
+
+  twait { release.at_trigger(make_event()); }
+  _lock.release();
+}
+
+tamed void fdh::fdh_state::write(int fd, size_t size, event<int> fdi, event<> release) {
+  tvars { int r; }
+
+  twait { _lock.acquire(make_event()); }
+  
+  _msg.query.req = FDH_WRITE;
+  _msg.query.size = size; 
+
+  twait { send(fd, _buf, FDH_MSG_SIZE, make_event(r)); }
+  if (r)
+    fdi.trigger(r);
+  else
+    fdi.trigger(_fd);
+
+  twait { release.at_trigger(make_event()); }
+  _lock.release();
+}
+
+}

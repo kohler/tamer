@@ -1,6 +1,10 @@
 bin_PROGRAMS = tamerfdh
 
-tamerfdh_SOURCES = fdhelp.cc
+#fdtest_SOURCES  = fdtest.cc fdhmsg.hh fdhmsg.cc
+#fdtest_CPPFLAGS = $(AM_CPPFLAGS)
+
+tamerfdh_SOURCES = fdhelp.cc fdhmsg.hh fdhmsg.cc
+tamerfdh_CPPFLAGS = $(AM_CPPFLAGS)
 
 lib_LTLIBRARIES = libtamer.la
 libtamer_la_SOURCES = \
@@ -12,6 +16,8 @@ libtamer_la_SOURCES = \
 	dtamer.cc \
 	dsignal.cc \
 	event.hh \
+	fdmsg.hh fdhmsg.cc \
+	fdh.hh fdh.tt \
 	fd.hh fd.tt \
 	dns.hh dns.tt \
 	lock.hh lock.tt \
@@ -47,9 +53,10 @@ TAMER = ../compiler/tamer
 	$(TAMER) -o $@ -c $< || (rm $@ && false)
 
 fd.cc: $(TAMER) fd.tt
+fdh.cc: $(TAMER) fdh.tt
 dns.cc: $(TAMER) dns.tt
 lock.cc: $(TAMER) lock.tt
 bufferedio.cc: $(TAMER) bufferedio.tt
 
 clean-local:
-	-rm -f lock.cc fd.cc dns.cc bufferedio.cc
+	-rm -f lock.cc fd.cc fdh.cc dns.cc bufferedio.cc
