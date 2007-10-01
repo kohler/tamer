@@ -40,8 +40,8 @@ child_err:
   make_nonblocking();
 }
 
-fdh::fdh_state::fdh_state(int fd, pid_t pid)
-  : _fd(fd), _pid(pid) {
+fdh::fdh_state::fdh_state(pid_t pid, int fd)
+  : _pid(pid), _fd(fd) {
   if (*this)
     make_nonblocking();    
 }
@@ -119,7 +119,7 @@ tamed void fdh::fdh_state::clone(event<fdh> done) {
 
   twait { _lock.acquire(make_event()); }
 
-  _msg.query.req = FDH_KILL;
+  _msg.query.req = FDH_CLONE;
   
   twait { send(-1, _buf, FDH_MSG_SIZE, make_event(r)); }
   if (r) {
@@ -232,5 +232,4 @@ tamed void fdh::fdh_state::write(int fd, size_t size, event<int> fdi, event<> re
   twait { release.at_trigger(make_event()); }
   _lock.release();
 }
-
 }

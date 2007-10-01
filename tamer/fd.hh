@@ -206,7 +206,7 @@ class fd {
      *
      *  @a done is triggered with 0 on success, or a negative error code.
      */
-    void fstat(struct stat &stat, event<int> done);
+    inline void fstat(struct stat &stat, event<int> done);
 
     enum { default_backlog = 128 };
 
@@ -394,16 +394,18 @@ class fd {
     
     struct fdimp : public enable_ref_ptr_with_full_release<fdimp> {
 
-	int _fd;
+    int _fd;
 	mutex _rlock;
 	mutex _wlock;
 	event<> _at_close;
-	
+    bool _is_file;
+
 	fdimp(int fd)
-	    : _fd(fd) {
+	    : _fd(fd), _is_file(false) {
 	}
 	
-	void accept(struct sockaddr *addr, socklen_t *addrlen,
+	void fstat(struct stat &stat_out, event<int> done);
+    void accept(struct sockaddr *addr, socklen_t *addrlen,
 		    event<fd> result);
 	void connect(const struct sockaddr *addr, socklen_t addrlen,
 		     event<int> done);
@@ -429,6 +431,8 @@ class fd {
 
     };
 
+    class closure__open__PKci6mode_tQ2fd_; static void open(closure__open__PKci6mode_tQ2fd_ &, unsigned);
+    
     struct fdcloser;
     
     ref_ptr<fdimp> _p;
@@ -492,6 +496,14 @@ inline void fd::at_close(event<> e) {
 	_p->_at_close = distribute(_p->_at_close, e);
     else
 	e.trigger();
+}
+
+inline void fd::fstat(struct stat &stat_out, event<int> done) {
+  if (_p)
+    _p->fstat(stat_out, done);
+  else
+    done.trigger(-EBADF);
+
 }
 
 inline void fd::accept(struct sockaddr *addr, socklen_t *addrlen, event<fd> result) {

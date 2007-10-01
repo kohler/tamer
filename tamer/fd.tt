@@ -21,7 +21,11 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <tamer/tamer.hh>
+#include <tamer/fdh.hh>
+
 namespace tamer {
+
+fdhlist _fdhl;
 
 size_t fd::garbage_size;
 
@@ -46,19 +50,18 @@ event<> fd::closer()
 	return event<>();
 }
 
-void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
+tamed static void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
 {
-    int f = ::open(filename, flags | O_NONBLOCK, mode);
-    done.trigger(fd(f == -1 ? -errno : f));
+  tvars { int f(); fd nfd; }
+  twait { _fdhl.get().open(filename, flags | O_NONBLOCK, mode, make_event(f)); }
+  nfd = fd(f);
+  nfd._p->_is_file = true;
+  done.trigger(nfd);
 }
 
-void fd::fstat(struct stat &stat_out, event<int> done)
+void fd::fdimp::fstat(struct stat &stat_out, event<int> done)
 {
-    if (*this) {
-	int x = ::fstat(value(), &stat_out);
-	done.trigger(x == -1 ? -errno : 0);
-    } else
-	done.trigger(-EBADF);
+  _fdhl.get().fstat(_fd, stat_out, done);
 }
 
 tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> done)
@@ -67,30 +70,43 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
 	size_t pos = 0;
 	ssize_t amt;
 	passive_ref_ptr<fd::fdimp> hold(this);
+    int fd;
+    rendezvous<> r;
+    event<> e;
     }
     
     if (_fd < 0) {
 	done.trigger(-EBADF);
 	return;
     }
+    
+    fd = _fd;
+    if (_is_file) {
+      e = make_event(r);
+      twait { _fdhl.get().read(_fd, size, make_event(fd), e); }
+    }
 
     twait { _rlock.acquire(make_event()); }
     
-    while (pos != size && done && _fd >= 0) {
-	amt = ::read(_fd, static_cast<char *>(buf) + pos, size - pos);
+    while (pos != size && (_is_file || (done && fd >= 0))) {
+      //if _is_file we must read until the end
+	amt = ::read(fd, static_cast<char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
 	    size_out = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(_fd, make_event()); }
+	    twait { tamer::at_fd_read(fd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
     
+    if (e)
+      e.trigger();
+
     _rlock.release();
     done.trigger(pos == size || _fd >= 0 ? 0 : -ECANCELED);
 }
@@ -132,16 +148,26 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
 	size_t pos = 0;
 	ssize_t amt;
 	passive_ref_ptr<fd::fdimp> hold(this);
+    int fd;
+    rendezvous<> r;
+    event<> e;
     }
 
     if (_fd < 0) {
 	done.trigger(-EBADF);
 	return;
     }
+    
+    fd = _fd;
+    if (_is_file) {
+      e = make_event(r);
+      twait { _fdhl.get().write(_fd, size, make_event(fd), e); }
+    }
 
     twait { _wlock.acquire(make_event()); }
     
-    while (pos != size && done && _fd >= 0) {
+    while (pos != size && (_is_file || (done && _fd >= 0))) {
+      //if _is_file we must read until the end
 	amt = ::write(_fd, static_cast<const char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
@@ -155,7 +181,10 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
 	    break;
 	}
     }
-    
+  
+    if (e)
+      e.trigger();
+
     _wlock.release();
     done.trigger(pos == size || _fd >= 0 ? 0 : -ECANCELED);
 }

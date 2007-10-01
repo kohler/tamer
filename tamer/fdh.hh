@@ -5,10 +5,10 @@
 #include <tamer/lock.hh>
 #include <tamer/ref.hh>
 #include <tamer/fdhmsg.hh>
+#include <list>
 
-
-#define FDH_MAX 5
-#define FDH_MIN 2
+#define FDH_MAX 4
+#define FDH_MIN 6
 
 namespace tamer {
 
@@ -22,13 +22,13 @@ class fdh {
       char _buf[255 + FDH_MSG_SIZE];//TODO find max path len const
     };
 
-    int   _fd;  
     pid_t _pid;
+    int   _fd;  
     mutex _lock;
     //event<> _kill;
 
     fdh_state();
-    fdh_state(int fd, pid_t pid);
+    fdh_state(pid_t pid, int fd);
 
     operator bool() {
       return _pid > 0 && _fd > 0;
@@ -78,7 +78,7 @@ class fdh {
 
 public:
   inline fdh();
-  inline fdh(int fd, pid_t pid);
+  inline fdh(pid_t pid, int fd);
   inline fdh(const fdh &other);
   inline void clone(event<fdh> done);
   inline void open(std::string fname, int flags, mode_t mode, event<int> fd);
@@ -89,10 +89,11 @@ public:
 
 inline fdh::fdh()
   : _p(new fdh_state()) {
+  printf("new fdh\n");
 }
 
-inline fdh::fdh(int fd, pid_t pid)
-  : _p((fd > 0 && pid > 0) ? new fdh_state(fd, pid) : 0) {
+inline fdh::fdh(pid_t pid, int fd)
+  : _p((fd > 0 && pid > 0) ? new fdh_state(pid, fd) : 0) {
 }
 
 inline fdh::fdh(const fdh &other) 
@@ -134,5 +135,49 @@ inline void fdh::write(int fd, size_t size, event<int> fdi, event<> release) {
     fdi.trigger(-1);
 }
 
+class fdhlist {
+  
+  int _min;
+  int _max;
+
+  std::list<fdh> _fdhl;  
+  std::list<fdh>::iterator _it;
+
+  fdh _fdh;
+
+  void increase();
+  void decrease();
+  
+public:
+  fdhlist();
+  ~fdhlist();
+  fdh get();
+};
+
+inline fdhlist::fdhlist() 
+: _min(FDH_MIN), _max(FDH_MAX) {
+  for (int i = 0; i < _min; i++)
+    _fdhl.push_back(fdh());
+  _it = _fdhl.begin();
+}
+
+inline fdhlist::~fdhlist(){
+
+}
+
+inline fdh fdhlist::get() {
+  if (_it == _fdhl.end())
+    _it = _fdhl.begin();
+
+  return *(_it++);
+}
+
+inline void fdhlist::increase() {
+  if ((int)_fdhl.size() + 1 == _max)
+    return;
+}
+
+inline void fdhlist::decrease() {
+}
 }
 #endif /* TAMER_FDH_HH */
