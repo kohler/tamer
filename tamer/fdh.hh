@@ -7,8 +7,8 @@
 #include <tamer/fdhmsg.hh>
 #include <list>
 
-#define FDH_MAX 4
-#define FDH_MIN 6
+#define FDH_MAX 6 //TODO relocate, maybe tamer.hh
+#define FDH_MIN 4 //TODO relocate
 
 namespace tamer {
 
@@ -25,24 +25,27 @@ class fdh {
     pid_t _pid;
     int   _fd;  
     mutex _lock;
-    //event<> _kill;
 
     fdh_state();
     fdh_state(pid_t pid, int fd);
-
+    ~fdh_state() {
+      _pid = -1;
+      _fd = -1; 
+    }
+    
     operator bool() {
       return _pid > 0 && _fd > 0;
     }
 
     void full_release() {
-      //TODO _kill.trigger(); 
+      if (kill(_pid, SIGTERM) < 0)
+        perror("unable to SIGTERM helper");
     }
     
     int make_nonblocking();
     void send(int fd, char * buf, size_t size, event<int> done);
     void recv(int * fd, char * buf, size_t size, event<int> done);
-    
-    void kill(event<> done);
+   
     void clone(event<fdh> done);
     void open(std::string fname, int flags, mode_t mode, event<int> fd);
     void fstat(int fd, struct stat &stat_out, event<int> done); 
@@ -54,9 +57,6 @@ class fdh {
 
     class closure__recv__PiPckQi_;
     void recv(closure__recv__PiPckQi_ &, unsigned); 
-
-    class closure__kill__Q_;
-    void kill(closure__kill__Q_ &, unsigned);
     
     class closure__clone__Q3fdh_; 
     void clone(closure__clone__Q3fdh_ &, unsigned);
@@ -77,9 +77,12 @@ class fdh {
   ref_ptr<fdh_state> _p;
 
 public:
+  typedef ref_ptr<fdh_state> fdh::*unspecified_bool_type;
+
   inline fdh();
   inline fdh(pid_t pid, int fd);
   inline fdh(const fdh &other);
+  inline operator unspecified_bool_type();
   inline void clone(event<fdh> done);
   inline void open(std::string fname, int flags, mode_t mode, event<int> fd);
   inline void fstat(int fd, struct stat &stat_out, event<int> done); 
@@ -89,7 +92,6 @@ public:
 
 inline fdh::fdh()
   : _p(new fdh_state()) {
-  printf("new fdh\n");
 }
 
 inline fdh::fdh(pid_t pid, int fd)
@@ -100,41 +102,47 @@ inline fdh::fdh(const fdh &other)
   : _p(other._p) {
 }
 
+inline fdh::operator unspecified_bool_type() {
+  return (_p && *_p) ? &fdh::_p : 0;
+}
+
 inline void fdh::clone(event<fdh> done) {
-  if (_p)
+  if (*this)
     _p->clone(done);
   else
     done.trigger(*this);
 }
 
 inline void fdh::open(std::string fname, int flags, mode_t mode, event<int> fd) {
-  if (_p)
+  if (*this)
     _p->open(fname, flags, mode, fd);
   else
     fd.trigger(-1);
 }
 
 inline void fdh::fstat(int fd, struct stat &stat_out, event<int> done) {
-  if (_p)
+  if (*this)
     _p->fstat(fd, stat_out, done);
   else
-    done.trigger(-1);//TODO better error?
+    done.trigger(-EBADF);
 }
 
 inline void fdh::read(int fd, size_t size, event<int> fdo, event<> release) {
-  if (_p)
+  if (*this)
     _p->read(fd, size, fdo, release);
   else
     fdo.trigger(-1); 
 }
 
 inline void fdh::write(int fd, size_t size, event<int> fdi, event<> release) {
-  if (_p)
+  if (*this)
     _p->write(fd, size, fdi, release);
   else
     fdi.trigger(-1);
 }
 
+//TODO create seperate locked and free list?
+//TODO add dynamic helper de/allocation?
 class fdhlist {
   
   int _min;
@@ -143,14 +151,19 @@ class fdhlist {
   std::list<fdh> _fdhl;  
   std::list<fdh>::iterator _it;
 
-  fdh _fdh;
-
+  //not being used ...
   void increase();
   void decrease();
-  
+  //... yet
+
+  class closure__increase;
+  void increase(closure__increase &, unsigned);
+
+  class closure__decrease;
+  void decrease(closure__decrease &, unsigned);
+
 public:
   fdhlist();
-  ~fdhlist();
   fdh get();
 };
 
@@ -161,23 +174,14 @@ inline fdhlist::fdhlist()
   _it = _fdhl.begin();
 }
 
-inline fdhlist::~fdhlist(){
-
-}
-
 inline fdh fdhlist::get() {
+  if (!_fdhl.size())
+    return fdh(-1,-1);
+
   if (_it == _fdhl.end())
     _it = _fdhl.begin();
-
+  
   return *(_it++);
-}
-
-inline void fdhlist::increase() {
-  if ((int)_fdhl.size() + 1 == _max)
-    return;
-}
-
-inline void fdhlist::decrease() {
 }
 }
 #endif /* TAMER_FDH_HH */

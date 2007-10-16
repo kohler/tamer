@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 #define FDH_CLONE 100
-#define FDH_KILL  101
+//#define FDH_KILL  101
 #define FDH_OPEN  102
 #define FDH_STAT  103
 #define FDH_READ  104

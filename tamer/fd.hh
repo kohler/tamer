@@ -404,11 +404,11 @@ class fd {
 	    : _fd(fd), _is_file(false) {
 	}
 	
-	void fstat(struct stat &stat_out, event<int> done);
     void accept(struct sockaddr *addr, socklen_t *addrlen,
 		    event<fd> result);
 	void connect(const struct sockaddr *addr, socklen_t addrlen,
 		     event<int> done);
+	void fstat(struct stat &stat_out, event<int> done);
 	void read(void *buf, size_t size, size_t &nread, event<int> done);
 	void read_once(void *buf, size_t size, size_t &nread, event<int> done);
 	void write(const void *buf, size_t size, size_t &nwritten,
@@ -428,7 +428,6 @@ class fd {
 	class closure__read_once__PvkRkQi_; void read_once(closure__read_once__PvkRkQi_ &, unsigned);
 	class closure__write__PKvkRkQi_; void write(closure__write__PKvkRkQi_ &, unsigned);
 	class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &, unsigned);
-
     };
 
     class closure__open__PKci6mode_tQ2fd_; static void open(closure__open__PKci6mode_tQ2fd_ &, unsigned);

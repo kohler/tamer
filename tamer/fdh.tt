@@ -11,7 +11,6 @@ namespace tamer {
 fdh::fdh_state::fdh_state() {
   int socks[2];
 
-
   if (::socketpair(AF_UNIX, SOCK_STREAM, 0, socks) < 0) {
     _fd = -1;
     return;
@@ -28,7 +27,7 @@ fdh::fdh_state::fdh_state() {
     ::close(socks[0]);
     if (::dup2(socks[1], 0) < 0)
       goto child_err;
-    if (::execv("../tamer/tamerfdh", NULL) < 0)
+    if (::execv("../tamer/tamerfdh", NULL) < 0)//TODO this looks bad
       goto child_err;
 child_err:
     ::close(socks[1]);
@@ -36,14 +35,13 @@ child_err:
   }
   
   ::close(socks[1]);
-  
   make_nonblocking();
 }
 
 fdh::fdh_state::fdh_state(pid_t pid, int fd)
   : _pid(pid), _fd(fd) {
   if (*this)
-    make_nonblocking();    
+    make_nonblocking();
 }
 
 int fdh::fdh_state::make_nonblocking() {
@@ -59,7 +57,7 @@ int fdh::fdh_state::make_nonblocking() {
 tamed void fdh::fdh_state::send(int fd, char * buf, size_t size, event<int> done) {
   tvars { int amt; }
   
-  while (done) {//TODO check fd
+  while (done) {
     amt = ::fdh_send(_fd, fd, buf, size);
     if (amt == (ssize_t)size)
       break;
@@ -99,20 +97,35 @@ tamed void fdh::fdh_state::recv(int * fd, char * buf, size_t size, event<int> do
   
   done.trigger(0);
 }
+/*
+tamed void fdh::fdh_state::kill_loop() {
+  tvars { rendezvous<> r; }
 
+  _kill = make_event(r);
+
+  twait(r);
+  
+  twait { kill(make_event()); }
+}
+*/
+/*
 tamed void fdh::fdh_state::kill(event<> done) {
   tvars { int fdo, r; }
-
+  
   twait { _lock.acquire(make_event()); }
 
   _msg.query.req = FDH_KILL;
   
   twait { send(-1, _buf, FDH_MSG_SIZE, make_event(r)); }
-  
+ 
+  ::close(_fd);
+  _fd = _pid = -1;
+
   done.trigger();  
 
   _lock.release();
 }
+*/
 
 tamed void fdh::fdh_state::clone(event<fdh> done) {
   tvars { int fdo, r; }
@@ -141,7 +154,7 @@ release:
 tamed void fdh::fdh_state::open(std::string fname, int flags, mode_t mode, event<int> fd) {
   tvars { int fdo, r; }
 
-  twait { _lock.acquire(make_event()); } // since only one buf
+  twait { _lock.acquire(make_event()); }
 
   _msg.query.req = FDH_OPEN;
   _msg.query.flags =  flags;
@@ -192,11 +205,8 @@ release:
   _lock.release(); 
 }
 
-//returns new non blocked fd!
-//(in reality it returns _fd which is being sendfiled to by the helper)
-//TODO would it be better to have child return a brand new stream
-//    inorder to do away with the event release?
-//NOTE/ASSERTION: read must be called until size == amount received
+//NOTE: release should only be triggered after the amount received from fdo == size
+//  otherwise helper will remain frozen in send
 tamed void fdh::fdh_state::read(int fd, size_t size, event<int> fdo, event<> release) {
   tvars { int r; }
 
@@ -215,6 +225,8 @@ tamed void fdh::fdh_state::read(int fd, size_t size, event<int> fdo, event<> rel
   _lock.release();
 }
 
+//NOTE: release should only be triggered after the amount sent to fdi == size
+//  otherwise helper will remain frozen in recv state
 tamed void fdh::fdh_state::write(int fd, size_t size, event<int> fdi, event<> release) {
   tvars { int r; }
 
@@ -231,5 +243,28 @@ tamed void fdh::fdh_state::write(int fd, size_t size, event<int> fdi, event<> re
 
   twait { release.at_trigger(make_event()); }
   _lock.release();
+}
+
+tamed void fdhlist::increase() {
+  tvars { fdh fdh_(-1,-1); }
+
+  if (!_fdhl.size() && (int)_fdhl.size() + 1 == _max)
+    return;
+
+  twait { _fdhl.front().clone(make_event(fdh_)); }
+
+  if (fdh_)
+    _fdhl.push_back(fdh_); 
+}
+
+tamed void fdhlist::decrease() {
+  tvars { fdh fdh_(-1,-1); }
+
+  if (!_fdhl.size())
+    return;
+  
+  _it = _fdhl.begin();
+  fdh_ = _fdhl.back();
+  _fdhl.pop_back();
 }
 }
