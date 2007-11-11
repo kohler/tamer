@@ -37,7 +37,6 @@ int main (void) {
 
     switch (msg->query.req) {
       case FDH_CLONE:
-        printf("clone %d\n", getpid());
         if (socketpair(AF_UNIX, SOCK_STREAM, 0, socks) < 0) {
           chfd = -1;
           msg->reply.err = errno;
@@ -51,7 +50,6 @@ int main (void) {
           goto forkerr;
         } else if (pid == 0) {
           // child
-          //printf("!child %d\n", getpid()); 
           close(0);
           close(socks[0]);
           if (dup2(socks[1], 0) < 0) {
@@ -73,14 +71,9 @@ int main (void) {
         }
         close(socks[0]);
         break;
-      /*case FDH_KILL:
-        printf("kill %d\n", getpid());
-        goto exit_;
-        break;*/
       case FDH_OPEN:
-        //printf("open %d\n", getpid());
         fname = (char *)&buf[FDH_MSG_SIZE];
-        msg->reply.err = ((fd = 
+        msg->reply.err = ((fd =
               open(fname, msg->query.flags, msg->query.mode)) < 0) ? errno : 0;
         if (fdh_send(0, fd, (char *)msg, FDH_MSG_SIZE) < 0) {
           perror("sendmsg");
@@ -89,17 +82,15 @@ int main (void) {
         close(fd);
         break;
       case FDH_STAT:
-        //printf("stat %d\n", getpid());
         stat = (struct stat *)&buf[FDH_MSG_SIZE];
         msg->reply.err = (fstat(fd, stat) < 0) ? errno : 0;
-        if (fdh_send(0, fd, buf, sizeof(int) + sizeof(struct stat)) < 0) {
+        if (fdh_send(0, -1, (char *)msg, FDH_MSG_SIZE + sizeof(struct stat)) < 0) {
           perror("sendmsg");
           goto exit;
         }
         close(fd);
         break;
       case FDH_READ:
-        //printf("read %d\n", getpid());
         if (sendfile(0, fd, NULL, msg->query.size) < 0) {
           /* TODO handle error gracefully ?*/
           perror("sendfile");
@@ -108,7 +99,6 @@ int main (void) {
         close(fd);
         break;
       case FDH_WRITE:
-        //printf("write %d %d\n", fd, getpid());
         size = msg->query.size; 
         do {
           if ((ssize = read(0, buf, sizeof(buf))) < 0) {
@@ -137,10 +127,8 @@ int main (void) {
 exit:
   close(fd);
 exit_:
-  //printf("exit %d query_count %d\n", getpid(), query_count);
-  close(0);
-  exit(0);
   //TODO send signal to parent and restart loop instead of exiting (maybe)
+  terminate(0);
 }
 
 void terminate(int) {
