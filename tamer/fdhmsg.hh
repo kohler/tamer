@@ -18,6 +18,8 @@
 #define FDH_READ  104
 #define FDH_WRITE 105
 
+//TODO add old unices support (if needed) i.e. msg_control -> msg_accrights
+
 /* clone
  * > msg: req
  * < msg: errno | pid; [anc: fd]

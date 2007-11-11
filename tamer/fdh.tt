@@ -1,3 +1,4 @@
+#include <tamer/config.h>
 #include <tamer/fdh.hh>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -5,6 +6,9 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <tamer/tamer.hh>
+
+#define TAMER_HELPER_PATH PACKAGE_BIN_DIR "/tamerfdh"  
+  //TODO any way to do this better? the explicit "/tamerfdh" looks bad
 
 namespace tamer {
 
@@ -27,7 +31,7 @@ fdh::fdh_state::fdh_state() {
     ::close(socks[0]);
     if (::dup2(socks[1], 0) < 0)
       goto child_err;
-    if (::execv("../tamer/tamerfdh", NULL) < 0)//TODO this looks bad
+    if (::execv(TAMER_HELPER_PATH, NULL) < 0)
       goto child_err;
 child_err:
     ::close(socks[1]);
@@ -97,35 +101,6 @@ tamed void fdh::fdh_state::recv(int * fd, char * buf, size_t size, event<int> do
   
   done.trigger(0);
 }
-/*
-tamed void fdh::fdh_state::kill_loop() {
-  tvars { rendezvous<> r; }
-
-  _kill = make_event(r);
-
-  twait(r);
-  
-  twait { kill(make_event()); }
-}
-*/
-/*
-tamed void fdh::fdh_state::kill(event<> done) {
-  tvars { int fdo, r; }
-  
-  twait { _lock.acquire(make_event()); }
-
-  _msg.query.req = FDH_KILL;
-  
-  twait { send(-1, _buf, FDH_MSG_SIZE, make_event(r)); }
- 
-  ::close(_fd);
-  _fd = _pid = -1;
-
-  done.trigger();  
-
-  _lock.release();
-}
-*/
 
 tamed void fdh::fdh_state::clone(event<fdh> done) {
   tvars { int fdo, r; }
@@ -221,6 +196,7 @@ tamed void fdh::fdh_state::read(int fd, size_t size, event<int> fdo, event<> rel
   else
     fdo.trigger(_fd);
 
+  // lock _fd until read completes
   twait { release.at_trigger(make_event()); }
   _lock.release();
 }
@@ -241,30 +217,76 @@ tamed void fdh::fdh_state::write(int fd, size_t size, event<int> fdi, event<> re
   else
     fdi.trigger(_fd);
 
+  // lock _fd until write completes
   twait { release.at_trigger(make_event()); }
   _lock.release();
 }
 
-tamed void fdhlist::increase() {
+tamed void fdhmaster::fdhmaster_state::open(std::string fname, int flags, mode_t mode, event<int> fd) {
   tvars { fdh fdh_(-1,-1); }
-
-  if (!_fdhl.size() && (int)_fdhl.size() + 1 == _max)
-    return;
-
-  twait { _fdhl.front().clone(make_event(fdh_)); }
-
-  if (fdh_)
-    _fdhl.push_back(fdh_); 
+  twait { get(make_event(fdh_)); }
+  fdh_.open(fname, flags, mode, fd);
+  twait { fd.at_trigger(make_event());}
+  done(fdh_);
 }
 
-tamed void fdhlist::decrease() {
+tamed void fdhmaster::fdhmaster_state::fstat(int fd, struct stat & stat_out, event<int> e) {
+  tvars { fdh fdh_(-1,-1); }
+  twait { get(make_event(fdh_)); }
+  fdh_.fstat(fd, stat_out, e);
+  twait { e.at_trigger(make_event()); }
+  done(fdh_);
+}
+
+tamed void fdhmaster::fdhmaster_state::read(int fd, size_t size, event<int> fdo, event<> release) {
+  tvars { fdh fdh_(-1,-1); }
+  twait { get(make_event(fdh_)); }
+  fdh_.read(fd, size, fdo, release);
+  twait { release.at_trigger(make_event());}
+  done(fdh_);
+}
+
+tamed void fdhmaster::fdhmaster_state::write(int fd, size_t size, event<int> fdi, event<> release) {
+  tvars { fdh fdh_(-1,-1); }
+  twait { get(make_event(fdh_)); }
+  fdh_.write(fd, size, fdi, release);
+  twait { release.at_trigger(make_event());}
+  done(fdh_);
+}
+
+tamed void fdhmaster::fdhmaster_state::increase() {
+  tvars { fdh fdh_(-1,-1); fdh fdhn_(-1,-1); }
+  
+  if (_count >= _max)
+    return;
+  twait { get(make_event(fdh_)); }
+  twait { fdh_.clone(make_event(fdhn_)); }
+  if (fdhn_) {
+    done(fdhn_); 
+    _count ++;
+  }
+  done(fdh_);
+}
+
+tamed void fdhmaster::fdhmaster_state::decrease() {
   tvars { fdh fdh_(-1,-1); }
 
-  if (!_fdhl.size())
+  if (_count <= _min || !_ready.size())//errr....
     return;
+  _ready.pop_back();
+}
+
+tamed void fdhmaster::fdhmaster_state::get(event<fdh> e) {
+  tvars { rendezvous<> r; fdh fdh_(-1,-1); }
   
-  _it = _fdhl.begin();
-  fdh_ = _fdhl.back();
-  _fdhl.pop_back();
+  if (!_ready.size()) {
+    _waiting.push_back(make_event(r, fdh_));
+    twait(r);
+  } else {
+    fdh_ = _ready.front();
+    _ready.pop_front();
+  }
+
+  e.trigger(fdh_);
 }
 }

@@ -25,7 +25,7 @@
 
 namespace tamer {
 
-fdhlist _fdhl;
+fdhmaster _fdhm;
 
 size_t fd::garbage_size;
 
@@ -50,18 +50,34 @@ event<> fd::closer()
 	return event<>();
 }
 
+//#define TAMER_SANS_HELPERS
+
+#ifdef TAMER_SANS_HELPERS
+void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
+{
+  fd nfd;
+  int f = ::open(filename, flags | O_NONBLOCK, mode);
+  nfd = fd(f == -1 ? -errno : f);
+  done.trigger(nfd);
+#else
 tamed static void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
 {
   tvars { int f(); fd nfd; }
-  twait { _fdhl.get().open(filename, flags | O_NONBLOCK, mode, make_event(f)); }
+  twait { _fdhm.open(filename, flags | O_NONBLOCK, mode, make_event(f)); }
   nfd = fd(f);
   nfd._p->_is_file = true;
   done.trigger(nfd);
+#endif
 }
 
 void fd::fdimp::fstat(struct stat &stat_out, event<int> done)
 {
-  _fdhl.get().fstat(_fd, stat_out, done);
+#ifdef TAMER_SANS_HELPERS
+  int x = ::fstat(_fd, &stat_out);
+  done.trigger(x == -1 ? -errno : 0);
+#else
+  _fdhm.fstat(_fd, stat_out, done);
+#endif
 }
 
 tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> done)
@@ -72,7 +88,7 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
 	passive_ref_ptr<fd::fdimp> hold(this);
     int fd;
     rendezvous<> r;
-    event<> e;
+    event<> release;
     }
     
     if (_fd < 0) {
@@ -82,8 +98,14 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
     
     fd = _fd;
     if (_is_file) {
-      e = make_event(r);
-      twait { _fdhl.get().read(_fd, size, make_event(fd), e); }
+    //send rpc to helper, get new non-blocked fd
+      release = make_event(r);
+      twait { _fdhm.read(_fd, size, make_event(fd), release); }
+      if (fd < 0 ) {
+        // revert back to blocked IO
+        fd = _fd;
+        release.trigger();
+      }
     }
 
     twait { _rlock.acquire(make_event()); }
@@ -104,8 +126,8 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
 	}
     }
     
-    if (e)
-      e.trigger();
+    if (release)
+      release.trigger();
 
     _rlock.release();
     done.trigger(pos == size || _fd >= 0 ? 0 : -ECANCELED);
@@ -150,7 +172,7 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
 	passive_ref_ptr<fd::fdimp> hold(this);
     int fd;
     rendezvous<> r;
-    event<> e;
+    event<> release;
     }
 
     if (_fd < 0) {
@@ -159,11 +181,18 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
     }
     
     fd = _fd;
+    
     if (_is_file) {
-      e = make_event(r);
-      twait { _fdhl.get().write(_fd, size, make_event(fd), e); }
+      //send rpc to helper, get new non-blocked fd
+      release = make_event(r);
+      twait { _fdhm.write(_fd, size, make_event(fd), release); }
+      if (fd < 0) {
+        // revert back to blocked IO
+        fd = _fd;
+        release.trigger();
+      }
     }
-
+    
     twait { _wlock.acquire(make_event()); }
     
     while (pos != size && (_is_file || (done && _fd >= 0))) {
@@ -182,8 +211,8 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
 	}
     }
   
-    if (e)
-      e.trigger();
+    if (release)
+      release.trigger();
 
     _wlock.release();
     done.trigger(pos == size || _fd >= 0 ? 0 : -ECANCELED);

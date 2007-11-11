@@ -2,6 +2,7 @@
 #include <signal.h>
 
 void terminate(int);
+int query_count = 0;
 
 int main (void) {
   char buf[8192];
@@ -31,6 +32,7 @@ int main (void) {
     } else if (len == 0)
       goto exit_;
     
+    query_count ++; 
     msg = (fdh_msg *)buf;
 
     switch (msg->query.req) {
@@ -111,14 +113,14 @@ int main (void) {
         do {
           if ((ssize = read(0, buf, sizeof(buf))) < 0) {
             /* TODO handle error gracefully ? signal to parent?*/
-            perror("help: read");
+            perror("helper: read");
             goto exit;
           } else if (ssize == 0)
             break;
           if (ssize)
             if (ssize != write(fd, buf, (size_t)ssize)) {
               /* TODO handle error gracefully ? signal to parent?*/
-              perror("help: write");
+              perror("helper: write");
               goto exit;
             }
           size -= ssize;
@@ -135,13 +137,14 @@ int main (void) {
 exit:
   close(fd);
 exit_:
-  //printf("exit %d\n", getpid());
+  //printf("exit %d query_count %d\n", getpid(), query_count);
   close(0);
   exit(0);
-  //TODO send signal to parent and restart loop instead of exiting
+  //TODO send signal to parent and restart loop instead of exiting (maybe)
 }
 
 void terminate(int) {
+  //printf("exit %d query_count %d\n", getpid(), query_count);
   close(0);
   exit(0);  
 }
