@@ -294,7 +294,7 @@ cpp_initializer_t::cpp_initializer_t(const lstr &v)
 	else if (mode == '/' && *a == '\n')
 	    mode = 0;
 	else if (mode == '*' && *a == '*' && a[1] == '/')
-	    mode = 0;
+	    mode = 0, a++;
 	else if (mode == 0 && *a == 't' && a[1] == 'h' && a[2] == 'i' && a[3] == 's' && (a + 4 == _value.end() || (!isalnum(a[4]) && a[4] != '_' && a[4] != '$'))) {
 	    b << std::string(last, a) << "__tamer_self";
 	    last = a + 4;
