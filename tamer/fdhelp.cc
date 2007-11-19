@@ -1,4 +1,14 @@
 #include <tamer/fdhmsg.hh>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/socket.h>
+#ifdef __linux__
+#include <sys/sendfile.h>
+#endif
+#include <sys/stat.h>
 #include <signal.h>
 
 void terminate(int);
@@ -91,6 +101,7 @@ int main (void) {
         close(fd);
         break;
       case FDH_READ:
+#if __linux__
         if (sendfile(0, fd, NULL, msg->query.size) < 0) {
           /* TODO handle error gracefully ?*/
           perror("sendfile");
@@ -98,6 +109,10 @@ int main (void) {
         }
         close(fd);
         break;
+#else
+	perror("no sendfile");
+	goto exit;
+#endif
       case FDH_WRITE:
         size = msg->query.size; 
         do {

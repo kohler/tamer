@@ -1,10 +1,11 @@
 #ifndef TAMER_FDH_HH
 #define TAMER_FDH_HH 1
-
 #include <tamer/tamer.hh>
 #include <tamer/lock.hh>
 #include <tamer/ref.hh>
 #include <tamer/fdhmsg.hh>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <list>
 
 #define FDH_MAX 6 //TODO relocate, maybe tamer.hh

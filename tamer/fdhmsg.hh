@@ -1,14 +1,6 @@
 #ifndef TAMER_FDHELP_HH
 #define TAMER_FDHELP_HH 1
-
-#include <stdlib.h>
-#include <stdio.h>
 #include <unistd.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <sys/sendfile.h>
-#include <sys/stat.h>
 #include <stdint.h>
 
 #define FDH_CLONE 100

@@ -3,9 +3,9 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <signal.h>
 #include <fcntl.h>
-#include <tamer/tamer.hh>
 
 #define TAMER_HELPER_PATH PACKAGE_BIN_DIR "/tamerfdh"  
   //TODO any way to do this better? the explicit "/tamerfdh" looks bad

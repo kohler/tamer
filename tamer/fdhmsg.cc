@@ -1,4 +1,14 @@
 #include <tamer/fdhmsg.hh>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/socket.h>
+#ifdef __linux__
+#include <sys/sendfile.h>
+#endif
+#include <sys/stat.h>
 
 int fdh_send(int fd, int fd_to_send, char * buf, size_t len) {
   struct iovec iov[1];

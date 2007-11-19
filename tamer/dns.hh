@@ -1,6 +1,5 @@
 #ifndef TAMER_DNS_HH
 #define TAMER_DNS_HH 1
-
 #include <tamer/tamer.hh>
 #include <tamer/fd.hh>
 #include <tamer/ref.hh>
@@ -24,6 +23,8 @@
 #define DNS_OPTION_NAMESERVERS 2
 #define DNS_OPTION_MISC 4
 #define DNS_OPTIONS_ALL 7
+
+#define TAMER_HOST_NAME_MAX 1024
 
 /* No error */
 #define DNS_ERR_NONE 0
@@ -842,7 +843,7 @@ inline void resolver::resolver_state::set_default_options() {
 }
 
 inline void resolver::resolver_state::set_from_hostname() {
-  char hostname[HOST_NAME_MAX + 1];
+  char hostname[TAMER_HOST_NAME_MAX];
   char * domainname;
 
   if (flags & DNS_OPTION_SEARCH) {
