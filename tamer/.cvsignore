@@ -10,4 +10,6 @@ stamp-h1
 lock.cc
 bufferedio.cc
 fd.cc
+fdh.cc
 dns.cc
+tamer.pc

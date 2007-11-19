@@ -1,5 +1,8 @@
 bin_PROGRAMS = tamerfdh
 
+pkgconfigdir = ${libdir}/pkgconfig
+pkgconfig_DATA = tamer.pc
+
 tamerfdh_SOURCES = fdhelp.cc fdhmsg.hh fdhmsg.cc
 tamerfdh_CPPFLAGS = $(AM_CPPFLAGS)
 
@@ -42,6 +45,8 @@ pkginclude_HEADERS = \
 	xbase.hh \
 	xdriver.hh \
 	xevent.hh
+
+EXTRA_DIST = tamer.pc.in
 
 INCLUDES = -I$(top_srcdir) -I$(top_builddir)
 TAMER = ../compiler/tamer
