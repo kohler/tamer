@@ -2,6 +2,9 @@
 #define TAMER_FDHELP_HH 1
 #include <unistd.h>
 #include <stdint.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #define FDH_CLONE 100
 //#define FDH_KILL  101

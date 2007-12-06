@@ -80,6 +80,7 @@ class driver_tamer : public driver { public:
     tfd *_fd;
     int _nfds;
     fd_set _fdset[2];
+    int _nlargefds;
 
     tamerutil::debuffer<event<> > _asap;
 
@@ -103,7 +104,7 @@ class driver_tamer : public driver { public:
 
 driver_tamer::driver_tamer()
     : _t(0), _nt(0), _torder(0),
-      _fd(0), _nfds(0),
+      _fd(0), _nfds(0), _nlargefds(0),
       _tcap(0), _tgroup(0), _tgroup_cap(7), _tfree(0),
       _fdcap(0), _fdgroup(0), _fdfree(0)
 {
@@ -230,8 +231,6 @@ void driver_tamer::at_fd(int fd, int action, const event<int> &trigger)
 {
     if (!_fdfree)
 	expand_fds();
-    if (fd >= FD_SETSIZE)
-	throw tamer::tamer_error("file descriptor too large");
     if (trigger) {
 	tfd *t = _fdfree;
 	_fdfree = t->next;
@@ -242,9 +241,13 @@ void driver_tamer::at_fd(int fd, int action, const event<int> &trigger)
 	t->action = action;
 	(void) new(static_cast<void *>(&t->e)) event<int>(trigger);
 
-	FD_SET(fd, &_fdset[action]);
-	if (fd >= _nfds)
-	    _nfds = fd + 1;
+	if (fd >= FD_SETSIZE)
+	    _nlargefds++;
+	else {
+	    FD_SET(fd, &_fdset[action]);
+	    if (fd >= _nfds)
+		_nfds = fd + 1;
+	}
 	if (action <= fdwrite)
 	    t->e.at_trigger(make_event(_fdcancelr));
     }
@@ -253,20 +256,22 @@ void driver_tamer::at_fd(int fd, int action, const event<int> &trigger)
 void driver_tamer::kill_fd(int fd)
 {
     assert(fd >= 0);
-    if (fd < _nfds && (FD_ISSET(fd, &_fdset[fdread]) || FD_ISSET(fd, &_fdset[fdwrite]))) {
+    if (fd >= FD_SETSIZE)
+	_nlargefds--;
+    else {
 	FD_CLR(fd, &_fdset[fdread]);
 	FD_CLR(fd, &_fdset[fdwrite]);
-	tfd **pprev = &_fd, *t;
-	while ((t = *pprev))
-	    if (t->fd == fd) {
-		t->e.trigger(-ECANCELED);
-		t->e.~event();
-		*pprev = t->next;
-		t->next = _fdfree;
-		_fdfree = t;
-	    } else
-		pprev = &t->next;
     }
+    tfd **pprev = &_fd, *t;
+    while ((t = *pprev))
+	if (t->fd == fd) {
+	    t->e.trigger(-ECANCELED);
+	    t->e.~event();
+	    *pprev = t->next;
+	    t->next = _fdfree;
+	    _fdfree = t;
+	} else
+	    pprev = &t->next;
 }
 
 void driver_tamer::at_time(const timeval &expiry, const event<> &e)
@@ -288,7 +293,8 @@ void driver_tamer::at_asap(const event<> &e)
 bool driver_tamer::empty()
 {
     if (_nt != 0 || _nfds != 0 || _asap.size() != 0
-	|| sig_any_active || tamerpriv::abstract_rendezvous::unblocked)
+	|| sig_any_active || tamerpriv::abstract_rendezvous::unblocked
+	|| _nlargefds > 0)
 	return false;
     return true;
 }
@@ -310,7 +316,8 @@ void driver_tamer::once()
     if (_asap.size()
 	|| (_nt > 0 && !timercmp(&_t[0]->expiry, &now, >))
 	|| sig_any_active
-	|| tamerpriv::abstract_rendezvous::unblocked) {
+	|| tamerpriv::abstract_rendezvous::unblocked
+	|| _nlargefds > 0) {
 	timerclear(&to);
 	toptr = &to;
     } else if (_nt == 0)
@@ -327,6 +334,7 @@ void driver_tamer::once()
 	FD_ZERO(&_fdset[fdread]);
 	FD_ZERO(&_fdset[fdwrite]);
 	_nfds = 0;
+	_nlargefds = 0;
 	tfd **pprev = &_fd, *t;
 	while ((t = *pprev))
 	    if (!t->e) {
@@ -335,9 +343,13 @@ void driver_tamer::once()
 		t->next = _fdfree;
 		_fdfree = t;
 	    } else {
-		FD_SET(t->fd, &_fdset[t->action]);
-		if (t->fd >= _nfds)
-		    _nfds = t->fd + 1;
+		if (t->fd >= FD_SETSIZE)
+		    _nlargefds++;
+		else {
+		    FD_SET(t->fd, &_fdset[t->action]);
+		    if (t->fd >= _nfds)
+			_nfds = t->fd + 1;
+		}
 		pprev = &t->next;
 	    }
     }
@@ -368,8 +380,12 @@ void driver_tamer::once()
     if (nfds > 0) {
 	tfd **pprev = &_fd, *t;
 	while ((t = *pprev))
-	    if (t->action <= fdwrite && FD_ISSET(t->fd, &fds[t->action])) {
-		FD_CLR(t->fd, &_fdset[t->action]);
+	    if (t->action <= fdwrite
+		&& (t->fd >= FD_SETSIZE || FD_ISSET(t->fd, &fds[t->action]))) {
+		if (t->fd >= FD_SETSIZE)
+		    _nlargefds--;
+		else
+		    FD_CLR(t->fd, &_fdset[t->action]);
 		t->e.trigger(0);
 		t->e.~event();
 		_fdcancelr.join(); // reap the notifier we just triggered
