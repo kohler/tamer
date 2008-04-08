@@ -13,7 +13,6 @@
  * notice is a summary of the Tamer LICENSE file; the license in that file is
  * legally binding.
  */
-#include <tamer/adapter.hh>
 namespace tamer {
 
 template <typename T> class enable_ref_ptr_with_full_release;
@@ -152,6 +151,10 @@ template <typename T> class ref_ptr { public:
 	return _t;
     }
 
+    T *get() const {
+	return _t;
+    }
+
     typedef T *ref_ptr::*unspecified_bool_type;
 
     operator unspecified_bool_type() const {
@@ -230,6 +233,10 @@ template <typename T> class passive_ref_ptr { public:
 	return _t;
     }
 
+    T *get() const {
+	return _t;
+    }
+
     typedef T *passive_ref_ptr::*unspecified_bool_type;
 
     operator unspecified_bool_type() const {
@@ -246,5 +253,30 @@ template <typename T> class passive_ref_ptr { public:
     
 };
 
+
+template <typename T, typename U>
+inline bool operator==(const ref_ptr<T> &a, const ref_ptr<T> &b)
+{
+    return a.get() == b.get();
 }
-#endif /* TAMER_FD_HH */
+
+template <typename T, typename U>
+inline bool operator!=(const ref_ptr<T> &a, const ref_ptr<T> &b)
+{
+    return a.get() != b.get();
+}
+
+template <typename T, typename U>
+inline bool operator==(const passive_ref_ptr<T> &a, const passive_ref_ptr<T> &b)
+{
+    return a.get() == b.get();
+}
+
+template <typename T, typename U>
+inline bool operator!=(const passive_ref_ptr<T> &a, const passive_ref_ptr<T> &b)
+{
+    return a.get() != b.get();
+}
+
+}
+#endif /* TAMER_REF_HH */
