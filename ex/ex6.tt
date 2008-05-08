@@ -4,75 +4,44 @@
 using namespace tamer;
 using namespace tamer::dns;
 
-void print_rep(reply p) {
+bool run = true;
+
+void print(reply p) {
   struct in_addr ina;
-  printf("--\n");
-  if (p.addrcount())
-    for (int j = 0; j < p.addrcount() ; j++){
-      ina.s_addr = p[j];
-      printf("%s\n", inet_ntoa(ina));
+  if (p && *p) {
+    if (p->name.size())
+      printf(":%s:\n", p->name.c_str());
+    for (size_t j = 0; j < p->addrs.size() ; j++){
+      ina.s_addr = p->addrs[j];
+      printf(":%s:\n", inet_ntoa(ina));
     }
-  else
+  } else
     printf("error reply\n");
 }
 
-
-tamed void test() {
-  tvars { reply p, m; }
-
-  twait {
-    gethostbyname("www.gmail.com", DNS_QUERY_NO_SEARCH, make_event(m));
-    gethostbyname("www.google.com", DNS_QUERY_NO_SEARCH, make_event(p));
-  }
-  
-  print_rep(m);
-  print_rep(p);
-}
-
-tamed void test2() {
+tamed void a() {
   tvars {
-    reply p, m, o, l;
-    struct in_addr ina;
-    nameserver ns;
-    request q;
-    search s, n;
-    event<reply> e;
-    int i, j;
-    timeval tv;
+    tamer::dns::reply r1, r2;
+    struct in_addr addr;
   }
 
-  tv.tv_sec = 2;
-    
-  s = search(1);
-  s.add_domain("google.com");
-  s.add_domain("yahoo.com");
-  s.add_domain("ucla.edu");
-  s.add_domain("hotmail.com");
-  n = s.new_search("mail", DNS_QUERY_SEARCH);
+  addr.s_addr = inet_addr("64.233.167.99");
 
-  q = request(TYPE_A, 0x1010, n);
-                 
-  //inet_aton("66.75.164.90", &ina);
-  inet_aton("164.67.128.1", &ina);
-  twait { ns = nameserver(ina.s_addr, 53, tv, make_event(j)); }
-                    
-  twait {
-    ns.query(q, make_event(i,p));
-    ns.query(q.next_search_request(0x1141), make_event(i,m));
-    ns.query(q.next_search_request(0x1511), make_event(i,l));
-    ns.query(q.next_search_request(0x1111), make_event(i,o));
+  twait { 
+    tamer::gethostbyname("www.google.com", 0, make_event(r1)); 
+    tamer::gethostbyaddr(&addr, make_event(r2));
   }
-
-  print_rep(p);
-  print_rep(m);
-  print_rep(l);
-  print_rep(o);
+   
+  print(r1);
+  print(r2);
+  run = false;
 }
 
 int main(int, char **) {
   initialize();
+  
+  a();
 
-  test();
-
-  loop();
+  while (run)
+    once();
 }
