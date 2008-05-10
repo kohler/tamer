@@ -292,9 +292,13 @@ tamed void nameserver_imp::query_tcp(packet p, timeval timeout) {
 }
 
 tamed void resolver::parse_loop() {
+  tvars { rendezvous<> r; }
+  
   for (;;) {
+    printf("parse\n");
     parse();
-    twait { at_delay_sec(DNS_REPARSE_TIME, make_event()); }
+    with_timeout_sec(DNS_REPARSE_TIME, _reparse = make_event(r));
+    twait(r);
   }
 }
 
@@ -390,6 +394,8 @@ tamed void resolver::failed_nameserver(nameserver n) {
   n->ready = make_event(r, false, i);
   q->next(get_trans_id());
   for(;;) {
+    if (_reparse)
+      _reparse.trigger();
     // exponential back-off
     twait { at_delay_sec(timewait *= 1, make_event()); }
     assert(!q->getpacket(p));

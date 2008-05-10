@@ -11,31 +11,28 @@
 #include <sstream>
 
 
-// TODO just realized this (with respect to last check in):
-// reparses should also be initiated by failed_nameserver
 #define DNS_REPARSE_TIME 60
 
-// XXX remove?
 #define DNS_OPTION_SEARCH 1
 #define DNS_OPTION_NAMESERVERS 2
 #define DNS_OPTION_MISC 4
 #define DNS_OPTIONS_ALL 7
 
-/* No error */
+/* no error */
 #define DNS_ERR_NONE 0
-/* The name server was unable to interpret the query */
+/* name server was unable to interpret the query */
 #define DNS_ERR_FORMAT 1
-/* The name server was unable to process this query due to a problem with the name server */
+/* name server was unable to process this query due to a problem with the name server */
 #define DNS_ERR_SERVERFAILED 2
-/* The domain name does not exist */
+/* domain name does not exist */
 #define DNS_ERR_NOTEXIST 3
-/* The name server does not support the requested kind of query */
+/* name server does not support the requested kind of query */
 #define DNS_ERR_NOTIMPL 4
-/* The name server refuses to perform the specified operation for policy reasons */
+/* name server refuses to perform the specified operation for policy reasons */
 #define DNS_ERR_REFUSED 5
-/* An unknown error occurred */
+/* an unknown error occurred */
 #define DNS_ERR_UNKNOWN 16
-/* The reply was truncated or ill-formated */
+/* reply was truncated */
 #define DNS_ERR_TRUNCATED 17
 
 #define CLASS_INET     1
@@ -556,6 +553,8 @@ class resolver : public enable_ref_ptr_with_full_release<resolver> {
   nameservers::iterator _nsindex;
   event<> _init;
   bool _is_init;
+
+  event<> _reparse;
 
   uint16_t get_trans_id();
 

@@ -1,17 +1,14 @@
 // -*- mode: c++ -*-
 #include <tamer/dns.hh>
 
-using namespace tamer;
-using namespace tamer::dns;
-
 bool run = true;
 
-void print(reply p) {
+void print(tamer::dns::reply p) {
   struct in_addr ina;
   if (p && *p) {
     if (p->name.size())
       printf(":%s:\n", p->name.c_str());
-    for (size_t j = 0; j < p->addrs.size() ; j++){
+    for (size_t j = 0; j < p->addrs.size(); j++){
       ina.s_addr = p->addrs[j];
       printf(":%s:\n", inet_ntoa(ina));
     }
@@ -38,10 +35,10 @@ tamed void a() {
 }
 
 int main(int, char **) {
-  initialize();
+  tamer::initialize();
   
   a();
 
   while (run)
-    once();
+    tamer::once();
 }
