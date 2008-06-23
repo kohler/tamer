@@ -1,0 +1,9 @@
+*.o
+.deps
+.libs
+Makefile
+Makefile.in
+parse.cc
+parse.hh
+scan.cc
+tamer

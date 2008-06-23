@@ -1,0 +1,17 @@
+*.la
+*.lo
+*.o
+.deps
+.libs
+Makefile
+Makefile.in
+bufferedio.cc
+config.h
+config.h.in
+dns.cc
+fd.cc
+fdh.cc
+lock.cc
+stamp-h1
+tamer.pc
+tamerfdh

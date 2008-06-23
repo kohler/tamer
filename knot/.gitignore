@@ -1,0 +1,10 @@
+*.o
+.deps
+.libs
+Makefile
+Makefile.in
+cache2.cc
+http.cc
+input.cc
+knot.cc
+knot.tamer
