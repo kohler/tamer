@@ -19,8 +19,10 @@ namespace tamer {
 buffer::buffer(size_t s)
     : _head(0), _tail(0)
 {
-    for (_size = 1; _size < s; _size *= 2)
+    for (_size = 1; _size < s && _size != 0; _size *= 2)
 	/* nada */;
+    if (_size == 0)
+	_size = 1024;
     _buf = new char[_size];
 }
 
