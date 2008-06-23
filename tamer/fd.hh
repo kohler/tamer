@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <vector>
 namespace tamer {
 
 /** @file <tamer/fd.hh>
@@ -115,6 +116,13 @@ class fd {
      */
     static int make_nonblocking(int f);
 
+    /** @brief  Make a file descriptor use blocking I/O.
+     *  @param  f  File descriptor value.
+     *  @note   This function's argument is a file descriptor value, not an
+     *          fd wrapper object.
+     */
+    static int make_blocking(int f);
+
     /** @brief  Open a file descriptor.
      *  @param  filename  File name.
      *  @param  flags     Open flags (@c O_RDONLY, @c O_EXCL, and so forth).
@@ -148,16 +156,25 @@ class fd {
      *  @param  type      Socket type.
      *  @param  protocol  Socket protocol.
      *
-     *  The returned socket is made nonblocking.  Use valid() or error() to
-     *  check for errors.
+     *  The returned socket is nonblocking.  Use valid() or error() to check
+     *  for errors.
      */
     static fd socket(int domain, int type, int protocol);
+
+    /** @brief  Create a pipe.
+     *  @param  rfd  Set to file descriptor for read end of pipe.
+     *  @param  wfd  Set to fiel descriptor for write end of pipe.
+     *  @return  0 on success or a negative error code.
+     *
+     *  The returned file descriptors are nonblocking.
+     */
+    static int pipe(fd &rfd, fd &wfd);
 
     /** @brief  Test if file descriptor is valid.
      *  @return  True if file descriptor is valid, false if not.
      */
     inline bool valid() const;
-    
+
     typedef ref_ptr<fdimp> fd::*unspecified_bool_type;
 
     /** @brief  Test if file descriptor is valid.
@@ -394,17 +411,17 @@ class fd {
     
     struct fdimp : public enable_ref_ptr_with_full_release<fdimp> {
 
-    int _fd;
+	int _fd;
 	mutex _rlock;
 	mutex _wlock;
 	event<> _at_close;
-    bool _is_file;
+	bool _is_file;
 
 	fdimp(int fd)
 	    : _fd(fd), _is_file(false) {
 	}
 	
-    void accept(struct sockaddr *addr, socklen_t *addrlen,
+	void accept(struct sockaddr *addr, socklen_t *addrlen,
 		    event<fd> result);
 	void connect(const struct sockaddr *addr, socklen_t addrlen,
 		     event<int> done);
@@ -498,11 +515,10 @@ inline void fd::at_close(event<> e) {
 }
 
 inline void fd::fstat(struct stat &stat_out, event<int> done) {
-  if (_p)
-    _p->fstat(stat_out, done);
-  else
-    done.trigger(-EBADF);
-
+    if (_p)
+	_p->fstat(stat_out, done);
+    else
+	done.trigger(-EBADF);
 }
 
 inline void fd::accept(struct sockaddr *addr, socklen_t *addrlen, event<fd> result) {
@@ -639,6 +655,51 @@ inline void tcp_listen(int port, event<fd> result) {
 void tcp_connect(struct in_addr addr, int port, event<fd> result);
 
 void udp_connect(struct in_addr addr, int port, event<fd> result);
+
+
+struct exec_fd {
+    int child_fd;
+    bool output;
+    fd *f;
+    exec_fd(int child_fd, bool output, fd *f) {
+	this->child_fd = child_fd;
+	this->output = output;
+	this->f = f;
+    }
+};
+
+int exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
+	 const char *argv[], char * const envp[]);
+
+inline int execv(fd &in, fd &out, const char *program, const char *argv[]) {
+    std::vector<exec_fd> efd;
+    efd.push_back(exec_fd(STDIN_FILENO, false, &in));
+    efd.push_back(exec_fd(STDOUT_FILENO, true, &out));
+    return exec(efd, program, false, argv, 0);
+}
+
+inline int execv(fd &in, fd &out, fd &err, const char *program, const char *argv[]) {
+    std::vector<exec_fd> efd;
+    efd.push_back(exec_fd(STDIN_FILENO, false, &in));
+    efd.push_back(exec_fd(STDOUT_FILENO, true, &out));
+    efd.push_back(exec_fd(STDERR_FILENO, true, &err));
+    return exec(efd, program, false, argv, 0);
+}
+
+inline int execvp(fd &in, fd &out, const char *program, const char *argv[]) {
+    std::vector<exec_fd> efd;
+    efd.push_back(exec_fd(STDIN_FILENO, false, &in));
+    efd.push_back(exec_fd(STDOUT_FILENO, true, &out));
+    return exec(efd, program, true, argv, 0);
+}
+
+inline int execvp(fd &in, fd &out, fd &err, const char *program, const char *argv[]) {
+    std::vector<exec_fd> efd;
+    efd.push_back(exec_fd(STDIN_FILENO, false, &in));
+    efd.push_back(exec_fd(STDOUT_FILENO, true, &out));
+    efd.push_back(exec_fd(STDERR_FILENO, true, &err));
+    return exec(efd, program, true, argv, 0);
+}
 
 }}
 #endif /* TAMER_FD_HH */

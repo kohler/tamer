@@ -40,6 +40,17 @@ int fd::make_nonblocking(int f)
     return ::fcntl(f, F_SETFL, flags | O_NONBLOCK);
 }
 
+int fd::make_blocking(int f)
+{
+    int flags = 0;
+    if (::ioctl(f, FIONBIO, &flags) == 0)
+	return 0;
+    flags = ::fcntl(f, F_GETFL);
+    if (flags < 0)
+	return flags;
+    return ::fcntl(f, F_SETFL, flags & ~O_NONBLOCK);
+}
+
 event<> fd::closer()
 {
     if (*this) {
@@ -52,31 +63,47 @@ event<> fd::closer()
 
 //#define TAMER_SANS_HELPERS
 
-#ifdef TAMER_SANS_HELPERS
+#if TAMER_SANS_HELPERS
 void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
 {
-  fd nfd;
-  int f = ::open(filename, flags | O_NONBLOCK, mode);
-  nfd = fd(f == -1 ? -errno : f);
-  done.trigger(nfd);
+    fd nfd;
+    int f = ::open(filename, flags | O_NONBLOCK, mode);
+    nfd = fd(f == -1 ? -errno : f);
+    done.trigger(nfd);
+}
 #else
 tamed static void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
 {
-  tvars { int f(); fd nfd; }
-  twait { _fdhm.open(filename, flags | O_NONBLOCK, mode, make_event(f)); }
-  nfd = fd(f);
-  nfd._p->_is_file = true;
-  done.trigger(nfd);
+    tvars { int f(); fd nfd; }
+    twait { _fdhm.open(filename, flags | O_NONBLOCK, mode, make_event(f)); }
+    nfd = fd(f);
+    nfd._p->_is_file = true;
+    done.trigger(nfd);
+}
 #endif
+
+int fd::pipe(fd &rfd, fd &wfd)
+{
+    int pfd[2], r = ::pipe(pfd);
+    if (r < 0) {
+	rfd = wfd = fd(-errno);
+	return -errno;
+    } else {
+	(void) make_nonblocking(pfd[0]);
+	(void) make_nonblocking(pfd[1]);
+	rfd = fd(pfd[0]);
+	wfd = fd(pfd[1]);
+	return 0;
+    }
 }
 
 void fd::fdimp::fstat(struct stat &stat_out, event<int> done)
 {
-#ifdef TAMER_SANS_HELPERS
-  int x = ::fstat(_fd, &stat_out);
-  done.trigger(x == -1 ? -errno : 0);
+#if TAMER_SANS_HELPERS
+    int x = ::fstat(_fd, &stat_out);
+    done.trigger(x == -1 ? -errno : 0);
 #else
-  _fdhm.fstat(_fd, stat_out, done);
+    _fdhm.fstat(_fd, stat_out, done);
 #endif
 }
 
@@ -357,7 +384,6 @@ void tcp_listen(int port, int backlog, event<fd> result)
 	int ret = f.bind((struct sockaddr *) &saddr, sizeof(saddr));
 	if (ret >= 0)
 	    ret = f.listen(backlog);
-    
 	if (ret < 0 && f)
 	    f.error_close(ret);
     }
@@ -385,22 +411,91 @@ tamed void tcp_connect(struct in_addr addr, int port, event<fd> result)
 }
 
 tamed void udp_connect(struct in_addr addr, int port, event<fd> result) {
-  tvars {
-    fd f = fd::socket(AF_INET, SOCK_DGRAM, 0);
-	  int ret = 0;
-	  struct sockaddr_in saddr;
-  }
-  if (f)
-	  twait {
+    tvars {
+	fd f = fd::socket(AF_INET, SOCK_DGRAM, 0);
+	int ret = 0;
+	struct sockaddr_in saddr;
+    }
+    if (f)
+	twait {
 	    memset(&saddr, 0, sizeof(saddr));
 	    saddr.sin_family = AF_INET;
 	    saddr.sin_addr = addr;
 	    saddr.sin_port = htons(port);
 	    f.connect((struct sockaddr *) &saddr, sizeof(saddr), make_event(ret));
-	  }
-  if (ret < 0 && f)
-	  f.error_close(ret);
-  result.trigger(f);
+	}
+    if (ret < 0 && f)
+	f.error_close(ret);
+    result.trigger(f);
+}
+
+static int kill_exec_fds(std::vector<exec_fd> &exec_fds,
+			 std::vector<int> &inner_fds, int error) {
+    assert(error < 0);
+    for (std::vector<exec_fd>::iterator it = exec_fds.begin();
+	 it != exec_fds.end(); ++it)
+	*it->f = fd(error);
+    for (std::vector<int>::iterator it = inner_fds.begin();
+	 it != inner_fds.end(); ++it)
+	close(*it);
+    return error;
+}
+
+int exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
+	 const char *argv[], char * const envp[])
+{
+    std::vector<int> inner_fds;
+    int r, pfd[2];
+
+    // open pipes
+    for (std::vector<exec_fd>::iterator it = exec_fds.begin();
+	 it != exec_fds.end(); ++it) {
+	if ((r = ::pipe(pfd)) < 0)
+	    return kill_exec_fds(exec_fds, inner_fds, -errno);
+	*it->f = fd(pfd[!it->output]);
+	(void) fd::make_nonblocking(it->f->value());
+	inner_fds.push_back(pfd[!!it->output]);
+    }
+
+    // create child
+    pid_t child = fork();
+    if (child < 0)
+	return kill_exec_fds(exec_fds, inner_fds, -errno);
+    else if (child == 0) {
+	if (exec_fds.size() > 0) {
+	    // close parent's descriptors
+	    for (std::vector<exec_fd>::iterator it = exec_fds.begin();
+		 it != exec_fds.end(); ++it)
+		it->f->close();
+	    // duplicate our descriptors into their proper places
+	    for (std::vector<exec_fd>::size_type i = 0;
+		 i != exec_fds.size(); ++i) {
+		if (exec_fds[i].child_fd == inner_fds[i])
+		    continue;
+		std::vector<int>::iterator xt =
+		    std::find(inner_fds.begin() + i, inner_fds.end(),
+			      exec_fds[i].child_fd);
+		if (xt != inner_fds.end())
+		    if ((*xt = ::dup(*xt)) < 0)
+			exit(1);
+		if (::dup2(inner_fds[i], exec_fds[i].child_fd) < 0)
+		    exit(1);
+		(void) ::close(inner_fds[i]);
+	    }
+	}
+	// execute
+	if (!path)
+	    r = ::execve(program, (char * const *) argv, envp ? envp : environ);
+	else
+	    r = ::execvp(program, (char * const *) argv);
+	exit(1);
+    }
+
+    // close child's descriptors and return
+    for (std::vector<int>::iterator it = inner_fds.begin();
+	 it != inner_fds.end(); ++it)
+	::close(*it);
+    return 0;
 }
 
 }}
