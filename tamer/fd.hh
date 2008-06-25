@@ -127,6 +127,21 @@ class fd {
      *  @param  filename  File name.
      *  @param  flags     Open flags (@c O_RDONLY, @c O_EXCL, and so forth).
      *  @param  mode      Permissions mode (used when creating a file).
+     *  @return File descriptor.
+     *
+     *  Opens and returns a file descriptor for the named file.  The returned
+     *  file descriptor is <em>not</em> made nonblocking by default, but you
+     *  may add @c O_NONBLOCK to @a flags yourself.  To check whether the open
+     *  succeeded, use valid() or error() on the resulting file descriptor.
+     *
+     *  @sa open(const char *, int, event<fd>)
+     */
+    static fd open(const char *filename, int flags, mode_t mode = 0777);
+
+    /** @brief  Open a file descriptor.
+     *  @param  filename  File name.
+     *  @param  flags     Open flags (@c O_RDONLY, @c O_EXCL, and so forth).
+     *  @param  mode      Permissions mode (used when creating a file).
      *  @param  result    Event triggered on completion.
      *
      *  Opens a file descriptor for the named file, returning it via the
@@ -658,47 +673,68 @@ void udp_connect(struct in_addr addr, int port, event<fd> result);
 
 
 struct exec_fd {
+    enum fdtype {
+	fdtype_newin, fdtype_newout, fdtype_share, fdtype_transfer
+    };
     int child_fd;
-    bool output;
-    fd *f;
-    exec_fd(int child_fd, bool output, fd *f) {
+    fdtype type;
+    fd f;
+    exec_fd(int child_fd, fdtype type, fd f = fd()) {
 	this->child_fd = child_fd;
-	this->output = output;
+	this->type = type;
 	this->f = f;
     }
 };
 
-int exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
-	 const char *argv[], char * const envp[]);
+pid_t exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
+	   const std::vector<const char *> &argv, char * const envp[]);
 
-inline int execv(fd &in, fd &out, const char *program, const char *argv[]) {
+inline pid_t execv(fd &in, fd &out, const char *program,
+		   const std::vector<const char *> &argv) {
     std::vector<exec_fd> efd;
-    efd.push_back(exec_fd(STDIN_FILENO, false, &in));
-    efd.push_back(exec_fd(STDOUT_FILENO, true, &out));
-    return exec(efd, program, false, argv, 0);
+    efd.push_back(exec_fd(STDIN_FILENO, exec_fd::fdtype_newin));
+    efd.push_back(exec_fd(STDOUT_FILENO, exec_fd::fdtype_newout));
+    pid_t r = exec(efd, program, false, argv, 0);
+    in = efd[0].f;
+    out = efd[1].f;
+    return r;
 }
 
-inline int execv(fd &in, fd &out, fd &err, const char *program, const char *argv[]) {
+inline pid_t execv(fd &in, fd &out, fd &err, const char *program,
+		   const std::vector<const char *> &argv) {
     std::vector<exec_fd> efd;
-    efd.push_back(exec_fd(STDIN_FILENO, false, &in));
-    efd.push_back(exec_fd(STDOUT_FILENO, true, &out));
-    efd.push_back(exec_fd(STDERR_FILENO, true, &err));
-    return exec(efd, program, false, argv, 0);
+    efd.push_back(exec_fd(STDIN_FILENO, exec_fd::fdtype_newin));
+    efd.push_back(exec_fd(STDOUT_FILENO, exec_fd::fdtype_newout));
+    efd.push_back(exec_fd(STDERR_FILENO, exec_fd::fdtype_newout));
+    pid_t r = exec(efd, program, false, argv, 0);
+    in = efd[0].f;
+    out = efd[1].f;
+    err = efd[2].f;
+    return r;
 }
 
-inline int execvp(fd &in, fd &out, const char *program, const char *argv[]) {
+inline pid_t execvp(fd &in, fd &out, const char *program,
+		    const std::vector<const char *> &argv) {
     std::vector<exec_fd> efd;
-    efd.push_back(exec_fd(STDIN_FILENO, false, &in));
-    efd.push_back(exec_fd(STDOUT_FILENO, true, &out));
-    return exec(efd, program, true, argv, 0);
+    efd.push_back(exec_fd(STDIN_FILENO, exec_fd::fdtype_newin));
+    efd.push_back(exec_fd(STDOUT_FILENO, exec_fd::fdtype_newout));
+    pid_t r = exec(efd, program, true, argv, 0);
+    in = efd[0].f;
+    out = efd[1].f;
+    return r;
 }
 
-inline int execvp(fd &in, fd &out, fd &err, const char *program, const char *argv[]) {
+inline pid_t execvp(fd &in, fd &out, fd &err, const char *program,
+		    const std::vector<const char *> &argv) {
     std::vector<exec_fd> efd;
-    efd.push_back(exec_fd(STDIN_FILENO, false, &in));
-    efd.push_back(exec_fd(STDOUT_FILENO, true, &out));
-    efd.push_back(exec_fd(STDERR_FILENO, true, &err));
-    return exec(efd, program, true, argv, 0);
+    efd.push_back(exec_fd(STDIN_FILENO, exec_fd::fdtype_newin));
+    efd.push_back(exec_fd(STDOUT_FILENO, exec_fd::fdtype_newout));
+    efd.push_back(exec_fd(STDERR_FILENO, exec_fd::fdtype_newout));
+    pid_t r = exec(efd, program, true, argv, 0);
+    in = efd[0].f;
+    out = efd[1].f;
+    err = efd[2].f;
+    return r;
 }
 
 }}

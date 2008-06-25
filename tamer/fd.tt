@@ -1,5 +1,5 @@
 // -*- mode: c++ -*-
-/* Copyright (c) 2007, Eddie Kohler
+/* Copyright (c) 2007-2008, Eddie Kohler
  * Copyright (c) 2007, Regents of the University of California
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -62,6 +62,11 @@ event<> fd::closer()
 }
 
 //#define TAMER_SANS_HELPERS
+
+fd fd::open(const char *filename, int flags, mode_t mode) {
+    int f = ::open(filename, flags, mode);
+    return fd(f == -1 ? -errno : f);
+}
 
 #if TAMER_SANS_HELPERS
 void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
@@ -432,30 +437,34 @@ tamed void udp_connect(struct in_addr addr, int port, event<fd> result) {
 static int kill_exec_fds(std::vector<exec_fd> &exec_fds,
 			 std::vector<int> &inner_fds, int error) {
     assert(error < 0);
-    for (std::vector<exec_fd>::iterator it = exec_fds.begin();
-	 it != exec_fds.end(); ++it)
-	*it->f = fd(error);
-    for (std::vector<int>::iterator it = inner_fds.begin();
-	 it != inner_fds.end(); ++it)
-	close(*it);
+    for (std::vector<exec_fd>::size_type i = 0; i != exec_fds.size(); ++i) {
+	exec_fds[i].f = fd(error);
+	if ((exec_fds[i].type == exec_fd::fdtype_newin
+	     || exec_fds[i].type == exec_fd::fdtype_newout)
+	    && inner_fds[i] >= 0)
+	    close(inner_fds[i]);
+    }
     return error;
 }
 
-int exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
-	 const char *argv[], char * const envp[])
+pid_t exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
+	   const std::vector<const char *> &argv, char * const envp[])
 {
-    std::vector<int> inner_fds;
+    std::vector<int> inner_fds(exec_fds.size(), -1);
     int r, pfd[2];
 
     // open pipes
-    for (std::vector<exec_fd>::iterator it = exec_fds.begin();
-	 it != exec_fds.end(); ++it) {
-	if ((r = ::pipe(pfd)) < 0)
-	    return kill_exec_fds(exec_fds, inner_fds, -errno);
-	*it->f = fd(pfd[!it->output]);
-	(void) fd::make_nonblocking(it->f->value());
-	inner_fds.push_back(pfd[!!it->output]);
-    }
+    for (std::vector<exec_fd>::size_type i = 0; i != exec_fds.size(); ++i)
+	if (exec_fds[i].type == exec_fd::fdtype_newin
+	    || exec_fds[i].type == exec_fd::fdtype_newout) {
+	    if ((r = ::pipe(pfd)) < 0)
+		return kill_exec_fds(exec_fds, inner_fds, -errno);
+	    bool isoutput = (exec_fds[i].type == exec_fd::fdtype_newout);
+	    exec_fds[i].f = fd(pfd[!isoutput]);
+	    (void) fd::make_nonblocking(exec_fds[i].f.value());
+	    inner_fds[i] = pfd[isoutput];
+	} else
+	    inner_fds[i] = exec_fds[i].f.value();
 
     // create child
     pid_t child = fork();
@@ -466,7 +475,10 @@ int exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
 	    // close parent's descriptors
 	    for (std::vector<exec_fd>::iterator it = exec_fds.begin();
 		 it != exec_fds.end(); ++it)
-		it->f->close();
+		if (it->type == exec_fd::fdtype_newin
+		    || it->type == exec_fd::fdtype_newout)
+		    it->f.close();
+
 	    // duplicate our descriptors into their proper places
 	    for (std::vector<exec_fd>::size_type i = 0;
 		 i != exec_fds.size(); ++i) {
@@ -478,24 +490,42 @@ int exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
 		if (xt != inner_fds.end())
 		    if ((*xt = ::dup(*xt)) < 0)
 			exit(1);
-		if (::dup2(inner_fds[i], exec_fds[i].child_fd) < 0)
-		    exit(1);
-		(void) ::close(inner_fds[i]);
+		if (inner_fds[i] >= 0) {
+		    if (::dup2(inner_fds[i], exec_fds[i].child_fd) < 0)
+			exit(1);
+		    (void) ::close(inner_fds[i]);
+		} else
+		    (void) ::close(exec_fds[i].child_fd);
 	    }
 	}
+
+	// create true argv array
+	char **xargv = new char *[argv.size() + 1];
+	if (!xargv)
+	    abort();
+	for (std::vector<const char *>::size_type i = 0; i != argv.size(); ++i)
+	    xargv[i] = (char *) argv[i];
+	xargv[argv.size()] = 0;
+
 	// execute
 	if (!path)
-	    r = ::execve(program, (char * const *) argv, envp ? envp : environ);
+	    r = ::execve(program, (char * const *) xargv,
+			 envp ? envp : environ);
 	else
-	    r = ::execvp(program, (char * const *) argv);
+	    r = ::execvp(program, (char * const *) xargv);
 	exit(1);
     }
 
-    // close child's descriptors and return
-    for (std::vector<int>::iterator it = inner_fds.begin();
-	 it != inner_fds.end(); ++it)
-	::close(*it);
-    return 0;
+    // close relevant descriptors and return
+    for (std::vector<exec_fd>::size_type i = 0; i != exec_fds.size(); ++i)
+	if (exec_fds[i].type == exec_fd::fdtype_newin
+	    || exec_fds[i].type == exec_fd::fdtype_newout) {
+	    ::close(inner_fds[i]);
+	    (void) ::fcntl(exec_fds[i].f.value(), F_SETFD, FD_CLOEXEC);
+	} else if (exec_fds[i].type == exec_fd::fdtype_transfer)
+	    exec_fds[i].f.close();
+
+    return child;
 }
 
 }}
