@@ -295,7 +295,6 @@ tamed void resolver::parse_loop() {
   tvars { rendezvous<> r; }
   
   for (;;) {
-    printf("parse\n");
     parse();
     with_timeout_sec(DNS_REPARSE_TIME, _reparse = make_event(r));
     twait(r);
