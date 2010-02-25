@@ -59,7 +59,6 @@ typedef union fdh_msg fdh_msg;
 
 #define FDH_MSG_SIZE sizeof(union fdh_msg)
 
-int fdh_send(int fd, int fd_to_send, char * buf, size_t len);
 int fdh_recv(int fd, int * fd_to_recv, char * buf, size_t len);
 
 #endif /*TAMER_FDHELP_HH*/

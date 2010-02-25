@@ -1,3 +1,4 @@
+/* -*- mode: c++ -*- */
 #include <tamer/config.h>
 #include <tamer/fdh.hh>
 #include <sys/socket.h>
@@ -9,286 +10,248 @@
 #include <string.h>
 #include <fcntl.h>
 
-#define TAMER_HELPER_PATH PACKAGE_BIN_DIR "/tamerfdh"  
+#define TAMER_HELPER_PATH PACKAGE_BIN_DIR "/tamerfdh"
   //TODO any way to do this better? the explicit "/tamerfdh" looks bad
+
+static char crapbuf[2048];
 
 namespace tamer {
 
-fdh::fdh_state::fdh_state() {
-  int socks[2];
-
-  if (::socketpair(AF_UNIX, SOCK_STREAM, 0, socks) < 0) {
-    _fd = -1;
-    return;
-  }
-
-  _fd = socks[0];
-  _pid = ::fork();
-
-  if (_pid < 0) {
-    ::close(socks[0]);
-    ::close(socks[1]);
-    return;
-  } else if (_pid == 0) {
-    ::close(socks[0]);
-    if (::dup2(socks[1], 0) < 0)
-      goto child_err;
-    if (::execv(TAMER_HELPER_PATH, NULL) < 0)
-      goto child_err;
-child_err:
-    ::close(socks[1]);
-    exit(0);
-  }
-  
-  ::close(socks[1]);
-  make_nonblocking();
-}
-
-fdh::fdh_state::fdh_state(pid_t pid, int fd)
-  : _pid(pid), _fd(fd) {
-  if (*this)
-    make_nonblocking();
-}
-
-int fdh::fdh_state::make_nonblocking() {
-  int flags = 1;
-  if (::ioctl(_fd, FIONBIO, &flags) == 0)
-    return 0;
-  flags = ::fcntl(_fd, F_GETFL);
-  if (flags < 0)
-    return flags;
-  return ::fcntl(_fd, F_SETFL, flags | O_NONBLOCK);
-}
-
-tamed void fdh::fdh_state::send(int fd, char * buf, size_t size, event<int> done) {
-  tvars { int amt; }
-  
-  while (done) {
-    amt = ::fdh_send(_fd, fd, buf, size);
-    if (amt == (ssize_t)size)
-      break;
-    else if (amt >= 0) {//TODO allow partial writes?
-      perror("fdh: open: partial write");
-      done.trigger(-1);
-      return;
-    } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      twait { tamer::at_fd_write(_fd, make_event()); }
-    } else if (errno != EINTR) {
-      perror("fdh: open: send");
-      done.trigger(-errno);
-      return;
+fdhelper::fdhimp::fdhimp()
+    : _min(4), _max(6)
+{
+    for (int i = 0; i < _min; i++) {
+	fdh *x = new fdh;
+	if (x->ok()) {
+	    _helpers.push_back(x);
+	    _ready.push_back(x);
+	} else
+	    delete x;
     }
-  }
-  
-  done.trigger(0);
+    _count = _ready.size();
+    assert(_count > 0);
 }
 
-tamed void fdh::fdh_state::recv(int * fd, char * buf, size_t size, event<int> done) {
-  tvars { int amt; }
-  
-  while (done) {
-    amt = ::fdh_recv(_fd, fd, buf, size);
-    if (amt > 0) 
-      break;
-    else if (amt == 0)
-      continue;
-    else if (errno == EAGAIN || errno == EWOULDBLOCK)
-      twait { tamer::at_fd_read(_fd, make_event()); }
-    else if (errno != EINTR) {
-      perror("fdh: open: recv");
-      done.trigger(-errno);
-      return;
+fdhelper::fdhimp::~fdhimp()
+{
+    while (_helpers.size()) {
+	fdh *h = _helpers.front();
+	_helpers.pop_front();
+	delete h;
     }
-  }
-  
-  done.trigger(0);
 }
 
-tamed void fdh::fdh_state::clone(event<fdh> done) {
-  tvars { int fdo, r; }
-
-  twait { _lock.acquire(make_event()); }
-
-  _msg.query.req = FDH_CLONE;
-  
-  twait { send(-1, _buf, FDH_MSG_SIZE, make_event(r)); }
-  if (r) {
-    done.trigger(fdh(-1,-1));
-    goto release;
-  }
-  twait { recv(&fdo, _buf, FDH_MSG_SIZE, make_event(r)); }
-
-  if (r)
-    done.trigger(fdh(-1,-1));
-  else
-    done.trigger((_msg.reply.err) ? fdh(-1,-1) : 
-        fdh(_msg.reply.pid, fdo));
-
-release:
-  _lock.release();
-}   
-
-tamed void fdh::fdh_state::open(std::string fname, int flags, mode_t mode, event<int> fd) {
-  tvars { int fdo, r; }
-
-  twait { _lock.acquire(make_event()); }
-
-  _msg.query.req = FDH_OPEN;
-  _msg.query.flags =  flags;
-  _msg.query.mode = mode;
-  strcpy(&_buf[FDH_MSG_SIZE], fname.c_str());
-  
-  twait { send(-1, _buf, FDH_MSG_SIZE + fname.length() + 1, make_event(r)); }
-  if (r) {
-    fd.trigger(r);
-    goto release;
-  }
-  twait { recv(&fdo, _buf, FDH_MSG_SIZE, make_event(r)); }
-
-  if (r)
-    fd.trigger(r);
-  else
-    fd.trigger((_msg.reply.err) ? -_msg.reply.err : fdo);
-
-release:
-  _lock.release();
-}
-
-tamed void fdh::fdh_state::fstat(int fd, struct stat & stat_out, event<int> done) {
-  tvars { int r; }
-  
-  twait { _lock.acquire(make_event()); }
-
-  _msg.query.req = FDH_STAT;
-  
-  twait { send(fd, _buf, FDH_MSG_SIZE, make_event(r)); }
-  if (r) {
-    done.trigger(r);
-    goto release;
-  }
-  twait { recv(NULL, _buf, FDH_MSG_SIZE + sizeof(struct stat), make_event(r)); }
-
-  if (r)
-    done.trigger(r);
-  else
-    if (_msg.reply.err)
-      done.trigger(-_msg.reply.err);
-    else {
-      done.trigger(0);
-      memcpy((void *)&stat_out, &_buf[FDH_MSG_SIZE], sizeof(struct stat));
+tamed void fdhelper::fdhimp::get(event<fdh *> done)
+{
+    while (!_ready.size() || _waiting.size()) {
+	twait {
+	    _waiting.push_back(make_event());
+	}
     }
-
-release:
-  _lock.release(); 
-}
-
-//NOTE: release should only be triggered after the amount received from fdo == size
-//  otherwise helper will remain frozen in send
-tamed void fdh::fdh_state::read(int fd, size_t size, event<int> fdo, event<> release) {
-  tvars { int r; }
-
-  twait { _lock.acquire(make_event()); }
-
-  _msg.query.req = FDH_READ;
-  _msg.query.size = size;
-
-  twait { send(fd, _buf, FDH_MSG_SIZE, make_event(r)); }
-  if (r)
-    fdo.trigger(r);
-  else
-    fdo.trigger(_fd);
-
-  // lock _fd until read completes
-  twait { release.at_trigger(make_event()); }
-  _lock.release();
-}
-
-//NOTE: release should only be triggered after the amount sent to fdi == size
-//  otherwise helper will remain frozen in recv state
-tamed void fdh::fdh_state::write(int fd, size_t size, event<int> fdi, event<> release) {
-  tvars { int r; }
-
-  twait { _lock.acquire(make_event()); }
-  
-  _msg.query.req = FDH_WRITE;
-  _msg.query.size = size; 
-
-  twait { send(fd, _buf, FDH_MSG_SIZE, make_event(r)); }
-  if (r)
-    fdi.trigger(r);
-  else
-    fdi.trigger(_fd);
-
-  // lock _fd until write completes
-  twait { release.at_trigger(make_event()); }
-  _lock.release();
-}
-
-tamed void fdhmaster::fdhmaster_state::open(std::string fname, int flags, mode_t mode, event<int> fd) {
-  tvars { fdh fdh_(-1,-1); }
-  twait { get(make_event(fdh_)); }
-  fdh_.open(fname, flags, mode, fd);
-  twait { fd.at_trigger(make_event());}
-  done(fdh_);
-}
-
-tamed void fdhmaster::fdhmaster_state::fstat(int fd, struct stat & stat_out, event<int> e) {
-  tvars { fdh fdh_(-1,-1); }
-  twait { get(make_event(fdh_)); }
-  fdh_.fstat(fd, stat_out, e);
-  twait { e.at_trigger(make_event()); }
-  done(fdh_);
-}
-
-tamed void fdhmaster::fdhmaster_state::read(int fd, size_t size, event<int> fdo, event<> release) {
-  tvars { fdh fdh_(-1,-1); }
-  twait { get(make_event(fdh_)); }
-  fdh_.read(fd, size, fdo, release);
-  twait { release.at_trigger(make_event());}
-  done(fdh_);
-}
-
-tamed void fdhmaster::fdhmaster_state::write(int fd, size_t size, event<int> fdi, event<> release) {
-  tvars { fdh fdh_(-1,-1); }
-  twait { get(make_event(fdh_)); }
-  fdh_.write(fd, size, fdi, release);
-  twait { release.at_trigger(make_event());}
-  done(fdh_);
-}
-
-tamed void fdhmaster::fdhmaster_state::increase() {
-  tvars { fdh fdh_(-1,-1); fdh fdhn_(-1,-1); }
-  
-  if (_count >= _max)
-    return;
-  twait { get(make_event(fdh_)); }
-  twait { fdh_.clone(make_event(fdhn_)); }
-  if (fdhn_) {
-    done(fdhn_); 
-    _count ++;
-  }
-  done(fdh_);
-}
-
-tamed void fdhmaster::fdhmaster_state::decrease() {
-  tvars { fdh fdh_(-1,-1); }
-
-  if (_count <= _min || !_ready.size())//errr....
-    return;
-  _ready.pop_back();
-}
-
-tamed void fdhmaster::fdhmaster_state::get(event<fdh> e) {
-  tvars { rendezvous<> r; fdh fdh_(-1,-1); }
-  
-  if (!_ready.size()) {
-    _waiting.push_back(make_event(r, fdh_));
-    twait(r);
-  } else {
-    fdh_ = _ready.front();
+    fdh *h = _ready.front();
     _ready.pop_front();
-  }
-
-  e.trigger(fdh_);
+    done.trigger(h);
 }
+
+
+fdhelper::fdh::fdh()
+{
+    int socks[2];
+
+    if (::socketpair(AF_UNIX, SOCK_STREAM, 0, socks) < 0)
+	return;
+
+    _pid = ::fork();
+    if (_pid < 0) {
+	::close(socks[0]);
+	::close(socks[1]);
+	return;
+    } else if (_pid == 0) {
+	::close(socks[0]);
+	if (::dup2(socks[1], 0) < 0)
+	    goto child_err;
+	if (::execv(TAMER_HELPER_PATH, NULL) < 0)
+	    goto child_err;
+    child_err:
+	::close(socks[1]);
+	exit(0);
+    }
+
+    ::close(socks[1]);
+    fd::make_nonblocking(socks[0]);
+    _fd = fd(socks[0]);
+}
+
+tamed void fdhelper::fdh::recv(int *fd, size_t size, event<int> done)
+{
+    tvars {
+	int amt;
+    }
+
+    while (done) {
+	amt = ::fdh_recv(_fd.value(), fd, _u.buf, size);
+	if (amt > 0)
+	    break;
+	else if (amt == 0)
+	    continue;
+	else if (errno == EAGAIN || errno == EWOULDBLOCK)
+	    twait { tamer::at_fd_read(_fd.value(), make_event()); }
+	else if (errno != EINTR) {
+	    perror("fdh: open: recv");
+	    done.trigger(-errno);
+	    return;
+	}
+    }
+
+    done.trigger(0);
+}
+
+tamed void fdhelper::fdhimp::open(std::string fname, int flags, mode_t mode, event<int> done)
+{
+    tvars {
+	passive_ref_ptr<fdhimp> hold(this);
+	fdh *h;
+	int r, fresult;
+    }
+
+    twait { get(make_event(h)); }
+
+    h->_u.msg.query.req = FDH_OPEN;
+    h->_u.msg.query.flags = flags;
+    h->_u.msg.query.mode = mode;
+    strcpy(&h->_u.buf[FDH_MSG_SIZE], fname.c_str());
+
+    twait {
+	h->send(-1, FDH_MSG_SIZE + fname.length() + 1, make_event(r));
+    }
+    if (r < 0)
+	goto release;
+    twait {
+	h->recv(&fresult, FDH_MSG_SIZE, make_event(r));
+    }
+    if (r >= 0 && h->_u.msg.reply.err)
+	r = -h->_u.msg.reply.err;
+
+ release:
+    done.trigger(r >= 0 ? fresult : r);
+    put(h);
+}
+
+tamed void fdhelper::fdhimp::fstat(int fd, struct stat &stat_out, event<int> done)
+{
+    tvars {
+	passive_ref_ptr<fdhimp> hold(this);
+	fdh *h;
+	int r, fresult;
+    }
+
+    twait { get(make_event(h)); }
+
+    h->_u.msg.query.req = FDH_STAT;
+    twait {
+	h->send(fd, FDH_MSG_SIZE, make_event(r));
+    }
+    if (r < 0)
+	goto release;
+    twait {
+	h->recv(0, FDH_MSG_SIZE + sizeof(struct stat), make_event(r));
+    }
+    if (r >= 0 && h->_u.msg.reply.err)
+	r = -h->_u.msg.reply.err;
+    if (r >= 0)
+	memcpy(&stat_out, &h->_u.buf[FDH_MSG_SIZE], sizeof(struct stat));
+
+ release:
+    done.trigger(r >= 0 ? 0 : r);
+    put(h);
+}
+
+tamed void fdhelper::fdhimp::read(int read_fd, void *buf, size_t size, size_t &nread, event<int> done)
+{
+    tvars {
+	passive_ref_ptr<fdhimp> hold(this);
+	fdh *h;
+	int r;
+	size_t pos = 0;
+	size_t amt;
+    }
+
+    nread = 0;
+    twait { get(make_event(h)); }
+
+    h->_u.msg.query.req = FDH_READ;
+    h->_u.msg.query.size = size;
+    twait {
+	h->send(read_fd, FDH_MSG_SIZE, make_event(r));
+    }
+    if (r < 0) {
+	done.trigger(r);
+	goto release;
+    }
+
+    while (pos < size && h->_fd && done && r >= 0) {
+	twait {
+	    h->_fd.read_once(static_cast<char *>(buf) + pos, size - pos, amt, make_event(r));
+	}
+	pos += amt;
+	nread = pos;
+	if (amt == 0)
+	    break;
+    }
+
+    done.trigger(r >= 0 ? 0 : r);
+
+    // must read the rest of the file data lest the fd get out of sync
+    twait {
+	h->_fd.read(crapbuf, size - pos > sizeof(crapbuf) ? sizeof(crapbuf) : size - pos, make_event(r));
+    }
+
+ release:
+    put(h);
+}
+
+tamed void fdhelper::fdhimp::write(int write_fd, const void *buf, size_t size, size_t &nwritten, event<int> done)
+{
+    tvars {
+	passive_ref_ptr<fdhimp> hold(this);
+	fdh *h;
+	int r;
+	size_t pos = 0;
+	size_t amt;
+    }
+
+    nwritten = 0;
+    twait { get(make_event(h)); }
+
+    h->_u.msg.query.req = FDH_WRITE;
+    h->_u.msg.query.size = size;
+    twait {
+	h->send(write_fd, FDH_MSG_SIZE, make_event(r));
+    }
+    if (r < 0) {
+	done.trigger(r);
+	goto release;
+    }
+
+    while (pos < size && h->_fd && done && r >= 0) {
+	twait {
+	    h->_fd.write_once(static_cast<const char *>(buf) + pos, size - pos, amt, make_event(r));
+	}
+	pos += amt;
+	nwritten = pos;
+	if (amt == 0)
+	    break;
+    }
+
+    done.trigger(r >= 0 ? 0 : r);
+
+    // must write the correct amount of data lest the fd get out of sync
+    twait {
+	h->_fd.write(crapbuf, size - pos > sizeof(crapbuf) ? sizeof(crapbuf) : size - pos, make_event(r));
+    }
+
+ release:
+    put(h);
+}
+
 }

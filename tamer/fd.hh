@@ -178,7 +178,7 @@ class fd {
 
     /** @brief  Create a pipe.
      *  @param  rfd  Set to file descriptor for read end of pipe.
-     *  @param  wfd  Set to fiel descriptor for write end of pipe.
+     *  @param  wfd  Set to file descriptor for write end of pipe.
      *  @return  0 on success or a negative error code.
      *
      *  The returned file descriptors are nonblocking.
