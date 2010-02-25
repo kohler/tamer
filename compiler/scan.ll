@@ -1,6 +1,4 @@
 /* -*-fundamental-*- */
-/* $Id: scan.ll,v 1.7 2007-06-04 16:03:11 kohler Exp $ */
-
 /*
  *
  * Copyright (C) 2005 Max Krohn (my last name AT mit DOT edu)

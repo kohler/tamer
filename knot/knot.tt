@@ -1,6 +1,6 @@
 // -*-c++-*-
 
-#include "cache2.hh"       
+#include "cache2.hh"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/socket.h>
@@ -17,6 +17,9 @@
 #include <tamer/fd.hh>
 #include <fcntl.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #define pthread_mutex_lock(a) 
 #define pthread_mutex_unlock(a) 

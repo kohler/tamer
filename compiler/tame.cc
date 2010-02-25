@@ -1,8 +1,7 @@
-
-/* $Id: tame.cc,v 1.5 2007-05-22 20:58:16 kohler Exp $ */
-
 #include "tame.hh"
 #include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
 
 parse_state_t *state;
 bool tamer_debug = false;

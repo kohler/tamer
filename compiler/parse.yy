@@ -1,9 +1,7 @@
 /* -*-fundamental-*- */
-/* $Id: parse.yy,v 1.6 2007-06-04 16:03:11 kohler Exp $ */
-
 /*
  *
- * Copyright (C) 1998 Max Krohn (dm@uun.org)
+ * Copyright (C) 1998 Max Krohn
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as

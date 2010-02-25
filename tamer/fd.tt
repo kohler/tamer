@@ -20,8 +20,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <string.h>
 #include <tamer/tamer.hh>
 #include <tamer/fdh.hh>
+#include <algorithm>
 
 namespace tamer {
 
@@ -118,40 +121,40 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
 	size_t pos = 0;
 	ssize_t amt;
 	passive_ref_ptr<fd::fdimp> hold(this);
-    int fd;
+    int xfd;
     rendezvous<> r;
     event<> release;
     }
-    
+
     if (_fd < 0) {
 	done.trigger(-EBADF);
 	return;
     }
     
-    fd = _fd;
+    xfd = _fd;
     if (_is_file) {
     //send rpc to helper, get new non-blocked fd
       release = make_event(r);
-      twait { _fdhm.read(_fd, size, make_event(fd), release); }
-      if (fd < 0 ) {
+      twait { _fdhm.read(_fd, size, make_event(xfd), release); }
+      if (xfd < 0 ) {
         // revert back to blocked IO
-        fd = _fd;
+        xfd = _fd;
         release.trigger();
       }
     }
 
     twait { _rlock.acquire(make_event()); }
     
-    while (pos != size && (_is_file || (done && fd >= 0))) {
+    while (pos != size && (_is_file || (done && xfd >= 0))) {
       //if _is_file we must read until the end
-	amt = ::read(fd, static_cast<char *>(buf) + pos, size - pos);
+	amt = ::read(xfd, static_cast<char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
 	    size_out = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(fd, make_event()); }
+	    twait { tamer::at_fd_read(xfd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -202,7 +205,7 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
 	size_t pos = 0;
 	ssize_t amt;
 	passive_ref_ptr<fd::fdimp> hold(this);
-    int fd;
+    int xfd;
     rendezvous<> r;
     event<> release;
     }
@@ -212,15 +215,15 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
 	return;
     }
     
-    fd = _fd;
+    xfd = _fd;
     
     if (_is_file) {
       //send rpc to helper, get new non-blocked fd
       release = make_event(r);
-      twait { _fdhm.write(_fd, size, make_event(fd), release); }
-      if (fd < 0) {
+      twait { _fdhm.write(_fd, size, make_event(xfd), release); }
+      if (xfd < 0) {
         // revert back to blocked IO
-        fd = _fd;
+        xfd = _fd;
         release.trigger();
       }
     }

@@ -14,6 +14,7 @@
  * legally binding.
  */
 #include <stdexcept>
+#include <stdint.h>
 namespace tamer {
 
 #if __GNUC__
@@ -55,7 +56,7 @@ event<> hard_distribute(const event<> &e1, const event<> &e2);
 class simple_event { public:
 
     // DO NOT derive from this class!
-    
+
     inline simple_event()
 	: _refcount(1), _r(0), _rid(0), _r_next(0), _r_pprev(0),
 	  _at_trigger(0) {
@@ -80,7 +81,7 @@ class simple_event { public:
     void use() {
 	++_refcount;
     }
-    
+
     void unuse() {
 	if (--_refcount == 0) {
 	    if (_r)
@@ -98,7 +99,7 @@ class simple_event { public:
     operator unspecified_bool_type() const {
 	return _r ? &simple_event::_r : 0;
     }
-    
+
     bool empty() const {
 	return _r == 0;
     }
@@ -108,7 +109,7 @@ class simple_event { public:
     }
 
     inline void initialize(abstract_rendezvous *r, uintptr_t rid);
-    
+
     uintptr_t rid() const {
 	return _rid;
     }
@@ -133,20 +134,20 @@ class simple_event { public:
     simple_event(const simple_event &);
 
     simple_event &operator=(const simple_event &);
-    
+
     inline ~simple_event() {
 	assert(!_r && !_r_pprev);
     }
-    
+
     static simple_event *dead;
 
     static void __make_dead();
     class initializer;
     static initializer the_initializer;
-    
+
     friend class abstract_rendezvous;
     friend class event<void, void, void, void>;
-    
+
 };
 
 
@@ -156,13 +157,13 @@ class abstract_rendezvous { public:
 	: _events(0), _unblocked_next(0), _unblocked_prev(0),
 	  _blocked_closure(0), _flags(flags) {
     }
-    
+
     virtual inline ~abstract_rendezvous();
 
     virtual void complete(uintptr_t rid) = 0;
 
     virtual inline void clear();
-    
+
     virtual bool is_distribute() const {
 	return false;
     }
@@ -202,7 +203,7 @@ class abstract_rendezvous { public:
       private:
 	abstract_rendezvous *_r;
     };
-    
+
     static abstract_rendezvous *unblocked;
     static abstract_rendezvous *unblocked_tail;
 
@@ -220,7 +221,7 @@ class abstract_rendezvous { public:
 
     friend class simple_event;
     friend class driver;
-    
+
 };
 
 
@@ -270,7 +271,7 @@ struct tamer_debug_closure : public tamer_closure {
 
     const char *_block_file;
     unsigned _block_line;
-    
+
 };
 
 
@@ -293,7 +294,7 @@ inline void abstract_rendezvous::clear() {
 inline abstract_rendezvous::~abstract_rendezvous() {
     // take all events off this rendezvous and call their triggerers
     remove_all();
-    
+
     if (_unblocked_prev)
 	_unblocked_prev->_unblocked_next = _unblocked_next;
     else if (unblocked == this)
@@ -326,7 +327,7 @@ inline bool simple_event::trigger() {
 	*_r_pprev = _r_next;
     if (_r_next)
 	_r_next->_r_pprev = _r_pprev;
-    
+
     _r = 0;
     _at_trigger = 0;
     _r_pprev = 0;

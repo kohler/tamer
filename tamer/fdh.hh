@@ -6,6 +6,8 @@
 #include <tamer/fdhmsg.hh>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <limits.h>
+#include <stdio.h>
 #include <list>
 
 #define FDH_MAX 6 //TODO relocate, maybe tamer.hh
@@ -15,7 +17,7 @@ namespace tamer {
 
 class fdh {
 
-  struct fdh_state 
+  struct fdh_state
     : public enable_ref_ptr_with_full_release<fdh_state> {
 
     union {
@@ -24,12 +26,12 @@ class fdh {
     };
 
     pid_t _pid;
-    int   _fd;  
+    int   _fd;
     mutex _lock;
 
     fdh_state();
     fdh_state(pid_t pid, int fd);
-    
+
     operator bool() {
       return _pid > 0 && _fd > 0;
     }
@@ -38,39 +40,39 @@ class fdh {
       if (kill(_pid, SIGTERM) < 0)
         perror("unable to SIGTERM helper");
       ::close(_fd);
-      _pid = _fd = -1; 
+      _pid = _fd = -1;
     }
-    
+
     int make_nonblocking();
     void send(int fd, char * buf, size_t size, event<int> done);
     void recv(int * fd, char * buf, size_t size, event<int> done);
-   
+
     void clone(event<fdh> done);
     void open(std::string fname, int flags, mode_t mode, event<int> fd);
-    void fstat(int fd, struct stat &stat_out, event<int> done); 
-    void read(int fd, size_t size, event<int> fd, event<> release);
-    void write(int fd, size_t size, event<int> fd, event<> release);
+    void fstat(int fd, struct stat &stat_out, event<int> done);
+    void read(int fd, size_t size, event<int> e, event<> release);
+    void write(int fd, size_t size, event<int> e, event<> release);
 
     class closure__send__iPckQi_;
     void send(closure__send__iPckQi_ &, unsigned);
 
     class closure__recv__PiPckQi_;
-    void recv(closure__recv__PiPckQi_ &, unsigned); 
-    
-    class closure__clone__Q3fdh_; 
+    void recv(closure__recv__PiPckQi_ &, unsigned);
+
+    class closure__clone__Q3fdh_;
     void clone(closure__clone__Q3fdh_ &, unsigned);
 
     class closure__open__Ssi6mode_tQi_;
-    void open(closure__open__Ssi6mode_tQi_ &, unsigned); 
-    
+    void open(closure__open__Ssi6mode_tQi_ &, unsigned);
+
     class closure__fstat__iR4statQi_;
-    void fstat(closure__fstat__iR4statQi_ &, unsigned); 
-    
+    void fstat(closure__fstat__iR4statQi_ &, unsigned);
+
     class closure__read__ikQi_Q_;
-    void read(closure__read__ikQi_Q_ &, unsigned); 
-    
+    void read(closure__read__ikQi_Q_ &, unsigned);
+
     class closure__write__ikQi_Q_;
-    void write(closure__write__ikQi_Q_ &, unsigned); 
+    void write(closure__write__ikQi_Q_ &, unsigned);
   };
 
   ref_ptr<fdh_state> _p;
@@ -85,7 +87,7 @@ public:
   inline operator unspecified_bool_type();
   inline void clone(event<fdh> done);
   inline void open(std::string fname, int flags, mode_t mode, event<int> fd);
-  inline void fstat(int fd, struct stat &stat_out, event<int> done); 
+  inline void fstat(int fd, struct stat &stat_out, event<int> done);
   inline void read(int fd, size_t size, event<int> fdo, event<> release);
   inline void write(int fd, size_t size, event<int> fdi, event<> release);
 };
@@ -98,7 +100,7 @@ inline fdh::fdh(pid_t pid, int fd)
   : _p((fd > 0 && pid > 0) ? new fdh_state(pid, fd) : 0) {
 }
 
-inline fdh::fdh(const fdh &other) 
+inline fdh::fdh(const fdh &other)
   : _p(other._p) {
 }
 
@@ -145,12 +147,12 @@ class fdhmaster {
 
   struct fdhmaster_state
     : public enable_ref_ptr_with_full_release<fdhmaster_state> {
-    
+
     int _min;
     int _count;
     int _max;
 
-    std::list<fdh> _ready;  
+    std::list<fdh> _ready;
     std::list<event<fdh> > _waiting;
 
     fdhmaster_state();
@@ -183,10 +185,10 @@ class fdhmaster {
 
     class closure__get__Q3fdh_;
     void get(closure__get__Q3fdh_ &, unsigned);
-    
+
     class closure__open__Ssi6mode_tQi_;
     void open(closure__open__Ssi6mode_tQi_ &, unsigned);
-   
+
     class closure__fstat__iR4statQi_;
     void fstat(closure__fstat__iR4statQi_ &, unsigned);
 
@@ -194,7 +196,7 @@ class fdhmaster {
     void read(closure__read__ikQi_Q_ &, unsigned);
 
     class closure__write__ikQi_Q_;
-    void write(closure__write__ikQi_Q_ &, unsigned); 
+    void write(closure__write__ikQi_Q_ &, unsigned);
 
   };
 
@@ -211,7 +213,7 @@ inline fdhmaster::fdhmaster()
 : _p(new fdhmaster_state()) {
 }
 
-inline fdhmaster::fdhmaster_state::fdhmaster_state() 
+inline fdhmaster::fdhmaster_state::fdhmaster_state()
 : _min(FDH_MIN), _max(FDH_MAX) {
   fdh fdh_(-1,-1);
 

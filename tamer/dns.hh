@@ -1,6 +1,5 @@
 #ifndef TAMER_DNS_HH
 #define TAMER_DNS_HH 1
-
 #include <tamer/tamer.hh>
 #include <tamer/fd.hh>
 #include <tamer/ref.hh>
@@ -9,6 +8,10 @@
 #include <list>
 #include <set>
 #include <sstream>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
 
 
 #define DNS_REPARSE_TIME 60

@@ -36,7 +36,7 @@ class sigcancel_rendezvous : public rendezvous<> { public:
 	_nwaiting++;
 	e->initialize(this, sig_installing);
     }
-    
+
     void complete(uintptr_t rid) {
 	if (!sig_handlers[rid] && (int) rid != sig_installing) {
 	    struct sigaction sa;
@@ -47,7 +47,7 @@ class sigcancel_rendezvous : public rendezvous<> { public:
 	}
 	rendezvous<>::complete(rid);
     }
-    
+
 };
 
 sigcancel_rendezvous sigcancelr;
@@ -58,11 +58,14 @@ sigcancel_rendezvous sigcancelr;
 extern "C" {
 static void tame_signal_handler(int signal) {
     int save_errno = errno;
-    
+
     driver::sig_any_active = sig_active[signal] = 1;
-    
+
     // ensure select wakes up
-    write(driver::sig_pipe[1], "", 1);
+    if (driver::sig_pipe[1] >= 0) {
+	ssize_t r = write(driver::sig_pipe[1], "", 1);
+	(void) r;		// don't care if the write fails
+    }
 
     // block signal until we trigger the event, giving the unblocked
     // rendezvous a chance to maybe install a different handler
@@ -80,8 +83,7 @@ void driver::at_signal(int signal, const event<> &trigger)
 {
     assert(signal >= 0 && signal < NSIG);
 
-    if (sig_pipe[0] < 0) {
-	pipe(sig_pipe);
+    if (sig_pipe[0] < 0 && pipe(sig_pipe) >= 0) {
 	fcntl(sig_pipe[0], F_SETFL, O_NONBLOCK);
 	fcntl(sig_pipe[0], F_SETFD, FD_CLOEXEC);
 	fcntl(sig_pipe[1], F_SETFD, FD_CLOEXEC);
@@ -95,20 +97,20 @@ void driver::at_signal(int signal, const event<> &trigger)
 	sig_handlers[signal] = distribute(sig_handlers[signal], trigger);
 	if (simple != sig_handlers[signal].__get_simple())
 	    sig_handlers[signal].at_trigger(make_event(sigcancelr));
-	
+
     } else {
 	int old_sig_installing = sig_installing;
 	sig_installing = signal;
-    
+
 	sig_handlers[signal] = trigger;
 	sig_handlers[signal].at_trigger(make_event(sigcancelr));
-	
+
 	struct sigaction sa;
 	sa.sa_handler = tame_signal_handler;
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = SA_RESETHAND;
 	sigaction(signal, &sa, 0);
-	
+
 	sig_installing = old_sig_installing;
     }
 }

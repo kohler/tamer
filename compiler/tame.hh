@@ -1,6 +1,4 @@
 // -*-c++-*-
-/* $Id: tame.hh,v 1.13 2007-09-06 01:01:07 kohler Exp $ */
-
 /*
  *
  * Copyright (C) 2005 Max Krohn (email: my last name AT mit DOT edu)

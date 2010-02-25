@@ -13,6 +13,7 @@
  * legally binding.
  */
 #include <tamer/bufferedio.hh>
+#include <string.h>
 
 namespace tamer {
 

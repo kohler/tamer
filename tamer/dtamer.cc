@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
 
 namespace tamer {
 namespace {
