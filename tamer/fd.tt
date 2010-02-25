@@ -205,49 +205,49 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
 	size_t pos = 0;
 	ssize_t amt;
 	passive_ref_ptr<fd::fdimp> hold(this);
-    int xfd;
-    rendezvous<> r;
-    event<> release;
+	int xfd;
+	rendezvous<> r;
+	event<> release;
     }
 
     if (_fd < 0) {
 	done.trigger(-EBADF);
 	return;
     }
-    
+
     xfd = _fd;
-    
+
     if (_is_file) {
-      //send rpc to helper, get new non-blocked fd
-      release = make_event(r);
-      twait { _fdhm.write(_fd, size, make_event(xfd), release); }
-      if (xfd < 0) {
-        // revert back to blocked IO
-        xfd = _fd;
-        release.trigger();
-      }
+	//send rpc to helper, get new non-blocked fd
+	release = make_event(r);
+	twait { _fdhm.write(_fd, size, make_event(xfd), release); }
+	if (xfd < 0) {
+	    // revert back to blocked IO
+	    xfd = _fd;
+	    release.trigger();
+	}
     }
-    
+
     twait { _wlock.acquire(make_event()); }
-    
-    while (pos != size && (_is_file || (done && _fd >= 0))) {
-      //if _is_file we must read until the end
-	amt = ::write(_fd, static_cast<const char *>(buf) + pos, size - pos);
+
+    //if _is_file we must read until the end
+    while (pos != size && (_is_file || (done && xfd >= 0))) {
+	amt = ::write(xfd, static_cast<const char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
 	    size_out = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(_fd, make_event()); }
+	    twait { tamer::at_fd_write(xfd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
-  
+
     if (release)
-      release.trigger();
+	release.trigger();
 
     _wlock.release();
     done.trigger(pos == size || _fd >= 0 ? 0 : -ECANCELED);
