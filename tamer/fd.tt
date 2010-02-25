@@ -130,7 +130,7 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
 	done.trigger(-EBADF);
 	return;
     }
-    
+
     xfd = _fd;
     if (_is_file) {
     //send rpc to helper, get new non-blocked fd
@@ -144,7 +144,7 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
     }
 
     twait { _rlock.acquire(make_event()); }
-    
+
     while (pos != size && (_is_file || (done && xfd >= 0))) {
       //if _is_file we must read until the end
 	amt = ::read(xfd, static_cast<char *>(buf) + pos, size - pos);
@@ -160,7 +160,7 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
 	    break;
 	}
     }
-    
+
     if (release)
       release.trigger();
 
@@ -174,14 +174,14 @@ tamed void fd::fdimp::read_once(void *buf, size_t size, size_t &size_out, event<
 	ssize_t amt;
 	passive_ref_ptr<fd::fdimp> hold(this);
     }
-    
+
     if (_fd < 0) {
 	done.trigger(-EBADF);
 	return;
     }
 
     twait { _rlock.acquire(make_event()); }
-    
+
     while (done && _fd >= 0) {
 	amt = ::read(_fd, static_cast<char *>(buf), size);
 	if (amt != 0 && amt != (ssize_t) -1) {
@@ -194,7 +194,7 @@ tamed void fd::fdimp::read_once(void *buf, size_t size, size_t &size_out, event<
 	    break;
 	}
     }
-    
+
     _rlock.release();
     done.trigger(0);
 }
@@ -261,6 +261,54 @@ tamed void fd::fdimp::write(std::string s, size_t &size_out, event<int> done)
     }
 }
 
+tamed void fd::fdimp::sendmsg(const void *buf, size_t size, int transfer_fd,
+			      event<int> done)
+{
+    tvars {
+	struct msghdr msg;
+	struct iovec iov;
+	char transfer_fd_space[CMSG_SPACE(sizeof(int))];
+	ssize_t amt;
+    }
+
+    // prepare message
+    {
+	msg.msg_name = 0;
+	msg.msg_namelen = 0;
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	msg.msg_flags = 0;
+	iov.iov_base = const_cast<void *>(buf);
+	iov.iov_len = size;
+
+	if (transfer_fd < 0) {
+	    msg.msg_control = 0;
+	    msg.msg_controllen = 0;
+	} else {
+	    msg.msg_control = transfer_fd_space;
+	    msg.msg_controllen = CMSG_SPACE(sizeof(int));
+	    struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+	    cmsg->cmsg_level = SOL_SOCKET;
+	    cmsg->cmsg_type = SCM_RIGHTS;
+	    cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+	    memcpy(CMSG_DATA(cmsg), &transfer_fd, sizeof(int));
+	}
+    }
+
+    // send message
+    while (done && _fd >= 0) {
+	amt = ::sendmsg(_fd, &msg, 0);
+	if (amt != (ssize_t) -1)
+	    break;
+	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+	    twait { tamer::at_fd_write(_fd, make_event()); }
+	} else if (errno != EINTR)
+	    done.trigger(-errno);
+    }
+
+    done.trigger(_fd >= 0 ? 0 : -ECANCELED);
+}
+
 fd fd::socket(int domain, int type, int protocol)
 {
     int f = ::socket(domain, type, protocol);
@@ -298,7 +346,7 @@ tamed void fd::fdimp::accept(struct sockaddr *addr_out, socklen_t *addrlen_out, 
     }
 
     twait { _rlock.acquire(make_event()); }
-    
+
     while (done && _fd >= 0) {
 	f = ::accept(_fd, addr_out, addrlen_out);
 	if (f >= 0) {
@@ -329,7 +377,7 @@ tamed void fd::fdimp::connect(const struct sockaddr *addr, socklen_t addrlen, ev
     }
 
     twait { _wlock.acquire(make_event()); }
-    
+
     x = ::connect(_fd, addr, addrlen);
     if (x == -1 && errno != EINPROGRESS)
 	ret = -errno;

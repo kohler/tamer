@@ -153,7 +153,7 @@ class fd {
      */
     static void open(const char *filename, int flags, mode_t mode,
 		     event<fd> result);
-    
+
     /** @brief  Open a file descriptor.
      *  @param  filename  File name.
      *  @param  flags     Open flags (@c O_RDONLY, @c O_EXCL, and so forth).
@@ -207,7 +207,7 @@ class fd {
      *          error code.
      */
     inline int error() const;
-    
+
     /** @brief  Return file descriptor value.
      *  @return  File descriptor value if file descriptor is valid, otherwise
      *          a negative error code.
@@ -296,7 +296,7 @@ class fd {
      */
     inline void connect(const struct sockaddr *addr, socklen_t addrlen,
 			event<int> done);
-    
+
     /** @brief  Read from file descriptor.
      *  @param[out]  buf     Buffer.
      *  @param       size    Buffer size.
@@ -323,7 +323,7 @@ class fd {
      *  number of characters actually read.
      */
     inline void read(void *buf, size_t size, const event<int> &done);
-    
+
     /** @brief  Read once from file descriptor.
      *  @param[out]  buf     Buffer.
      *  @param       size    Buffer size.
@@ -383,6 +383,18 @@ class fd {
      */
     inline void write(const std::string &buf, const event<int> &done);
 
+    /** @brief  Send a message on a file descriptor.
+     *  @param  buf          Buffer.
+     *  @param  size         Buffer size.
+     *  @param  transfer_fd  File descriptor to send with the message.
+     *  @param  done         Event triggered on completion.
+     */
+    inline void sendmsg(const void *buf, size_t size, int transfer_fd,
+			event<int> done);
+
+    /** @overload */
+    inline void sendmsg(const void *buf, size_t size, const event<int> &done);
+
     /** @brief  Close file descriptor.
      *  @param  done  Event triggered on completion.
      *
@@ -408,7 +420,7 @@ class fd {
      *  @param  f  Source file descriptor.
      */
     inline fd &operator=(const fd &f);
-    
+
   private:
 
     struct fdcloser {
@@ -423,7 +435,7 @@ class fd {
 	}
 	passive_ref_ptr<fd::fdimp> _f;
     };
-    
+
     struct fdimp : public enable_ref_ptr_with_full_release<fdimp> {
 
 	int _fd;
@@ -435,7 +447,7 @@ class fd {
 	fdimp(int fd)
 	    : _fd(fd), _is_file(false) {
 	}
-	
+
 	void accept(struct sockaddr *addr, socklen_t *addrlen,
 		    event<fd> result);
 	void connect(const struct sockaddr *addr, socklen_t addrlen,
@@ -446,26 +458,28 @@ class fd {
 	void write(const void *buf, size_t size, size_t &nwritten,
 		   event<int> done);
 	void write(std::string buf, size_t &nwritten, event<int> done);
+	void sendmsg(const void *buf, size_t size, int fd_to_send, event<int> done);
 	void full_release() {
 	    if (_fd >= 0)
 		close();
 	}
 	int close(int leave_error = -EBADF);
-	
+
       private:
-	
+
 	class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_ &, unsigned);
 	class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_ &, unsigned);
 	class closure__read__PvkRkQi_; void read(closure__read__PvkRkQi_ &, unsigned);
 	class closure__read_once__PvkRkQi_; void read_once(closure__read_once__PvkRkQi_ &, unsigned);
 	class closure__write__PKvkRkQi_; void write(closure__write__PKvkRkQi_ &, unsigned);
 	class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &, unsigned);
+	class closure__sendmsg__PKvkiQi_; void sendmsg(closure__sendmsg__PKvkiQi_ &, unsigned);
     };
 
     class closure__open__PKci6mode_tQ2fd_; static void open(closure__open__PKci6mode_tQ2fd_ &, unsigned);
-    
+
     struct fdcloser;
-    
+
     ref_ptr<fdimp> _p;
 
     static size_t garbage_size;
@@ -588,10 +602,21 @@ inline void fd::write(std::string buf, size_t &nwritten, event<int> done) {
 	_p->write(buf, nwritten, done);
     else
 	done.trigger(-EBADF);
-}	
+}
 
 inline void fd::write(const std::string &buf, const event<int> &done) {
     write(buf, garbage_size, done);
+}
+
+inline void fd::sendmsg(const void *buf, size_t size, int transfer_fd, event<int> done) {
+    if (_p)
+	_p->sendmsg(buf, size, transfer_fd, done);
+    else
+	done.trigger(-EBADF);
+}
+
+inline void fd::sendmsg(const void *buf, size_t size, const event<int> &done) {
+    sendmsg(buf, size, -1, done);
 }
 
 inline void fd::close() {
