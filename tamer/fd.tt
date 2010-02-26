@@ -115,7 +115,7 @@ void fd::fdimp::fstat(struct stat &stat_out, event<int> done)
 #endif
 }
 
-tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> done)
+tamed void fd::fdimp::read(void *buf, size_t size, size_t &nread, event<int> done)
 {
     tvars {
 	size_t pos = 0;
@@ -150,7 +150,7 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
 	amt = ::read(xfd, static_cast<char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
-	    size_out = pos;
+	    nread = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -168,7 +168,7 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &size_out, event<int> 
     done.trigger(pos == size || _fd >= 0 ? 0 : -ECANCELED);
 }
 
-tamed void fd::fdimp::read_once(void *buf, size_t size, size_t &size_out, event<int> done)
+tamed void fd::fdimp::read_once(void *buf, size_t size, size_t &nread, event<int> done)
 {
     tvars {
 	ssize_t amt;
@@ -185,7 +185,7 @@ tamed void fd::fdimp::read_once(void *buf, size_t size, size_t &size_out, event<
     while (done && _fd >= 0) {
 	amt = ::read(_fd, static_cast<char *>(buf), size);
 	if (amt != 0 && amt != (ssize_t) -1) {
-	    size_out = amt;
+	    nread = amt;
       break;
   } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
 	    twait { tamer::at_fd_read(_fd, make_event()); }
@@ -199,7 +199,7 @@ tamed void fd::fdimp::read_once(void *buf, size_t size, size_t &size_out, event<
     done.trigger(0);
 }
 
-tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, event<int> done)
+tamed void fd::fdimp::write(const void *buf, size_t size, size_t &nwritten, event<int> done)
 {
     tvars {
 	size_t pos = 0;
@@ -235,7 +235,7 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
 	amt = ::write(xfd, static_cast<const char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
-	    size_out = pos;
+	    nwritten = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -253,11 +253,11 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &size_out, even
     done.trigger(pos == size || _fd >= 0 ? 0 : -ECANCELED);
 }
 
-tamed void fd::fdimp::write(std::string s, size_t &size_out, event<int> done)
+tamed void fd::fdimp::write(std::string s, size_t &nwritten, event<int> done)
 {
     twait {
 	done.at_trigger(make_event());
-	write(s.data(), s.length(), size_out, done);
+	write(s.data(), s.length(), nwritten, done);
     }
 }
 
@@ -268,7 +268,6 @@ tamed void fd::fdimp::write_once(const void *buf, size_t size, size_t &nwritten,
 	ssize_t amt;
     }
 
-    nwritten = 0;
     if (_fd < 0) {
 	done.trigger(-EBADF);
 	return;

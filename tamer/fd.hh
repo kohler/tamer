@@ -588,6 +588,7 @@ inline void fd::connect(const struct sockaddr *addr, socklen_t addrlen, event<in
 }
 
 inline void fd::read(void *buf, size_t size, size_t &nread, event<int> done) {
+    nread = 0;
     if (_p)
 	_p->read(buf, size, nread, done);
     else
@@ -599,6 +600,7 @@ inline void fd::read(void *buf, size_t size, const event<int> &done) {
 }
 
 inline void fd::read_once(void *buf, size_t size, size_t &nread, event<int> done) {
+    nread = 0;
     if (_p)
 	_p->read_once(buf, size, nread, done);
     else
@@ -606,6 +608,7 @@ inline void fd::read_once(void *buf, size_t size, size_t &nread, event<int> done
 }
 
 inline void fd::write(const void *buf, size_t size, size_t &nwritten, event<int> done) {
+    nwritten = 0;
     if (_p)
 	_p->write(buf, size, nwritten, done);
     else
@@ -617,6 +620,7 @@ inline void fd::write(const void *buf, size_t size, const event<int> &done) {
 }
 
 inline void fd::write(std::string buf, size_t &nwritten, event<int> done) {
+    nwritten = 0;
     if (_p)
 	_p->write(buf, nwritten, done);
     else
@@ -628,6 +632,7 @@ inline void fd::write(const std::string &buf, const event<int> &done) {
 }
 
 inline void fd::write_once(const void *buf, size_t size, size_t &nwritten, event<int> done) {
+    nwritten = 0;
     if (_p)
 	_p->write_once(buf, size, nwritten, done);
     else
