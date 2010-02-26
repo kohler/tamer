@@ -39,7 +39,7 @@ pkginclude_HEADERS = \
 	xdriver.hh \
 	xevent.hh
 EXTRA_libtamer_la_SOURCES = \
-	fdmsg.hh fdhmsg.cc \
+	fdhmsg.hh fdhmsg.cc \
 	fdh.hh fdh.tt
 libtamer_la_LIBADD = \
 	$(TAMER_FDHELPER_OBJS)
