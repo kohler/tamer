@@ -460,10 +460,16 @@ class fd {
 	mutex _rlock;
 	mutex _wlock;
 	event<> _at_close;
+#if HAVE_TAMER_FDHELPER
 	bool _is_file;
+#endif
 
 	fdimp(int fd)
-	    : _fd(fd), _is_file(false) {
+	    : _fd(fd)
+#if HAVE_TAMER_FDHELPER
+	    , _is_file(false)
+#endif
+	{
 	}
 
 	void accept(struct sockaddr *addr, socklen_t *addrlen,

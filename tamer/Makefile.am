@@ -1,10 +1,5 @@
-bin_PROGRAMS = tamerfdh
-
 pkgconfigdir = ${libdir}/pkgconfig
 pkgconfig_DATA = tamer.pc
-
-tamerfdh_SOURCES = fdhelp.cc fdhmsg.hh fdhmsg.cc
-tamerfdh_CPPFLAGS = $(AM_CPPFLAGS)
 
 lib_LTLIBRARIES = libtamer.la
 libtamer_la_SOURCES = \
@@ -16,8 +11,6 @@ libtamer_la_SOURCES = \
 	dtamer.cc \
 	dsignal.cc \
 	event.hh \
-	fdmsg.hh fdhmsg.cc \
-	fdh.hh fdh.tt \
 	fd.hh fd.tt \
 	dns.hh dns.tt \
 	lock.hh lock.tt \
@@ -45,6 +38,17 @@ pkginclude_HEADERS = \
 	xbase.hh \
 	xdriver.hh \
 	xevent.hh
+EXTRA_libtamer_la_SOURCES = \
+	fdmsg.hh fdhmsg.cc \
+	fdh.hh fdh.tt
+libtamer_la_LIBADD = \
+	$(TAMER_FDHELPER_OBJS)
+
+bin_PROGRAMS = $(TAMER_FDHELPER_PROGRAM)
+EXTRA_PROGRAMS = tamerfdh
+
+tamerfdh_SOURCES = fdhelp.cc fdhmsg.hh fdhmsg.cc
+tamerfdh_CPPFLAGS = $(AM_CPPFLAGS)
 
 EXTRA_DIST = tamer.pc.in
 

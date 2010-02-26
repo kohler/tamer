@@ -205,7 +205,7 @@ dnl libevent support
 dnl
 
 LIBEVENT_LIBS=
-AC_ARG_WITH([libevent], [    --with-libevent        Include libevent driver.], [:], [with_libevent=maybe])
+AC_ARG_WITH([libevent], [  --with-libevent         include libevent driver], [:], [with_libevent=maybe])
 if test "$with_libevent" != no; then
     AC_CHECK_LIB([event], [event_init], [have_libevent=yes])
     AC_CHECK_HEADERS([event.h], [have_event_h=yes])
@@ -223,6 +223,19 @@ were not found.
     fi
 fi
 AC_SUBST(LIBEVENT_LIBS)
+
+
+dnl
+dnl file descriptor helper support
+dnl
+
+AC_ARG_ENABLE([fd-helper], [  --enable-fd-helper      enable experimental fd helper support
+                          (for nonblocking disk I/O)])
+if test "$enable_fd_helper" = yes; then
+    AC_DEFINE([HAVE_TAMER_FDHELPER], [1], [Define if Tame programs should use fdhelper for disk I/O.])
+    AC_SUBST([TAMER_FDHELPER_OBJS], ['fdhmsg.$(OBJEXT) fdh.$(OBJEXT)'])
+    AC_SUBST([TAMER_FDHELPER_PROGRAM], ['tamerfdh${EXEEXT}'])
+fi
 
 
 dnl

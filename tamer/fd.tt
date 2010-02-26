@@ -23,12 +23,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tamer/tamer.hh>
-#include <tamer/fdh.hh>
+#if HAVE_TAMER_FDHELPER
+# include <tamer/fdh.hh>
+#endif
 #include <algorithm>
 
 namespace tamer {
 
-fdhelper _fdhm;
+#if HAVE_TAMER_FDHELPER
+static fdhelper _fdhm;
+#endif
 
 size_t fd::garbage_size;
 
@@ -64,28 +68,26 @@ event<> fd::closer()
 	return event<>();
 }
 
-//#define TAMER_SANS_HELPERS
-
 fd fd::open(const char *filename, int flags, mode_t mode) {
     int f = ::open(filename, flags, mode);
     return fd(f == -1 ? -errno : f);
 }
 
-#if TAMER_SANS_HELPERS
-void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
-{
-    fd nfd;
-    int f = ::open(filename, flags | O_NONBLOCK, mode);
-    nfd = fd(f == -1 ? -errno : f);
-    done.trigger(nfd);
-}
-#else
+#if HAVE_TAMER_FDHELPER
 tamed static void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
 {
     tvars { int f(); fd nfd; }
     twait { _fdhm.open(filename, flags | O_NONBLOCK, mode, make_event(f)); }
     nfd = fd(f);
     nfd._p->_is_file = true;
+    done.trigger(nfd);
+}
+#else
+void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
+{
+    fd nfd;
+    int f = ::open(filename, flags | O_NONBLOCK, mode);
+    nfd = fd(f == -1 ? -errno : f);
     done.trigger(nfd);
 }
 #endif
@@ -107,11 +109,11 @@ int fd::pipe(fd &rfd, fd &wfd)
 
 void fd::fdimp::fstat(struct stat &stat_out, event<int> done)
 {
-#if TAMER_SANS_HELPERS
+#if HAVE_TAMER_FDHELPER
+    _fdhm.fstat(_fd, stat_out, done);
+#else
     int x = ::fstat(_fd, &stat_out);
     done.trigger(x == -1 ? -errno : 0);
-#else
-    _fdhm.fstat(_fd, stat_out, done);
 #endif
 }
 
@@ -128,10 +130,12 @@ tamed void fd::fdimp::read(void *buf, size_t size, size_t &nread, event<int> don
 	return;
     }
 
+#if HAVE_TAMER_FDHELPER
     if (_is_file) {
 	_fdhm.read(_fd, buf, size, nread, done);
 	return;
     }
+#endif
 
     twait { _rlock.acquire(make_event()); }
 
@@ -198,10 +202,12 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &nwritten, even
 	return;
     }
 
+#if HAVE_TAMER_FDHELPER
     if (_is_file) {
 	_fdhm.write(_fd, buf, size, nwritten, done);
 	return;
     }
+#endif
 
     twait { _wlock.acquire(make_event()); }
 
