@@ -383,6 +383,24 @@ class fd {
      */
     inline void write(const std::string &buf, const event<int> &done);
 
+    /** @brief  Write once to file descriptor.
+     *  @param       buf       Buffer.
+     *  @param       size      Buffer size.
+     *  @param[out]  nwritten  Number of characters written.
+     *  @param       done      Event triggered on completion.
+     *
+     *  Writes at most @a size bytes to the file descriptor.  Blocks until at
+     *  least one byte is written (or end-of-file or an error condition), but
+     *  unlike write(), @a done is triggered after the @em first successful
+     *  read, even if less than @a size bytes are written.  @a done is
+     *  triggered with 0 on success, or a negative error code.  @a nwritten is
+     *  kept up to date as the read progresses.
+     *
+     *  @sa write(const void *, size_t, size_t &, event<int>)
+     */
+    inline void write_once(const void *buf, size_t size, size_t &nwritten,
+			   event<int> done);
+
     /** @brief  Send a message on a file descriptor.
      *  @param  buf          Buffer.
      *  @param  size         Buffer size.
@@ -455,9 +473,9 @@ class fd {
 	void fstat(struct stat &stat_out, event<int> done);
 	void read(void *buf, size_t size, size_t &nread, event<int> done);
 	void read_once(void *buf, size_t size, size_t &nread, event<int> done);
-	void write(const void *buf, size_t size, size_t &nwritten,
-		   event<int> done);
+	void write(const void *buf, size_t size, size_t &nwritten, event<int> done);
 	void write(std::string buf, size_t &nwritten, event<int> done);
+	void write_once(const void *buf, size_t size, size_t &nwritten, event<int> done);
 	void sendmsg(const void *buf, size_t size, int fd_to_send, event<int> done);
 	void full_release() {
 	    if (_fd >= 0)
@@ -473,6 +491,7 @@ class fd {
 	class closure__read_once__PvkRkQi_; void read_once(closure__read_once__PvkRkQi_ &, unsigned);
 	class closure__write__PKvkRkQi_; void write(closure__write__PKvkRkQi_ &, unsigned);
 	class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &, unsigned);
+	class closure__write_once__PKvkRkQi_; void write_once(closure__write_once__PKvkRkQi_ &, unsigned);
 	class closure__sendmsg__PKvkiQi_; void sendmsg(closure__sendmsg__PKvkiQi_ &, unsigned);
     };
 
@@ -484,8 +503,8 @@ class fd {
 
     static size_t garbage_size;
 
-    friend bool operator==(const fd &, const fd &);
-    friend bool operator!=(const fd &, const fd &);
+    friend bool operator==(const fd &a, const fd &b);
+    friend bool operator!=(const fd &a, const fd &b);
 
 };
 
@@ -606,6 +625,13 @@ inline void fd::write(std::string buf, size_t &nwritten, event<int> done) {
 
 inline void fd::write(const std::string &buf, const event<int> &done) {
     write(buf, garbage_size, done);
+}
+
+inline void fd::write_once(const void *buf, size_t size, size_t &nwritten, event<int> done) {
+    if (_p)
+	_p->write_once(buf, size, nwritten, done);
+    else
+	done.trigger(-EBADF);
 }
 
 inline void fd::sendmsg(const void *buf, size_t size, int transfer_fd, event<int> done) {

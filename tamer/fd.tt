@@ -261,6 +261,39 @@ tamed void fd::fdimp::write(std::string s, size_t &size_out, event<int> done)
     }
 }
 
+tamed void fd::fdimp::write_once(const void *buf, size_t size, size_t &nwritten, event<int> done)
+{
+    tvars {
+	passive_ref_ptr<fd::fdimp> hold(this);
+	ssize_t amt;
+    }
+
+    nwritten = 0;
+    if (_fd < 0) {
+	done.trigger(-EBADF);
+	return;
+    }
+
+    twait { _wlock.acquire(make_event()); }
+
+    //if _is_file we must read until the end
+    while (done && _fd >= 0) {
+	amt = ::write(_fd, static_cast<const char *>(buf), size);
+	if (amt != (ssize_t) -1) {
+	    nwritten = amt;
+	    break;
+	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+	    twait { tamer::at_fd_write(_fd, make_event()); }
+	} else if (errno != EINTR) {
+	    done.trigger(-errno);
+	    break;
+	}
+    }
+
+    _wlock.release();
+    done.trigger(0);
+}
+
 tamed void fd::fdimp::sendmsg(const void *buf, size_t size, int transfer_fd,
 			      event<int> done)
 {
