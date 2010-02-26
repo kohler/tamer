@@ -250,7 +250,7 @@ struct tamer_closure {
   protected:
 
     unsigned _refcount;
-    
+
 };
 
 

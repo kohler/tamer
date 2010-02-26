@@ -247,7 +247,7 @@ class event { public:
      *  this event's slots unchanged.
      */
     inline event<> bind_all() const;
-    
+
     /** @brief  Assign this event to the same occurrence as @a e.
      *  @param  e  Source event.
      */
@@ -269,7 +269,7 @@ class event { public:
     tamerpriv::simple_event *__get_simple() const {
 	return _e;
     }
-    
+
   private:
 
     tamerpriv::simple_event *_e;
@@ -319,13 +319,13 @@ class event<T0, T1, T2, void> { public:
 	: _e(e._e), _s0(e._s0), _s1(e._s1), _s2(e._s2) {
 	_e->use();
     }
-    
+
     ~event() {
 	_e->unuse();
     }
 
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
-    
+
     operator unspecified_bool_type() const {
 	return *_e;
     }
@@ -333,7 +333,7 @@ class event<T0, T1, T2, void> { public:
     bool operator!() const {
 	return _e->empty();
     }
-    
+
     bool empty() const {
 	return _e->empty();
     }
@@ -360,7 +360,7 @@ class event<T0, T1, T2, void> { public:
     }
 
     inline event<> bind_all() const;
-    
+
     event<T0, T1, T2> &operator=(const event<T0, T1, T2> &e) {
 	e._e->use();
 	_e->unuse();
@@ -370,18 +370,18 @@ class event<T0, T1, T2, void> { public:
 	_s2 = e._s2;
 	return *this;
     }
-    
+
     tamerpriv::simple_event *__get_simple() const {
 	return _e;
     }
-    
+
   private:
 
     tamerpriv::simple_event *_e;
     T0 *_s0;
     T1 *_s1;
     T2 *_s2;
-    
+
 };
 
 
@@ -412,13 +412,13 @@ class event<T0, T1, void, void>
 	: _e(e._e), _s0(e._s0), _s1(e._s1) {
 	_e->use();
     }
-    
+
     ~event() {
 	_e->unuse();
     }
 
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
-    
+
     operator unspecified_bool_type() const {
 	return *_e;
     }
@@ -426,7 +426,7 @@ class event<T0, T1, void, void>
     bool operator!() const {
 	return _e->empty();
     }
-    
+
     bool empty() const {
 	return _e->empty();
     }
@@ -447,7 +447,7 @@ class event<T0, T1, void, void>
     }
 
     inline event<> bind_all() const;
-    
+
     event<T0, T1> &operator=(const event<T0, T1> &e) {
 	e._e->use();
 	_e->unuse();
@@ -456,11 +456,11 @@ class event<T0, T1, void, void>
 	_s1 = e._s1;
 	return *this;
     }
-    
+
     tamerpriv::simple_event *__get_simple() const {
 	return _e;
     }
-    
+
   private:
 
     tamerpriv::simple_event *_e;
@@ -499,13 +499,13 @@ class event<T0, void, void, void>
 	: _e(e._e), _s0(e._s0) {
 	_e->use();
     }
-    
+
     ~event() {
 	_e->unuse();
     }
 
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
-    
+
     operator unspecified_bool_type() const {
 	return *_e;
     }
@@ -513,7 +513,7 @@ class event<T0, void, void, void>
     bool operator!() const {
 	return _e->empty();
     }
-    
+
     bool empty() const {
 	return _e->empty();
     }
@@ -533,7 +533,7 @@ class event<T0, void, void, void>
     }
 
     inline event<> bind_all() const;
-    
+
     event<T0> &operator=(const event<T0> &e) {
 	e._e->use();
 	_e->unuse();
@@ -541,11 +541,11 @@ class event<T0, void, void, void>
 	_s0 = e._s0;
 	return *this;
     }
-    
+
     tamerpriv::simple_event *__get_simple() const {
 	return _e;
     }
-    
+
   private:
 
     tamerpriv::simple_event *_e;
@@ -580,18 +580,18 @@ class event<void, void, void, void> { public:
 	: _e(e._e) {
 	_e->use();
     }
-    
+
     event(event<> &e)
 	: _e(e._e) {
 	_e->use();
     }
-    
+
     ~event() {
 	_e->unuse();
     }
 
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
-    
+
     operator unspecified_bool_type() const {
 	return *_e;
     }
@@ -599,7 +599,7 @@ class event<void, void, void, void> { public:
     bool operator!() const {
 	return _e->empty();
     }
-    
+
     bool empty() const {
 	return _e->empty();
     }
@@ -649,9 +649,9 @@ class event<void, void, void, void> { public:
     inline event(const take_marker &, tamerpriv::simple_event *e)
 	: _e(e) {
     }
-    
+
     friend class tamerpriv::simple_event;
-    
+
 };
 
 /** @endcond */
@@ -665,7 +665,7 @@ class event<void, void, void, void> { public:
  *  IDs and trigger slots.
  *
  *  @{ */
- 
+
 /** @brief  Construct a two-ID, four-slot event on rendezvous @a r.
  *  @param  r   Rendezvous.
  *  @param  i0  First event ID.

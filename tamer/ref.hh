@@ -20,7 +20,7 @@ template <typename T> class ref_ptr;
 template <typename T> class passive_ref_ptr;
 
 class enable_ref_ptr { public:
-    
+
     enable_ref_ptr()
 	: _use_count(1), _weak_count(0) {
     }
@@ -28,9 +28,9 @@ class enable_ref_ptr { public:
     ~enable_ref_ptr() {
 	assert(!_use_count && !_weak_count);
     }
-    
+
   private:
-    
+
     uint32_t _use_count;
     uint32_t _weak_count;
 
@@ -68,18 +68,18 @@ class enable_ref_ptr { public:
     uint32_t use_count() const {
 	return _use_count;
     }
-    
+
 };
 
 
 template <typename T> class enable_ref_ptr_with_full_release : public enable_ref_ptr { public:
-    
+
     enable_ref_ptr_with_full_release() {
     }
 
     ~enable_ref_ptr_with_full_release() {
     }
-    
+
   private:
 
     template <typename U> friend class ref_ptr;
@@ -93,7 +93,7 @@ template <typename T> class enable_ref_ptr_with_full_release : public enable_ref
 	} else
 	    return false;
     }
-    
+
 };
 
 
@@ -160,7 +160,7 @@ template <typename T> class ref_ptr { public:
     operator unspecified_bool_type() const {
 	return _t ? &ref_ptr::_t : 0;
     }
-    
+
     bool operator!() const {
 	return !_t;
     }
@@ -242,7 +242,7 @@ template <typename T> class passive_ref_ptr { public:
     operator unspecified_bool_type() const {
 	return _t ? &passive_ref_ptr::_t : 0;
     }
-    
+
     bool operator!() const {
 	return !_t;
     }
@@ -250,7 +250,7 @@ template <typename T> class passive_ref_ptr { public:
   private:
 
     T *_t;
-    
+
 };
 
 

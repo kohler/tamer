@@ -25,7 +25,7 @@ class buffer { public:
 
     void fill_until(fd f, char c, size_t max_size, size_t &out_size, event<int> done);
     void take_until(fd f, char c, size_t max_size, std::string &str, event<int> done);
-    
+
   private:
 
     char *_buf;

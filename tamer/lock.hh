@@ -124,13 +124,13 @@ class mutex { public:
 	--_locked;
 	wake();
     }
-    
+
   private:
 
     struct wait : public tamerutil::dlist_element {
 	event<> e;
     };
-    
+
     int _locked;
     tamerutil::dlist<wait> _wait;
 
@@ -142,10 +142,10 @@ class mutex { public:
 	if (wait *w = _wait.front())
 	    w->e.trigger();
     }
-    
+
     mutex(const mutex &);
     mutex &operator=(const mutex &);
-    
+
 };
 
 } /* namespace tamer */
