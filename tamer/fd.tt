@@ -184,7 +184,7 @@ tamed void fd::fdimp::read_once(void *buf, size_t size, size_t &nread, event<int
 
     while (done && _fd >= 0) {
 	amt = ::read(_fd, static_cast<char *>(buf), size);
-	if (amt != 0 && amt != (ssize_t) -1) {
+	if (amt != (ssize_t) -1) {
 	    nread = amt;
       break;
   } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
