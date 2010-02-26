@@ -77,6 +77,10 @@ Authors
 Eddie Kohler <kohler@cs.ucla.edu>
 http://www.cs.ucla.edu/~kohler/
 
+Dero Gharibian
+File open/read/write/fstat helper for asynchronous disk I/O; asynchronous
+DNS resolver.
+
 Maxwell Krohn <krohn@mit.edu>
 http://www.okws.org/
 Especially for the original version of the tamer preprocessor and

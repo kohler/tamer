@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([tamer], [1.2.2])
+AC_INIT([tamer], [1.3.0])
 AC_CONFIG_SRCDIR([configure.ac])
 AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(tamer/config.h)

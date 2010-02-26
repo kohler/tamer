@@ -1,5 +1,16 @@
 Tamer NEWS
 
+Version 1.3.0   25.Feb.2010
+
+* Improve compilability.
+
+* Add optional helpers to make disk I/O nonblocking.  Helper support can be
+  turned on by configuring with --enable-fd-helper.  Disk I/O helper
+  support by Dero Gharibian.
+
+* Add asynchronous DNS resolver by Dero Gharibian.
+
+
 Version 1.2.2   16.Aug.2007
 
 * Fix bugs.
