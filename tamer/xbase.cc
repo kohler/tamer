@@ -81,7 +81,7 @@ class distribute_rendezvous : public abstract_rendezvous { public:
 	    _es.back().at_trigger(event<>(*this, 1));
 	}
     }
-    
+
     void complete(uintptr_t rid) {
 	while (_es.size() && !_es.back())
 	    _es.pop_back();
@@ -92,11 +92,11 @@ class distribute_rendezvous : public abstract_rendezvous { public:
 	    delete this;
 	}
     }
-    
+
   private:
 
     std::vector<event<> > _es;
-    
+
 };
 
 

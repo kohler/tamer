@@ -684,7 +684,7 @@ tamed void resolver::parse() {
 
   if (!nss.size() && _flags & DNS_OPTION_NAMESERVERS && inet_aton("127.0.0.1", &ina))
     nss.insert(make_nameserver(ina.s_addr));
-    
+
   twait { add_nameservers(nss, make_event()); }
 
 out2:

@@ -39,8 +39,8 @@ class driver { public:
     void at_delay(double delay, const event<> &e);
     inline void at_delay_sec(int delay, const event<> &e);
     inline void at_delay_msec(int delay, const event<> &e);
-    
-    static void at_signal(int signal, const event<> &e);
+
+    static void at_signal(int signo, const event<> &e);
 
     timeval now;
     inline void set_now();
@@ -51,13 +51,13 @@ class driver { public:
 
     static driver *make_tamer();
     static driver *make_libevent();
-    
+
     static driver *main;
 
     static volatile sig_atomic_t sig_any_active;
     static int sig_pipe[2];
     static void dispatch_signals();
-    
+
 };
 
 inline driver::driver()

@@ -51,7 +51,7 @@ class ready_set { public:
 
     typedef size_t size_type;
     typedef size_t index_type;
-    
+
     /** @brief  Default constructor creates an empty ready_set. */
     ready_set() throw ();
 
@@ -98,7 +98,7 @@ class ready_set { public:
     inline size_type size() const throw () {
 	return _size;
     }
-    
+
     /** @brief  Return a pointer to the front element of the queue, if any.
      *  @return Returns a null pointer if the queue is empty. */
     inline T *front_ptr() throw () {
@@ -115,7 +115,7 @@ class ready_set { public:
   private:
 
     enum { rsnull = (size_t) -1, rsunready = (size_t) -2 };
-    
+
     ready_set_element<T> *_elts;
     size_t _cap;
     size_t _free;
@@ -134,9 +134,9 @@ class ready_set { public:
 	_nunready++;
 	return i;
     }
-    
+
     void expand();
-    
+
 };
 
 template <typename T, typename A>
@@ -250,10 +250,10 @@ template <typename T, typename A = std::allocator<T> > class debuffer { public:
 	: _elts(reinterpret_cast<T *>(_local_elts)), _cap(nlocal),
 	  _head(0), _tail(0) {
     }
-    
+
     /** @brief  Destroy the buffer. */
     ~debuffer();
-    
+
     /** @brief  Return the number of elements in the buffer. */
     inline size_type size() const throw () {
 	return _tail - _head;
@@ -263,7 +263,7 @@ template <typename T, typename A = std::allocator<T> > class debuffer { public:
     inline bool empty() const throw () {
 	return _head == _tail;
     }
-    
+
     /** @brief  Return a reference to the front element of the buffer.
      *  @pre    The buffer must not be empty.
      *  @sa     front_ptr() */
@@ -271,7 +271,7 @@ template <typename T, typename A = std::allocator<T> > class debuffer { public:
 	assert(_head != _tail);
 	return _elts[_head & (_cap - 1)];
     }
-    
+
     /** @brief  Return a reference to the front element of the buffer.
      *  @pre    The buffer must not be empty.
      *  @sa     front_ptr() */
@@ -303,7 +303,7 @@ template <typename T, typename A = std::allocator<T> > class debuffer { public:
 	_alloc.construct(&_elts[_tail & (_cap - 1)], v);
 	++_tail;
     }
-    
+
     /** @brief  Add an element to the front of the buffer.
      *  @param  v  Element to add.
      */
@@ -340,7 +340,7 @@ template <typename T, typename A = std::allocator<T> > class debuffer { public:
     A _alloc;
 
     void expand();
-    
+
 };
 
 template <typename T, typename A>
@@ -384,14 +384,14 @@ class dlist_element { public:
 	    _next = _prev = 0;
 	}
     }
-    
+
   private:
-    
+
     dlist_element *_next;
     dlist_element *_prev;
 
     template <typename T> friend class dlist;
-    
+
 };
 
 template <typename T> class dlist : public dlist_element { public:
@@ -403,7 +403,7 @@ template <typename T> class dlist : public dlist_element { public:
     bool empty() const {
 	return _next == this;
     }
-    
+
     void push_back(T *e) {
 	assert(!e->_prev && !e->_next);
 	e->_prev = _prev;

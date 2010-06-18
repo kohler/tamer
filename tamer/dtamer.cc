@@ -34,9 +34,9 @@ class driver_tamer : public driver { public:
     virtual bool empty();
     virtual void once();
     virtual void loop();
-    
+
   private:
-    
+
     struct ttimer {
 	union {
 	    unsigned order;
@@ -73,7 +73,7 @@ class driver_tamer : public driver { public:
 	tfd_group *next;
 	tfd t[1];
     };
-    
+
     ttimer **_t;
     int _nt;
     unsigned _torder;
@@ -99,7 +99,7 @@ class driver_tamer : public driver { public:
     void check_timers() const;
     void timer_reheapify_from(int pos, ttimer *t, bool will_delete);
     void expand_fds();
-    
+
 };
 
 
@@ -202,7 +202,7 @@ void driver_tamer::check_timers() const
     for (int k = 0; k < _nt; k++)
 	fprintf(stderr, " %p/%d.%06d", _t[k], _t[k]->expiry.tv_sec, _t[k]->expiry.tv_usec);
     fprintf(stderr, "\n");
-    
+
     for (int i = 0; i < _nt / 2; i++)
 	for (int j = 2*i + 1; j < 2*i + 3; j++)
 	    if (j < _nt && *_t[i] > *_t[j]) {
@@ -237,7 +237,7 @@ void driver_tamer::at_fd(int fd, int action, const event<int> &trigger)
 	_fdfree = t->next;
 	t->next = _fd;
 	_fd = t;
-	
+
 	t->fd = fd;
 	t->action = action;
 	(void) new(static_cast<void *>(&t->e)) event<int>(trigger);
@@ -354,7 +354,7 @@ void driver_tamer::once()
 		pprev = &t->next;
 	    }
     }
-    
+
     // select!
     fd_set fds[2];
     fds[fdread] = _fdset[fdread];

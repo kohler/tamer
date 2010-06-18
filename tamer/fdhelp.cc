@@ -78,8 +78,8 @@ int main (void) {
       goto exit_;
     } else if (len == 0)
       goto exit_;
-    
-    query_count ++; 
+
+    query_count ++;
     msg = (fdh_msg *)buf;
 
     switch (msg->query.req) {
@@ -89,7 +89,7 @@ int main (void) {
           msg->reply.err = errno;
           goto forkerr;
         }
-        
+
         msg->reply.pid = pid = fork();
         if (pid < 0) {
           chfd = -1;
@@ -106,7 +106,7 @@ int main (void) {
           close(socks[1]);
           break;
         }
-        
+
         chfd = socks[0];
         msg->reply.err = 0;
       forkerr:

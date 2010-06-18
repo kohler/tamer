@@ -84,7 +84,7 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
      *  @param  rid  The occurrence's ID within this rendezvous.
      */
     inline void complete(uintptr_t rid);
-    
+
   private:
 
     struct evtrec {
@@ -96,7 +96,7 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
     };
 
     tamerutil::ready_set<evtrec> _bs;
-    
+
 };
 
 template <typename I0, typename I1>
@@ -144,21 +144,21 @@ template <typename I0>
 class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
 
     inline rendezvous(rendezvous_flags flags = rnormal);
-    
+
     inline bool join(I0 &);
     inline void clear();
 
     unsigned nready() const	{ return _bs.size(); }
     unsigned nwaiting() const	{ return _bs.multiset_size(); }
     unsigned nevents() const	{ return nready() + nwaiting(); }
-    
+
     inline void add(tamerpriv::simple_event *e, const I0 &i0);
     inline void complete(uintptr_t rid);
 
   private:
 
     tamerutil::ready_set<I0> _bs;
-    
+
 };
 
 template <typename I0>
@@ -218,7 +218,7 @@ class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
 
     tamerutil::debuffer<uintptr_t> _buf;
     size_t _nwaiting;
-    
+
 };
 
 inline rendezvous<uintptr_t>::rendezvous(rendezvous_flags flags)
@@ -269,7 +269,7 @@ class rendezvous<T *> : public rendezvous<uintptr_t> { public:
     inline void add(tamerpriv::simple_event *e, T *i0) throw () {
 	inherited::add(e, reinterpret_cast<uintptr_t>(i0));
     }
-    
+
     inline bool join(T *&i0) {
 	if (uintptr_t *x = _buf.front_ptr()) {
 	    i0 = reinterpret_cast<T *>(*x);
@@ -278,7 +278,7 @@ class rendezvous<T *> : public rendezvous<uintptr_t> { public:
 	} else
 	    return false;
     }
-        
+
 };
 
 
@@ -294,7 +294,7 @@ class rendezvous<int> : public rendezvous<uintptr_t> { public:
     inline void add(tamerpriv::simple_event *e, int i0) throw () {
 	inherited::add(e, static_cast<uintptr_t>(i0));
     }
-    
+
     inline bool join(int &i0) {
 	if (uintptr_t *x = _buf.front_ptr()) {
 	    i0 = static_cast<int>(*x);
@@ -319,7 +319,7 @@ class rendezvous<bool> : public rendezvous<uintptr_t> { public:
     inline void add(tamerpriv::simple_event *e, bool i0) throw () {
 	inherited::add(e, static_cast<uintptr_t>(i0));
     }
-    
+
     inline bool join(bool &i0) {
 	if (uintptr_t *x = _buf.front_ptr()) {
 	    i0 = static_cast<bool>(*x);
@@ -343,13 +343,13 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 	_nwaiting++;
 	e->initialize(this, 1);
     }
-    
+
     inline void complete(uintptr_t) {
 	_nwaiting--;
 	_nready++;
 	unblock();
     }
-    
+
     inline bool join() {
 	if (_nready) {
 	    _nready--;
@@ -371,7 +371,7 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 
     unsigned _nwaiting;
     unsigned _nready;
-    
+
 };
 
 
@@ -395,7 +395,7 @@ class gather_rendezvous : public rendezvous<> { public:
   private:
 
     tamerpriv::tamer_closure *_linked_closure;
-    
+
 };
 
 /** @endcond */

@@ -73,7 +73,7 @@ tamed void buffer::fill_until(fd f, char c, size_t max_size, size_t &out_size, e
 	size_t pos = this->_head;
 	ssize_t amt;
     }
-    
+
     out_size = 0;
 
     while (done) {

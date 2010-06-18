@@ -49,14 +49,14 @@ class driver_libevent : public driver { public:
 
     eevent *_etimer;
     eevent *_efd;
-    
+
     event_group *_egroup;
     eevent *_efree;
     size_t _ecap;
     eevent *_esignal;
 
     void expand_events();
-    
+
 };
 
 
@@ -140,13 +140,13 @@ void driver_libevent::at_fd(int fd, int action, const event<int> &trigger)
     assert(fd >= 0);
     if (!_efree)
 	expand_events();
-    
+
     eevent *e = _efree;
     _efree = e->next;
     event_set(&e->libevent, fd, (action == fdwrite ? EV_WRITE : EV_READ),
 	      libevent_trigger, e);
     event_add(&e->libevent, 0);
-    
+
     e->next = _efd;
     e->pprev = &_efd;
     if (_efd)
@@ -179,7 +179,7 @@ void driver_libevent::at_time(const timeval &expiry, const event<> &trigger)
 	expand_events();
     eevent *e = _efree;
     _efree = e->next;
-    
+
     evtimer_set(&e->libevent, libevent_trigger, e);
     timeval timeout = expiry;
     timersub(&timeout, &now, &timeout);
@@ -215,7 +215,7 @@ bool driver_libevent::empty()
 	e->next = _efree;
 	_efree = e;
     }
-    
+
     if (_etimer || _efd
 	|| sig_any_active || tamerpriv::abstract_rendezvous::unblocked)
 	return false;

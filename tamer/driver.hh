@@ -159,15 +159,15 @@ inline void at_delay_msec(int delay, const event<> &e)
 }
 
 /** @brief  Register event for signal occurrence.
- *  @param  sig  Signal number.
- *  @param  e    Event.
+ *  @param  signo  Signal number.
+ *  @param  e      Event.
  *
- *  Triggers @a e soon after @a sig is received.  The signal @a sig remains
- *  blocked until any code waiting on @a e has run.
+ *  Triggers @a e soon after @a signo is received.  The signal @a signo
+ *  is blocked while @a e is triggered and unblocked afterwards.
  */
-inline void at_signal(int sig, const event<> &e)
+inline void at_signal(int signo, const event<> &e)
 {
-    driver::at_signal(sig, e);
+    driver::at_signal(signo, e);
 }
 
 /** @brief  Register event to trigger soon.

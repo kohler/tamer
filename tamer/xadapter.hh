@@ -110,7 +110,7 @@ template <typename T0> class assign_trigger_function { public:
 
     assign_trigger_function(const assign_trigger_function<T0> &);
     assign_trigger_function<T0> &operator=(const assign_trigger_function<T0> &);
-    
+
 };
 
 
