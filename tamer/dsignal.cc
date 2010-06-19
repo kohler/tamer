@@ -51,7 +51,7 @@ class sigcancel_rendezvous : public rendezvous<> { public:
     }
 
     void complete(uintptr_t rid) {
-	if (!sig_handlers[rid] && !sigismember(&sig_dispatching, rid))
+	if (!sig_handlers[rid] && sigismember(&sig_dispatching, rid) == 0)
 	    tamer_sigaction(rid, SIG_DFL);
 	rendezvous<>::complete(rid);
     }
@@ -99,7 +99,7 @@ void driver::at_signal(int signo, const event<> &trigger)
 	    return;
     } else {
 	sig_handlers[signo] = trigger;
-	if (!sigismember(&sig_dispatching, signo))
+	if (sigismember(&sig_dispatching, signo) == 0)
 	    tamer_sigaction(signo, tamer_signal_handler);
     }
 
@@ -125,7 +125,7 @@ void driver::dispatch_signals()
 
     // trigger those signals
     for (int signo = 0; signo < NSIG; ++signo)
-	if (sigismember(&sig_dispatching, signo)) {
+	if (sigismember(&sig_dispatching, signo) > 0) {
 	    sig_handlers[signo].trigger();
 	    sig_active[signo] = 0;
 	}
@@ -136,7 +136,7 @@ void driver::dispatch_signals()
 
     // reset signal handlers if appropriate
     for (int signo = 0; signo < NSIG; ++signo)
-	if (sigismember(&sig_dispatching, signo) && !sig_active[signo])
+	if (sigismember(&sig_dispatching, signo) > 0 && !sig_active[signo])
 	    tamer_sigaction(signo, SIG_DFL);
 
     // now that the signal responders have potentially reinstalled signal
