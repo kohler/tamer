@@ -19,6 +19,14 @@
 #include <tamer/tamer.hh>
 #include <tamer/lock.hh>
 
+// Expected output:
+// A   (60ms pass)
+// BX  (40ms pass)
+// A'
+// B   (250ms pass)
+// E
+// F
+
 static tamer::mutex m;
 
 tamed void f1() {
@@ -56,9 +64,14 @@ tamed void f3() {
 }
 
 tamed void f4() {
+    tvars { int outcome; }
     twait { tamer::at_delay_msec(100, make_event()); }
-    twait { m.acquire(make_event()); }
-    printf("F\n");
+    twait { m.acquire(tamer::with_timeout_msec(1000, make_event(), outcome)); }
+    //twait { m.acquire(make_event()); }
+    if (outcome < 0)
+	printf("FX\n");
+    else
+	printf("F\n");
     m.release();
 }
 

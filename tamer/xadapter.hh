@@ -20,6 +20,44 @@
 namespace tamer {
 namespace tamerpriv {
 
+class with_helper_rendezvous : public abstract_rendezvous { public:
+
+    with_helper_rendezvous(simple_event *e, int *s0, int v0)
+	: _e(e), _s0(s0), _v0(v0) {
+    }
+    ~with_helper_rendezvous() {
+    }
+
+    void add(simple_event *e) {
+	e->initialize(this, 0);
+    }
+
+    void complete(uintptr_t) {
+	if (*_e) {
+	    *_s0 = _v0;
+	    _e->trigger(false);
+	} else
+	    *_s0 = int();
+	delete this;
+    }
+
+  private:
+
+    simple_event *_e;
+    int *_s0;
+    int _v0;
+
+};
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<> with_helper(event<T0, T1, T2, T3> e, int *result, int value) {
+    with_helper_rendezvous *r = new with_helper_rendezvous(e.__get_simple(), result, value);
+    event<> with(*r);
+    e.at_trigger(with);
+    return with;
+}
+
+
 template <typename F> class function_rendezvous : public abstract_rendezvous { public:
 
     function_rendezvous()
@@ -80,37 +118,6 @@ template <typename T0> class bind_function { public:
 
     event<T0> _ein;
     T0 _v0;
-
-};
-
-
-template <typename T0> class assign_trigger_function { public:
-
-    template <typename V0>
-    assign_trigger_function(simple_event *e, T0 *s0, const V0 &v0)
-	: _e(e), _s0(s0), _v0(v0) {
-	_e->use();
-    }
-
-    ~assign_trigger_function() {
-	_e->unuse();
-    }
-
-    void operator()() {
-	if (*_e) {
-	    *_s0 = _v0;
-	    _e->trigger(true);
-	}
-    }
-
-  private:
-
-    simple_event *_e;
-    T0 *_s0;
-    T0 _v0;
-
-    assign_trigger_function(const assign_trigger_function<T0> &);
-    assign_trigger_function<T0> &operator=(const assign_trigger_function<T0> &);
 
 };
 

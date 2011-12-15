@@ -118,7 +118,7 @@ void test_ready_set2() {
     }
     for (size_t i = 9; i >= 4; i--)
 	rs.erase(x[i - 4]);
-    
+
     rs.push_back_element(i5);
     rs.push_back_element(i1);
     rs.push_back_element(i4);

@@ -99,6 +99,7 @@ class driver_tamer : public driver { public:
     void check_timers() const;
     void timer_reheapify_from(int pos, ttimer *t, bool will_delete);
     void expand_fds();
+    void cull_timers();
 
 };
 
@@ -291,8 +292,21 @@ void driver_tamer::at_asap(const event<> &e)
     _asap.push_back(e);
 }
 
+void driver_tamer::cull_timers()
+{
+    ttimer *t;
+    while (_nt > 0 && (t = _t[0], !t->trigger)) {
+	timer_reheapify_from(0, _t[_nt - 1], true);
+	_nt--;
+	t->~ttimer();
+	t->u.next = _tfree;
+	_tfree = t;
+    }
+}
+
 bool driver_tamer::empty()
 {
+    cull_timers();
     if (_nt != 0 || _nfds != 0 || _asap.size() != 0
 	|| sig_any_active || tamerpriv::abstract_rendezvous::unblocked
 	|| _nlargefds > 0)
@@ -302,17 +316,8 @@ bool driver_tamer::empty()
 
 void driver_tamer::once()
 {
-    // get rid of initial cancelled timers
-    ttimer *t;
-    while (_nt > 0 && (t = _t[0], !t->trigger)) {
-	timer_reheapify_from(0, _t[_nt - 1], true);
-	_nt--;
-	t->~ttimer();
-	t->u.next = _tfree;
-	_tfree = t;
-    }
-
     // determine timeout
+    cull_timers();
     struct timeval to, *toptr;
     if (_asap.size()
 	|| (_nt > 0 && !timercmp(&_t[0]->expiry, &now, >))
@@ -404,6 +409,7 @@ void driver_tamer::once()
 
     // run the timers that worked
     set_now();
+    ttimer *t;
     while (_nt > 0 && (t = _t[0], !timercmp(&t->expiry, &now, >))) {
 	timer_reheapify_from(0, _t[_nt - 1], true);
 	_nt--;
