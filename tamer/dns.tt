@@ -704,7 +704,7 @@ void resolver::set_option(const char * option) {
     return;
 
   if (!strncmp(option, "ndots", 6)) {
-    const int ndots = strtoint(val, 0, HOST_NAME_MAX);
+    const int ndots = strtoint(val, 0, host_name_max);
     if (ndots == -1) return;
     if (!(_flags & DNS_OPTION_SEARCH)) return;
     _search_list->ndots = _ndots = ndots;

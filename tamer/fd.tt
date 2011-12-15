@@ -27,6 +27,7 @@
 # include <tamer/fdh.hh>
 #endif
 #include <algorithm>
+extern char **environ;
 
 namespace tamer {
 
@@ -275,7 +276,7 @@ tamed void fd::fdimp::sendmsg(const void *buf, size_t size, int transfer_fd,
     tvars {
 	struct msghdr msg;
 	struct iovec iov;
-	char transfer_fd_space[CMSG_SPACE(sizeof(int))];
+	char transfer_fd_space[64];
 	ssize_t amt;
     }
 

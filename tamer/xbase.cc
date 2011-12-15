@@ -39,7 +39,7 @@ class simple_event::initializer { public:
 
 };
 
-simple_event::initializer simple_event::the_initializer; 
+simple_event::initializer simple_event::the_initializer;
 
 
 bool tamer_closure::block_landmark(const char *&file, unsigned &line) {

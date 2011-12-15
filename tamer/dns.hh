@@ -601,17 +601,25 @@ class resolver : public enable_ref_ptr_with_full_release<resolver> {
   class closure__handle_nameserver__10nameserver;
   void handle_nameserver(closure__handle_nameserver__10nameserver&, unsigned);
 
-public:
-  resolver(int flags, std::string rc = "/etc/resolv.conf");
+#if defined(HOST_NAME_MAX)
+    enum { host_name_max = HOST_NAME_MAX };
+#elif defined(_POSIX_HOST_NAME_MAX)
+    enum { host_name_max = _POSIX_HOST_NAME_MAX };
+#else
+    enum { host_name_max = 255 };
+#endif
 
-  operator unspecified_bool_type() const;
-  int error() const;
+  public:
+    resolver(int flags, std::string rc = "/etc/resolv.conf");
 
-  void ready(event<> e);
-  void resolve_a(std::string name, bool search, event<reply> e);
-  void resolve_ptr(struct in_addr *in, event<reply> e);
+    operator unspecified_bool_type() const;
+    int error() const;
 
-  void full_release();
+    void ready(event<> e);
+    void resolve_a(std::string name, bool search, event<reply> e);
+    void resolve_ptr(struct in_addr *in, event<reply> e);
+
+    void full_release();
 };
 
 inline resolver::resolver(int flags, std::string rc)
@@ -679,14 +687,14 @@ inline void resolver::set_default_options() {
 }
 
 inline void resolver::set_from_hostname() {
-  char hostname[HOST_NAME_MAX + 1];
-  char * domainname;
+    char hostname[host_name_max + 1];
+    char *domainname;
 
-  _search_list = make_search_list(_ndots);
-  if (gethostname(hostname, sizeof(hostname))) return;
-  domainname = strchr(hostname, '.');
-  if (!domainname) return;
-  add_domain(domainname);
+    _search_list = make_search_list(_ndots);
+    if (gethostname(hostname, sizeof(hostname))) return;
+    domainname = strchr(hostname, '.');
+    if (!domainname) return;
+    add_domain(domainname);
 }
 
 inline void resolver::add_domain(const char * name) {
