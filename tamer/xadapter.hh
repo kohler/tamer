@@ -97,8 +97,9 @@ template <typename T0> class assign_trigger_function { public:
     }
 
     void operator()() {
-	if (_e->trigger()) {
+	if (*_e) {
 	    *_s0 = _v0;
+	    _e->trigger(true);
 	}
     }
 
@@ -117,7 +118,7 @@ template <typename T0> class assign_trigger_function { public:
 inline void simple_event::at_trigger(const event<> &e)
 {
     if (!_r || !e)
-	e._e->trigger();
+	e._e->trigger(false);
     else if (!_at_trigger) {
 	_at_trigger = e._e;
 	_at_trigger->use();

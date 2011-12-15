@@ -19,8 +19,10 @@ namespace tamer {
 
 #if __GNUC__
 #define TAMER_CLOSUREVARATTR __attribute__((unused))
+#define TAMER_DEPRECATEDATTR __attribute__((deprecated))
 #else
 #define TAMER_CLOSUREVARATTR
+#define TAMER_DEPRECATEDATTR
 #endif
 
 template <typename I0=void, typename I1=void> class rendezvous;
@@ -85,7 +87,7 @@ class simple_event { public:
     void unuse() {
 	if (--_refcount == 0) {
 	    if (_r)
-		trigger();
+		trigger(false);
 	    delete this;
 	}
     }
@@ -114,12 +116,12 @@ class simple_event { public:
 	return _rid;
     }
 
-    inline bool trigger();
+    inline bool trigger(bool values);
 
     inline void at_trigger(const event<> &e);
 
-    inline bool at_trigger_empty() const {
-	return !_at_trigger || _at_trigger->empty();
+    inline bool has_at_trigger() const {
+	return _at_trigger && *_at_trigger;
     }
 
   protected:
@@ -284,7 +286,7 @@ inline void abstract_rendezvous::remove_all() {
     for (simple_event *e = _events; e; e = e->_r_next)
 	e->_r = 0;
     while (_events)
-	_events->trigger();
+	_events->trigger(false);
 }
 
 inline void abstract_rendezvous::clear() {
@@ -319,7 +321,7 @@ inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
     r->_events = this;
 }
 
-inline bool simple_event::trigger() {
+inline bool simple_event::trigger(bool /*values*/) {
     abstract_rendezvous *r = _r;
     simple_event *at_trigger = _at_trigger;
 
@@ -338,7 +340,7 @@ inline bool simple_event::trigger() {
     if (r)
 	r->complete(_rid);
     if (at_trigger) {
-	at_trigger->trigger();
+	at_trigger->trigger(false);
 	at_trigger->unuse();
     }
 
@@ -381,4 +383,4 @@ inline void abstract_rendezvous::run() {
 }
 
 }}
-#endif /* TAMER__BASE_HH */
+#endif /* TAMER_BASE_HH */

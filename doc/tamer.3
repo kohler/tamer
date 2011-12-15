@@ -443,13 +443,13 @@ is triggered when this event is triggered.
 .RE
 .sp
 .nf
-.B event<> event<T*>::bind_all() const
+.B event<> event<T*>::unblocker() const
 .fi
 .RS 5
 Returns a version of this event that has no trigger slots.  The returned
 event refers to the same occurrence as this event, so triggering either
 event makes both events appear empty.  However,
-.B bind_all().trigger()
+.B unblocker().trigger()
 will leave this event's slots unchanged.
 .RE
 '

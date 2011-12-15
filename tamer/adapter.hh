@@ -175,7 +175,7 @@ inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, event
  *
  *  Returns an adapter that adds a timeout to @a e.  If the adapter event is
  *  triggered before the timeout expires, then @a e is triggered with the same
- *  values.  If the @a delay timeout occurs first, then @a e.bind_all() is
+ *  values.  If the @a delay timeout occurs first, then @a e.unblocker() is
  *  triggered, which leaves @a e's trigger slots unchanged.  Conversely, if @a
  *  e is triggered, the returned event is triggered as well (as can be
  *  observed via empty() or at_trigger() notifiers).
@@ -192,25 +192,25 @@ inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, event
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2, T3> e) {
-    at_delay(delay, e.bind_all());
+    at_delay(delay, e.unblocker());
     return e;
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout(double delay, event<T0, T1, T2, T3> e) {
-    at_delay(delay, e.bind_all());
+    at_delay(delay, e.unblocker());
     return e;
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_sec(int delay, event<T0, T1, T2, T3> e) {
-    at_delay_sec(delay, e.bind_all());
+    at_delay_sec(delay, e.unblocker());
     return e;
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> e) {
-    at_delay_msec(delay, e.bind_all());
+    at_delay_msec(delay, e.unblocker());
     return e;
 }
 
@@ -222,12 +222,12 @@ inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> 
  *  Returns an adapter that adds signal interruption to @a e.  If the adapter
  *  event is triggered before signal @a signo occurs, then @a e is triggered
  *  with the same values.  If signal @a signo is received first, then @a
- *  e.bind_all() is triggered, which leaves @a e's trigger slots unchanged.
+ *  e.unblocker() is triggered, which leaves @a e's trigger slots unchanged.
  *  Conversely, if @a e is triggered, the returned event is triggered as well.
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_signal(int signo, event<T0, T1, T2, T3> e) {
-    at_signal(signo, e.bind_all());
+    at_signal(signo, e.unblocker());
     return e;
 }
 
@@ -240,13 +240,13 @@ inline event<T0, T1, T2, T3> with_signal(int signo, event<T0, T1, T2, T3> e) {
  *  Returns an adapter that adds signal interruption to @a e.  If the adapter
  *  event is triggered before a signal in [@a first, @a last) occurs, then @a
  *  e is triggered with the same values.  If one of the signals is received
- *  first, then @a e.bind_all() is triggered, which leaves @a e's trigger
+ *  first, then @a e.unblocker() is triggered, which leaves @a e's trigger
  *  slots unchanged.  Conversely, if @a e is triggered, the returned
  *  event is triggered as well.
  */
 template <typename T0, typename T1, typename T2, typename T3, typename SigInputIterator>
 inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e) {
-    event<> x = e.bind_all();
+    event<> x = e.unblocker();
     for (; first != last; ++first)
 	at_signal(*first, x);
     return e;
@@ -270,7 +270,7 @@ inline event<> __with_helper(event<T0, T1, T2, T3> e, int *result, int value) {
  *  Returns an adapter that adds a timeout to @a e.  Initially sets the
  *  variable @a result to 0.  If the adapter event is triggered before the
  *  timeout expires, then @a e is triggered with the same values.  If the @a
- *  delay seconds pass first, then @a e.bind_all() is triggered, which leaves
+ *  delay seconds pass first, then @a e.unblocker() is triggered, which leaves
  *  @a e's trigger slots unchanged, and @a result is immediately set to @c
  *  -ETIMEDOUT.  Conversely, if @a e is triggered, the returned event is
  *  triggered as well.
@@ -313,7 +313,7 @@ inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> 
  *  Returns an adapter that adds signal interruption to @a e.  Initially sets
  *  the variable @a result to 0.  If the adapter event is triggered before
  *  signal @a signo occurs, then @a e is triggered with the same values.  If
- *  the signal @a signo is received first, then @a e.bind_all() is triggered,
+ *  the signal @a signo is received first, then @a e.unblocker() is triggered,
  *  which leaves @a e's trigger slots unchanged, and @a result is immediately
  *  set to @c -EINTR.  Conversely, if @a e is triggered, the returned event is
  *  triggered as well.
@@ -334,7 +334,7 @@ inline event<T0, T1, T2, T3> with_signal(int signo, event<T0, T1, T2, T3> e, int
  *  Returns an adapter that adds signal interruption to @a e.  Initially sets
  *  the variable @a result to 0.  If the adapter event is triggered before a
  *  signal in [@a first, @a last) occurs, then @a e is triggered with the same
- *  values.  If one of the signals is received first, then @a e.bind_all() is
+ *  values.  If one of the signals is received first, then @a e.unblocker() is
  *  triggered, which leaves @a e's trigger slots unchanged, and @a result is
  *  immediately set to @c -EINTR.  Conversely, if @a e is triggered, the
  *  returned event is triggered as well.

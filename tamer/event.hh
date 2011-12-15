@@ -51,7 +51,7 @@ namespace tamer {
  *  <code>e2.trigger()</code> would trigger the underlying occurrence, making
  *  both @c e1 and @c e2 empty.
  *
- *  The bind_all() method produces a version of the event that has no slots.
+ *  The unblocker() method produces a version of the event that has no slots.
  *  The resulting event's trigger() method triggers the underlying occurrence,
  *  but does not change the values stored in the original event's trigger
  *  slots.  For instance:
@@ -67,27 +67,25 @@ namespace tamer {
  *
  *     twait {
  *        e = make_event(x);
- *        e.bind_all().trigger();
+ *        e.unblocker().trigger();
  *        e.trigger(2);               // ignored
  *     }
  *     printf("%d\n", x);        // will print 1
  *  @endcode
  *
- *  Tamer automatically triggers any active event when the last reference to
- *  its underlying occurrence is deleted.  As with bind_all(), the values in
- *  the trigger slots are not changed.  Leaking an active event is usually
- *  considered a programming error, and a message is printed at run time to
- *  indicate that an event triggered abnormally.  For example, the following
- *  code:
+ *  Tamer automatically triggers the unblocker for any active event when the
+ *  last reference to its underlying occurrence is deleted.  The trigger slots
+ *  are not changed.  Leaking an active event is usually considered a
+ *  programming error, and a message is printed at run time to indicate that
+ *  an event triggered abnormally.  For example, the following code:
  *
  *  @code
  *     twait { (void) make_event(); }
  *  @endcode
  *
- *  will print a message like "<tt>ex4.tt:11: avoided leak of active
- *  event</tt>".  However, it is sometimes convenient to rely on this
- *  triggering behavior, so the error message is turned off for rendezvous
- *  declared as volatile:
+ *  will print a message like "<tt>ex4.tt:11: active event leaked</tt>".
+ *  However, it is sometimes convenient to rely on this triggering behavior,
+ *  so the error message is turned off for rendezvous declared as volatile:
  *
  *  @code
  *     twait volatile { (void) make_event(); }
@@ -200,11 +198,12 @@ class event { public:
      *  Does nothing if event is empty.
      */
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3) {
-	if (_e->trigger()) {
+	if (*_e) {
 	    if (_s0) *_s0 = v0;
 	    if (_s1) *_s1 = v1;
 	    if (_s2) *_s2 = v2;
 	    if (_s3) *_s3 = v3;
+	    _e->trigger(true);
 	}
     }
 
@@ -246,7 +245,9 @@ class event { public:
      *  has no trigger slots, however, and bind_all().trigger() will leave
      *  this event's slots unchanged.
      */
-    inline event<> bind_all() const;
+    inline event<> unblocker() const;
+
+    inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
     /** @brief  Assign this event to the same occurrence as @a e.
      *  @param  e  Source event.
@@ -339,10 +340,11 @@ class event<T0, T1, T2, void> { public:
     }
 
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2) {
-	if (_e->trigger()) {
+	if (*_e) {
 	    if (_s0) *_s0 = v0;
 	    if (_s1) *_s1 = v1;
 	    if (_s2) *_s2 = v2;
+	    _e->trigger(true);
 	}
     }
 
@@ -359,7 +361,8 @@ class event<T0, T1, T2, void> { public:
 	_e->at_trigger(e);
     }
 
-    inline event<> bind_all() const;
+    inline event<> unblocker() const;
+    inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
     event<T0, T1, T2> &operator=(const event<T0, T1, T2> &e) {
 	e._e->use();
@@ -432,9 +435,10 @@ class event<T0, T1, void, void>
     }
 
     void trigger(const T0 &v0, const T1 &v1) {
-	if (_e->trigger()) {
+	if (*_e) {
 	    if (_s0) *_s0 = v0;
 	    if (_s1) *_s1 = v1;
+	    _e->trigger(true);
 	}
     }
 
@@ -446,7 +450,8 @@ class event<T0, T1, void, void>
 	_e->at_trigger(e);
     }
 
-    inline event<> bind_all() const;
+    inline event<> unblocker() const;
+    inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
     event<T0, T1> &operator=(const event<T0, T1> &e) {
 	e._e->use();
@@ -519,8 +524,9 @@ class event<T0, void, void, void>
     }
 
     void trigger(const T0 &v0) {
-	if (_e->trigger()) {
+	if (*_e) {
 	    if (_s0) *_s0 = v0;
+	    _e->trigger(true);
 	}
     }
 
@@ -532,7 +538,8 @@ class event<T0, void, void, void>
 	_e->at_trigger(e);
     }
 
-    inline event<> bind_all() const;
+    inline event<> unblocker() const;
+    inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
     event<T0> &operator=(const event<T0> &e) {
 	e._e->use();
@@ -605,7 +612,7 @@ class event<void, void, void, void> { public:
     }
 
     void trigger() {
-	_e->trigger();
+	_e->trigger(false);
     }
 
     void operator()() {
@@ -618,13 +625,16 @@ class event<void, void, void, void> { public:
 	_e->at_trigger(e);
     }
 
-    event<> &bind_all() {
+    event<> &unblocker() {
 	return *this;
     }
 
-    event<> bind_all() const {
+    event<> unblocker() const {
 	return *this;
     }
+
+    event<> &bind_all() TAMER_DEPRECATEDATTR;
+    event<> bind_all() const TAMER_DEPRECATEDATTR;
 
     event<> &operator=(const event<> &e) {
 	e._e->use();
@@ -773,6 +783,30 @@ inline event<> make_event(rendezvous<> &r)
 /** @} */
 
 template <typename T0, typename T1, typename T2, typename T3>
+inline event<> event<T0, T1, T2, T3>::unblocker() const {
+    _e->use();
+    return event<>::__take(_e);
+}
+
+template <typename T0, typename T1, typename T2>
+inline event<> event<T0, T1, T2>::unblocker() const {
+    _e->use();
+    return event<>::__take(_e);
+}
+
+template <typename T0, typename T1>
+inline event<> event<T0, T1>::unblocker() const {
+    _e->use();
+    return event<>::__take(_e);
+}
+
+template <typename T0>
+inline event<> event<T0>::unblocker() const {
+    _e->use();
+    return event<>::__take(_e);
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
 inline event<> event<T0, T1, T2, T3>::bind_all() const {
     _e->use();
     return event<>::__take(_e);
@@ -791,15 +825,23 @@ inline event<> event<T0, T1>::bind_all() const {
 }
 
 template <typename T0>
-inline event<T0>::event(const event<> &e, const no_slot &)
-    : _e(e.__get_simple()), _s0(0) {
-    _e->use();
-}
-
-template <typename T0>
 inline event<> event<T0>::bind_all() const {
     _e->use();
     return event<>::__take(_e);
+}
+
+inline event<> &event<>::bind_all() {
+    return *this;
+}
+
+inline event<> event<>::bind_all() const {
+    return *this;
+}
+
+template <typename T0>
+inline event<T0>::event(const event<> &e, const no_slot &)
+    : _e(e.__get_simple()), _s0(0) {
+    _e->use();
 }
 
 }
