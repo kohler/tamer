@@ -233,7 +233,7 @@ tamed void fd::fdimp::write(const void *buf, size_t size, size_t &nwritten, even
 
 tamed void fd::fdimp::write(std::string s, size_t &nwritten, event<int> done)
 {
-    twait {
+    twait { // This twait block prevents s from being destroyed.
 	done.at_trigger(make_event());
 	write(s.data(), s.length(), nwritten, done);
     }
