@@ -34,10 +34,9 @@ const int closed = -EPIPE;
  *  @param  e2  Second event.
  *  @return  Distributer event.
  *
- *  When the distributer event is triggered, @a e1 and @a e2 are both
- *  triggered instantly.  The distributer event is automatically triggered,
- *  calling its trigger notifiers, if both @a e1 and @a e2 are triggered
- *  themselves.
+ *  Triggering the returned event instantly triggers @a e1 and @a e2. The
+ *  returned event is automatically triggered if @a e1 and @a e2 are both
+ *  triggered separately.
  */
 inline event<> distribute(const event<> &e1, const event<> &e2) {
     if (e1.empty())
@@ -65,10 +64,9 @@ inline event<> distribute(const event<> &e1, const event<> &e2, const event<> &e
  *  @param  v0  Trigger value.
  *  @return  Adapter event.
  *
- *  When the adapter event is triggered, @a e is triggered instantly with
- *  trigger value @a v0.  Conversely, if @a e triggers first, then the
- *  returned event triggers instantly (as can be observed via its at_trigger()
- *  notifiers).
+ *  Triggering the returned event instantly triggers @a e with value @a v0. If
+ *  @a e is triggered directly first, then the returned event's unblocker is
+ *  triggered.
  */
 template <typename T0, typename V0>
 event<> bind(event<T0> e, const V0 &v0) {
@@ -336,9 +334,8 @@ inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterato
 /** @brief  Create event that calls a function when triggered.
  *  @param  f  Function object.
  *
- *  Returns an event that calls @a f() immediately when it is triggered.  Once
- *  the event is completed (triggered or canceled), the @a f object is
- *  destroyed.
+ *  Returns an event that calls (a copy of) @a f() when triggered. The call
+ *  happens immediately, at trigger time.
  *
  *  @note @a f must have a public copy constructor and a public destructor.
  */
