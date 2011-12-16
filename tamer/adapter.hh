@@ -72,10 +72,11 @@ inline event<> distribute(const event<> &e1, const event<> &e2, const event<> &e
  */
 template <typename T0, typename V0>
 event<> bind(event<T0> e, const V0 &v0) {
-    tamerpriv::function_rendezvous<tamerpriv::bind_function<T0> > *r =
-	new tamerpriv::function_rendezvous<tamerpriv::bind_function<T0> >(e, v0);
-    e.at_trigger(event<>(*r, r->canceler));
-    return event<>(*r, r->triggerer);
+    tamerpriv::bind_rendezvous<T0, V0> *r =
+	new tamerpriv::bind_rendezvous<T0, V0>(e, v0);
+    event<> bound(*r);
+    e.at_trigger(bound);
+    return bound;
 }
 
 /** @brief  Create 1-slot event that triggers @a e when triggered.

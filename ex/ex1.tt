@@ -65,10 +65,20 @@ tamed void waitsig() {
 }
 
 tamed void scatter() {
-    tvars { int i(1); tamer::rendezvous<int> r; tamer::event<> e; }
+    tvars { int i(1); tamer::rendezvous<int> r; tamer::event<> e, e2; }
     n++;
-    tamer::at_delay_msec(500, e = tamer::distribute(tamer::distribute(tamer::make_event(r, i), tamer::make_event(r, 2)), tamer::make_event(r, 3)));
+    tamer::at_delay_msec(500, e = tamer::distribute(tamer::make_event(r, i), tamer::make_event(r, 2), tamer::make_event(r, 3)));
+    tamer::at_delay_msec(502, tamer::distribute(tamer::make_event(r, 0), e));
+    while (r.nevents()) {
+	twait(r, i);
+	fprintf(stderr, "=== distributed %d\n", i);
+    }
+    // should print "== distributed 1, 2, 3, 0"
+
+    tamer::at_delay_msec(500, e = tamer::distribute(tamer::make_event(r, 1), tamer::make_event(r, 2), tamer::make_event(r, 3)));
     (void) tamer::distribute(e, tamer::make_event(r, 0));
+    // should print "avoided leak of active event" (because we just threw away
+    // that event), then "== distributed 1, 2, 3, 0"
     while (r.nevents()) {
 	twait(r, i);
 	fprintf(stderr, "=== distributed %d\n", i);
@@ -129,6 +139,8 @@ tamed void bindery() {
 	fprintf(stderr, "=== got bindery\n");
     }
     fprintf(stderr, "=== after bindery 2 %d\n", i);
+    // should print "after bindery 2 2", b/c e.unblocker() was triggered,
+    // avoiding the bind
     tamer::at_delay_msec(600, ee = tamer::bind(make_event(r, i), 4));
     ee.unblocker().trigger();
     while (r.nevents()) {
@@ -136,6 +148,8 @@ tamed void bindery() {
 	fprintf(stderr, "=== got bindery\n");
     }
     fprintf(stderr, "=== after bindery 3 %d\n", i);
+    // should print "after bindery 3 4", b/c ee.unblocker() == ee was
+    // triggered, affecting the bind
     n--;
 }
 

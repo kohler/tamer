@@ -58,6 +58,32 @@ inline event<> with_helper(event<T0, T1, T2, T3> e, int *result, int value) {
 }
 
 
+template <typename T0, typename V0>
+class bind_rendezvous : public abstract_rendezvous { public:
+
+    bind_rendezvous(const event<T0> &e, const V0 &v0)
+	: _e(e), _v0(v0) {
+    }
+    ~bind_rendezvous() {
+    }
+
+    void add(simple_event *e) {
+	e->initialize(this, 0);
+    }
+
+    void complete(uintptr_t) {
+	_e.trigger(_v0);
+	delete this;
+    }
+
+  private:
+
+    event<T0> _e;
+    V0 _v0;
+
+};
+
+
 template <typename F> class function_rendezvous : public abstract_rendezvous { public:
 
     function_rendezvous()
@@ -101,23 +127,6 @@ template <typename F> class function_rendezvous : public abstract_rendezvous { p
   private:
 
     F _f;
-
-};
-
-
-template <typename T0> class bind_function { public:
-
-    template <typename V0>
-    bind_function(const event<T0> &ein, const V0 &v0)
-	: _ein(ein), _v0(v0) {
-    }
-
-    void operator()() {
-	_ein.trigger(_v0);
-    }
-
-    event<T0> _ein;
-    T0 _v0;
 
 };
 
