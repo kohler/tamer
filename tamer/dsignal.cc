@@ -44,7 +44,7 @@ class sigcancel_rendezvous : public rendezvous<> { public:
 	sigemptyset(&sig_dispatching);
     }
 
-    inline void add(tamerpriv::simple_event *e) throw () {
+    inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
 	assert(sig_installing >= 0 && sig_installing < NSIG);
 	_nwaiting++;
 	e->initialize(this, sig_installing);

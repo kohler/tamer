@@ -212,7 +212,7 @@ class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
     unsigned nwaiting() const	{ return _nwaiting; }
     unsigned nevents() const	{ return nready() + nwaiting(); }
 
-    inline void add(tamerpriv::simple_event *e, uintptr_t i0) throw ();
+    inline void add(tamerpriv::simple_event *e, uintptr_t i0) TAMER_NOEXCEPT;
     inline void complete(uintptr_t rid, bool values);
 
   protected:
@@ -227,7 +227,7 @@ inline rendezvous<uintptr_t>::rendezvous(rendezvous_flags flags)
 {
 }
 
-inline void rendezvous<uintptr_t>::add(tamerpriv::simple_event *e, uintptr_t i0) throw ()
+inline void rendezvous<uintptr_t>::add(tamerpriv::simple_event *e, uintptr_t i0) TAMER_NOEXCEPT
 {
     _nwaiting++;
     e->initialize(this, i0);
@@ -267,7 +267,7 @@ class rendezvous<T *> : public rendezvous<uintptr_t> { public:
 	: inherited(flags) {
     }
 
-    inline void add(tamerpriv::simple_event *e, T *i0) throw () {
+    inline void add(tamerpriv::simple_event *e, T *i0) TAMER_NOEXCEPT {
 	inherited::add(e, reinterpret_cast<uintptr_t>(i0));
     }
 
@@ -292,7 +292,7 @@ class rendezvous<int> : public rendezvous<uintptr_t> { public:
 	: inherited(flags) {
     }
 
-    inline void add(tamerpriv::simple_event *e, int i0) throw () {
+    inline void add(tamerpriv::simple_event *e, int i0) TAMER_NOEXCEPT {
 	inherited::add(e, static_cast<uintptr_t>(i0));
     }
 
@@ -317,7 +317,7 @@ class rendezvous<bool> : public rendezvous<uintptr_t> { public:
 	: inherited(flags) {
     }
 
-    inline void add(tamerpriv::simple_event *e, bool i0) throw () {
+    inline void add(tamerpriv::simple_event *e, bool i0) TAMER_NOEXCEPT {
 	inherited::add(e, static_cast<uintptr_t>(i0));
     }
 
@@ -340,7 +340,7 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 	: abstract_rendezvous(flags), _nwaiting(0), _nready(0) {
     }
 
-    inline void add(tamerpriv::simple_event *e) throw () {
+    inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
 	_nwaiting++;
 	e->initialize(this, 1);
     }

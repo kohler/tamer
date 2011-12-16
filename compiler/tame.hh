@@ -770,7 +770,7 @@ protected:
 
 class tame_wait_t : public tame_join_t {
 public:
-  tame_wait_t (tame_fn_t *f, expr_list_t *l, int ln) 
+  tame_wait_t (tame_fn_t *f, expr_list_t *l, int ln)
     : tame_join_t (f, l), _lineno (ln) {}
   void output(outputter_t *o);
 private:

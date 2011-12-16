@@ -1,6 +1,6 @@
 #ifndef TAMER_UTIL_HH
 #define TAMER_UTIL_HH 1
-/* Copyright (c) 2007, Eddie Kohler
+/* Copyright (c) 2007-2011, Eddie Kohler
  * Copyright (c) 2007, Regents of the University of California
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -15,6 +15,8 @@
  */
 #include <memory>
 #include <cassert>
+#include <cstddef>
+#define TAMER_NOEXCEPT
 namespace tamer {
 namespace tamerutil {
 
@@ -28,7 +30,7 @@ namespace tamerutil {
  */
 
 template <typename T> struct ready_set_element {
-    size_t next;
+    std::size_t next;
     T value;
 };
 
@@ -49,18 +51,18 @@ template <typename T> struct ready_set_element {
 template <typename T, typename A = std::allocator<ready_set_element<T> > >
 class ready_set { public:
 
-    typedef size_t size_type;
-    typedef size_t index_type;
+    typedef std::size_t size_type;
+    typedef std::size_t index_type;
 
     /** @brief  Default constructor creates an empty ready_set. */
-    ready_set() throw ();
+    ready_set() TAMER_NOEXCEPT;
 
     /** @brief  Destroy the ready_set. */
     ~ready_set();
 
     /** @brief  Return number of elements in the multiset.
      *  @note   Does not count elements in the associated queue. */
-    inline size_t multiset_size() const throw () {
+    inline size_type multiset_size() const TAMER_NOEXCEPT {
 	return _nunready;
     }
 
@@ -92,16 +94,16 @@ class ready_set { public:
 
     /** @brief  Shift a multiset element to the end of the queue.
      *  @param  i  Index of element to shift. */
-    inline void push_back_element(index_type i) throw ();
+    inline void push_back_element(index_type i) TAMER_NOEXCEPT;
 
     /** @brief  Return number of elements in the queue. */
-    inline size_type size() const throw () {
+    inline size_type size() const TAMER_NOEXCEPT {
 	return _size;
     }
 
     /** @brief  Return a pointer to the front element of the queue, if any.
      *  @return Returns a null pointer if the queue is empty. */
-    inline T *front_ptr() throw () {
+    inline T *front_ptr() TAMER_NOEXCEPT {
 	return (_front != rsnull ? &_elts[_front].value : 0);
     }
 
@@ -114,15 +116,15 @@ class ready_set { public:
 
   private:
 
-    enum { rsnull = (size_t) -1, rsunready = (size_t) -2 };
+    enum { rsnull = (size_type) -1, rsunready = (size_type) -2 };
 
     ready_set_element<T> *_elts;
-    size_t _cap;
-    size_t _free;
-    size_t _front;
-    size_t _back;
-    size_t _nunready;
-    size_t _size;
+    size_type _cap;
+    size_type _free;
+    size_type _front;
+    size_type _back;
+    size_type _nunready;
+    size_type _size;
     A _alloc;
 
     inline index_type allocate_index() {
@@ -140,7 +142,7 @@ class ready_set { public:
 };
 
 template <typename T, typename A>
-ready_set<T, A>::ready_set() throw ()
+ready_set<T, A>::ready_set() TAMER_NOEXCEPT
     : _elts(0), _cap(0), _free(rsnull),
       _front(rsnull), _back(rsnull), _nunready(0), _size(0)
 {
@@ -166,21 +168,21 @@ inline void ready_set<T, A>::erase(index_type i)
 template <typename T, typename A>
 void ready_set<T, A>::expand()
 {
-    size_t new_cap = (_cap ? _cap * 4 : 8); // XXX integer overflow
+    size_type new_cap = (_cap ? _cap * 4 : 8); // XXX integer overflow
     ready_set_element<T> *new_elts = _alloc.allocate(new_cap, this);
-    for (size_t x = _free; x != rsnull; x = _elts[x].next)
+    for (size_type x = _free; x != rsnull; x = _elts[x].next)
 	new_elts[x].next = _elts[x].next;
     if (_nunready)
-	for (size_t i = 0; i != _cap; i++)
+	for (size_type i = 0; i != _cap; i++)
 	    if (_elts[i].next == rsunready) {
 		_alloc.construct(&new_elts[i], _elts[i]);
 		_alloc.destroy(&_elts[i]);
 	    }
-    for (size_t x = _front; x != rsnull; x = new_elts[x].next) {
+    for (size_type x = _front; x != rsnull; x = new_elts[x].next) {
 	_alloc.construct(&new_elts[x], _elts[x]);
 	_alloc.destroy(&_elts[x]);
     }
-    for (size_t i = _cap; i != new_cap; i++) {
+    for (size_type i = _cap; i != new_cap; i++) {
 	new_elts[i].next = _free;
 	_free = i;
     }
@@ -190,7 +192,7 @@ void ready_set<T, A>::expand()
 }
 
 template <typename T, typename A>
-inline void ready_set<T, A>::push_back_element(index_type i) throw ()
+inline void ready_set<T, A>::push_back_element(index_type i) TAMER_NOEXCEPT
 {
     assert(i < _cap && _elts[i].next == rsunready);
     if (_front != rsnull)
@@ -207,7 +209,7 @@ template <typename T, typename A>
 inline void ready_set<T, A>::pop_front()
 {
     assert(_front != rsnull);
-    size_t next = _elts[_front].next;
+    size_type next = _elts[_front].next;
     _alloc.destroy(&_elts[_front]);
     _elts[_front].next = _free;
     _free = _front;
@@ -218,7 +220,7 @@ inline void ready_set<T, A>::pop_front()
 template <typename T, typename A>
 inline void ready_set<T, A>::clear()
 {
-    for (size_t i = 0; _nunready && i < _cap; i++)
+    for (size_type i = 0; _nunready && i < _cap; i++)
 	if (_elts[i].next == rsunready)
 	    erase(i);
     while (_front != rsnull)
@@ -243,10 +245,10 @@ template <typename T, typename A = std::allocator<T> > class debuffer { public:
     typedef T *pointer;
     typedef T &reference;
     typedef const T &const_reference;
-    typedef size_t size_type;
+    typedef std::size_t size_type;
 
     /** @brief  Default constructor creates an empty buffer. */
-    inline debuffer() throw ()
+    inline debuffer() TAMER_NOEXCEPT
 	: _elts(reinterpret_cast<T *>(_local_elts)), _cap(nlocal),
 	  _head(0), _tail(0) {
     }
@@ -255,19 +257,19 @@ template <typename T, typename A = std::allocator<T> > class debuffer { public:
     ~debuffer();
 
     /** @brief  Return the number of elements in the buffer. */
-    inline size_type size() const throw () {
+    inline size_type size() const TAMER_NOEXCEPT {
 	return _tail - _head;
     }
 
     /** @brief  Return true iff the buffer contains no elements. */
-    inline bool empty() const throw () {
+    inline bool empty() const TAMER_NOEXCEPT {
 	return _head == _tail;
     }
 
     /** @brief  Return a reference to the front element of the buffer.
      *  @pre    The buffer must not be empty.
      *  @sa     front_ptr() */
-    inline T &front() throw () {
+    inline T &front() TAMER_NOEXCEPT {
 	assert(_head != _tail);
 	return _elts[_head & (_cap - 1)];
     }
@@ -275,7 +277,7 @@ template <typename T, typename A = std::allocator<T> > class debuffer { public:
     /** @brief  Return a reference to the front element of the buffer.
      *  @pre    The buffer must not be empty.
      *  @sa     front_ptr() */
-    inline const T &front() const throw () {
+    inline const T &front() const TAMER_NOEXCEPT {
 	assert(_head != _tail);
 	return _elts[_head & (_cap - 1)];
     }
@@ -283,14 +285,14 @@ template <typename T, typename A = std::allocator<T> > class debuffer { public:
     /** @brief  Return a pointer to the front element of the buffer, if any.
      *  @return Returns a null pointer if the buffer is empty.
      *  @sa     front() */
-    inline T *front_ptr() throw () {
+    inline T *front_ptr() TAMER_NOEXCEPT {
 	return (_head != _tail ? &_elts[_head & (_cap - 1)] : 0);
     }
 
     /** @brief  Return a pointer to the front element of the buffer, if any.
      *  @return Returns a null pointer if the buffer is empty.
      *  @sa     front() */
-    inline const T *front_ptr() const throw () {
+    inline const T *front_ptr() const TAMER_NOEXCEPT {
 	return (_head != _tail ? &_elts[_head & (_cap - 1)] : 0);
     }
 

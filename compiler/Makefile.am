@@ -16,11 +16,11 @@ scan.cc: scan.ll
 		&& mv $(LEX_OUTPUT_ROOT).c $(srcdir)/scan.cc
 
 parse.cc: parse.yy
-	rm -f y.tab.c
+	rm -f y.tab.c y.tab.c2
 	$(YACC) $(AM_YFLAGS) $(YYFLAGS) $(srcdir)/parse.yy
 	case "$(YACC)" in					\
 	*bison*)						\
-		sed -e 's/union yyalloc/struct yyalloc/g'	\
+		sed -e 's/union yyalloc/struct yyalloc/g;/^#line/d'	\
 			< y.tab.c > $(srcdir)/parse.cc ;	\
 		rm -f y.tab.c					\
 		;;						\
