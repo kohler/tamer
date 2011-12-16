@@ -343,7 +343,7 @@ template <typename F>
 inline event<> fun_event(const F &f) {
     tamerpriv::function_rendezvous<F> *innerr =
 	new tamerpriv::function_rendezvous<F>(f);
-    return event<>(*innerr, innerr->triggerer);
+    return event<>(*innerr);
 }
 
 } /* namespace tamer */

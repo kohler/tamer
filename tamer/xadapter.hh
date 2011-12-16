@@ -125,38 +125,29 @@ template <typename F> class function_rendezvous : public abstract_rendezvous { p
     function_rendezvous()
 	: _f() {
     }
-
     template <typename X>
     function_rendezvous(X x)
 	: _f(x) {
     }
-
     template <typename X, typename Y>
     function_rendezvous(X x, Y y)
 	: _f(x, y) {
     }
-
     template <typename X, typename Y, typename Z>
     function_rendezvous(X x, Y y, Z z)
 	: _f(x, y, z) {
     }
-
     ~function_rendezvous() {
     }
 
-    enum function_type {
-	triggerer, canceler
-    };
-
-    void add(simple_event *e, function_type t) {
-	e->initialize(this, t);
+    void add(simple_event *e) {
+	e->initialize(this, 0);
     }
 
-    void complete(uintptr_t rid, bool) {
+    void complete(uintptr_t, bool) {
 	// in case _f() refers to an event on this rendezvous:
 	remove_all();
-	if (rid == triggerer)
-	    _f();
+	_f();
 	delete this;
     }
 
