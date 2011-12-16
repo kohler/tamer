@@ -81,9 +81,10 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
 
     /** @internal
      *  @brief  Mark the triggering of an occurrence.
-     *  @param  rid  The occurrence's ID within this rendezvous.
+     *  @param  rid     The occurrence's ID within this rendezvous.
+     *  @param  values  True if the occurrence was triggered with values.
      */
-    inline void complete(uintptr_t rid);
+    inline void complete(uintptr_t rid, bool values);
 
   private:
 
@@ -112,7 +113,7 @@ void rendezvous<I0, I1>::add(tamerpriv::simple_event *e, const I0 &i0, const I1 
 }
 
 template <typename I0, typename I1>
-void rendezvous<I0, I1>::complete(uintptr_t rid)
+void rendezvous<I0, I1>::complete(uintptr_t rid, bool)
 {
     _bs.push_back_element(rid);
     unblock();
@@ -153,7 +154,7 @@ class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
     unsigned nevents() const	{ return nready() + nwaiting(); }
 
     inline void add(tamerpriv::simple_event *e, const I0 &i0);
-    inline void complete(uintptr_t rid);
+    inline void complete(uintptr_t rid, bool values);
 
   private:
 
@@ -174,7 +175,7 @@ void rendezvous<I0, void>::add(tamerpriv::simple_event *e, const I0 &i0)
 }
 
 template <typename I0>
-void rendezvous<I0, void>::complete(uintptr_t rid)
+void rendezvous<I0, void>::complete(uintptr_t rid, bool)
 {
     _bs.push_back_element(rid);
     unblock();
@@ -212,7 +213,7 @@ class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
     unsigned nevents() const	{ return nready() + nwaiting(); }
 
     inline void add(tamerpriv::simple_event *e, uintptr_t i0) throw ();
-    inline void complete(uintptr_t rid);
+    inline void complete(uintptr_t rid, bool values);
 
   protected:
 
@@ -232,7 +233,7 @@ inline void rendezvous<uintptr_t>::add(tamerpriv::simple_event *e, uintptr_t i0)
     e->initialize(this, i0);
 }
 
-inline void rendezvous<uintptr_t>::complete(uintptr_t rid)
+inline void rendezvous<uintptr_t>::complete(uintptr_t rid, bool)
 {
     _nwaiting--;
     _buf.push_back(rid);
@@ -344,7 +345,7 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 	e->initialize(this, 1);
     }
 
-    inline void complete(uintptr_t) {
+    inline void complete(uintptr_t, bool) {
 	_nwaiting--;
 	_nready++;
 	unblock();
@@ -385,7 +386,7 @@ class gather_rendezvous : public rendezvous<> { public:
 	return _linked_closure;
     }
 
-    inline void complete(uintptr_t) {
+    inline void complete(uintptr_t, bool) {
 	_nwaiting--;
 	_nready++;
 	if (_nwaiting == 0)

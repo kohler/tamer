@@ -83,14 +83,33 @@ event<> bind(event<T0> e, const V0 &v0) {
  *  @param  e  Event.
  *  @return  Adapter event.
  *
- *  When the adapter event is triggered, its @c T0 trigger value is ignored
- *  and @a e is triggered instantly.  Conversely, if @a e triggers first, then
- *  the returned event triggers instantly (as can be observed via its
- *  at_trigger() notifiers).
+ *  Triggering the returned event instantly triggers @a e. (The @c T0 trigger
+ *  value for the adapter event is ignored.) If @a e is triggered directly,
+ *  then the returned event's unblocker is triggered.
  */
 template <typename T0>
 event<T0> unbind(const event<> &e) {
     return event<T0>(e, no_slot());
+}
+
+/** @brief  Create an event that triggers another event with a mapped value.
+ *  @param  e  Destination event taking T0 values.
+ *  @param  f  Map function taking S0 values to T0 values.
+ *  @return  Adapter event taking S0 values.
+ *
+ *  Triggering the returned event with some value @c v0 of type @c S0
+ *  instantly triggers @a e with value @a f(@c v0). (This value should have
+ *  type T0.) Triggering the returned event's unblocker instantly triggers @a
+ *  e's unblocker (the map function is not called since no value was
+ *  provided). If @a e is triggered directly, then the returned event's
+ *  unblocker is triggered. */
+template <typename S0, typename T0, typename F>
+event<S0> map(event<T0> e, const F &f) {
+    tamerpriv::map_rendezvous<S0, T0, F> *r =
+	new tamerpriv::map_rendezvous<S0, T0, F>(f, e);
+    event<S0> mapped(*r, r->slot0());
+    e.at_trigger(mapped.unblocker());
+    return mapped;
 }
 
 

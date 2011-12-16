@@ -32,7 +32,7 @@ class with_helper_rendezvous : public abstract_rendezvous { public:
 	e->initialize(this, 0);
     }
 
-    void complete(uintptr_t) {
+    void complete(uintptr_t, bool) {
 	if (*_e) {
 	    *_s0 = _v0;
 	    _e->trigger(false);
@@ -71,7 +71,7 @@ class bind_rendezvous : public abstract_rendezvous { public:
 	e->initialize(this, 0);
     }
 
-    void complete(uintptr_t) {
+    void complete(uintptr_t, bool) {
 	_e.trigger(_v0);
 	delete this;
     }
@@ -80,6 +80,42 @@ class bind_rendezvous : public abstract_rendezvous { public:
 
     event<T0> _e;
     V0 _v0;
+
+};
+
+
+template <typename T> struct decay { public: typedef T type; };
+template <typename T0, typename T1> struct decay<T0(T1)> { public: typedef T0 (*type)(T1); };
+
+template <typename S0, typename T0, typename F>
+class map_rendezvous : public abstract_rendezvous { public:
+
+    map_rendezvous(const F &f, const event<T0> &e)
+	: _f(f), _e(e) {
+    }
+    ~map_rendezvous() {
+    }
+    S0 &slot0() {
+	return _s0;
+    }
+
+    void add(simple_event *e) {
+	e->initialize(this, 0);
+    }
+
+    void complete(uintptr_t, bool values) {
+	if (values)
+	    _e.trigger(_f(_s0));
+	else if (_e)
+	    _e.unblocker().trigger();
+	delete this;
+    }
+
+  private:
+
+    S0 _s0;
+    typename decay<F>::type _f;
+    event<T0> _e;
 
 };
 
@@ -116,7 +152,7 @@ template <typename F> class function_rendezvous : public abstract_rendezvous { p
 	e->initialize(this, t);
     }
 
-    void complete(uintptr_t rid) {
+    void complete(uintptr_t rid, bool) {
 	// in case _f() refers to an event on this rendezvous:
 	remove_all();
 	if (rid == triggerer)

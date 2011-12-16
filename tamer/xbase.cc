@@ -82,7 +82,7 @@ class distribute_rendezvous : public abstract_rendezvous { public:
 	}
     }
 
-    void complete(uintptr_t rid) {
+    void complete(uintptr_t rid, bool) {
 	while (_es.size() && !_es.back())
 	    _es.pop_back();
 	if (!_es.size() || !rid) {

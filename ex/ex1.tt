@@ -153,6 +153,32 @@ tamed void bindery() {
     n--;
 }
 
+int add1(int x) {
+    return x + 1;
+}
+
+tamed void mappery() {
+    tvars { int i(1); tamer::rendezvous<> r; tamer::event<int> e;
+	tamer::event<> ee; }
+    n++;
+    twait {
+	tamer::at_delay_msec(700, tamer::bind(tamer::map<int>(make_event(i), add1), 2));
+	fprintf(stderr, "=== before mappery %d\n", i);
+    }
+    fprintf(stderr, "=== after mappery %d\n", i); // should be 3
+    twait {
+	tamer::at_delay_msec(700, tamer::bind(tamer::map<int>(e = make_event(i), add1), 4));
+	e.unblocker().trigger();
+	fprintf(stderr, "=== before mappery %d\n", i);
+    }
+    fprintf(stderr, "=== after mappery %d\n", i); // should be 3, since the unblocker executed
+    twait {
+	tamer::at_asap(tamer::bind(tamer::map<int>(e = make_event(i), add1), 10));
+    }
+    fprintf(stderr, "=== after mappery %d\n", i); // should be 11
+    n--;
+}
+
 int main(int, char **) {
     tamer::rendezvous<int> r;
     fprintf(stderr, "???????? *** %d\n\n", getpid());
@@ -166,6 +192,7 @@ int main(int, char **) {
     cancellina();
     cancellina2();
     bindery();
+    mappery();
     //fcntl(0, F_SETFD, O_NONBLOCK);
     //stdiny();
     //waitsig();

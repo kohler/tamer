@@ -162,7 +162,7 @@ class abstract_rendezvous { public:
 
     virtual inline ~abstract_rendezvous();
 
-    virtual void complete(uintptr_t rid) = 0;
+    virtual void complete(uintptr_t rid, bool values) = 0;
 
     virtual inline void clear();
 
@@ -321,7 +321,7 @@ inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
     r->_events = this;
 }
 
-inline bool simple_event::trigger(bool /*values*/) {
+inline bool simple_event::trigger(bool values) {
     abstract_rendezvous *r = _r;
     simple_event *at_trigger = _at_trigger;
 
@@ -338,7 +338,7 @@ inline bool simple_event::trigger(bool /*values*/) {
     if (r && _refcount == 0)
 	message::event_prematurely_dereferenced(this, r);
     if (r)
-	r->complete(_rid);
+	r->complete(_rid, values);
     if (at_trigger) {
 	at_trigger->trigger(false);
 	at_trigger->unuse();
