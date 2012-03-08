@@ -242,7 +242,7 @@ class event { public:
      *
      *  The returned event refers to the same occurrence as this event, so
      *  triggering either event makes both events empty.  The returned event
-     *  has no trigger slots, however, and bind_all().trigger() will leave
+     *  has no trigger slots, however, and unblocker().trigger() will leave
      *  this event's slots unchanged.
      */
     inline event<> unblocker() const;
@@ -808,34 +808,30 @@ inline event<> event<T0>::unblocker() const {
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<> event<T0, T1, T2, T3>::bind_all() const {
-    _e->use();
-    return event<>::__take(_e);
+    return unblocker();
 }
 
 template <typename T0, typename T1, typename T2>
 inline event<> event<T0, T1, T2>::bind_all() const {
-    _e->use();
-    return event<>::__take(_e);
+    return unblocker();
 }
 
 template <typename T0, typename T1>
 inline event<> event<T0, T1>::bind_all() const {
-    _e->use();
-    return event<>::__take(_e);
+    return unblocker();
 }
 
 template <typename T0>
 inline event<> event<T0>::bind_all() const {
-    _e->use();
-    return event<>::__take(_e);
+    return unblocker();
 }
 
 inline event<> &event<>::bind_all() {
-    return *this;
+    return unblocker();
 }
 
 inline event<> event<>::bind_all() const {
-    return *this;
+    return unblocker();
 }
 
 template <typename T0>

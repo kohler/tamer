@@ -59,14 +59,14 @@ inline event<> distribute(const event<> &e1, const event<> &e2, const event<> &e
     return distribute(distribute(e1, e2), e3);
 }
 
-/** @brief  Create event that triggers @a e with @a v0 when triggered.
+/** @brief  Create bound event for @a e with @a v0.
  *  @param  e   Event.
  *  @param  v0  Trigger value.
  *  @return  Adapter event.
  *
- *  Triggering the returned event instantly triggers @a e with value @a v0. If
- *  @a e is triggered directly first, then the returned event's unblocker is
- *  triggered.
+ *  The result is bound to @a e: triggering either event automatically
+ *  triggers the other. Triggering the result instantly triggers @a e with
+ *  value @a v0; triggering @a e instantly triggers the result's unblocker.
  */
 template <typename T0, typename V0>
 event<> bind(event<T0> e, const V0 &v0) {
@@ -77,13 +77,14 @@ event<> bind(event<T0> e, const V0 &v0) {
     return bound;
 }
 
-/** @brief  Create 1-slot event that triggers @a e when triggered.
+/** @brief  Create bound event for @a e.
  *  @param  e  Event.
  *  @return  Adapter event.
  *
- *  Triggering the returned event instantly triggers @a e. (The @c T0 trigger
- *  value for the adapter event is ignored.) If @a e is triggered directly,
- *  then the returned event's unblocker is triggered.
+ *  The result is bound to @a e: triggering either event automatically
+ *  triggers the otehr. Triggering the result instantly triggers @a e. (The
+ *  result's @c T0 trigger value is ignored.) Triggering @a e instantly
+ *  triggers the result's unblocker.
  */
 template <typename T0>
 event<T0> unbind(const event<> &e) {
