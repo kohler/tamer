@@ -127,25 +127,25 @@ event<S0> map(event<T0> e, const F &f) {
  */
 template <typename T0>
 inline event<T0> add_timeout(const timeval &delay, event<T0> e) {
-    at_delay(delay, bind(e, outcome::timeout));
+    at_delay(delay, bind(e, T0(outcome::timeout)));
     return e;
 }
 
 template <typename T0>
 inline event<T0> add_timeout(double delay, event<T0> e) {
-    at_delay(delay, bind(e, outcome::timeout));
+    at_delay(delay, bind(e, T0(outcome::timeout)));
     return e;
 }
 
 template <typename T0>
 inline event<T0> add_timeout_sec(int delay, event<T0> e) {
-    at_delay_sec(delay, bind(e, outcome::timeout));
+    at_delay_sec(delay, bind(e, T0(outcome::timeout)));
     return e;
 }
 
 template <typename T0>
 inline event<T0> add_timeout_msec(int delay, event<T0> e) {
-    at_delay_msec(delay, bind(e, outcome::timeout));
+    at_delay_msec(delay, bind(e, T0(outcome::timeout)));
     return e;
 }
 
@@ -159,7 +159,7 @@ inline event<T0> add_timeout_msec(int delay, event<T0> e) {
  */
 template <typename T0>
 inline event<T0> add_signal(int signo, event<T0> e) {
-    at_signal(signo, bind(e, outcome::signal));
+    at_signal(signo, bind(e, T0(outcome::signal)));
     return e;
 }
 
@@ -175,7 +175,7 @@ inline event<T0> add_signal(int signo, event<T0> e) {
  */
 template <typename T0, typename SigInputIterator>
 inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, event<T0> e) {
-    event<> x = bind(e, outcome::signal);
+    event<> x = bind(e, T0(outcome::signal));
     for (; first != last; ++first)
 	at_signal(*first, x);
     return e;
