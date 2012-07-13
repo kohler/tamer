@@ -106,11 +106,7 @@ class simple_event { public:
 
     inline void initialize(abstract_rendezvous *r, uintptr_t rid);
 
-    uintptr_t rid() const {
-	return _rid;
-    }
-
-    inline bool trigger(bool values);
+    inline void trigger(bool values);
 
     static inline void at_trigger(simple_event *x, const event<> &e);
 
@@ -308,7 +304,7 @@ inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
     r->_events = this;
 }
 
-inline bool simple_event::trigger(bool values) {
+inline void simple_event::trigger(bool values) {
     abstract_rendezvous *r = _r;
     simple_event *at_trigger = _at_trigger;
 
@@ -330,8 +326,6 @@ inline bool simple_event::trigger(bool values) {
 	at_trigger->trigger(false);
 	unuse(at_trigger);
     }
-
-    return r != 0;
 }
 
 inline void abstract_rendezvous::block(tamer_closure &c, unsigned where) {
