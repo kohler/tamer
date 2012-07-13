@@ -378,15 +378,17 @@ void driver_tamer::once()
 
     // select!
     int nfds = _nfds;
-    memcpy(_fdset[fdread + 2], _fdset[fdread], ((nfds + 63) & ~63) >> 3);
-    memcpy(_fdset[fdwrite + 2], _fdset[fdwrite], ((nfds + 63) & ~63) >> 3);
-    if (sig_pipe[0] >= 0) {
-	FD_SET(sig_pipe[0], &_fdset[fdread + 2]->fds);
-	if (sig_pipe[0] > nfds)
-	    nfds = sig_pipe[0] + 1;
+    if (nfds > 0 || sig_pipe[0] >= 0) {
+	memcpy(_fdset[fdread + 2], _fdset[fdread], ((nfds + 63) & ~63) >> 3);
+	memcpy(_fdset[fdwrite + 2], _fdset[fdwrite], ((nfds + 63) & ~63) >> 3);
+	if (sig_pipe[0] >= 0) {
+	    FD_SET(sig_pipe[0], &_fdset[fdread + 2]->fds);
+	    if (sig_pipe[0] > nfds)
+		nfds = sig_pipe[0] + 1;
+	}
+	nfds = select(nfds, &_fdset[fdread + 2]->fds,
+		      &_fdset[fdwrite + 2]->fds, 0, toptr);
     }
-    nfds = select(nfds, &_fdset[fdread + 2]->fds,
-		  &_fdset[fdwrite + 2]->fds, 0, toptr);
 
     // run signals
     if (sig_any_active)
@@ -422,15 +424,17 @@ void driver_tamer::once()
     }
 
     // run the timers that worked
-    set_now();
-    ttimer *t;
-    while (_nt > 0 && (t = _t[0], !timercmp(&t->expiry, &now, >))) {
-	timer_reheapify_from(0, _t[_nt - 1], true);
-	_nt--;
-	t->trigger.trigger();
-	t->~ttimer();
-	t->u.next = _tfree;
-	_tfree = t;
+    if (_nt > 0) {
+	set_now();
+	ttimer *t;
+	while (_nt > 0 && (t = _t[0], !timercmp(&t->expiry, &now, >))) {
+	    timer_reheapify_from(0, _t[_nt - 1], true);
+	    _nt--;
+	    t->trigger.trigger();
+	    t->~ttimer();
+	    t->u.next = _tfree;
+	    _tfree = t;
+	}
     }
 
     // run active closures
