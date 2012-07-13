@@ -1,6 +1,6 @@
 #ifndef TAMER_UTIL_HH
 #define TAMER_UTIL_HH 1
-/* Copyright (c) 2007-2011, Eddie Kohler
+/* Copyright (c) 2007-2012, Eddie Kohler
  * Copyright (c) 2007, Regents of the University of California
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -297,22 +297,22 @@ template <typename T, typename A = std::allocator<T> > class debuffer { public:
     }
 
     /** @brief  Add an element to the back of the buffer.
-     *  @param  v  Element to add.
+     *  @param  x  Element to add.
      */
-    inline void push_back(const T &v) {
+    inline void push_back(const T &x) {
 	if (_tail - _head == _cap)
 	    expand();
-	_alloc.construct(&_elts[_tail & (_cap - 1)], v);
+	_alloc.construct(&_elts[_tail & (_cap - 1)], x);
 	++_tail;
     }
 
     /** @brief  Add an element to the front of the buffer.
-     *  @param  v  Element to add.
+     *  @param  x  Element to add.
      */
-    inline void push_front(const T &v) {
+    inline void push_front(const T &x) {
 	if (_tail - _head == _cap)
 	    expand();
-	_alloc.construct(&_elts[(_head - 1) & (_cap - 1)], v);
+	_alloc.construct(&_elts[(_head - 1) & (_cap - 1)], x);
 	--_head;
     }
 

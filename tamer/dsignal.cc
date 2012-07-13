@@ -1,4 +1,4 @@
-/* Copyright (c) 2007, Eddie Kohler
+/* Copyright (c) 2007-2012, Eddie Kohler
  * Copyright (c) 2007, Regents of the University of California
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <unistd.h>
 namespace tamer {
 
 volatile sig_atomic_t driver::sig_any_active;

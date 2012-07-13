@@ -1,6 +1,6 @@
 #ifndef TAMER_BUFFEREDIO_HH
-#define TAMER_BUFFEREDIO_HH
-/* Copyright (c) 2007, Eddie Kohler
+#define TAMER_BUFFEREDIO_HH 1
+/* Copyright (c) 2007-2012, Eddie Kohler
  * Copyright (c) 2007, Regents of the University of California
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -20,7 +20,7 @@ namespace tamer {
 
 class buffer { public:
 
-    buffer(size_t = 1024);
+    buffer(size_t initial_capacity = 1024);
     ~buffer();
 
     void fill_until(fd f, char c, size_t max_size, size_t &out_size, event<int> done);

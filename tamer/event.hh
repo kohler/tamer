@@ -1,5 +1,18 @@
 #ifndef TAMER_EVENT_HH
 #define TAMER_EVENT_HH 1
+/* Copyright (c) 2007-2012, Eddie Kohler
+ * Copyright (c) 2007, Regents of the University of California
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, subject to the conditions
+ * listed in the Tamer LICENSE file. These conditions include: you must
+ * preserve this copyright notice, and you cannot mention the copyright
+ * holders in advertising related to the Software without their permission.
+ * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
+ * notice is a summary of the Tamer LICENSE file; the license in that file is
+ * legally binding.
+ */
 #include <tamer/xevent.hh>
 #include <functional>
 namespace tamer {
@@ -153,11 +166,11 @@ class event { public:
 	  _s0(&s0), _s1(&s1), _s2(&s2), _s3(&s3) {
     }
 
-    /** @brief  Construct event for the same occurrence as @a e.
-     *  @param  e  Source event.
+    /** @brief  Construct event for the same occurrence as @a x.
+     *  @param  x  Source event.
      */
-    event(const event<T0, T1, T2, T3> &e)
-	: _e(e._e), _s0(e._s0), _s1(e._s1), _s2(e._s2), _s3(e._s3) {
+    event(const event<T0, T1, T2, T3> &x)
+	: _e(x._e), _s0(x._s0), _s1(x._s1), _s2(x._s2), _s3(x._s3) {
 	_e->use();
     }
 
@@ -249,17 +262,17 @@ class event { public:
 
     inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
-    /** @brief  Assign this event to the same occurrence as @a e.
-     *  @param  e  Source event.
+    /** @brief  Assign this event to the same occurrence as @a x.
+     *  @param  x  Source event.
      */
-    event<T0, T1, T2, T3> &operator=(const event<T0, T1, T2, T3> &e) {
-	e._e->use();
+    event<T0, T1, T2, T3> &operator=(const event<T0, T1, T2, T3> &x) {
+	x._e->use();
 	_e->unuse();
-	_e = e._e;
-	_s0 = e._s0;
-	_s1 = e._s1;
-	_s2 = e._s2;
-	_s3 = e._s3;
+	_e = x._e;
+	_s0 = x._s0;
+	_s1 = x._s1;
+	_s2 = x._s2;
+	_s3 = x._s3;
 	return *this;
     }
 
@@ -316,8 +329,8 @@ class event<T0, T1, T2, void> { public:
 	  _s0(&s0), _s1(&s1), _s2(&s2) {
     }
 
-    event(const event<T0, T1, T2> &e)
-	: _e(e._e), _s0(e._s0), _s1(e._s1), _s2(e._s2) {
+    event(const event<T0, T1, T2> &x)
+	: _e(x._e), _s0(x._s0), _s1(x._s1), _s2(x._s2) {
 	_e->use();
     }
 
@@ -364,13 +377,13 @@ class event<T0, T1, T2, void> { public:
     inline event<> unblocker() const;
     inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
-    event<T0, T1, T2> &operator=(const event<T0, T1, T2> &e) {
-	e._e->use();
+    event<T0, T1, T2> &operator=(const event<T0, T1, T2> &x) {
+	x._e->use();
 	_e->unuse();
-	_e = e._e;
-	_s0 = e._s0;
-	_s1 = e._s1;
-	_s2 = e._s2;
+	_e = x._e;
+	_s0 = x._s0;
+	_s1 = x._s1;
+	_s2 = x._s2;
 	return *this;
     }
 
@@ -411,8 +424,8 @@ class event<T0, T1, void, void>
 	: _e(new tamerpriv::simple_event(r)), _s0(&s0), _s1(&s1) {
     }
 
-    event(const event<T0, T1> &e)
-	: _e(e._e), _s0(e._s0), _s1(e._s1) {
+    event(const event<T0, T1> &x)
+	: _e(x._e), _s0(x._s0), _s1(x._s1) {
 	_e->use();
     }
 
@@ -453,12 +466,12 @@ class event<T0, T1, void, void>
     inline event<> unblocker() const;
     inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
-    event<T0, T1> &operator=(const event<T0, T1> &e) {
-	e._e->use();
+    event<T0, T1> &operator=(const event<T0, T1> &x) {
+	x._e->use();
 	_e->unuse();
-	_e = e._e;
-	_s0 = e._s0;
-	_s1 = e._s1;
+	_e = x._e;
+	_s0 = x._s0;
+	_s1 = x._s1;
 	return *this;
     }
 
@@ -500,8 +513,8 @@ class event<T0, void, void, void>
 
     inline event(const event<> &e, const no_slot &marker);
 
-    event(const event<T0> &e)
-	: _e(e._e), _s0(e._s0) {
+    event(const event<T0> &x)
+	: _e(x._e), _s0(x._s0) {
 	_e->use();
     }
 
@@ -541,11 +554,11 @@ class event<T0, void, void, void>
     inline event<> unblocker() const;
     inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
-    event<T0> &operator=(const event<T0> &e) {
-	e._e->use();
+    event<T0> &operator=(const event<T0> &x) {
+	x._e->use();
 	_e->unuse();
-	_e = e._e;
-	_s0 = e._s0;
+	_e = x._e;
+	_s0 = x._s0;
 	return *this;
     }
 
@@ -583,13 +596,13 @@ class event<void, void, void, void> { public:
 	: _e(new tamerpriv::simple_event(r)) {
     }
 
-    event(const event<> &e)
-	: _e(e._e) {
+    event(const event<> &x)
+	: _e(x._e) {
 	_e->use();
     }
 
-    event(event<> &e)
-	: _e(e._e) {
+    event(event<> &x)
+	: _e(x._e) {
 	_e->use();
     }
 
@@ -636,10 +649,10 @@ class event<void, void, void, void> { public:
     event<> &bind_all() TAMER_DEPRECATEDATTR;
     event<> bind_all() const TAMER_DEPRECATEDATTR;
 
-    event<> &operator=(const event<> &e) {
-	e._e->use();
+    event<> &operator=(const event<> &x) {
+	x._e->use();
 	_e->unuse();
-	_e = e._e;
+	_e = x._e;
 	return *this;
     }
 

@@ -22,7 +22,7 @@ int n;
 
 tamed void asap(tamer::event<> e) {
     tvars { int i; }
-    for (i = 0; i < 10000000; ++i)
+    for (i = 0; i < 50000000; ++i)
 	twait { tamer::at_asap(make_event()); }
     e.trigger();
 }
