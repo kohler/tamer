@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <string.h>
 #include <tamer/tamer.hh>
 #include <tamer/fd.hh>
 
@@ -31,7 +32,10 @@ tamed void read_sucka(tamer::fd &f) {
     twait {
 	f.read(buf, 40, amt, tamer::add_timeout_sec(2, make_event(ret)));
     }
-    fprintf(stderr, "got %d: %ld: %.*s\n", ret, (long) amt, (int) amt, buf);
+    if (ret < 0)
+	fprintf(stderr, "got error %d (%s): %ld: %.*s\n", ret, strerror(-ret), (long) amt, (int) amt, buf);
+    else
+	fprintf(stderr, "got %d: %ld: %.*s\n", ret, (long) amt, (int) amt, buf);
     n--;
 }
 
