@@ -35,7 +35,7 @@ class with_helper_rendezvous : public abstract_rendezvous { public:
     void complete(uintptr_t, bool) {
 	if (*_e) {
 	    *_s0 = _v0;
-	    _e->trigger(false);
+	    _e->simple_trigger(false);
 	} else
 	    *_s0 = int();
 	delete this;
@@ -163,7 +163,7 @@ inline void simple_event::at_trigger(simple_event *e, const event<> &x)
     if (!x)
 	/* ignore */;
     else if (!e || !e->_r)
-	x._e->trigger(false);
+	x._e->simple_trigger(false);
     else if (!e->_at_trigger) {
 	e->_at_trigger = x._e;
 	use(e->_at_trigger);

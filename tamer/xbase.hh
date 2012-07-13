@@ -60,8 +60,7 @@ class simple_event { public:
     // DO NOT derive from this class!
 
     inline simple_event()
-	: _refcount(1), _r(0), _rid(0), _r_next(0), _r_pprev(0),
-	  _at_trigger(0) {
+	: _refcount(1), _r(0) {
     }
 
     template <typename R, typename I0, typename I1>
@@ -81,7 +80,7 @@ class simple_event { public:
     static inline void unuse(simple_event *e) {
 	if (e && --e->_refcount == 0) {
 	    if (e->_r)
-		e->trigger(false);
+		e->trigger_for_unuse();
 	    delete e;
 	}
     }
@@ -106,12 +105,13 @@ class simple_event { public:
 
     inline void initialize(abstract_rendezvous *r, uintptr_t rid);
 
-    inline void trigger(bool values);
+    inline void simple_trigger(bool values);
+    void trigger_all_for_remove();
 
     static inline void at_trigger(simple_event *x, const event<> &e);
 
     inline bool has_at_trigger() const {
-	return _at_trigger && *_at_trigger;
+	return _r && _at_trigger && *_at_trigger;
     }
 
   protected:
@@ -127,11 +127,10 @@ class simple_event { public:
     simple_event &operator=(const simple_event &);
 
     inline ~simple_event() {
-	assert(!_r && !_r_pprev);
+	assert(!_r);
     }
 
-    friend class abstract_rendezvous;
-    friend class event<void, void, void, void>;
+    void trigger_for_unuse();
 
 };
 
@@ -266,10 +265,10 @@ void event_prematurely_dereferenced(simple_event *e, abstract_rendezvous *r);
 
 
 inline void abstract_rendezvous::remove_all() {
-    for (simple_event *e = _events; e; e = e->_r_next)
-	e->_r = 0;
-    while (_events)
-	_events->trigger(false);
+    if (_events) {
+	_events->trigger_all_for_remove();
+	_events = 0;
+    }
 }
 
 inline void abstract_rendezvous::clear() {
@@ -294,6 +293,9 @@ inline abstract_rendezvous::~abstract_rendezvous() {
 
 inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
 {
+#if TAMER_DEBUG
+    assert(_r != 0);
+#endif
     // NB this can be called before e has been fully initialized.
     _r = r;
     _rid = rid;
@@ -301,29 +303,28 @@ inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
     if (r->_events)
 	r->_events->_r_pprev = &_r_next;
     _r_next = r->_events;
+    _at_trigger = 0;
     r->_events = this;
 }
 
-inline void simple_event::trigger(bool values) {
+inline void simple_event::simple_trigger(bool values) {
+#if TAMER_DEBUG
+    assert(_r != 0 && _refcount != 0);
+#endif
+    // See also trigger_all_for_remove(), trigger_for_unuse().
     abstract_rendezvous *r = _r;
     simple_event *at_trigger = _at_trigger;
 
-    if (_r_pprev)
-	*_r_pprev = _r_next;
+    _r = 0;
+    *_r_pprev = _r_next;
     if (_r_next)
 	_r_next->_r_pprev = _r_pprev;
 
-    _r = 0;
-    _at_trigger = 0;
-    _r_pprev = 0;
-    _r_next = 0;
+    r->complete(_rid, values);
 
-    if (r && _refcount == 0)
-	message::event_prematurely_dereferenced(this, r);
-    if (r)
-	r->complete(_rid, values);
     if (at_trigger) {
-	at_trigger->trigger(false);
+	if (at_trigger->_r)
+	    at_trigger->simple_trigger(false);
 	unuse(at_trigger);
     }
 }

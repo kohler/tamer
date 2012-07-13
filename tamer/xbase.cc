@@ -21,6 +21,41 @@ abstract_rendezvous *abstract_rendezvous::unblocked;
 abstract_rendezvous *abstract_rendezvous::unblocked_tail;
 
 
+void simple_event::trigger_all_for_remove() {
+    for (simple_event *e = this; e; e = e->_r_next)
+	e->_r = 0;
+    for (simple_event *e = this; e; e = e->_r_next)
+	if (simple_event *at_trigger = e->_at_trigger) {
+	    if (at_trigger->_r)
+		at_trigger->simple_trigger(false);
+	    unuse(at_trigger);
+	}
+}
+
+void simple_event::trigger_for_unuse() {
+#if TAMER_DEBUG
+    assert(_r && _refcount == 0);
+#endif
+    abstract_rendezvous *r = _r;
+    simple_event *at_trigger = _at_trigger;
+
+    _r = 0;
+    if (_r_pprev)
+	*_r_pprev = _r_next;
+    if (_r_next)
+	_r_next->_r_pprev = _r_pprev;
+
+    message::event_prematurely_dereferenced(this, r);
+    r->complete(_rid, false);
+
+    if (at_trigger) {
+	if (at_trigger->_r)
+	    at_trigger->simple_trigger(false);
+	unuse(at_trigger);
+    }
+}
+
+
 bool tamer_closure::block_landmark(const char *&file, unsigned &line) {
     file = "<unknown>";
     line = 0;

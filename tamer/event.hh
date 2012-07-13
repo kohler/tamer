@@ -215,7 +215,7 @@ class event { public:
 	    if (_s1) *_s1 = v1;
 	    if (_s2) *_s2 = v2;
 	    if (_s3) *_s3 = v3;
-	    _e->trigger(true);
+	    _e->simple_trigger(true);
 	}
     }
 
@@ -354,7 +354,7 @@ class event<T0, T1, T2, void> { public:
 	    if (_s0) *_s0 = v0;
 	    if (_s1) *_s1 = v1;
 	    if (_s2) *_s2 = v2;
-	    _e->trigger(true);
+	    _e->simple_trigger(true);
 	}
     }
 
@@ -446,7 +446,7 @@ class event<T0, T1, void, void>
 	if (_e && *_e) {
 	    if (_s0) *_s0 = v0;
 	    if (_s1) *_s1 = v1;
-	    _e->trigger(true);
+	    _e->simple_trigger(true);
 	}
     }
 
@@ -532,7 +532,7 @@ class event<T0, void, void, void>
     void trigger(const T0 &v0) {
 	if (_e && *_e) {
 	    if (_s0) *_s0 = v0;
-	    _e->trigger(true);
+	    _e->simple_trigger(true);
 	}
     }
 
@@ -617,7 +617,7 @@ class event<void, void, void, void> { public:
 
     void trigger() {
 	if (_e && *_e)
-	    _e->trigger(false);
+	    _e->simple_trigger(false);
     }
 
     void operator()() {
