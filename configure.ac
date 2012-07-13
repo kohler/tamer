@@ -55,7 +55,7 @@ AC_LANG_C
 FIXLIBC_O=''
 AC_CHECK_FUNCS(strerror, :, FIXLIBC_O='fixlibc.o')
 
-AC_CACHE_CHECK(whether strtod works, ac_cv_working_strtod,
+AC_CACHE_CHECK([whether strtod works], ac_cv_working_strtod,
 [AC_TRY_RUN([#include <stdio.h>
 #include <stdlib.h>
 int main(int c, char **v) {
@@ -70,10 +70,10 @@ if test $ac_cv_working_strtod = no; then
     AC_DEFINE(BROKEN_STRTOD, 1, [Define if strtod is broken.])
 fi
 
-AC_CHECK_FUNCS(strtoul ctime mkstemp ftruncate sigaction waitpid)
-AC_CHECK_FUNC(floor, :, [AC_CHECK_LIB(m, floor)])
-AC_CHECK_FUNC(fabs, :, [AC_CHECK_LIB(m, fabs)])
-AC_CHECK_HEADERS(unistd.h fcntl.h sys/time.h sys/wait.h)
+AC_CHECK_FUNCS([strtoul ctime mkstemp ftruncate sigaction waitpid])
+AC_CHECK_FUNC([floor], [:], [AC_CHECK_LIB(m, floor)])
+AC_CHECK_FUNC([fabs], [:], [AC_CHECK_LIB(m, fabs)])
+AC_CHECK_HEADERS([unistd.h fcntl.h sys/time.h sys/wait.h])
 
 AC_SUBST(FIXLIBC_O)
 
@@ -82,17 +82,17 @@ dnl
 dnl integer types
 dnl
 
-AC_CHECK_HEADERS(inttypes.h, have_inttypes_h=yes, have_inttypes_h=no)
-AC_CHECK_HEADERS(sys/types.h, have_sys_types_h=yes, have_sys_types_h=no)
+AC_CHECK_HEADERS([inttypes.h], [have_inttypes_h=yes], [have_inttypes_h=no])
+AC_CHECK_HEADERS([sys/types.h], [have_sys_types_h=yes], [have_sys_types_h=no])
 
 if test $have_inttypes_h = no -a $have_sys_types_h = yes; then
-    AC_CACHE_CHECK([for uintXX_t typedefs], ac_cv_uint_t,
+    AC_CACHE_CHECK([for uintXX_t typedefs], [ac_cv_uint_t],
     [AC_EGREP_HEADER(dnl
 changequote(<<,>>)<<(^|[^a-zA-Z_0-9])uint32_t[^a-zA-Z_0-9]>>changequote([,]),
     sys/types.h, ac_cv_uint_t=yes, ac_cv_uint_t=no)])
 fi
 if test $have_inttypes_h = no -a $have_sys_types_h = yes -a "$ac_cv_uint_t" = no; then
-    AC_CACHE_CHECK([for u_intXX_t typedefs], ac_cv_u_int_t,
+    AC_CACHE_CHECK([for u_intXX_t typedefs], [ac_cv_u_int_t],
     [AC_EGREP_HEADER(dnl
 changequote(<<,>>)<<(^|[^a-zA-Z_0-9])u_int32_t[^a-zA-Z_0-9]>>changequote([,]),
     sys/types.h, ac_cv_u_int_t=yes, ac_cv_u_int_t=no)])
@@ -112,7 +112,7 @@ Assuming "short" has 16 bits and "int" has 32 bits.
     AC_DEFINE(HAVE_FAKE_INT_TYPES, 1, [Define if intXX_t types are not available.])
 fi
 
-AC_CHECK_TYPES(uintptr_t, [], [],
+AC_CHECK_TYPES([uintptr_t], [], [],
 [#if HAVE_INTTYPES_H
 # include <inttypes.h>
 #endif
@@ -121,9 +121,9 @@ AC_CHECK_TYPES(uintptr_t, [], [],
 #endif
 ])
 
-AC_CHECK_SIZEOF(void *)
-AC_CHECK_SIZEOF(unsigned long)
-AC_CHECK_SIZEOF(unsigned int)
+AC_CHECK_SIZEOF([void *])
+AC_CHECK_SIZEOF([unsigned long])
+AC_CHECK_SIZEOF([unsigned int])
 
 
 dnl
@@ -131,7 +131,7 @@ dnl ntohs, ntohl (need them in C++ code)
 dnl
 
 AC_LANG_CPLUSPLUS
-AC_CHECK_HEADERS(byteorder.h netinet/in.h sys/param.h)
+AC_CHECK_HEADERS([byteorder.h netinet/in.h sys/param.h])
 AC_MSG_CHECKING([whether ntohs and ntohl are defined])
 ac_ntoh_defined=no
 AC_COMPILE_IFELSE(
@@ -222,7 +222,44 @@ were not found.
 =========================================])
     fi
 fi
-AC_SUBST(LIBEVENT_LIBS)
+AC_SUBST([LIBEVENT_LIBS])
+
+
+dnl
+dnl fast malloc support (for tests)
+dnl
+
+AC_CHECK_LIB([jemalloc], [malloc], [have_jemalloc=true], [have_jemalloc=])
+AC_CHECK_LIB([tcmalloc_minimal], [malloc], [have_tcmalloc_minimal=true], [have_tcmalloc_minimal=])
+
+AC_ARG_ENABLE([malloc],
+    [AS_HELP_STRING([--enable-malloc=TYPE],
+                    [Memory allocator for tests (malloc|jemalloc|tcmalloc)])],
+    [tamer_malloc=$enableval], [tamer_malloc=yes])
+
+if test \( "$tamer_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
+	-o \( "$tamer_malloc" = jemalloc -a -z "$have_jemalloc" \); then
+    AC_MSG_ERROR([$tamer_malloc not found])
+elif test "$tamer_malloc" = yes -o "$tamer_malloc" = default; then
+    AC_MSG_CHECKING([for malloc library])
+    if test -n "$have_jemalloc"; then tamer_malloc=jemalloc;
+    elif test -n "$have_tcmalloc_minimal"; then tamer_malloc=tcmalloc;
+    else tamer_malloc=malloc; fi
+    AC_MSG_RESULT([$tamer_malloc])
+elif test "$tamer_malloc" = no -o "$tamer_malloc" = malloc -o -z "$tamer_malloc"; then
+    tamer_malloc=malloc
+else
+    AC_MSG_ERROR([Unknown malloc type $tamer_malloc])
+fi
+
+if test "$tamer_malloc" = tcmalloc; then
+    MALLOC_LIBS="-ltcmalloc_minimal"
+elif test "$tamer_malloc" = jemalloc; then
+    MALLOC_LIBS="-ljemalloc"
+else
+    MALLOC_LIBS=
+fi
+AC_SUBST([MALLOC_LIBS])
 
 
 dnl

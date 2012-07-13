@@ -1,12 +1,13 @@
 noinst_PROGRAMS = t01 t02
 
 t01_SOURCES = t01.cc
-t01_LDADD = ../tamer/libtamer.la $(LIBEVENT_LIBS)
+t01_LDADD = ../tamer/libtamer.la $(LIBEVENT_LIBS) $(MALLOC_LIBS)
 
 t02_SOURCES = t02.tt
-t02_LDADD = ../tamer/libtamer.la $(LIBEVENT_LIBS)
+t02_LDADD = ../tamer/libtamer.la $(LIBEVENT_LIBS) $(MALLOC_LIBS)
 
 LIBEVENT_LIBS = @LIBEVENT_LIBS@
+MALLOC_LIBS = @MALLOC_LIBS@
 
 INCLUDES = -I$(top_srcdir)
 
