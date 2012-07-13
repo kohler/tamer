@@ -120,8 +120,7 @@ class event { public:
 
     /** @brief  Default constructor creates an empty event. */
     event()
-	: _e(tamerpriv::simple_event::make_dead()),
-	  _s0(0), _s1(0), _s2(0), _s3(0) {
+	: _e(0), _s0(0), _s1(0), _s2(0), _s3(0) {
     }
 
     /** @brief  Construct a two-ID, four-slot event on rendezvous @a r.
@@ -171,7 +170,7 @@ class event { public:
      */
     event(const event<T0, T1, T2, T3> &x)
 	: _e(x._e), _s0(x._s0), _s1(x._s1), _s2(x._s2), _s3(x._s3) {
-	_e->use();
+	tamerpriv::simple_event::use(_e);
     }
 
     /** @brief  Destroy the event instance.
@@ -179,7 +178,7 @@ class event { public:
      *          last remaining reference.
      */
     ~event() {
-	_e->unuse();
+	tamerpriv::simple_event::unuse(_e);
     }
 
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
@@ -187,19 +186,19 @@ class event { public:
     /** @brief  Test if event is active.
      *  @return  True if event is active, false if it is empty. */
     operator unspecified_bool_type() const {
-	return *_e;
+	return _e ? (unspecified_bool_type) *_e : 0;
     }
 
     /** @brief  Test if event is empty.
      *  @return  True if event is empty, false if it is active. */
     bool operator!() const {
-	return _e->empty();
+	return !_e || _e->empty();
     }
 
     /** @brief  Test if event is empty.
      *  @return  True if event is empty, false if it is active. */
     bool empty() const {
-	return _e->empty();
+	return !_e || _e->empty();
     }
 
     /** @brief  Trigger event.
@@ -211,7 +210,7 @@ class event { public:
      *  Does nothing if event is empty.
      */
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3) {
-	if (*_e) {
+	if (_e && *_e) {
 	    if (_s0) *_s0 = v0;
 	    if (_s1) *_s1 = v1;
 	    if (_s2) *_s2 = v2;
@@ -246,9 +245,7 @@ class event { public:
      *  If this event is empty, @a e is triggered immediately.  Otherwise,
      *  when this event is triggered, triggers @a e.
      */
-    void at_trigger(const event<> &e) {
-	_e->at_trigger(e);
-    }
+    inline void at_trigger(const event<> &e);
 
     /** @brief  Return a no-slot event for the same occurrence as @a e.
      *  @return  New event.
@@ -266,8 +263,8 @@ class event { public:
      *  @param  x  Source event.
      */
     event<T0, T1, T2, T3> &operator=(const event<T0, T1, T2, T3> &x) {
-	x._e->use();
-	_e->unuse();
+	tamerpriv::simple_event::use(x._e);
+	tamerpriv::simple_event::unuse(_e);
 	_e = x._e;
 	_s0 = x._s0;
 	_s1 = x._s1;
@@ -308,7 +305,7 @@ template <typename T0, typename T1, typename T2>
 class event<T0, T1, T2, void> { public:
 
     event()
-	: _e(tamerpriv::simple_event::make_dead()), _s0(0), _s1(0), _s2(0) {
+	: _e(0), _s0(0), _s1(0), _s2(0) {
     }
 
     template <typename R, typename I0, typename I1>
@@ -331,29 +328,29 @@ class event<T0, T1, T2, void> { public:
 
     event(const event<T0, T1, T2> &x)
 	: _e(x._e), _s0(x._s0), _s1(x._s1), _s2(x._s2) {
-	_e->use();
+	tamerpriv::simple_event::use(_e);
     }
 
     ~event() {
-	_e->unuse();
+	tamerpriv::simple_event::unuse(_e);
     }
 
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     operator unspecified_bool_type() const {
-	return *_e;
+	return _e ? (unspecified_bool_type) *_e : 0;
     }
 
     bool operator!() const {
-	return _e->empty();
+	return !_e || _e->empty();
     }
 
     bool empty() const {
-	return _e->empty();
+	return !_e || _e->empty();
     }
 
     void trigger(const T0 &v0, const T1 &v1, const T2 &v2) {
-	if (*_e) {
+	if (_e && *_e) {
 	    if (_s0) *_s0 = v0;
 	    if (_s1) *_s1 = v1;
 	    if (_s2) *_s2 = v2;
@@ -370,16 +367,14 @@ class event<T0, T1, T2, void> { public:
     typedef const T1 &second_argument_type;
     typedef const T2 &third_argument_type;
 
-    void at_trigger(const event<> &e) {
-	_e->at_trigger(e);
-    }
+    inline void at_trigger(const event<> &e);
 
     inline event<> unblocker() const;
     inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
     event<T0, T1, T2> &operator=(const event<T0, T1, T2> &x) {
-	x._e->use();
-	_e->unuse();
+	tamerpriv::simple_event::use(x._e);
+	tamerpriv::simple_event::unuse(_e);
 	_e = x._e;
 	_s0 = x._s0;
 	_s1 = x._s1;
@@ -406,7 +401,7 @@ class event<T0, T1, void, void>
     : public std::binary_function<const T0 &, const T1 &, void> { public:
 
     event()
-	: _e(tamerpriv::simple_event::make_dead()), _s0(0), _s1(0) {
+	: _e(0), _s0(0), _s1(0) {
     }
 
     template <typename R, typename I0, typename I1>
@@ -426,29 +421,29 @@ class event<T0, T1, void, void>
 
     event(const event<T0, T1> &x)
 	: _e(x._e), _s0(x._s0), _s1(x._s1) {
-	_e->use();
+	tamerpriv::simple_event::use(_e);
     }
 
     ~event() {
-	_e->unuse();
+	tamerpriv::simple_event::unuse(_e);
     }
 
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     operator unspecified_bool_type() const {
-	return *_e;
+	return _e ? (unspecified_bool_type) *_e : 0;
     }
 
     bool operator!() const {
-	return _e->empty();
+	return !_e || _e->empty();
     }
 
     bool empty() const {
-	return _e->empty();
+	return !_e || _e->empty();
     }
 
     void trigger(const T0 &v0, const T1 &v1) {
-	if (*_e) {
+	if (_e && *_e) {
 	    if (_s0) *_s0 = v0;
 	    if (_s1) *_s1 = v1;
 	    _e->trigger(true);
@@ -459,16 +454,14 @@ class event<T0, T1, void, void>
 	trigger(v0, v1);
     }
 
-    void at_trigger(const event<> &e) {
-	_e->at_trigger(e);
-    }
+    inline void at_trigger(const event<> &e);
 
     inline event<> unblocker() const;
     inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
     event<T0, T1> &operator=(const event<T0, T1> &x) {
-	x._e->use();
-	_e->unuse();
+	tamerpriv::simple_event::use(x._e);
+	tamerpriv::simple_event::unuse(_e);
 	_e = x._e;
 	_s0 = x._s0;
 	_s1 = x._s1;
@@ -493,7 +486,7 @@ class event<T0, void, void, void>
     : public std::unary_function<const T0 &, void> { public:
 
     event()
-	: _e(tamerpriv::simple_event::make_dead()), _s0(0) {
+	: _e(0), _s0(0) {
     }
 
     template <typename R, typename I0, typename I1>
@@ -515,29 +508,29 @@ class event<T0, void, void, void>
 
     event(const event<T0> &x)
 	: _e(x._e), _s0(x._s0) {
-	_e->use();
+	tamerpriv::simple_event::use(_e);
     }
 
     ~event() {
-	_e->unuse();
+	tamerpriv::simple_event::unuse(_e);
     }
 
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     operator unspecified_bool_type() const {
-	return *_e;
+	return _e ? (unspecified_bool_type) *_e : 0;
     }
 
     bool operator!() const {
-	return _e->empty();
+	return !_e || _e->empty();
     }
 
     bool empty() const {
-	return _e->empty();
+	return !_e || _e->empty();
     }
 
     void trigger(const T0 &v0) {
-	if (*_e) {
+	if (_e && *_e) {
 	    if (_s0) *_s0 = v0;
 	    _e->trigger(true);
 	}
@@ -547,16 +540,14 @@ class event<T0, void, void, void>
 	trigger(v0);
     }
 
-    void at_trigger(const event<> &e) {
-	_e->at_trigger(e);
-    }
+    inline void at_trigger(const event<> &e);
 
     inline event<> unblocker() const;
     inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
     event<T0> &operator=(const event<T0> &x) {
-	x._e->use();
-	_e->unuse();
+	tamerpriv::simple_event::use(x._e);
+	tamerpriv::simple_event::unuse(_e);
 	_e = x._e;
 	_s0 = x._s0;
 	return *this;
@@ -578,7 +569,7 @@ template <>
 class event<void, void, void, void> { public:
 
     event()
-	: _e(tamerpriv::simple_event::make_dead()) {
+	: _e(0) {
     }
 
     template <typename R, typename I0, typename I1>
@@ -598,34 +589,35 @@ class event<void, void, void, void> { public:
 
     event(const event<> &x)
 	: _e(x._e) {
-	_e->use();
+	tamerpriv::simple_event::use(_e);
     }
 
     event(event<> &x)
 	: _e(x._e) {
-	_e->use();
+	tamerpriv::simple_event::use(_e);
     }
 
     ~event() {
-	_e->unuse();
+	tamerpriv::simple_event::unuse(_e);
     }
 
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     operator unspecified_bool_type() const {
-	return *_e;
+	return _e ? (unspecified_bool_type) *_e : 0;
     }
 
     bool operator!() const {
-	return _e->empty();
+	return !_e || _e->empty();
     }
 
     bool empty() const {
-	return _e->empty();
+	return !_e || _e->empty();
     }
 
     void trigger() {
-	_e->trigger(false);
+	if (_e && *_e)
+	    _e->trigger(false);
     }
 
     void operator()() {
@@ -635,7 +627,7 @@ class event<void, void, void, void> { public:
     typedef void result_type;
 
     void at_trigger(const event<> &e) {
-	_e->at_trigger(e);
+	tamerpriv::simple_event::at_trigger(_e, e);
     }
 
     event<> &unblocker() {
@@ -650,14 +642,20 @@ class event<void, void, void, void> { public:
     event<> bind_all() const TAMER_DEPRECATEDATTR;
 
     event<> &operator=(const event<> &x) {
-	x._e->use();
-	_e->unuse();
+	tamerpriv::simple_event::use(x._e);
+	tamerpriv::simple_event::unuse(_e);
 	_e = x._e;
 	return *this;
     }
 
     tamerpriv::simple_event *__get_simple() const {
 	return _e;
+    }
+
+    tamerpriv::simple_event *__take_simple() {
+	tamerpriv::simple_event *e = _e;
+	_e = 0;
+	return e;
     }
 
     static inline event<> __take(tamerpriv::simple_event *e) {
@@ -796,26 +794,46 @@ inline event<> make_event(rendezvous<> &r)
 /** @} */
 
 template <typename T0, typename T1, typename T2, typename T3>
+inline void event<T0, T1, T2, T3>::at_trigger(const event<> &e) {
+    tamerpriv::simple_event::at_trigger(_e, e);
+}
+
+template <typename T0, typename T1, typename T2>
+inline void event<T0, T1, T2>::at_trigger(const event<> &e) {
+    tamerpriv::simple_event::at_trigger(_e, e);
+}
+
+template <typename T0, typename T1>
+inline void event<T0, T1>::at_trigger(const event<> &e) {
+    tamerpriv::simple_event::at_trigger(_e, e);
+}
+
+template <typename T0>
+inline void event<T0>::at_trigger(const event<> &e) {
+    tamerpriv::simple_event::at_trigger(_e, e);
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
 inline event<> event<T0, T1, T2, T3>::unblocker() const {
-    _e->use();
+    tamerpriv::simple_event::use(_e);
     return event<>::__take(_e);
 }
 
 template <typename T0, typename T1, typename T2>
 inline event<> event<T0, T1, T2>::unblocker() const {
-    _e->use();
+    tamerpriv::simple_event::use(_e);
     return event<>::__take(_e);
 }
 
 template <typename T0, typename T1>
 inline event<> event<T0, T1>::unblocker() const {
-    _e->use();
+    tamerpriv::simple_event::use(_e);
     return event<>::__take(_e);
 }
 
 template <typename T0>
 inline event<> event<T0>::unblocker() const {
-    _e->use();
+    tamerpriv::simple_event::use(_e);
     return event<>::__take(_e);
 }
 
@@ -850,7 +868,7 @@ inline event<> event<>::bind_all() const {
 template <typename T0>
 inline event<T0>::event(const event<> &e, const no_slot &)
     : _e(e.__get_simple()), _s0(0) {
-    _e->use();
+    tamerpriv::simple_event::use(_e);
 }
 
 }

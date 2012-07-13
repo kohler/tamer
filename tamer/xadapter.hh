@@ -158,18 +158,19 @@ template <typename F> class function_rendezvous : public abstract_rendezvous { p
 };
 
 
-inline void simple_event::at_trigger(const event<> &e)
+inline void simple_event::at_trigger(simple_event *e, const event<> &x)
 {
-    if (!_r || !e)
-	e._e->trigger(false);
-    else if (!_at_trigger) {
-	_at_trigger = e._e;
-	_at_trigger->use();
-    } else {
-	event<> comb = tamer::distribute(event<>::__take(_at_trigger), e);
-	_at_trigger = comb._e;
-	_at_trigger->use();
-    }
+    if (!x)
+	/* ignore */;
+    else if (!e || !e->_r)
+	x._e->trigger(false);
+    else if (!e->_at_trigger) {
+	e->_at_trigger = x._e;
+	use(e->_at_trigger);
+    } else
+	e->_at_trigger =
+	    tamer::distribute(event<>::__take(e->_at_trigger), x)
+	    .__take_simple();
 }
 
 }}

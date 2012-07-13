@@ -73,22 +73,16 @@ class simple_event { public:
     template <typename R>
     inline simple_event(R &r);
 
-    static simple_event *make_dead() {
-	if (!dead)
-	    __make_dead();
-	dead->use();
-	return dead;
+    static inline void use(simple_event *e) {
+	if (e)
+	    ++e->_refcount;
     }
 
-    void use() {
-	++_refcount;
-    }
-
-    void unuse() {
-	if (--_refcount == 0) {
-	    if (_r)
-		trigger(false);
-	    delete this;
+    static inline void unuse(simple_event *e) {
+	if (e && --e->_refcount == 0) {
+	    if (e->_r)
+		e->trigger(false);
+	    delete e;
 	}
     }
 
@@ -96,10 +90,10 @@ class simple_event { public:
 	return _refcount;
     }
 
-    typedef abstract_rendezvous *simple_event::*unspecified_bool_type;
+    typedef unsigned (simple_event::*unspecified_bool_type)() const;
 
     operator unspecified_bool_type() const {
-	return _r ? &simple_event::_r : 0;
+	return _r ? &simple_event::refcount : 0;
     }
 
     bool empty() const {
@@ -118,7 +112,7 @@ class simple_event { public:
 
     inline bool trigger(bool values);
 
-    inline void at_trigger(const event<> &e);
+    static inline void at_trigger(simple_event *x, const event<> &e);
 
     inline bool has_at_trigger() const {
 	return _at_trigger && *_at_trigger;
@@ -134,18 +128,11 @@ class simple_event { public:
     simple_event *_at_trigger;
 
     simple_event(const simple_event &);
-
     simple_event &operator=(const simple_event &);
 
     inline ~simple_event() {
 	assert(!_r && !_r_pprev);
     }
-
-    static simple_event *dead;
-
-    static void __make_dead();
-    class initializer;
-    static initializer the_initializer;
 
     friend class abstract_rendezvous;
     friend class event<void, void, void, void>;
@@ -341,7 +328,7 @@ inline bool simple_event::trigger(bool values) {
 	r->complete(_rid, values);
     if (at_trigger) {
 	at_trigger->trigger(false);
-	at_trigger->unuse();
+	unuse(at_trigger);
     }
 
     return r != 0;
