@@ -216,6 +216,7 @@ class event { public:
 	    if (_s2) *_s2 = v2;
 	    if (_s3) *_s3 = v3;
 	    _e->simple_trigger(true);
+	    _e = 0;
 	}
     }
 
@@ -355,6 +356,7 @@ class event<T0, T1, T2, void> { public:
 	    if (_s1) *_s1 = v1;
 	    if (_s2) *_s2 = v2;
 	    _e->simple_trigger(true);
+	    _e = 0;
 	}
     }
 
@@ -447,6 +449,7 @@ class event<T0, T1, void, void>
 	    if (_s0) *_s0 = v0;
 	    if (_s1) *_s1 = v1;
 	    _e->simple_trigger(true);
+	    _e = 0;
 	}
     }
 
@@ -533,6 +536,7 @@ class event<T0, void, void, void>
 	if (_e && *_e) {
 	    if (_s0) *_s0 = v0;
 	    _e->simple_trigger(true);
+	    _e = 0;
 	}
     }
 
@@ -616,8 +620,10 @@ class event<void, void, void, void> { public:
     }
 
     void trigger() {
-	if (_e && *_e)
+	if (_e && *_e) {
 	    _e->simple_trigger(false);
+	    _e = 0;
+	}
     }
 
     void operator()() {
@@ -664,7 +670,7 @@ class event<void, void, void, void> { public:
 
   private:
 
-    tamerpriv::simple_event *_e;
+    mutable tamerpriv::simple_event *_e;
 
     struct take_marker { };
     inline event(const take_marker &, tamerpriv::simple_event *e)

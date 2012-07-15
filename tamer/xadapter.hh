@@ -32,12 +32,15 @@ class with_helper_rendezvous : public abstract_rendezvous { public:
 	e->initialize(this, 0);
     }
 
-    void complete(uintptr_t, bool) {
+    void complete(simple_event *e, bool) {
+	e->precomplete();
 	if (*_e) {
 	    *_s0 = _v0;
 	    _e->simple_trigger(false);
+	    _e = 0;
 	} else
 	    *_s0 = int();
+	e->postcomplete();
 	delete this;
     }
 
@@ -71,8 +74,10 @@ class bind_rendezvous : public abstract_rendezvous { public:
 	e->initialize(this, 0);
     }
 
-    void complete(uintptr_t, bool) {
+    void complete(simple_event *e, bool) {
+	e->precomplete();
 	_e.trigger(_v0);
+	e->postcomplete();
 	delete this;
     }
 
@@ -103,11 +108,13 @@ class map_rendezvous : public abstract_rendezvous { public:
 	e->initialize(this, 0);
     }
 
-    void complete(uintptr_t, bool values) {
+    void complete(simple_event *e, bool values) {
+	e->precomplete();
 	if (values)
 	    _e.trigger(_f(_s0));
 	else if (_e)
 	    _e.unblocker().trigger();
+	e->postcomplete();
 	delete this;
     }
 
@@ -144,10 +151,12 @@ template <typename F> class function_rendezvous : public abstract_rendezvous { p
 	e->initialize(this, 0);
     }
 
-    void complete(uintptr_t, bool) {
+    void complete(simple_event *e, bool) {
+	e->precomplete();
 	// in case _f() refers to an event on this rendezvous:
 	remove_all();
 	_f();
+	e->postcomplete();
 	delete this;
     }
 
@@ -158,18 +167,19 @@ template <typename F> class function_rendezvous : public abstract_rendezvous { p
 };
 
 
-inline void simple_event::at_trigger(simple_event *e, const event<> &x)
+inline void simple_event::at_trigger(simple_event *x, const event<> &at_e)
 {
-    if (!x)
+    if (!at_e)
 	/* ignore */;
-    else if (!e || !e->_r)
-	x._e->simple_trigger(false);
-    else if (!e->_at_trigger) {
-	e->_at_trigger = x._e;
-	use(e->_at_trigger);
+    else if (!x || !x->_r) {
+	at_e._e->simple_trigger(false);
+	at_e._e = 0;
+    } else if (!x->_at_trigger) {
+	x->_at_trigger = at_e._e;
+	use(x->_at_trigger);
     } else
-	e->_at_trigger =
-	    tamer::distribute(event<>::__take(e->_at_trigger), x)
+	x->_at_trigger =
+	    tamer::distribute(event<>::__take(x->_at_trigger), at_e)
 	    .__take_simple();
 }
 

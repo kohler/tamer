@@ -83,6 +83,10 @@ class simple_event { public:
 	    delete e;
 	}
     }
+    static inline void unuse_clean(simple_event *e) {
+	if (e && --e->_refcount == 0)
+	    delete e;
+    }
 
     unsigned refcount() const {
 	return _refcount;
@@ -98,16 +102,17 @@ class simple_event { public:
 	return _r == 0;
     }
 
-    abstract_rendezvous *rendezvous() const {
-	return _r;
-    }
+    inline abstract_rendezvous *rendezvous() const;
+    inline uintptr_t rid() const;
+    inline void precomplete();
+    inline void postcomplete(bool nofree = false);
 
     inline void initialize(abstract_rendezvous *r, uintptr_t rid);
 
     inline void simple_trigger(bool values);
     void trigger_all_for_remove();
 
-    static inline void at_trigger(simple_event *x, const event<> &e);
+    static inline void at_trigger(simple_event *x, const event<> &at_e);
 
     inline bool has_at_trigger() const {
 	return _r && _at_trigger && *_at_trigger;
@@ -139,7 +144,7 @@ class abstract_rendezvous { public:
 
     virtual inline ~abstract_rendezvous();
 
-    virtual void complete(uintptr_t rid, bool values) = 0;
+    virtual void complete(simple_event *e, bool values) = 0;
 
     virtual inline void clear();
 
@@ -302,26 +307,43 @@ inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
     r->_events = this;
 }
 
+inline abstract_rendezvous *simple_event::rendezvous() const {
+    return _r;
+}
+
+inline uintptr_t simple_event::rid() const {
+    return _rid;
+}
+
+inline void simple_event::precomplete() {
+    *_r_pprev = _r_next;
+    if (_r_next)
+	_r_next->_r_pprev = _r_pprev;
+}
+
+inline void simple_event::postcomplete(bool nofree) {
+#if TAMER_DEBUG
+    assert(!_r);
+#endif
+    if (_at_trigger) {
+	if (abstract_rendezvous *r = _at_trigger->_r) {
+	    _at_trigger->_r = 0;
+	    r->complete(_at_trigger, false);
+	} else
+	    unuse_clean(_at_trigger);
+    }
+    if (!nofree)
+	unuse_clean(this);
+}
+
 inline void simple_event::simple_trigger(bool values) {
 #if TAMER_DEBUG
     assert(_r != 0 && _refcount != 0);
 #endif
     // See also trigger_all_for_remove(), trigger_for_unuse().
     abstract_rendezvous *r = _r;
-    simple_event *at_trigger = _at_trigger;
-
     _r = 0;
-    *_r_pprev = _r_next;
-    if (_r_next)
-	_r_next->_r_pprev = _r_pprev;
-
-    r->complete(_rid, values);
-
-    if (at_trigger) {
-	if (at_trigger->_r)
-	    at_trigger->simple_trigger(false);
-	unuse(at_trigger);
-    }
+    r->complete(this, values);
 }
 
 inline void abstract_rendezvous::block(tamer_closure &c, unsigned where) {

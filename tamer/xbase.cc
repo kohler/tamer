@@ -26,11 +26,7 @@ void simple_event::trigger_all_for_remove() {
     for (simple_event *e = this; e; e = e->_r_next)
 	e->_r = 0;
     for (simple_event *e = this; e; e = e->_r_next)
-	if (simple_event *at_trigger = e->_at_trigger) {
-	    if (at_trigger->_r)
-		at_trigger->simple_trigger(false);
-	    unuse(at_trigger);
-	}
+	e->postcomplete(true);
 }
 
 void simple_event::trigger_for_unuse() {
@@ -38,22 +34,9 @@ void simple_event::trigger_for_unuse() {
     assert(_r && _refcount == 0);
 #endif
     abstract_rendezvous *r = _r;
-    simple_event *at_trigger = _at_trigger;
-
     _r = 0;
-    if (_r_pprev)
-	*_r_pprev = _r_next;
-    if (_r_next)
-	_r_next->_r_pprev = _r_pprev;
-
     message::event_prematurely_dereferenced(this, r);
-    r->complete(_rid, false);
-
-    if (at_trigger) {
-	if (at_trigger->_r)
-	    at_trigger->simple_trigger(false);
-	unuse(at_trigger);
-    }
+    r->complete(this, false);
 }
 
 
@@ -97,15 +80,17 @@ class distribute_rendezvous : public abstract_rendezvous { public:
 	}
     }
 
-    void complete(uintptr_t rid, bool) {
+    void complete(simple_event *e, bool) {
+	e->precomplete();
 	while (_es.size() && !_es.back())
 	    _es.pop_back();
-	if (!_es.size() || !rid) {
+	if (!_es.size() || !e->rid()) {
 	    remove_all();
 	    for (std::vector<event<> >::iterator i = _es.begin(); i != _es.end(); ++i)
 		i->trigger();
 	    delete this;
 	}
+	e->postcomplete();
     }
 
   private:
