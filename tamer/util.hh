@@ -16,7 +16,7 @@
 #include <memory>
 #include <cassert>
 #include <cstddef>
-#define TAMER_NOEXCEPT
+#include <tamer/autoconf.h>
 namespace tamer {
 namespace tamerutil {
 

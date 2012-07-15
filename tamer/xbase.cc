@@ -11,6 +11,7 @@
  * notice is a summary of the Tamer LICENSE file; the license in that file is
  * legally binding.
  */
+#include "config.h"
 #include <tamer/tamer.hh>
 #include <tamer/adapter.hh>
 #include <stdio.h>

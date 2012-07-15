@@ -1,8 +1,8 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT([tamer], [1.3.0])
 AC_CONFIG_SRCDIR([configure.ac])
+AC_CONFIG_HEADERS([config.h tamer/autoconf.h:tamer/autoconf.h.in])
 AM_INIT_AUTOMAKE
-AM_CONFIG_HEADER(tamer/config.h)
 AM_MAINTAINER_MODE
 
 AC_PROG_MAKE_SET
@@ -65,7 +65,7 @@ int main(int c, char **v) {
   exit(*endp == 0 ? 1 : 0);
 }], ac_cv_working_strtod=yes, ac_cv_working_strtod=no,
 ac_cv_working_strtod=yes)])
-if test $ac_cv_working_strtod = no; then 
+if test $ac_cv_working_strtod = no; then
     FIXLIBC_O='fixlibc.o'
     AC_DEFINE(BROKEN_STRTOD, 1, [Define if strtod is broken.])
 fi
@@ -181,7 +181,7 @@ dnl is va_list addressable?
 dnl
 
 AC_LANG_CPLUSPLUS
-AC_CACHE_CHECK([for addressable va_list type], 
+AC_CACHE_CHECK([for addressable va_list type],
     ac_cv_va_list_addr,
     [AC_TRY_COMPILE([#include <stdarg.h>
 void f(va_list *) {
@@ -197,6 +197,46 @@ void h(int a, ...) {
 }], [h(2, 3, 4);], ac_cv_va_list_addr=yes, ac_cv_va_list_addr=no)])
 if test "x$ac_cv_va_list_addr" = xyes; then
     AC_DEFINE(HAVE_ADDRESSABLE_VA_LIST, 1, [Define if the va_list type is addressable.])
+fi
+
+
+dnl
+dnl C++11 features
+dnl
+
+AC_CACHE_CHECK([whether the C++ compiler understands constexpr], [ac_cv_cxx_constexpr], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[constexpr int f(int x) { return x + 1; }]], [[]])],
+	[ac_cv_cxx_constexpr=yes], [ac_cv_cxx_constexpr=no])])
+if test "$ac_cv_cxx_constexpr" = yes; then
+    AC_DEFINE([TAMER_HAVE_CXX_CONSTEXPR], [1], [Define if the C++ compiler understands constexpr.])
+fi
+
+AC_CACHE_CHECK([whether the C++ compiler understands noexcept], [ac_cv_cxx_noexcept], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int x) noexcept { return x + 1; }]], [[]])],
+	[ac_cv_cxx_noexcept=yes], [ac_cv_cxx_noexcept=no])])
+if test "$ac_cv_cxx_noexcept" = yes; then
+    AC_DEFINE([TAMER_HAVE_CXX_NOEXCEPT], [1], [Define if the C++ compiler understands noexcept.])
+fi
+
+AC_CACHE_CHECK([whether the C++ compiler understands static_assert], [ac_cv_cxx_static_assert], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[const int f = 2;]], [[static_assert(f == 2, "f should be 2");]])],
+	[ac_cv_cxx_static_assert=yes], [ac_cv_cxx_static_assert=no])])
+if test "$ac_cv_cxx_static_assert" = yes; then
+    AC_DEFINE([TAMER_HAVE_CXX_STATIC_ASSERT], [1], [Define if the C++ compiler understands static_assert.])
+fi
+
+AC_CACHE_CHECK([whether the C++ compiler understands rvalue references], [ac_cv_cxx_rvalue_references], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int &) { return 1; } int f(int &&) { return 0; }]], [[return f(int());]])],
+	[ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])])
+if test "$ac_cv_cxx_rvalue_references" = yes; then
+    AC_DEFINE([TAMER_HAVE_CXX_RVALUE_REFERENCES], [1], [Define if the C++ compiler understands rvalue references.])
+fi
+
+AC_CACHE_CHECK([whether the C++ compiler understands template alias], [ac_cv_cxx_template_alias], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[template <typename T> struct X { typedef T type; }; template <typename T> using Y = X<T>; int f(int x) { return x; }]], [[return f(Y<int>::type());]])],
+	[ac_cv_cxx_template_alias=yes], [ac_cv_cxx_template_alias=no])])
+if test "$ac_cv_cxx_template_alias" = yes; then
+    AC_DEFINE([TAMER_HAVE_CXX_TEMPLATE_ALIAS], [1], [Define if the C++ compiler understands template alias.])
 fi
 
 

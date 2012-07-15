@@ -5,9 +5,8 @@
 .libs
 Makefile
 Makefile.in
+autoconf.h
 bufferedio.cc
-config.h
-config.h.in
 dns.cc
 fd.cc
 fdh.cc

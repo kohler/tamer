@@ -1,4 +1,5 @@
 // -*- mode: c++ -*-
+#include "config.h"
 #include <tamer/dns.hh>
 #include <fcntl.h>
 #include <queue>

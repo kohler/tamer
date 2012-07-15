@@ -24,6 +24,7 @@ libtamer_la_SOURCES = \
 	xevent.hh
 pkginclude_HEADERS = \
 	adapter.hh \
+	autoconf.h \
 	bufferedio.hh \
 	driver.hh \
 	event.hh \
@@ -50,7 +51,8 @@ EXTRA_PROGRAMS = tamerfdh
 tamerfdh_SOURCES = fdhelp.cc fdhmsg.hh fdhmsg.cc
 tamerfdh_CPPFLAGS = $(AM_CPPFLAGS)
 
-EXTRA_DIST = tamer.pc.in
+EXTRA_DIST = autoconf.h.in \
+	tamer.pc.in
 
 INCLUDES = -I$(top_srcdir) -I$(top_builddir)
 TAMER = ../compiler/tamer

@@ -15,15 +15,8 @@
  */
 #include <stdexcept>
 #include <stdint.h>
+#include <tamer/autoconf.h>
 namespace tamer {
-
-#if __GNUC__
-#define TAMER_CLOSUREVARATTR __attribute__((unused))
-#define TAMER_DEPRECATEDATTR __attribute__((deprecated))
-#else
-#define TAMER_CLOSUREVARATTR
-#define TAMER_DEPRECATEDATTR
-#endif
 
 template <typename I0=void, typename I1=void> class rendezvous;
 template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> class event;
@@ -71,6 +64,12 @@ class simple_event { public:
 
     template <typename R>
     inline simple_event(R &r);
+
+#if TAMER_DEBUG
+    inline ~simple_event() {
+	assert(!_r);
+    }
+#endif
 
     static inline void use(simple_event *e) {
 	if (e)
@@ -125,10 +124,6 @@ class simple_event { public:
 
     simple_event(const simple_event &);
     simple_event &operator=(const simple_event &);
-
-    inline ~simple_event() {
-	assert(!_r);
-    }
 
     void trigger_for_unuse();
 

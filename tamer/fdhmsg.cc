@@ -1,3 +1,4 @@
+#include "config.h"
 #include <tamer/fdhmsg.hh>
 #include <stdlib.h>
 #include <stdio.h>

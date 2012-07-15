@@ -9,7 +9,7 @@ t02_LDADD = ../tamer/libtamer.la $(LIBEVENT_LIBS) $(MALLOC_LIBS)
 LIBEVENT_LIBS = @LIBEVENT_LIBS@
 MALLOC_LIBS = @MALLOC_LIBS@
 
-INCLUDES = -I$(top_srcdir)
+INCLUDES = -I$(top_srcdir) -I$(top_builddir)
 
 TAMER = ../compiler/tamer
 .tt.cc: $(TAMER)

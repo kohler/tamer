@@ -13,7 +13,7 @@ http.cc: http.tt $(TAMER)
 input.cc: input.tt $(TAMER)
 knot.cc: knot.tt $(TAMER)
 
-INCLUDES = -I$(top_srcdir)
+INCLUDES = -I$(top_srcdir) -I$(top_builddir)
 
 clean-local:
 	-rm -f cache2.cc http.cc input.cc knot.cc

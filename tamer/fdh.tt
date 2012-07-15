@@ -1,5 +1,5 @@
 /* -*- mode: c++ -*- */
-#include <tamer/config.h>
+#include "config.h"
 #include <tamer/fdh.hh>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
