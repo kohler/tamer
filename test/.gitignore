@@ -6,3 +6,5 @@ Makefile.in
 t01
 t02
 t02.cc
+t03
+t03.cc

@@ -1,0 +1,37 @@
+// -*- mode: c++ -*-
+/* Copyright (c) 2012, Eddie Kohler
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, subject to the conditions
+ * listed in the Tamer LICENSE file. These conditions include: you must
+ * preserve this copyright notice, and you cannot mention the copyright
+ * holders in advertising related to the Software without their permission.
+ * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
+ * notice is a summary of the Tamer LICENSE file; the license in that file is
+ * legally binding.
+ */
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <tamer/tamer.hh>
+#include <tamer/adapter.hh>
+
+int n;
+
+tamed void asap(tamer::event<> e) {
+    tvars { int i; }
+    for (i = 0; i < 50000000; ++i)
+	twait { tamer::at_asap(tamer::with_timeout(1, make_event())); }
+    e.trigger();
+}
+
+int main(int, char **) {
+    tamer::initialize();
+    tamer::rendezvous<> r;
+    tamer::event<> e = make_event(r);
+    asap(e);
+    while (e)
+	tamer::once();
+}
