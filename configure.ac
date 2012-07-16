@@ -7,15 +7,35 @@ AM_MAINTAINER_MODE
 
 AC_PROG_MAKE_SET
 
+dnl
+dnl compilers
+dnl
+
 AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_CXX
 AC_PROG_CXXCPP
+if test -n "$GCC" ; then CC="$CC -W -Wall" ; CXX="$CXX -W -Wall" ; fi
+
+AC_LANG_CPLUSPLUS
+AC_CACHE_CHECK([whether the C++ compiler works], [ac_cv_cxx_works], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int x) { return x + 1; }]], [[]])],
+	[ac_cv_cxx_works=yes], [ac_cv_cxx_works=no])])
+if test "$ac_cv_cxx_works" != yes; then
+    AC_MSG_ERROR([
+=========================================
+
+The C++ compiler doesn't work. Try setting 'CXX' differently.
+
+=========================================])
+fi
+AC_LANG_C
+
+dnl other programs
+
 AM_PROG_LEX
 AC_PROG_YACC
 AC_PROG_LIBTOOL
-if test -n "$GCC" ; then CC="$CC -W -Wall" ; CXX="$CXX -W -Wall" ; fi
-
 
 dnl
 dnl directory searching
