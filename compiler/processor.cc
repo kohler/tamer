@@ -536,7 +536,6 @@ mangler::mangler(const str &s)
 	    if (i != s.end())
 		i++;
 	} else if (*i == '<') {
-	    str::const_iterator x = i+1;
 	    str::const_iterator j = i+1;
 	    int inner = 0;
 	    strbuf b;
