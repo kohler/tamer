@@ -265,7 +265,9 @@ dnl libevent support
 dnl
 
 LIBEVENT_LIBS=
-AC_ARG_WITH([libevent], [  --with-libevent         include libevent driver], [:], [with_libevent=maybe])
+AC_ARG_WITH([libevent], 
+    [AS_HELP_STRING([--with-libevent], [include libevent driver])],
+    [:], [with_libevent=maybe])
 if test "$with_libevent" != no; then
     AC_CHECK_LIB([event], [event_init], [have_libevent=yes])
     AC_CHECK_HEADERS([event.h], [have_event_h=yes])
@@ -292,10 +294,10 @@ dnl
 AC_CHECK_LIB([jemalloc], [malloc], [have_jemalloc=true], [have_jemalloc=])
 AC_CHECK_LIB([tcmalloc_minimal], [malloc], [have_tcmalloc_minimal=true], [have_tcmalloc_minimal=])
 
-AC_ARG_ENABLE([malloc],
-    [AS_HELP_STRING([--enable-malloc=TYPE],
+AC_ARG_WITH([malloc],
+    [AS_HELP_STRING([--with-malloc=TYPE],
                     [Memory allocator for tests (malloc|jemalloc|tcmalloc)])],
-    [tamer_malloc=$enableval], [tamer_malloc=yes])
+    [tamer_malloc=$withval], [tamer_malloc=yes])
 
 if test \( "$tamer_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
 	-o \( "$tamer_malloc" = jemalloc -a -z "$have_jemalloc" \); then
@@ -308,6 +310,8 @@ elif test "$tamer_malloc" = yes -o "$tamer_malloc" = default; then
     AC_MSG_RESULT([$tamer_malloc])
 elif test "$tamer_malloc" = no -o "$tamer_malloc" = malloc -o -z "$tamer_malloc"; then
     tamer_malloc=malloc
+elif test "$tamer_malloc" = jemalloc -o "$tamer_malloc" = tcmalloc; then
+    :
 else
     AC_MSG_ERROR([Unknown malloc type $tamer_malloc])
 fi
