@@ -179,7 +179,7 @@ inline void simple_event::at_trigger(simple_event *x, const event<> &at_e)
 	use(x->_at_trigger);
     } else
 	x->_at_trigger =
-	    tamer::distribute(event<>::__take(x->_at_trigger), at_e)
+	    tamer::distribute(event<>::__make(x->_at_trigger), at_e)
 	    .__take_simple();
 }
 

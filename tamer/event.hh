@@ -664,7 +664,7 @@ class event<void, void, void, void> { public:
 	return e;
     }
 
-    static inline event<> __take(tamerpriv::simple_event *e) {
+    static inline event<> __make(tamerpriv::simple_event *e) {
 	return event<>(take_marker(), e);
     }
 
@@ -822,25 +822,25 @@ inline void event<T0>::at_trigger(const event<> &e) {
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<> event<T0, T1, T2, T3>::unblocker() const {
     tamerpriv::simple_event::use(_e);
-    return event<>::__take(_e);
+    return event<>::__make(_e);
 }
 
 template <typename T0, typename T1, typename T2>
 inline event<> event<T0, T1, T2>::unblocker() const {
     tamerpriv::simple_event::use(_e);
-    return event<>::__take(_e);
+    return event<>::__make(_e);
 }
 
 template <typename T0, typename T1>
 inline event<> event<T0, T1>::unblocker() const {
     tamerpriv::simple_event::use(_e);
-    return event<>::__take(_e);
+    return event<>::__make(_e);
 }
 
 template <typename T0>
 inline event<> event<T0>::unblocker() const {
     tamerpriv::simple_event::use(_e);
-    return event<>::__take(_e);
+    return event<>::__make(_e);
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
@@ -878,4 +878,4 @@ inline event<T0>::event(const event<> &e, const no_slot &)
 }
 
 }
-#endif /* TAMER__EVENT_HH */
+#endif /* TAMER_EVENT_HH */
