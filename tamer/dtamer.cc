@@ -39,28 +39,20 @@ class driver_tamer : public driver { public:
   private:
 
     struct ttimer {
-	union {
-	    unsigned order;
-	    ttimer *next;
-	} u;
-	timeval expiry;
-	event<> trigger;
-	ttimer(const timeval &expiry_, unsigned order_, const event<> &trigger_)
-	    : expiry(expiry_), trigger(trigger_) {
-	    u.order = order_;
+	timeval expiry_;
+	unsigned order_;
+	tamerpriv::simple_event *trigger_;
+	ttimer(const timeval &expiry, unsigned order, const event<> &trigger)
+	    : expiry_(expiry), order_(order), trigger_(trigger.__get_simple()) {
+	    tamerpriv::simple_event::use(trigger_);
 	}
-	bool operator>(const ttimer &o) const {
-	    if (expiry.tv_sec != o.expiry.tv_sec)
-		return expiry.tv_sec > o.expiry.tv_sec;
-	    if (expiry.tv_usec != o.expiry.tv_usec)
-		return expiry.tv_usec > o.expiry.tv_usec;
-	    return (int) (u.order - o.u.order) > 0;
+	bool operator>(const ttimer &x) const {
+	    if (expiry_.tv_sec != x.expiry_.tv_sec)
+		return expiry_.tv_sec > x.expiry_.tv_sec;
+	    if (expiry_.tv_usec != x.expiry_.tv_usec)
+		return expiry_.tv_usec > x.expiry_.tv_usec;
+	    return (int) (order_ - x.order_) > 0;
 	}
-    };
-
-    struct ttimer_group {
-	ttimer_group *next;
-	ttimer t[1];
     };
 
     struct tfd {
@@ -80,9 +72,10 @@ class driver_tamer : public driver { public:
 	char s[1];
     };
 
-    ttimer **_t;
-    int _nt;
-    unsigned _torder;
+    ttimer *t_;
+    int nt_;
+    int tcap_;
+    unsigned torder_;
 
     tfd *_fd;
     int _nfds;
@@ -91,11 +84,6 @@ class driver_tamer : public driver { public:
 
     tamerutil::debuffer<event<> > _asap;
 
-    int _tcap;
-    ttimer_group *_tgroup;
-    int _tgroup_cap;
-    ttimer *_tfree;
-
     int _fdcap;
     tfd_group *_fdgroup;
     tfd *_fdfree;
@@ -103,7 +91,7 @@ class driver_tamer : public driver { public:
 
     void expand_timers();
     void check_timers() const;
-    void timer_reheapify_from(int pos, ttimer *t, bool will_delete);
+    void timer_reheapify_from(int pos);
     void expand_fds();
     void cull_timers();
 
@@ -111,9 +99,8 @@ class driver_tamer : public driver { public:
 
 
 driver_tamer::driver_tamer()
-    : _t(0), _nt(0), _torder(0),
+    : t_(0), nt_(0), tcap_(0), torder_(0),
       _fd(0), _nfds(0), _fdset_cap(sizeof(xfd_set) * 8),
-      _tcap(0), _tgroup(0), _tgroup_cap(7), _tfree(0),
       _fdcap(0), _fdgroup(0), _fdfree(0)
 {
     assert(FD_SETSIZE <= _fdset_cap);
@@ -128,16 +115,9 @@ driver_tamer::driver_tamer()
 driver_tamer::~driver_tamer()
 {
     // destroy all active timers
-    for (int i = 0; i < _nt; i++)
-	_t[i]->~ttimer();
-
-    // free timer groups
-    while (_tgroup) {
-	ttimer_group *next = _tgroup->next;
-	delete[] reinterpret_cast<unsigned char *>(_tgroup);
-	_tgroup = next;
-    }
-    delete[] _t;
+    for (int i = 0; i < nt_; i++)
+	tamerpriv::simple_event::unuse(t_[i].trigger_);
+    delete[] reinterpret_cast<char *>(t_);
 
     // destroy all active file descriptors
     while (_fd) {
@@ -159,47 +139,36 @@ driver_tamer::~driver_tamer()
 
 void driver_tamer::expand_timers()
 {
-    if (_tgroup_cap <= 511)
-	_tgroup_cap = (_tgroup_cap * 2) + 1;
-
-    ttimer_group *ngroup = reinterpret_cast<ttimer_group *>(new unsigned char[sizeof(ttimer_group) + sizeof(ttimer) * (_tgroup_cap - 1)]);
-    ngroup->next = _tgroup;
-    _tgroup = ngroup;
-    for (int i = 0; i < _tgroup_cap; i++) {
-	ngroup->t[i].u.next = _tfree;
-	_tfree = &ngroup->t[i];
-    }
-
-    ttimer **t = new ttimer *[_tcap + _tgroup_cap];
-    memcpy(t, _t, sizeof(ttimer *) * _nt);
-    delete[] _t;
-    _t = t;
-    _tcap = _tcap + _tgroup_cap;
+    int ntcap = (tcap_ ? 511 : ((tcap_ + 1) * 2 - 1));
+    ttimer *nt = reinterpret_cast<ttimer *>(new char[sizeof(ttimer) * ntcap]);
+    if (nt_ != 0)
+	// take advantage of fact that memcpy() works on event<>
+	memcpy(nt, t_, sizeof(ttimer) * nt_);
+    delete[] reinterpret_cast<char *>(t_);
+    t_ = nt;
+    tcap_ = ntcap;
 }
 
-void driver_tamer::timer_reheapify_from(int pos, ttimer *t, bool /*will_delete*/)
+void driver_tamer::timer_reheapify_from(int pos)
 {
     int npos;
     while (pos > 0
-	   && (npos = (pos-1) >> 1, *_t[npos] > *t)) {
-	_t[pos] = _t[npos];
+	   && (npos = (pos - 1) >> 1, t_[npos] > t_[pos])) {
+	std::swap(t_[pos], t_[npos]);
 	pos = npos;
     }
 
     while (1) {
-	ttimer *smallest = t;
+	int smallest = pos;
 	npos = 2*pos + 1;
-	if (npos < _nt && *smallest > *_t[npos])
-	    smallest = _t[npos];
-	if (npos+1 < _nt && *smallest > *_t[npos+1])
-	    smallest = _t[npos+1], npos++;
-
-	_t[pos] = smallest;
-
-	if (smallest == t)
+	if (npos < nt_ && t_[smallest] > t_[npos])
+	    smallest = npos;
+	if (npos + 1 < nt_ && t_[smallest] > t_[npos + 1])
+	    smallest = npos + 1, ++npos;
+	if (smallest == pos)
 	    break;
-
-	pos = npos;
+	std::swap(t_[pos], t_[smallest]);
+	pos = smallest;
     }
 #if 0
     if (_t + 1 < tend || !will_delete)
@@ -299,13 +268,13 @@ void driver_tamer::kill_fd(int fd)
 
 void driver_tamer::at_time(const timeval &expiry, const event<> &e)
 {
-    if (!_tfree)
+    if (nt_ == tcap_)
 	expand_timers();
-    ttimer *t = _tfree;
-    _tfree = t->u.next;
-    (void) new(static_cast<void *>(t)) ttimer(expiry, ++_torder, e);
-    _t[_nt++] = 0;
-    timer_reheapify_from(_nt-1, t, false);
+    if (e) {
+	(void) new(static_cast<void *>(&t_[nt_])) ttimer(expiry, ++torder_, e);
+	++nt_;
+	timer_reheapify_from(nt_ - 1);
+    }
 }
 
 void driver_tamer::at_asap(const event<> &e)
@@ -315,13 +284,13 @@ void driver_tamer::at_asap(const event<> &e)
 
 void driver_tamer::cull_timers()
 {
-    ttimer *t;
-    while (_nt > 0 && (t = _t[0], !t->trigger)) {
-	timer_reheapify_from(0, _t[_nt - 1], true);
-	_nt--;
-	t->~ttimer();
-	t->u.next = _tfree;
-	_tfree = t;
+    while (nt_ != 0 && t_[0].trigger_->empty()) {
+	tamerpriv::simple_event::unuse(t_[0].trigger_);
+	--nt_;
+	if (nt_ != 0) {
+	    t_[0] = t_[nt_];
+	    timer_reheapify_from(0);
+	}
     }
 }
 
@@ -329,7 +298,7 @@ bool driver_tamer::empty()
 {
     cull_timers();
     if (_asap.size()
-	|| _nt != 0
+	|| nt_ != 0
 	|| sig_any_active
 	|| tamerpriv::abstract_rendezvous::unblocked
 	|| _nfds != 0)
@@ -343,15 +312,15 @@ void driver_tamer::once()
     cull_timers();
     struct timeval to, *toptr;
     if (_asap.size()
-	|| (_nt > 0 && !timercmp(&_t[0]->expiry, &now, >))
+	|| (nt_ != 0 && !timercmp(&t_[0].expiry_, &now, >))
 	|| sig_any_active
 	|| tamerpriv::abstract_rendezvous::unblocked) {
 	timerclear(&to);
 	toptr = &to;
-    } else if (_nt == 0)
+    } else if (nt_ == 0)
 	toptr = 0;
     else {
-	timersub(&_t[0]->expiry, &now, &to);
+	timersub(&t_[0].expiry_, &now, &to);
 	toptr = &to;
     }
 
@@ -425,16 +394,19 @@ void driver_tamer::once()
     }
 
     // run the timers that worked
-    if (_nt > 0) {
+    if (nt_ != 0) {
 	set_now();
-	ttimer *t;
-	while (_nt > 0 && (t = _t[0], !timercmp(&t->expiry, &now, >))) {
-	    timer_reheapify_from(0, _t[_nt - 1], true);
-	    _nt--;
-	    t->trigger.trigger();
-	    t->~ttimer();
-	    t->u.next = _tfree;
-	    _tfree = t;
+	while (nt_ != 0 && !timercmp(&t_[0].expiry_, &now, >)) {
+	    tamerpriv::simple_event *trigger = t_[0].trigger_;
+	    --nt_;
+	    if (nt_ != 0) {
+		t_[0] = t_[nt_];
+		timer_reheapify_from(0);
+	    }
+	    if (*trigger)
+		trigger->simple_trigger(false);
+	    else
+		tamerpriv::simple_event::unuse_clean(trigger);
 	}
     }
 
