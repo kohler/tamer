@@ -2,22 +2,27 @@ TAMER
 =====
 
    Tamer is a C++ language extension and library that simplifies
-event-driven programming.  Functions in Tamer can block to wait for an
-event, then resume computation later.  While one function is blocked, other
-functions can continue their computation.  This is as easy as threaded
-programming, but avoids most synchronization and locking issues and
-generally requires less memory.
+event-driven programming. Functions in Tamer can block to wait for an
+event, then resume computation later. Other functions can continue
+while a function is blocked. This is as easy as threaded programming,
+but avoids most synchronization and locking issues and generally
+requires less memory.
 
    Tamer contains a preprocessor that compiles Tamer abstractions into
-conventional C++ code, the Tamer libraries for event-driven programming,
-and several examples, including a working port of the Knot web server
-distributed with the Capriccio threading package.
+conventional C++ code, the Tamer libraries for event-driven
+programming, and several examples, including a working port of the
+Knot web server distributed with the Capriccio threading package.
 
-   Installation is standard; run "./configure", supplying any options, then
-"make install".  Documentation is supplied in manual page format, and as
-doxygen comments in the user-facing header files in "tamer/".  After "make
-install", try "man 3 tamer"; before installation, try "nroff -man
-doc/tamer.3 | less" .
+   Installation is standard. Run `./configure`, supplying any options, then
+`make install`. Documentation is supplied in manual page format, and as
+doxygen comments in the user-facing header files in "tamer/". After `make
+install`, try `man 3 tamer`. (Before installation, try `nroff -man
+doc/tamer.3 | less`.)
+
+   If you accessed Tamer via git, you will need additional steps.
+First make sure you have the necessary development packages: flex,
+bison, automake, and libtool. Then run `autoreconf -i` in the top
+source directory. Then configure and make as usual.
 
 
 Why Tamer?
