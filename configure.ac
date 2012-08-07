@@ -3,7 +3,6 @@ AC_INIT([tamer], [1.3.0])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_HEADERS([config.h tamer/autoconf.h:tamer/autoconf.h.in])
 AM_INIT_AUTOMAKE
-AM_MAINTAINER_MODE
 
 AC_PROG_MAKE_SET
 
