@@ -60,56 +60,45 @@ class driver { public:
 
 };
 
-inline driver::driver()
-{
+inline driver::driver() {
 }
 
-inline driver::~driver()
-{
+inline driver::~driver() {
 }
 
-inline void driver::at_asap(const event<> &e)
-{
+inline void driver::at_asap(const event<> &e) {
     at_time(now, e);
 }
 
-inline void driver::kill_fd(int)
-{
+inline void driver::kill_fd(int) {
 }
 
-inline void driver::set_now()
-{
+inline void driver::set_now() {
     gettimeofday(&now, 0);
 }
 
-inline void driver::at_fd_read(int fd, const event<int> &e)
-{
+inline void driver::at_fd_read(int fd, const event<int> &e) {
     at_fd(fd, fdread, e);
 }
 
-inline void driver::at_fd_write(int fd, const event<int> &e)
-{
+inline void driver::at_fd_write(int fd, const event<int> &e) {
     at_fd(fd, fdwrite, e);
 }
 
-inline void driver::at_fd_read(int fd, const event<> &e)
-{
+inline void driver::at_fd_read(int fd, const event<> &e) {
     at_fd(fd, fdread, unbind<int>(e));
 }
 
-inline void driver::at_fd_write(int fd, const event<> &e)
-{
+inline void driver::at_fd_write(int fd, const event<> &e) {
     at_fd(fd, fdwrite, unbind<int>(e));
 }
 
-inline void driver::at_delay(timeval delay, const event<> &e)
-{
+inline void driver::at_delay(timeval delay, const event<> &e) {
     timeradd(&delay, &now, &delay);
     at_time(delay, e);
 }
 
-inline void driver::at_delay_sec(int delay, const event<> &e)
-{
+inline void driver::at_delay_sec(int delay, const event<> &e) {
     if (delay <= 0)
 	at_asap(e);
     else {
@@ -119,8 +108,7 @@ inline void driver::at_delay_sec(int delay, const event<> &e)
     }
 }
 
-inline void driver::at_delay_msec(int delay, const event<> &e)
-{
+inline void driver::at_delay_msec(int delay, const event<> &e) {
     if (delay <= 0)
 	at_asap(e);
     else {
