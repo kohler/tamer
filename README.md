@@ -1,4 +1,4 @@
-TAMER
+Tamer
 =====
 
    Tamer is a C++ language extension and library that simplifies
@@ -79,14 +79,12 @@ to Eddie Kohler at the address below.
 Authors
 -------
 
-Eddie Kohler <kohler@cs.ucla.edu>
-http://www.cs.ucla.edu/~kohler/
-
-Dero Gharibian
-File open/read/write/fstat helper for asynchronous disk I/O; asynchronous
-DNS resolver.
-
-Maxwell Krohn <krohn@mit.edu>
-http://www.okws.org/
-Especially for the original version of the tamer preprocessor and
-consultation on the name of the fileio:: namespace.
+* Eddie Kohler <kohler@seas.harvard.edu>  
+  http://read.seas.harvard.edu/~kohler/
+* Dero Gharibian  
+  File open/read/write/fstat helper for asynchronous disk I/O; asynchronous
+  DNS resolver.
+* Maxwell Krohn  
+  http://www.okws.org/  
+  Especially for the original version of the tamer preprocessor and
+  consultation on the name of the fileio:: namespace.
