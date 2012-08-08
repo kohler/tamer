@@ -13,16 +13,17 @@ conventional C++ code, the Tamer libraries for event-driven
 programming, and several examples, including a working port of the
 Knot web server distributed with the Capriccio threading package.
 
-   Installation is standard. Run `./configure`, supplying any options, then
-`make install`. Documentation is supplied in manual page format, and as
-doxygen comments in the user-facing header files in "tamer/". After `make
-install`, try `man 3 tamer`. (Before installation, try `nroff -man
-doc/tamer.3 | less`.)
+   If you are building from a source repository (git), you will need
+to generate configure scripts. (This is not necessary if you
+downloaded a tarball.) Make sure you have the necessary development
+packages: flex, bison, automake, and libtool. Then run
+`./bootstrap.sh` from the top directory.
 
-   If you accessed Tamer via git, you will need additional steps.
-First make sure you have the necessary development packages: flex,
-bison, automake, and libtool. Then run `autoreconf -i` in the top
-source directory. Then configure and make as usual.
+   Thereafter installation is standard. Run `./configure`, supplying
+any options, then `make install`. Documentation is supplied in manual
+page format, and as doxygen comments in the user-facing header files
+in "tamer/". After `make install`, try `man 3 tamer`. (Before
+installation, try `nroff -man doc/tamer.3 | less`.)
 
 
 Why Tamer?
