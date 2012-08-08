@@ -21,4 +21,4 @@ TAMER = ../compiler/tamer
 	$(TAMER) -g -o $@ -c $<  || (rm $@ && false)
 
 clean-local:
-	-rm -f t02.cc
+	-rm -f t02.cc t03.cc
