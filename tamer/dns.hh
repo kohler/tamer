@@ -484,16 +484,16 @@ public:
 
 private:
   class closure__init__Qi_;
-  void init(closure__init__Qi_ &, unsigned);
+  void init(closure__init__Qi_ &);
 
   class closure__init_tcp__Qi_7timeval;
-  void init_tcp(closure__init_tcp__Qi_7timeval &, unsigned);
+  void init_tcp(closure__init_tcp__Qi_7timeval &);
 
   class closure__query__6packet;
-  void query(closure__query__6packet&, unsigned);
+  void query(closure__query__6packet&);
 
   class closure__query_tcp__6packet7timeval;
-  void query_tcp(closure__query_tcp__6packet7timeval&, unsigned);
+  void query_tcp(closure__query_tcp__6packet7timeval&);
 };
 
 class nameserver_comp {
@@ -581,25 +581,25 @@ class resolver : public enable_ref_ptr_with_full_release<resolver> {
   static char * next_line(char *buf);
 
   class closure__ready__Q_;
-  void ready(closure__ready__Q_&, unsigned);
+  void ready(closure__ready__Q_&);
 
   class closure__parse_loop;
-  void parse_loop(closure__parse_loop&, unsigned);
+  void parse_loop(closure__parse_loop&);
 
   class closure__parse;
-  void parse(closure__parse&, unsigned);
+  void parse(closure__parse&);
 
   class closure__resolve__7requestQ5reply_;
-  void resolve(closure__resolve__7requestQ5reply_&, unsigned);
+  void resolve(closure__resolve__7requestQ5reply_&);
 
   class closure__add_nameservers__11nameserversQ_;
-  void add_nameservers(closure__add_nameservers__11nameserversQ_&, unsigned);
+  void add_nameservers(closure__add_nameservers__11nameserversQ_&);
 
   class closure__failed_nameserver__10nameserver;
-  void failed_nameserver(closure__failed_nameserver__10nameserver&, unsigned);
+  void failed_nameserver(closure__failed_nameserver__10nameserver&);
 
   class closure__handle_nameserver__10nameserver;
-  void handle_nameserver(closure__handle_nameserver__10nameserver&, unsigned);
+  void handle_nameserver(closure__handle_nameserver__10nameserver&);
 
 #if defined(HOST_NAME_MAX)
     enum { host_name_max = HOST_NAME_MAX };

@@ -179,6 +179,20 @@ tamed void mappery() {
     n--;
 }
 
+tamed void test_debug2(tamer::event<> a) {
+    twait {
+	tamer::at_asap(make_event());
+    }
+}
+
+tamed void test_debug1() {
+    ++n;
+    twait {
+	test_debug2(make_event());
+    }
+    --n;
+}
+
 int main(int, char **) {
     tamer::rendezvous<int> r;
     fprintf(stderr, "???????? *** %d\n\n", getpid());
@@ -199,4 +213,7 @@ int main(int, char **) {
     while (n > 0)
 	tamer::once();
     fprintf(stderr, "!\n");
+    test_debug1();
+    while (n > 0)
+	tamer::once();
 }

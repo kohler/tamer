@@ -400,11 +400,11 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 class gather_rendezvous : public rendezvous<> { public:
 
     gather_rendezvous(tamerpriv::tamer_closure *c)
-	: _linked_closure(c) {
+	: linked_closure_(c) {
     }
 
     tamerpriv::tamer_closure *linked_closure() const {
-	return _linked_closure;
+	return linked_closure_;
     }
 
     inline void complete(tamerpriv::simple_event *e, bool) {
@@ -418,7 +418,7 @@ class gather_rendezvous : public rendezvous<> { public:
 
   private:
 
-    tamerpriv::tamer_closure *_linked_closure;
+    tamerpriv::tamer_closure *linked_closure_;
 
 };
 

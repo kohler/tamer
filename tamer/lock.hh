@@ -134,9 +134,9 @@ class mutex { public:
     int _locked;
     tamerutil::dlist<wait> _wait;
 
-    class closure__acquire__iQ_;
     void acquire(int shared, event<> done);
-    void acquire(closure__acquire__iQ_ &, unsigned);
+    class closure__acquire__iQ_;
+    void acquire(closure__acquire__iQ_ &);
 
     void wake() {
 	if (wait *w = _wait.front())

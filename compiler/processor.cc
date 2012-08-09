@@ -1,9 +1,8 @@
 #include "tame.hh"
 #include <ctype.h>
 
-
 var_t::var_t(const type_qualifier_t &t, declarator_t *d, const lstr &arrays, vartyp_t a)
-    : _name(d->name()), _type(t.to_str(), d->pointer()), _asc(a), 
+    : _name(d->name()), _type(t.to_str(), d->pointer()), _asc(a),
       _initializer(d->initializer()), _arrays(arrays.str())
 {
 }
@@ -33,10 +32,9 @@ void element_list_t::output(outputter_t *o) {
 	(*i)->output(o);
 }
 
-// Must match "__CLS" in tame_const.h
-#define TAME_CLOSURE_NAME     "__cls"
+#define TAME_CLOSURE_NAME     "tamer_closure_"
 
-#define TWAIT_BLOCK_RENDEZVOUS "__gather_rendezvous"
+#define TWAIT_BLOCK_RENDEZVOUS "tamer_gather_rendezvous_"
 
 str
 type_t::type_without_pointer () const
@@ -158,7 +156,7 @@ str var_t::ref_decl() const
 }
 
 str
-initializer_t::ref_prefix() const 
+initializer_t::ref_prefix() const
 {
   return "&";
 }
@@ -167,7 +165,7 @@ str
 array_initializer_t::ref_prefix() const
 {
   /*
-   * useful for when we can handle 2-dim++ arrays, but not really 
+   * useful for when we can handle 2-dim++ arrays, but not really
    * worthwhile for now.
    *
   strbuf b;
@@ -190,7 +188,7 @@ str mangle(const str &in)
     return b.str();
 }
 
-str 
+str
 strip_to_method (const str &in)
 {
     str::size_type p = in.rfind("::");
@@ -200,7 +198,7 @@ strip_to_method (const str &in)
 	return in.substr(p + 2);
 }
 
-str 
+str
 strip_off_method (const str &in)
 {
     str::size_type p = in.rfind("::");
@@ -266,8 +264,8 @@ parse_state_t::new_nonblock (tame_nonblock_t *b)
 void
 tame_fn_t::add_env (tame_env_t *e)
 {
-    _envs.push_back(e); 
-    if (e->is_jumpto()) 
+    _envs.push_back(e);
+    if (e->is_jumpto())
 	e->set_id(++_n_labels);
     if (e->is_volatile())
 	_any_volatile_envs = true;
@@ -304,7 +302,6 @@ cpp_initializer_t::cpp_initializer_t(const lstr &v)
 	b << std::string(last, _value.end());
 	_value = lstr(_value.lineno(), b);
     }
-    
 }
 
 str
@@ -316,7 +313,7 @@ cpp_initializer_t::output_in_constructor () const
 }
 
 str
-array_initializer_t::output_in_declaration () const 
+array_initializer_t::output_in_declaration () const
 {
   strbuf b;
   b << "[" << _value.str() << "]";
@@ -574,14 +571,6 @@ str type_t::mangle() const
     return mangler(to_str_w_template_args()).s();
 }
 
-str tame_fn_t::reenter_fn() const
-{
-  strbuf b;
-  b << closure().type().to_str_w_template_args(false)
-    << "::tamer_closure_activate";
-  return b.str();
-}
-
 void
 vartab_t::declarations (strbuf &b, const str &padding) const
 {
@@ -596,16 +585,16 @@ vartab_t::initialize (strbuf &b, bool self) const
   bool first = true;
   initializer_t *init = 0;
   for (unsigned i = 0; i < size (); i++) {
-    if (self || 
-	((init = _vars[i].initializer ()) && 
+    if (self ||
+	((init = _vars[i].initializer ()) &&
 	 init->do_constructor_output ())) {
-      
+
       if (!first) b << ", ";
       first = false;
       b << _vars[i].name () << " ";
-      
-      if (self)  b << "(" <<  _vars[i].name () << ")"; 
-      else       b << init->output_in_constructor (); 
+
+      if (self)  b << "(" <<  _vars[i].name () << ")";
+      else       b << init->output_in_constructor ();
 
     }
   }
@@ -665,7 +654,7 @@ element_list_t::need_implicit_rendezvous() const
 //-----------------------------------------------------------------------
 // Output Routines
 
-void 
+void
 tame_passthrough_t::output(outputter_t *o)
 {
     if (_strs.size()) {
@@ -676,17 +665,28 @@ tame_passthrough_t::output(outputter_t *o)
     }
 }
 
+str
+tame_fn_t::closure_type_name() const
+{
+    if (_class.length()) {
+	strbuf b;
+	b << _class << "::" << closure().type().base_type();
+	return b.str();
+    } else
+	return closure().type().base_type();
+}
+
 void
 tame_fn_t::output_reenter (strbuf &b)
 {
-    b << "  void tamer_closure_activate(unsigned blockid) {\n    ";
-    //if (tamer_debug)
-    //	b << "tamer_debug_closure::set_block_landmark(0, 0);\n    ";
+    b << "  static void tamer_activator_(tamer::tamerpriv::tamer_closure *super) {\n"
+      << "    " << closure_type_name() << " *self = static_cast<" << closure_type_name() << " *>(super);\n"
+      << "    ";
     if (_class.length() && !(_opts & STATIC_DECL))
-	b << _self.name() << "->" << _method_name;
+	b << "self->" << _self.name() << "->" << _method_name;
     else
 	b << _name;
-    b << "(*this, blockid);\n"
+    b << "(*self);\n"
       << "  }\n";
 }
 
@@ -700,15 +700,13 @@ tame_fn_t::output_closure(outputter_t *o)
       b << template_str () << "\n";
   }
 
-  b << "class ";
-  if (_class.length())
-      b << _class << "::";
-  b << closure().type().base_type() 
-    << " : public tamer::tamerpriv::"
-    << (tamer_debug ? "tamer_debug_closure" : "tamer_closure")
+  const char *base_type = (tamer_debug ? "tamer_debug_closure" : "tamer_closure");
+
+  b << "class " << closure_type_name() << " : public tamer::tamerpriv::"
+    << base_type
     << " {\n"
     << "public:\n"
-    << "  " << closure().type().base_type () 
+    << "  " << closure().type().base_type ()
     << " (";
 
   if (need_self ()) {
@@ -721,43 +719,38 @@ tame_fn_t::output_closure(outputter_t *o)
       _args->paramlist(b, DECLARATIONS);
   }
 
-  b << ")";
-  const char *separator = " : ";
+  b << ") : " << base_type << "(tamer_activator_)";
 
   if (need_self ()) {
       str s = _self.name ();
-      b << separator << s << " (" << s << ")";
-      separator = ", ";
+      b << ", " << s << " (" << s << ")";
   }
 
   // output arguments declaration
   if (_args && _args->size ()) {
-      b << separator;
+      b << ", ";
       _args->initialize(b, true);
-      separator = ", ";
   }
-  
+
   // output stack declaration
   if (_stack_vars.size ()) {
       strbuf i;
       _stack_vars.initialize (i, false);
       str s (i.str());
-      if (s.length() > 0) {
-	  b << separator << s << " ";
-	  separator = ", ";
-      }
+      if (s.length() > 0)
+	  b << ", " << s << " ";
   }
 
   if (need_implicit_rendezvous())
-      b << separator << TWAIT_BLOCK_RENDEZVOUS "(this) ";
-  
+      b << ", " << TWAIT_BLOCK_RENDEZVOUS "(this) ";
+
   b << " {}\n\n";
 
   output_reenter (b);
 
   if (_class.length() && !(_opts & STATIC_DECL))
       b << "  " << _self.decl() << ";\n";
-  
+
   if (_args)
       _args->declarations (b, "    ");
   _stack_vars.declarations (b, "    ");
@@ -794,9 +787,10 @@ tame_fn_t::output_arg_references(strbuf &b)
 void
 tame_fn_t::output_jump_tab (strbuf &b)
 {
-    b << "  switch (__tame_blockid) {\n"
-    << "  case 0: break;\n"
-    ;
+    b << "  tamer::tamerpriv::closure_reference<" << closure_type_name() << "> tamer_closure_holder_(" << TAME_CLOSURE_NAME << ");\n"
+      << "  switch (" << (tamer_debug ? "-" : "")
+      << TAME_CLOSURE_NAME << ".tamer_block_position_) {\n"
+      << "  case 0: break;\n";
   for (unsigned i = 0; i < _envs.size (); i++) {
     if (_envs[i]->is_jumpto ()) {
       int id_tmp = _envs[i]->id ();
@@ -806,9 +800,7 @@ tame_fn_t::output_jump_tab (strbuf &b)
 	<< "    break;\n";
     }
   }
-  b << "  default:\n"
-    << "    throw tamer::tamer_error(\"bad closure unblock\");\n"
-    << "  }\n";
+  b << "  default: return; }\n";
 }
 
 str
@@ -827,7 +819,7 @@ tame_fn_t::signature() const
     if (_args)
 	_args->paramlist(b, DECLARATIONS);
     b << ")";
-    if (_isconst) 
+    if (_isconst)
 	b << " const";
     return b.str();
 }
@@ -841,7 +833,7 @@ tame_fn_t::closure_signature() const
     if ((_opts & STATIC_DECL) && !_class.length())
 	b << "static ";
     b << _ret_type.to_str() << " " << _name << "("
-      << mk_closure(true).decl() << ", unsigned __tame_blockid)";
+      << mk_closure(true).decl() << ")";
     if (_isconst)
 	b << " const";
     return b.str();
@@ -855,18 +847,17 @@ tame_fn_t::output_firstfn(outputter_t *o)
 
     output_mode_t om = o->switch_to_mode(OUTPUT_PASSTHROUGH);
     b << signature() << "\n{\n";
-    
+
     // If no vars section was specified, do it now.
-    b << "  " << closure().decl() << ";\n";
-    b << "  __cls = new " << closure().type().base_type() << "(";
+    b << "  " << closure().decl() << " = new " << closure().type().base_type() << "(";
     if (_class.length() && !(_opts & STATIC_DECL))
 	b << "this" << (_args ? ", " : "");
     if (_args)
 	_args->paramlist(b, NAMES);
     b << ");\n"
-      << "  __cls->tamer_closure_activate(0);\n"
-      << "  __cls->tamer_closure::unuse();\n}\n";
-    
+      << "  " << TAME_CLOSURE_NAME << "->tamer_activator_("
+      << TAME_CLOSURE_NAME << ");\n}\n";
+
     o->output_str(b.str());
     o->switch_to_mode(om);
 }
@@ -887,7 +878,7 @@ tame_fn_t::output_fn(outputter_t *o)
 	output_vars(o, _lbrace_lineno);
 
     element_list_t::output(o);
-    
+
     o->output_str("\n");
     o->switch_to_mode (om);
 }
@@ -917,7 +908,7 @@ tame_fn_t::output_vars (outputter_t *o, int ln)
   o->switch_to_mode (om);
 }
 
-void 
+void
 tame_fn_t::output(outputter_t *o)
 {
     strbuf b;
@@ -937,15 +928,13 @@ tame_fn_t::output(outputter_t *o)
     }
 }
 
-void 
+void
 tame_block_ev_t::output(outputter_t *o)
 {
   strbuf b;
   str tmp;
 
   b << "  do { ";
-  if (tamer_debug)
-      b << TAME_CLOSURE_NAME ".tamer_debug_closure::set_block_landmark(__FILE__, __LINE__); ";
   if (_fn->any_volatile_envs())
       b << TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".set_volatile(" << _isvolatile << "); ";
   b << "do {\n#define make_event(...) make_event(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n    tamer::gather_rendezvous::clearer " TWAIT_BLOCK_RENDEZVOUS "_clear(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ");\n";
@@ -968,7 +957,9 @@ tame_block_ev_t::output(outputter_t *o)
   b << TWAIT_BLOCK_RENDEZVOUS "_clear.kill(); } while (0); "
     << _fn->label(_id) << ":\n"
     << "  while (" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".nwaiting()) {\n"
-    << "      " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".block(" TAME_CLOSURE_NAME ", " << _id << ");\n"
+    << "      " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".block(" TAME_CLOSURE_NAME ", "
+    << _id << ", __FILE__, __LINE__);\n"
+    << "      tamer_closure_holder_.clear();\n"
     << "      " << _fn->return_expr() << "; }\n"
     << "  } while (0);\n";
   o->output_str(b.str());
@@ -985,7 +976,7 @@ tame_block_thr_t::output (outputter_t *o)
   output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
 
   b << "  do {\n"
-    << "      thread_implicit_rendezvous_t " 
+    << "      thread_implicit_rendezvous_t "
     << " _tirv (__cls, __FL__);\n"
     << "  thread_implicit_rendezvous_t *__cls = &_tirv;\n";
 
@@ -1009,12 +1000,12 @@ str
 tame_fn_t::return_expr () const
 {
     if (_default_return.length()) {
-    strbuf b;
-    b << "do { " << _default_return << "} while (0)";
-    return b.str();
-  } else {
-    return "return";
-  }
+	strbuf b;
+	b << "do { " << _default_return << "} while (0)";
+	return b.str();
+    } else {
+	return "return";
+    }
 }
 
 void
@@ -1025,7 +1016,7 @@ parse_state_t::output (outputter_t *o)
 }
 
 bool
-expr_list_t::output_vars (strbuf &b, bool first, const str &prfx, 
+expr_list_t::output_vars (strbuf &b, bool first, const str &prfx,
 			  const str &sffx)
 {
   for (unsigned i = 0; i < size (); i++) {
@@ -1039,10 +1030,10 @@ expr_list_t::output_vars (strbuf &b, bool first, const str &prfx,
 void
 tame_join_t::output_blocked(strbuf &b, const str &jgn)
 {
-    b << "    " << jgn << ".block(" << TAME_CLOSURE_NAME << ", " << _id << ");\n";
-    if (tamer_debug)
-	b << "    " << TAME_CLOSURE_NAME << ".tamer_debug_closure::set_block_landmark(__FILE__, __LINE__);\n";
-    b << "    " << _fn->return_expr() << ";\n";
+    b << "    " << jgn << ".block(" TAME_CLOSURE_NAME ", "
+      << _id << ", __FILE__, __LINE__);\n"
+      << "    tamer_closure_holder_.clear();\n"
+      << "    " << _fn->return_expr() << ";\n";
 }
 
 void

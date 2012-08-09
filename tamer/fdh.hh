@@ -52,7 +52,7 @@ class fdhelper { public:
 	}
 	void recv(int *fd, size_t size, event<int> done);
 
-	class closure__recv__PikQi_; void recv(closure__recv__PikQi_ &, unsigned);
+	class closure__recv__PikQi_; void recv(closure__recv__PikQi_ &);
     };
 
     struct fdhimp : public enable_ref_ptr {
@@ -81,11 +81,11 @@ class fdhelper { public:
 	void read(int fd, void *buf, size_t size, size_t &nread, event<int> done);
 	void write(int fd, const void *buf, size_t size, size_t &nwritten, event<int> done);
 
-        class closure__get__QP3fdh_; void get(closure__get__QP3fdh_ &, unsigned);
-	class closure__open__Ssi6mode_tQi_; void open(closure__open__Ssi6mode_tQi_ &, unsigned);
-	class closure__fstat__iR4statQi_; void fstat(closure__fstat__iR4statQi_ &, unsigned);
-	class closure__read__iPvkRkQi_; void read(closure__read__iPvkRkQi_ &, unsigned);
-	class closure__write__iPKvkRkQi_; void write(closure__write__iPKvkRkQi_ &, unsigned);
+        class closure__get__QP3fdh_; void get(closure__get__QP3fdh_ &);
+	class closure__open__Ssi6mode_tQi_; void open(closure__open__Ssi6mode_tQi_ &);
+	class closure__fstat__iR4statQi_; void fstat(closure__fstat__iR4statQi_ &);
+	class closure__read__iPvkRkQi_; void read(closure__read__iPvkRkQi_ &);
+	class closure__write__iPKvkRkQi_; void write(closure__write__iPKvkRkQi_ &);
     };
 
     ref_ptr<fdhimp> _p;

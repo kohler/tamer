@@ -90,7 +90,7 @@ main (int argc, char *argv[])
   str ifn;
   outputter_t *o;
   bool c_mode (false), b_mode (false);
-  
+
   while ((ch = getopt (argc, argv, "bghnLvdo:c:O:")) != -1)
     switch (ch) {
       case 'g':

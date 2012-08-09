@@ -16,9 +16,9 @@ INCLUDES = -I$(top_srcdir) -I$(top_builddir)
 
 TAMER = ../compiler/tamer
 .tt.cc: $(TAMER)
-	$(TAMER) -g -o $@ -c $<  || (rm $@ && false)
+	$(TAMER) -o $@ -c $<  || (rm $@ && false)
 .tcc.cc: $(TAMER)
-	$(TAMER) -g -o $@ -c $<  || (rm $@ && false)
+	$(TAMER) -o $@ -c $<  || (rm $@ && false)
 
 clean-local:
 	-rm -f t02.cc t03.cc

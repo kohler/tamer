@@ -491,17 +491,17 @@ class fd {
 
       private:
 
-	class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_ &, unsigned);
-	class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_ &, unsigned);
-	class closure__read__PvkRkQi_; void read(closure__read__PvkRkQi_ &, unsigned);
-	class closure__read_once__PvkRkQi_; void read_once(closure__read_once__PvkRkQi_ &, unsigned);
-	class closure__write__PKvkRkQi_; void write(closure__write__PKvkRkQi_ &, unsigned);
-	class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &, unsigned);
-	class closure__write_once__PKvkRkQi_; void write_once(closure__write_once__PKvkRkQi_ &, unsigned);
-	class closure__sendmsg__PKvkiQi_; void sendmsg(closure__sendmsg__PKvkiQi_ &, unsigned);
+	class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_ &);
+	class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_ &);
+	class closure__read__PvkRkQi_; void read(closure__read__PvkRkQi_ &);
+	class closure__read_once__PvkRkQi_; void read_once(closure__read_once__PvkRkQi_ &);
+	class closure__write__PKvkRkQi_; void write(closure__write__PKvkRkQi_ &);
+	class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &);
+	class closure__write_once__PKvkRkQi_; void write_once(closure__write_once__PKvkRkQi_ &);
+	class closure__sendmsg__PKvkiQi_; void sendmsg(closure__sendmsg__PKvkiQi_ &);
     };
 
-    class closure__open__PKci6mode_tQ2fd_; static void open(closure__open__PKci6mode_tQ2fd_ &, unsigned);
+    class closure__open__PKci6mode_tQ2fd_; static void open(closure__open__PKci6mode_tQ2fd_ &);
 
     struct fdcloser;
 

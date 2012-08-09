@@ -45,6 +45,7 @@ namespace tamerpriv {
 class simple_event;
 class abstract_rendezvous;
 class tamer_closure;
+class tamer_debug_closure;
 class distribute_rendezvous;
 event<> hard_distribute(const event<> &e1, const event<> &e2);
 
@@ -168,7 +169,10 @@ class abstract_rendezvous { public:
 	return _blocked_closure;
     }
 
-    inline void block(tamer_closure &c, unsigned where);
+    inline void block(tamer_closure &c, unsigned position,
+		      const char *file, int line);
+    inline void block(tamer_debug_closure &c, unsigned position,
+		      const char *file, int line);
     inline void unblock();
     inline void run();
     inline void remove_all();
@@ -197,7 +201,6 @@ class abstract_rendezvous { public:
     abstract_rendezvous *_unblocked_next;
     abstract_rendezvous *_unblocked_prev;
     tamer_closure *_blocked_closure;
-    unsigned _blocked_closure_blockid;
     rendezvous_flags _flags;
 
     abstract_rendezvous(const abstract_rendezvous &);
@@ -209,53 +212,36 @@ class abstract_rendezvous { public:
 };
 
 
+typedef void (*tamer_closure_activator)(tamer_closure *);
+
 struct tamer_closure {
-
-    tamer_closure()
-	: _refcount(1) {
+    tamer_closure(tamer_closure_activator activator)
+	: tamer_activator_(activator), tamer_block_position_(0) {
     }
-
-    virtual ~tamer_closure() {
-    }
-
-    void use() {
-	_refcount++;
-    }
-
-    void unuse() {
-	if (--_refcount == 0)
-	    delete this;
-    }
-
-    virtual void tamer_closure_activate(unsigned) = 0;
-
-    virtual bool block_landmark(const char *&file, unsigned &line);
-
-  protected:
-
-    unsigned _refcount;
-
+    tamer_closure_activator tamer_activator_;
+    unsigned tamer_block_position_;
 };
 
+template <typename T>
+struct closure_reference {
+    closure_reference(T &c)
+	: c_(&c) {
+    }
+    ~closure_reference() {
+	delete c_;
+    }
+    void clear() {
+	c_ = 0;
+    }
+    T *c_;
+};
 
 struct tamer_debug_closure : public tamer_closure {
-
-    tamer_debug_closure()
-	: _block_file(0), _block_line(0) {
+    tamer_debug_closure(tamer_closure_activator activator)
+	: tamer_closure(activator) {
     }
-
-    bool block_landmark(const char *&file, unsigned &line);
-
-    void set_block_landmark(const char *file, unsigned line) {
-	_block_file = file;
-	_block_line = line;
-    }
-
-  protected:
-
-    const char *_block_file;
-    unsigned _block_line;
-
+    const char *tamer_blocked_file_;
+    int tamer_blocked_line_;
 };
 
 
@@ -287,8 +273,10 @@ inline abstract_rendezvous::~abstract_rendezvous() {
 	_unblocked_next->_unblocked_prev = _unblocked_prev;
     else if (unblocked_tail == this)
 	unblocked_tail = _unblocked_prev;
-    if (_blocked_closure)
-	_blocked_closure->unuse();
+    if (_blocked_closure) {
+	_blocked_closure->tamer_block_position_ = 1;
+	_blocked_closure->tamer_activator_(_blocked_closure);
+    }
 }
 
 inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
@@ -346,11 +334,20 @@ inline void simple_event::simple_trigger(bool values) {
     r->complete(this, values);
 }
 
-inline void abstract_rendezvous::block(tamer_closure &c, unsigned where) {
+inline void abstract_rendezvous::block(tamer_closure &c,
+				       unsigned position,
+				       const char *, int) {
     assert(!_blocked_closure && &c);
-    c.use();
     _blocked_closure = &c;
-    _blocked_closure_blockid = where;
+    c.tamer_block_position_ = position;
+}
+
+inline void abstract_rendezvous::block(tamer_debug_closure &c,
+				       unsigned position,
+				       const char *file, int line) {
+    block(static_cast<tamer_closure &>(c), -position, file, line);
+    c.tamer_blocked_file_ = file;
+    c.tamer_blocked_line_ = line;
 }
 
 inline void abstract_rendezvous::unblock() {
@@ -377,8 +374,7 @@ inline void abstract_rendezvous::run() {
     else if (unblocked_tail == this)
 	unblocked_tail = _unblocked_next;
     _unblocked_next = _unblocked_prev = 0;
-    c->tamer_closure_activate(_blocked_closure_blockid);
-    c->unuse();
+    c->tamer_activator_(c);
 }
 
 }}

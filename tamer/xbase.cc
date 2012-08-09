@@ -40,23 +40,6 @@ void simple_event::trigger_for_unuse() {
 }
 
 
-bool tamer_closure::block_landmark(const char *&file, unsigned &line) {
-    file = "<unknown>";
-    line = 0;
-    return false;
-}
-
-bool tamer_debug_closure::block_landmark(const char *&file, unsigned &line) {
-    if (!_block_file)
-	return tamer_closure::block_landmark(file, line);
-    else {
-	file = _block_file;
-	line = _block_line;
-	return true;
-    }
-}
-
-
 class distribute_rendezvous : public abstract_rendezvous { public:
 
     distribute_rendezvous() {
@@ -127,13 +110,13 @@ namespace message {
 
 void event_prematurely_dereferenced(simple_event *, abstract_rendezvous *r) {
     tamer_closure *c = r->linked_closure();
-    const char *file;
-    unsigned line;
     if (r->is_volatile())
 	/* no error message */;
-    else if (c && c->block_landmark(file, line))
-	fprintf(stderr, "%s:%d: avoided leak of active event\n", file, line);
-    else
+    else if (c && int(c->tamer_block_position_) < 0) {
+	tamer_debug_closure *dc = static_cast<tamer_debug_closure *>(c);
+	fprintf(stderr, "%s:%d: avoided leak of active event\n",
+		dc->tamer_blocked_file_, dc->tamer_blocked_line_);
+    } else
 	fprintf(stderr, "avoided leak of active event\n");
 }
 

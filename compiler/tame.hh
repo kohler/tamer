@@ -437,23 +437,23 @@ struct fn_specifier_t {
 //
 class tame_fn_t : public element_list_t {
   public:
-    tame_fn_t (const fn_specifier_t &fn, const str &r, declarator_t *d, 
+    tame_fn_t (const fn_specifier_t &fn, const str &r, declarator_t *d,
 	       bool c, unsigned l, str loc)
 	: _ret_type(ws_strip(r), ws_strip(d->pointer())),
 	  _name(d->name()),
 	  _method_name(strip_to_method(_name)),
-	  _class(strip_off_method(_name)), 
+	  _class(strip_off_method(_name)),
 	  _self(c ? str("const ") + _class : _class, "*", "__tamer_self"),
 	  _isconst(c),
 	  _template(fn._template),
 	  _template_args(_class.length() ? template_args (_class) : ""),
 	  _the_closure(0),
 	  _declaration_only(false),
-	  _args(d->params()), 
+	  _args(d->params()),
 	  _any_volatile_envs(false),
 	  _opts(fn._opts),
 	  _lineno(l),
-	  _n_labels(0),
+	  _n_labels(1),		// 0 = begin, 1 = exit prematurely
 	  _n_blocks(0),
 	  _loc(loc),
 	  _lbrace_lineno(0),
@@ -481,17 +481,16 @@ class tame_fn_t : public element_list_t {
 	    _after_vars_el_encountered = true;
     }
 
-  // called from tame_vars_t class
-  void output_vars (outputter_t *o, int ln);
+    // called from tame_vars_t class
+    void output_vars (outputter_t *o, int ln);
 
-  // default return statement is "return;"; can be overidden,
-  // but only once.
-  bool set_default_return (str s) 
-  { 
-      bool ret = _default_return.length() == 0;
-      _default_return = s; 
-      return ret;
-  }
+    // default return statement is "return;"; can be overidden,
+    // but only once.
+    bool set_default_return (str s) {
+	bool ret = _default_return.length() == 0;
+	_default_return = s;
+	return ret;
+    }
 
     // if non-void return, then there must be a default return
     bool check_return_type () const {
@@ -500,6 +499,7 @@ class tame_fn_t : public element_list_t {
 
     str classname() const { return _class; }
     str name() const { return _name; }
+    str closure_type_name() const;
     str closure_signature() const;
     str signature() const;
 
@@ -520,8 +520,7 @@ class tame_fn_t : public element_list_t {
 
   void hit_tame_block () { _n_blocks++; }
 
-    str closure_nm() const { return closure().name (); }
-    str reenter_fn() const ;
+    str closure_nm() const { return closure().name(); }
 
   str label (str s) const;
   str label (unsigned id) const ;
@@ -538,8 +537,10 @@ class tame_fn_t : public element_list_t {
 
   void set_lbrace_lineno (unsigned i) { _lbrace_lineno = i ; }
 
-  bool set_vars (tame_vars_t *v) 
-  { _vars = v; return (!_after_vars_el_encountered); }
+    bool set_vars (tame_vars_t *v) {
+	_vars = v;
+	return (!_after_vars_el_encountered);
+    }
   const tame_vars_t *get_vars () const { return _vars; }
 
   private:
@@ -703,10 +704,10 @@ public:
 
 class tame_block_ev_t : public tame_block_t {
 public:
-    tame_block_ev_t(tame_fn_t *f, bool isvolatile, int l) 
+    tame_block_ev_t(tame_fn_t *f, bool isvolatile, int l)
 	: tame_block_t(l), _fn(f), _id(0), _isvolatile(isvolatile) {}
     ~tame_block_ev_t() {}
-  
+
     void output(outputter_t *o);
     bool is_jumpto() const { return true; }
     bool is_volatile() const { return _isvolatile; }
@@ -714,7 +715,7 @@ public:
     int id() const { return _id; }
     void add_class_var(const var_t &v) { _class_vars.add (v); }
     bool needs_counter() const { return true; }
-  
+
   protected:
     tame_fn_t *_fn;
     int _id;
@@ -722,8 +723,6 @@ public:
     bool _isvolatile;
 };
 
-
-  
 class tame_nonblock_t : public tame_env_t {
 public:
   tame_nonblock_t (expr_list_t *l) : _args (l) {}
