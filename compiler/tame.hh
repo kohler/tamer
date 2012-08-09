@@ -603,23 +603,6 @@ public:
   void output(outputter_t *o);
 };
 
-class tame_unblock_t : public tame_ret_t {
-public:
-  tame_unblock_t (unsigned l, tame_fn_t *f) : tame_ret_t (l, f) {}
-  virtual ~tame_unblock_t () {}
-  void output(outputter_t *o);
-  virtual str macro_name () const { return "SIGNAL"; }
-  virtual void do_return_statement (strbuf &) const {}
-};
-
-class tame_resume_t : public tame_unblock_t {
-public:
-  tame_resume_t (unsigned l, tame_fn_t *f) : tame_unblock_t (l, f) {}
-  ~tame_resume_t () {}
-  str macro_name () const { return "RESUME"; }
-  void do_return_statement (strbuf &b) const;
-};
-
 class parse_state_t : public element_list_t {
 public:
   parse_state_t () : _xlate_line_numbers (false),

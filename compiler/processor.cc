@@ -1094,34 +1094,6 @@ tame_ret_t::output (outputter_t *o)
 }
 
 void
-tame_unblock_t::output (outputter_t *o)
-{
-  const str tmp ("__cb_tmp");
-  strbuf b;
-  output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
-  str loc = state->loc (_line_number);
-  b << "  do {\n";
-  
-  str n = macro_name ();
-  b << n << " (\"" << loc << "\", " << tmp;
-  if (_params.length()) {
-      b << ", " << _params.str();
-  }
-  b << "); ";
-  do_return_statement (b);
-  b << "  } while (0);\n";
-
-  o->output_str(b.str());
-  o->switch_to_mode (om);
-}
-
-void
-tame_resume_t::do_return_statement (strbuf &b) const
-{
-    b << _fn->return_expr () << "; ";
-}
-
-void
 tame_fn_return_t::output (outputter_t *o)
 {
   strbuf b;
