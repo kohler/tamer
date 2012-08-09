@@ -42,30 +42,27 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
      *  their events are dereferenced before trigger. */
     inline rendezvous(rendezvous_flags flags = rnormal);
 
-    /** @brief  Report how many events are ready.
-     *  @return  The number of ready events.
+    /** @brief  Test if any events are ready.
      *
      *  An event is ready if it has triggered, but no @a join or @c twait
      *  has reported it yet.
      */
-    inline unsigned nready() const {
+    inline bool has_ready() const {
 	return _bs.size();
     }
 
-    /** @brief  Report how many events are waiting.
-     *  @return  The number of waiting events.
+    /** @brief  Test if any events are waiting.
      *
      *  An event is waiting until it is either triggered or canceled.
      */
-    inline unsigned nwaiting() const {
+    inline bool has_waiting() const {
 	return _bs.multiset_size();
     }
 
-    /** @brief  Report how many events are ready or waiting.
-     *  @return  The number of ready or waiting events.
+    /** @brief  Test if any events are ready or waiting.
      */
-    inline unsigned nevents() const {
-	return nready() + nwaiting();
+    inline bool has_events() const {
+	return has_ready() || has_waiting();
     }
 
     /** @brief  Report the next ready event.
@@ -80,7 +77,7 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
     /** @brief  Remove all events from this rendezvous.
      *
      *  Every event waiting on this rendezvous is made empty.  After clear(),
-     *  nevents() will return 0.
+     *  has_events() will return 0.
      */
     inline void clear();
 
@@ -164,9 +161,15 @@ class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
     inline bool join(I0 &);
     inline void clear();
 
-    unsigned nready() const	{ return _bs.size(); }
-    unsigned nwaiting() const	{ return _bs.multiset_size(); }
-    unsigned nevents() const	{ return nready() + nwaiting(); }
+    inline bool has_ready() const {
+	return _bs.size();
+    }
+    inline bool has_waiting() const {
+	return _bs.multiset_size();
+    }
+    inline bool has_events() const {
+	return has_ready() || has_waiting();
+    }
 
     inline void add(tamerpriv::simple_event *e, const I0 &i0);
     inline void complete(tamerpriv::simple_event *e, bool values);
@@ -225,9 +228,15 @@ class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
     inline bool join(uintptr_t &);
     inline void clear();
 
-    unsigned nready() const	{ return _buf.size(); }
-    unsigned nwaiting() const	{ return _nwaiting; }
-    unsigned nevents() const	{ return nready() + nwaiting(); }
+    inline bool has_ready() const {
+	return _buf.size();
+    }
+    inline bool has_waiting() const {
+	return _nwaiting;
+    }
+    inline bool has_events() const {
+	return has_ready() || has_waiting();
+    }
 
     inline void add(tamerpriv::simple_event *e, uintptr_t i0) TAMER_NOEXCEPT;
     inline void complete(tamerpriv::simple_event *e, bool values);
@@ -385,9 +394,15 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 	_nwaiting = _nready = 0;
     }
 
-    unsigned nready() const	{ return _nready; }
-    unsigned nwaiting() const	{ return _nwaiting; }
-    unsigned nevents() const	{ return nready() + nwaiting(); }
+    inline bool has_ready() const {
+	return _nready;
+    }
+    inline bool has_waiting() const {
+	return _nwaiting;
+    }
+    inline bool has_events() const {
+	return _nready || _nwaiting;
+    }
 
   protected:
 

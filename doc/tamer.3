@@ -22,9 +22,9 @@ tamer \- C++ extensions for event-driven programming
 .sp
 class rendezvous<I0, I1> { public:
     rendezvous(rendezvous_flags \fIflags\fB = rnormal);
-    unsigned nevents() const;
-    unsigned nready() const;
-    unsigned nwaiting() const;
+    bool has_events() const;
+    bool has_ready() const;
+    bool has_waiting() const;
     bool join(I0 &\fIi0\fB, I1 &\fIi1\fB);
 }
 .sp
@@ -233,7 +233,7 @@ function.
 .\" .sp
 .\" \fB  rendezvous<> \fI__r\fB;
 .\"   \fIstatements\fB;      // \fRwhere \fBmake_event\fR calls create events on \fI__r\fB
-.\"   while (\fI__r\fB.nevents())
+.\"   while (\fI__r\fB.has_events())
 .\"       twait(\fI__r\fB);\fR
 .\" .sp
 .\" .fi
@@ -481,30 +481,30 @@ Creates a new volatile rendezvous with no outstanding events.
 .RE
 .sp
 .nf
-.B unsigned rendezvous<I*>::nevents() const
+.B bool rendezvous<I*>::has_events() const
 .fi
 .RS 5
-Returns the count of outstanding events.  This includes events that have
+Tests if there are any outstanding events.  This includes events that have
 not yet triggered, and events that have triggered, but the trigger
 notification has not been collected yet.
 .RE
 .sp
 .nf
-.B unsigned rendezvous<I*>::nready() const
+.B bool rendezvous<I*>::has_ready() const
 .fi
 .RS 5
-Returns the count of ready events.  An event is ready if it has been
+Tests if there are any ready events.  An event is ready if it has been
 triggered, but the trigger notification has not been collected yet.  The
 .B rendezvous<I*>::join
 method will return true only if
-.B nready()
-is greater than 0.
+.B has_ready()
+is true.
 .RE
 .sp
-.B unsigned rendezvous<I*>::nwaiting() const
+.B bool rendezvous<I*>::has_waiting() const
 .fi
 .RS 5
-Returns the count of waiting events.  An event is waiting if it has not yet
+Tests if there are any waiting events.  An event is waiting if it has not yet
 triggered.
 .RE
 .sp
@@ -535,8 +535,8 @@ rendezvous are effectively triggered, calling their
 notifiers and making the events themselves empty.  After
 .BR clear() ,
 the rendezvous's
-.B nevents()
-method returns 0.
+.B has_events()
+method returns false.
 .RE
 '
 .SH "EVENT MODIFIERS"

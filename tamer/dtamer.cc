@@ -325,7 +325,7 @@ void driver_tamer::once()
     }
 
     // get rid of canceled descriptors, if any
-    if (_fdcancelr.nready()) {
+    if (_fdcancelr.has_ready()) {
 	while (_fdcancelr.join())
 	    /* nada */;
 	memset(_fdset[fdread]->s, 0, ((_nfds + 63) & ~63) >> 3);

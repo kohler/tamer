@@ -956,7 +956,7 @@ tame_block_ev_t::output(outputter_t *o)
   o->switch_to_mode(OUTPUT_TREADMILL, lineno);
   b << TWAIT_BLOCK_RENDEZVOUS "_clear.kill(); } while (0); "
     << _fn->label(_id) << ":\n"
-    << "  while (" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".nwaiting()) {\n"
+    << "  while (" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".has_waiting()) {\n"
     << "      " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".block(" TAME_CLOSURE_NAME ", "
     << _id << ", __FILE__, __LINE__);\n"
     << "      tamer_closure_holder_.clear();\n"

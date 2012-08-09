@@ -69,7 +69,7 @@ tamed void scatter() {
     n++;
     tamer::at_delay_msec(500, e = tamer::distribute(tamer::make_event(r, i), tamer::make_event(r, 2), tamer::make_event(r, 3)));
     tamer::at_delay_msec(502, tamer::distribute(tamer::make_event(r, 0), e));
-    while (r.nevents()) {
+    while (r.has_events()) {
 	twait(r, i);
 	fprintf(stderr, "=== distributed %d\n", i);
     }
@@ -79,7 +79,7 @@ tamed void scatter() {
     (void) tamer::distribute(e, tamer::make_event(r, 0));
     // should print "avoided leak of active event" (because we just threw away
     // that event), then "== distributed 1, 2, 3, 0"
-    while (r.nevents()) {
+    while (r.has_events()) {
 	twait(r, i);
 	fprintf(stderr, "=== distributed %d\n", i);
     }
@@ -94,7 +94,7 @@ tamed void cancellina() {
     e.at_trigger(tamer::make_event(r, 101));
     e.at_trigger(tamer::make_event(r, 102));
     e.trigger();
-    while (r.nevents()) {
+    while (r.has_events()) {
 	twait(r, i);
 	fprintf(stderr, "=== triggered %d\n", i);
     }
@@ -115,7 +115,7 @@ tamed void cancellina2() {
     e3.trigger();
     if (e4)
 	fprintf(stderr, "=== SHOULD NOT HAVE e4\n");
-    while (r.nevents()) {
+    while (r.has_events()) {
 	twait(r, i, j);
 	fprintf(stderr, "=== triggered %d %d\n", i, j);
     }
@@ -134,7 +134,7 @@ tamed void bindery() {
     fprintf(stderr, "=== after bindery %d\n", i);
     tamer::at_delay_msec(600, tamer::bind(e = make_event(r, i), 3));
     e.unblocker().trigger();
-    while (r.nevents()) {
+    while (r.has_events()) {
 	twait(r);
 	fprintf(stderr, "=== got bindery\n");
     }
@@ -143,7 +143,7 @@ tamed void bindery() {
     // avoiding the bind
     tamer::at_delay_msec(600, ee = tamer::bind(make_event(r, i), 4));
     ee.unblocker().trigger();
-    while (r.nevents()) {
+    while (r.has_events()) {
 	twait(r);
 	fprintf(stderr, "=== got bindery\n");
     }
