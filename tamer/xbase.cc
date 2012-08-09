@@ -77,8 +77,11 @@ void simple_event::simple_trigger(bool values) {
 }
 
 void simple_event::trigger_all_for_remove() {
+    // first, remove all the events (in case an at_trigger() is also waiting
+    // on this rendezvous)
     for (simple_event *e = this; e; e = e->_r_next)
 	e->_r = 0;
+    // then call any left-behind at_triggers
     for (simple_event *e = this; e; e = e->_r_next)
 	if (simple_event *t = e->_at_trigger)
 	    t->simple_trigger(false);
