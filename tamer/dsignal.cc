@@ -48,7 +48,6 @@ class sigcancel_rendezvous : public rendezvous<> { public:
 
     inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
 	assert(sig_installing >= 0 && sig_installing < NSIG);
-	_nwaiting++;
 	e->initialize(this, sig_installing);
     }
 

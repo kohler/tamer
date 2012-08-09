@@ -56,7 +56,7 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
      *  An event is waiting until it is either triggered or canceled.
      */
     inline bool has_waiting() const {
-	return _bs.multiset_size();
+	return waiting_;
     }
 
     /** @brief  Test if any events are ready or waiting.
@@ -163,7 +163,7 @@ class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
 	return _bs.size();
     }
     inline bool has_waiting() const {
-	return _bs.multiset_size();
+	return waiting_;
     }
     inline bool has_events() const {
 	return has_ready() || has_waiting();
@@ -228,7 +228,7 @@ class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
 	return _buf.size();
     }
     inline bool has_waiting() const {
-	return _nwaiting;
+	return waiting_;
     }
     inline bool has_events() const {
 	return has_ready() || has_waiting();
@@ -240,24 +240,21 @@ class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
   protected:
 
     tamerutil::debuffer<uintptr_t> _buf;
-    size_t _nwaiting;
 
 };
 
 inline rendezvous<uintptr_t>::rendezvous(rendezvous_flags flags)
-    : abstract_rendezvous(flags, tamerpriv::rdefault), _nwaiting(0)
+    : abstract_rendezvous(flags, tamerpriv::rdefault)
 {
 }
 
 inline void rendezvous<uintptr_t>::add(tamerpriv::simple_event *e, uintptr_t i0) TAMER_NOEXCEPT
 {
-    _nwaiting++;
     e->initialize(this, i0);
 }
 
 inline void rendezvous<uintptr_t>::do_complete(tamerpriv::simple_event *e, bool)
 {
-    _nwaiting--;
     _buf.push_back(e->rid());
     unblock();
 }
@@ -276,7 +273,6 @@ inline void rendezvous<uintptr_t>::clear()
 {
     abstract_rendezvous::clear();
     _buf.clear();
-    _nwaiting = 0;
 }
 
 
@@ -359,17 +355,14 @@ template <>
 class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 
     rendezvous(rendezvous_flags flags = rnormal)
-	: abstract_rendezvous(flags, tamerpriv::rdefault),
-	  _nwaiting(0), _nready(0) {
+	: abstract_rendezvous(flags, tamerpriv::rdefault), _nready(0) {
     }
 
     inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
-	_nwaiting++;
 	e->initialize(this, 1);
     }
 
     inline void do_complete(tamerpriv::simple_event *, bool) {
-	_nwaiting--;
 	_nready++;
 	unblock();
     }
@@ -384,22 +377,21 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 
     inline void clear() {
 	abstract_rendezvous::clear();
-	_nwaiting = _nready = 0;
+	_nready = 0;
     }
 
     inline bool has_ready() const {
 	return _nready;
     }
     inline bool has_waiting() const {
-	return _nwaiting;
+	return waiting_;
     }
     inline bool has_events() const {
-	return _nready || _nwaiting;
+	return has_ready() || has_waiting();
     }
 
   protected:
 
-    unsigned _nwaiting;
     unsigned _nready;
 
 };
@@ -416,7 +408,7 @@ class gather_rendezvous : public tamerpriv::abstract_rendezvous { public:
     }
 
     inline bool has_waiting() const {
-	return _events;
+	return waiting_;
     }
 
     inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {

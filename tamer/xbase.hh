@@ -109,7 +109,7 @@ class simple_event { public:
     inline void initialize(abstract_rendezvous *r, uintptr_t rid);
 
     void simple_trigger(bool values);
-    void trigger_all_for_remove();
+    void trigger_list_for_remove();
 
     static inline void at_trigger(simple_event *x, const event<> &at_e);
 
@@ -142,7 +142,7 @@ enum rendezvous_type {
 class abstract_rendezvous {
   public:
     abstract_rendezvous(rendezvous_flags flags, rendezvous_type rtype)
-	: _events(0), _blocked_closure(0),
+	: waiting_(0), _blocked_closure(0),
 	  rtype_(rtype), is_volatile_(flags == rvolatile) {
     }
 
@@ -180,7 +180,7 @@ class abstract_rendezvous {
 		      const char *file, int line);
     inline void unblock();
     inline void run();
-    inline void remove_all();
+    inline void remove_waiting();
 
     class clearer { public:
 	clearer(abstract_rendezvous &r)
@@ -210,7 +210,7 @@ class abstract_rendezvous {
     }
 
   protected:
-    simple_event *_events;
+    simple_event *waiting_;
     tamer_closure *_blocked_closure;
     uint8_t rtype_;
     bool is_volatile_;
@@ -270,20 +270,20 @@ void event_prematurely_dereferenced(simple_event *e, abstract_rendezvous *r);
 }
 
 
-inline void abstract_rendezvous::remove_all() {
-    if (_events) {
-	_events->trigger_all_for_remove();
-	_events = 0;
+inline void abstract_rendezvous::remove_waiting() {
+    if (waiting_) {
+	waiting_->trigger_list_for_remove();
+	waiting_ = 0;
     }
 }
 
 inline void abstract_rendezvous::clear() {
-    remove_all();
+    remove_waiting();
 }
 
 inline abstract_rendezvous::~abstract_rendezvous() {
     // take all events off this rendezvous and call their triggerers
-    remove_all();
+    remove_waiting();
     if (_blocked_closure)
 	hard_free();
 }
@@ -296,12 +296,12 @@ inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
     // NB this can be called before e has been fully initialized.
     _r = r;
     _rid = rid;
-    _r_pprev = &r->_events;
-    if (r->_events)
-	r->_events->_r_pprev = &_r_next;
-    _r_next = r->_events;
+    _r_pprev = &r->waiting_;
+    if (r->waiting_)
+	r->waiting_->_r_pprev = &_r_next;
+    _r_next = r->waiting_;
     _at_trigger = 0;
-    r->_events = this;
+    r->waiting_ = this;
 }
 
 inline abstract_rendezvous *simple_event::rendezvous() const {

@@ -147,7 +147,7 @@ template <typename F> class function_rendezvous : public abstract_rendezvous { p
 
     void do_complete(simple_event *, bool) {
 	// in case _f() refers to an event on this rendezvous:
-	remove_all();
+	remove_waiting();
 	_f();
 	delete this;
     }

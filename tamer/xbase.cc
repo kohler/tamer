@@ -43,14 +43,14 @@ void simple_event::simple_trigger(bool values) {
     simple_event *next = x->_at_trigger;
 
     if (r) {
-	// See also trigger_all_for_remove(), trigger_for_unuse().
+	// See also trigger_list_for_remove(), trigger_for_unuse().
 	x->_r = 0;
 	*x->_r_pprev = x->_r_next;
 	if (x->_r_next)
 	    x->_r_next->_r_pprev = x->_r_pprev;
 
 	if (r->rtype_ == rgather) {
-	    if (!r->_events)
+	    if (!r->waiting_)
 		r->unblock();
 	} else
 	    r->do_complete(x, values);
@@ -76,7 +76,7 @@ void simple_event::simple_trigger(bool values) {
     }
 }
 
-void simple_event::trigger_all_for_remove() {
+void simple_event::trigger_list_for_remove() {
     // first, remove all the events (in case an at_trigger() is also waiting
     // on this rendezvous)
     for (simple_event *e = this; e; e = e->_r_next)
@@ -126,7 +126,7 @@ class distribute_rendezvous : public abstract_rendezvous { public:
 	while (_es.size() && !_es.back())
 	    _es.pop_back();
 	if (!_es.size() || !e->rid()) {
-	    remove_all();
+	    remove_waiting();
 	    for (std::vector<event<> >::iterator i = _es.begin(); i != _es.end(); ++i)
 		i->trigger();
 	    delete this;
