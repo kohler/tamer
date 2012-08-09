@@ -300,7 +300,7 @@ bool driver_tamer::empty()
     if (_asap.size()
 	|| nt_ != 0
 	|| sig_any_active
-	|| tamerpriv::abstract_rendezvous::unblocked
+	|| tamerpriv::abstract_rendezvous::has_unblocked()
 	|| _nfds != 0)
 	return false;
     return true;
@@ -314,7 +314,7 @@ void driver_tamer::once()
     if (_asap.size()
 	|| (nt_ != 0 && !timercmp(&t_[0].expiry_, &now, >))
 	|| sig_any_active
-	|| tamerpriv::abstract_rendezvous::unblocked) {
+	|| tamerpriv::abstract_rendezvous::has_unblocked()) {
 	timerclear(&to);
 	toptr = &to;
     } else if (nt_ == 0)
@@ -411,7 +411,7 @@ void driver_tamer::once()
     }
 
     // run active closures
-    while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::unblocked)
+    while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::pop_unblocked())
 	r->run();
 }
 

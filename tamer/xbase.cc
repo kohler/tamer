@@ -18,8 +18,20 @@
 namespace tamer {
 namespace tamerpriv {
 
-abstract_rendezvous *abstract_rendezvous::unblocked;
-abstract_rendezvous *abstract_rendezvous::unblocked_tail;
+abstract_rendezvous *abstract_rendezvous::unblocked = 0;
+abstract_rendezvous **abstract_rendezvous::unblocked_ptail = &unblocked;
+
+void abstract_rendezvous::hard_free() {
+    if (unblocked_next_ != unblocked_sentinel()) {
+	abstract_rendezvous **p = &unblocked;
+	while (*p != this)
+	    p = &(*p)->unblocked_next_;
+	if (!(*p = unblocked_next_))
+	    unblocked_ptail = p;
+    }
+    _blocked_closure->tamer_block_position_ = 1;
+    _blocked_closure->tamer_activator_(_blocked_closure);
+}
 
 
 void simple_event::trigger_all_for_remove() {

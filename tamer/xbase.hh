@@ -139,8 +139,7 @@ class simple_event { public:
 class abstract_rendezvous { public:
 
     abstract_rendezvous(rendezvous_flags flags = rnormal)
-	: _events(0), _unblocked_next(0), _unblocked_prev(0),
-	  _blocked_closure(0), _flags(flags) {
+	: _events(0), _blocked_closure(0), _flags(flags) {
     }
 
     virtual inline ~abstract_rendezvous();
@@ -192,16 +191,31 @@ class abstract_rendezvous { public:
 	abstract_rendezvous *_r;
     };
 
-    static abstract_rendezvous *unblocked;
-    static abstract_rendezvous *unblocked_tail;
+    static inline bool has_unblocked() {
+	return unblocked;
+    }
+    static inline abstract_rendezvous *pop_unblocked() {
+	abstract_rendezvous *r = unblocked;
+	if (r) {
+	    if (!(unblocked = r->unblocked_next_))
+		unblocked_ptail = &unblocked;
+	}
+	return r;
+    }
 
   private:
 
     simple_event *_events;
-    abstract_rendezvous *_unblocked_next;
-    abstract_rendezvous *_unblocked_prev;
     tamer_closure *_blocked_closure;
     rendezvous_flags _flags;
+    abstract_rendezvous *unblocked_next_;
+
+    static abstract_rendezvous *unblocked;
+    static abstract_rendezvous **unblocked_ptail;
+    static inline abstract_rendezvous *unblocked_sentinel() {
+	return reinterpret_cast<abstract_rendezvous *>(uintptr_t(1));
+    }
+    void hard_free();
 
     abstract_rendezvous(const abstract_rendezvous &);
     abstract_rendezvous &operator=(const abstract_rendezvous &);
@@ -264,19 +278,8 @@ inline void abstract_rendezvous::clear() {
 inline abstract_rendezvous::~abstract_rendezvous() {
     // take all events off this rendezvous and call their triggerers
     remove_all();
-
-    if (_unblocked_prev)
-	_unblocked_prev->_unblocked_next = _unblocked_next;
-    else if (unblocked == this)
-	unblocked = _unblocked_next;
-    if (_unblocked_next)
-	_unblocked_next->_unblocked_prev = _unblocked_prev;
-    else if (unblocked_tail == this)
-	unblocked_tail = _unblocked_prev;
-    if (_blocked_closure) {
-	_blocked_closure->tamer_block_position_ = 1;
-	_blocked_closure->tamer_activator_(_blocked_closure);
-    }
+    if (_blocked_closure)
+	hard_free();
 }
 
 inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
@@ -339,6 +342,7 @@ inline void abstract_rendezvous::block(tamer_closure &c,
 				       const char *, int) {
     assert(!_blocked_closure && &c);
     _blocked_closure = &c;
+    unblocked_next_ = unblocked_sentinel();
     c.tamer_block_position_ = position;
 }
 
@@ -351,29 +355,16 @@ inline void abstract_rendezvous::block(tamer_debug_closure &c,
 }
 
 inline void abstract_rendezvous::unblock() {
-    if (_blocked_closure && !_unblocked_prev && unblocked != this) {
-	_unblocked_next = 0;
-	_unblocked_prev = unblocked_tail;
-	if (unblocked_tail)
-	    unblocked_tail->_unblocked_next = this;
-	else
-	    unblocked = this;
-	unblocked_tail = this;
+    if (_blocked_closure && unblocked_next_ == unblocked_sentinel()) {
+	*unblocked_ptail = this;
+	unblocked_next_ = 0;
+	unblocked_ptail = &unblocked_next_;
     }
 }
 
 inline void abstract_rendezvous::run() {
     tamer_closure *c = _blocked_closure;
     _blocked_closure = 0;
-    if (_unblocked_prev)
-	_unblocked_prev->_unblocked_next = _unblocked_next;
-    else if (unblocked == this)
-	unblocked = _unblocked_next;
-    if (_unblocked_next)
-	_unblocked_next->_unblocked_prev = _unblocked_prev;
-    else if (unblocked_tail == this)
-	unblocked_tail = _unblocked_next;
-    _unblocked_next = _unblocked_prev = 0;
     c->tamer_activator_(c);
 }
 
