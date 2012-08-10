@@ -277,7 +277,7 @@ inline event<T0, T1, T2, T3> with_timeout(const timeval &delay, event<T0, T1, T2
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> with_timeout(double &delay, event<T0, T1, T2, T3> e, int &result) {
+inline event<T0, T1, T2, T3> with_timeout(double delay, event<T0, T1, T2, T3> e, int &result) {
     at_delay(delay, tamerpriv::with_helper(e, &result, outcome::timeout));
     return e;
 }
