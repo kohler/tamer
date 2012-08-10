@@ -139,7 +139,7 @@ driver_tamer::~driver_tamer()
 
 void driver_tamer::expand_timers()
 {
-    int ntcap = (tcap_ ? 511 : ((tcap_ + 1) * 2 - 1));
+    int ntcap = (tcap_ ? ((tcap_ + 1) * 2 - 1) : 511);
     ttimer *nt = reinterpret_cast<ttimer *>(new char[sizeof(ttimer) * ntcap]);
     if (nt_ != 0)
 	// take advantage of fact that memcpy() works on event<>
