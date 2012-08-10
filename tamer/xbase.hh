@@ -153,8 +153,6 @@ class abstract_rendezvous {
 	(void) e, (void) values;
     }
 
-    virtual inline void clear();
-
     virtual bool is_distribute() const {
 	return false;
     }
@@ -280,10 +278,6 @@ inline void abstract_rendezvous::remove_waiting() {
 	waiting_->trigger_list_for_remove();
 	waiting_ = 0;
     }
-}
-
-inline void abstract_rendezvous::clear() {
-    remove_waiting();
 }
 
 inline abstract_rendezvous::~abstract_rendezvous() {

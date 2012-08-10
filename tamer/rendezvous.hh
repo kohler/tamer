@@ -77,7 +77,7 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
     /** @brief  Remove all events from this rendezvous.
      *
      *  Every event waiting on this rendezvous is made empty.  After clear(),
-     *  has_events() will return 0.
+     *  has_events() will return false.
      */
     inline void clear();
 
@@ -144,7 +144,7 @@ inline bool rendezvous<I0, I1>::join(I0 &i0, I1 &i1)
 template <typename I0, typename I1>
 inline void rendezvous<I0, I1>::clear()
 {
-    abstract_rendezvous::clear();
+    abstract_rendezvous::remove_waiting();
     _bs.clear();
 }
 
@@ -211,7 +211,7 @@ inline bool rendezvous<I0, void>::join(I0 &i0)
 template <typename I0>
 inline void rendezvous<I0, void>::clear()
 {
-    abstract_rendezvous::clear();
+    abstract_rendezvous::remove_waiting();
     _bs.clear();
 }
 
@@ -271,7 +271,7 @@ inline bool rendezvous<uintptr_t>::join(uintptr_t &i0)
 
 inline void rendezvous<uintptr_t>::clear()
 {
-    abstract_rendezvous::clear();
+    abstract_rendezvous::remove_waiting();
     _buf.clear();
 }
 
@@ -374,9 +374,8 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 	} else
 	    return false;
     }
-
     inline void clear() {
-	abstract_rendezvous::clear();
+	abstract_rendezvous::remove_waiting();
 	_nready = 0;
     }
 
@@ -405,6 +404,10 @@ class gather_rendezvous : public tamerpriv::abstract_rendezvous { public:
 
     inline tamerpriv::tamer_closure *linked_closure() const {
 	return linked_closure_;
+    }
+
+    inline void clear() {
+	remove_waiting();
     }
 
     inline bool has_waiting() const {
