@@ -182,21 +182,6 @@ class abstract_rendezvous {
     inline void run();
     inline void remove_waiting();
 
-    class clearer { public:
-	clearer(abstract_rendezvous &r)
-	    : _r(&r) {
-	}
-	~clearer() {
-	    if (_r)
-		_r->clear();
-	}
-	void kill() {
-	    _r = 0;
-	}
-      private:
-	abstract_rendezvous *_r;
-    };
-
     static inline bool has_unblocked() {
 	return unblocked;
     }
@@ -243,18 +228,38 @@ struct tamer_closure {
 };
 
 template <typename T>
-struct closure_reference {
-    closure_reference(T &c)
+class closure_owner {
+  public:
+    closure_owner(T &c)
 	: c_(&c) {
     }
-    ~closure_reference() {
+    ~closure_owner() {
 	delete c_;
     }
-    void clear() {
+    void reset() {
 	c_ = 0;
     }
+  private:
     T *c_;
 };
+
+template <typename R>
+class rendezvous_owner {
+  public:
+    rendezvous_owner(R &r)
+	: r_(&r) {
+    }
+    ~rendezvous_owner() {
+	if (r_)
+	    r_->clear();
+    }
+    void reset() {
+	r_ = 0;
+    }
+  private:
+    R *r_;
+};
+
 
 struct tamer_debug_closure : public tamer_closure {
     tamer_debug_closure(tamer_closure_activator activator)

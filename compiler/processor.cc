@@ -787,7 +787,7 @@ tame_fn_t::output_arg_references(strbuf &b)
 void
 tame_fn_t::output_jump_tab (strbuf &b)
 {
-    b << "  tamer::tamerpriv::closure_reference<" << closure_type_name() << "> tamer_closure_holder_(" << TAME_CLOSURE_NAME << ");\n"
+    b << "  tamer::tamerpriv::closure_owner<" << closure_type_name() << "> tamer_closure_holder_(" << TAME_CLOSURE_NAME << ");\n"
       << "  switch (" << (tamer_debug ? "-" : "")
       << TAME_CLOSURE_NAME << ".tamer_block_position_) {\n"
       << "  case 0: break;\n";
@@ -937,7 +937,7 @@ tame_block_ev_t::output(outputter_t *o)
   b << "  do { ";
   if (_fn->any_volatile_envs())
       b << TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".set_volatile(" << _isvolatile << "); ";
-  b << "do {\n#define make_event(...) make_event(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n    tamer::gather_rendezvous::clearer " TWAIT_BLOCK_RENDEZVOUS "_clear(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ");\n";
+  b << "do {\n#define make_event(...) make_event(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n    tamer::tamerpriv::rendezvous_owner<tamer::gather_rendezvous> " TWAIT_BLOCK_RENDEZVOUS "_holder(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ");\n";
   o->output_str(b.str());
 
   output_mode_t om = o->switch_to_mode(OUTPUT_TREADMILL);
@@ -954,12 +954,12 @@ tame_block_ev_t::output(outputter_t *o)
 
   int lineno = o->lineno();
   o->switch_to_mode(OUTPUT_TREADMILL, lineno);
-  b << TWAIT_BLOCK_RENDEZVOUS "_clear.kill(); } while (0); "
+  b << TWAIT_BLOCK_RENDEZVOUS "_holder.reset(); } while (0); "
     << _fn->label(_id) << ":\n"
     << "  while (" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".has_waiting()) {\n"
     << "      " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".block(" TAME_CLOSURE_NAME ", "
     << _id << ", __FILE__, __LINE__);\n"
-    << "      tamer_closure_holder_.clear();\n"
+    << "      tamer_closure_holder_.reset();\n"
     << "      " << _fn->return_expr() << "; }\n"
     << "  } while (0);\n";
   o->output_str(b.str());
@@ -1032,7 +1032,7 @@ tame_join_t::output_blocked(strbuf &b, const str &jgn)
 {
     b << "    " << jgn << ".block(" TAME_CLOSURE_NAME ", "
       << _id << ", __FILE__, __LINE__);\n"
-      << "    tamer_closure_holder_.clear();\n"
+      << "    tamer_closure_holder_.reset();\n"
       << "    " << _fn->return_expr() << ";\n";
 }
 
