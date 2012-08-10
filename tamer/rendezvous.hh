@@ -32,7 +32,7 @@ namespace tamer {
  *  full @c rendezvous.
  */
 template <typename I0, typename I1>
-class rendezvous : public tamerpriv::abstract_rendezvous { public:
+class rendezvous : public tamerpriv::explicit_rendezvous { public:
 
     /** @brief  Construct rendezvous.
      *  @param  flags  tamer::rnormal (default) or tamer::rvolatile
@@ -42,13 +42,16 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
      *  their events are dereferenced before trigger. */
     inline rendezvous(rendezvous_flags flags = rnormal);
 
+    /** @brief  Destroy rendezvous. */
+    inline ~rendezvous();
+
     /** @brief  Test if any events are ready.
      *
      *  An event is ready if it has triggered, but no @a join or @c twait
      *  has reported it yet.
      */
     inline bool has_ready() const {
-	return _bs.size();
+	return ready_;
     }
 
     /** @brief  Test if any events are waiting.
@@ -79,7 +82,7 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
      *  Every event waiting on this rendezvous is made empty.  After clear(),
      *  has_events() will return false.
      */
-    inline void clear();
+    void clear();
 
     /** @internal
      *  @brief  Add an occurrence to this rendezvous.
@@ -89,78 +92,75 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
      */
     inline void add(tamerpriv::simple_event *e, const I0 &i0, const I1 &i1);
 
-    /** @internal
-     *  @brief  Mark the triggering of an occurrence.
-     *  @param  rid     The occurrence's ID within this rendezvous.
-     *  @param  values  True if the occurrence was triggered with values.
-     */
-    inline void do_complete(tamerpriv::simple_event *e, bool values);
-
   private:
 
-    struct evtrec {
+    struct eventid {
 	I0 i0;
 	I1 i1;
-	evtrec(const I0 &i0_, const I1 &i1_)
-	    : i0(i0_), i1(i1_) {
+	eventid(I0 i0_, I1 i1_)
+	    : i0(TAMER_MOVE(i0_)), i1(TAMER_MOVE(i1_)) {
 	}
     };
-
-    tamerutil::ready_set<evtrec> _bs;
 
 };
 
 template <typename I0, typename I1>
 inline rendezvous<I0, I1>::rendezvous(rendezvous_flags flags)
-    : abstract_rendezvous(flags, tamerpriv::rdefault)
+    : explicit_rendezvous(flags)
 {
+}
+
+template <typename I0, typename I1>
+inline rendezvous<I0, I1>::~rendezvous()
+{
+    clear();
 }
 
 template <typename I0, typename I1>
 inline void rendezvous<I0, I1>::add(tamerpriv::simple_event *e, const I0 &i0, const I1 &i1)
 {
-    e->initialize(this, _bs.insert(i0, i1));
-}
-
-template <typename I0, typename I1>
-inline void rendezvous<I0, I1>::do_complete(tamerpriv::simple_event *e, bool)
-{
-    _bs.push_back_element(e->rid());
-    unblock();
+    eventid *eid = new eventid(i0, i1);
+    e->initialize(this, reinterpret_cast<uintptr_t>(eid));
 }
 
 template <typename I0, typename I1>
 inline bool rendezvous<I0, I1>::join(I0 &i0, I1 &i1)
 {
-    if (evtrec *e = _bs.front_ptr()) {
-	i0 = e->i0;
-	i1 = e->i1;
-	_bs.pop_front();
+    if (ready_) {
+	eventid *eid = reinterpret_cast<eventid *>(pop_ready());
+	i0 = TAMER_MOVE(eid->i0);
+	i1 = TAMER_MOVE(eid->i1);
+	delete eid;
 	return true;
     } else
 	return false;
 }
 
 template <typename I0, typename I1>
-inline void rendezvous<I0, I1>::clear()
+void rendezvous<I0, I1>::clear()
 {
+    for (tamerpriv::simple_event *e = waiting_; e; e = e->next())
+	delete reinterpret_cast<eventid *>(e->rid());
     abstract_rendezvous::remove_waiting();
-    _bs.clear();
+    for (tamerpriv::simple_event *e = ready_; e; e = e->next())
+	delete reinterpret_cast<eventid *>(e->rid());
+    explicit_rendezvous::remove_ready();
 }
 
 
 /** @cond specialized_rendezvous */
 
 template <typename I0>
-class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
+class rendezvous<I0, void> : public tamerpriv::explicit_rendezvous { public:
 
     inline rendezvous(rendezvous_flags flags = rnormal);
+    inline ~rendezvous();
 
     inline bool join(I0 &);
     inline void clear();
 
     inline bool has_ready() const {
-	return _bs.size();
+	return ready_;
     }
     inline bool has_waiting() const {
 	return waiting_;
@@ -170,39 +170,35 @@ class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
     }
 
     inline void add(tamerpriv::simple_event *e, const I0 &i0);
-    inline void do_complete(tamerpriv::simple_event *e, bool values);
-
-  private:
-
-    tamerutil::ready_set<I0> _bs;
 
 };
 
 template <typename I0>
 inline rendezvous<I0, void>::rendezvous(rendezvous_flags flags)
-    : abstract_rendezvous(flags, tamerpriv::rdefault)
+    : explicit_rendezvous(flags)
 {
+}
+
+template <typename I0>
+inline rendezvous<I0, void>::~rendezvous()
+{
+    clear();
 }
 
 template <typename I0>
 inline void rendezvous<I0, void>::add(tamerpriv::simple_event *e, const I0 &i0)
 {
-    e->initialize(this, _bs.insert(i0));
-}
-
-template <typename I0>
-inline void rendezvous<I0, void>::do_complete(tamerpriv::simple_event *e, bool)
-{
-    _bs.push_back_element(e->rid());
-    unblock();
+    I0 *eid = new I0(i0);
+    e->initialize(this, reinterpret_cast<uintptr_t>(eid));
 }
 
 template <typename I0>
 inline bool rendezvous<I0, void>::join(I0 &i0)
 {
-    if (I0 *e = _bs.front_ptr()) {
-	i0 = *e;
-	_bs.pop_front();
+    if (ready_) {
+	I0 *eid = reinterpret_cast<I0 *>(pop_ready());
+	i0 = TAMER_MOVE(*eid);
+	delete eid;
 	return true;
     } else
 	return false;
@@ -211,21 +207,23 @@ inline bool rendezvous<I0, void>::join(I0 &i0)
 template <typename I0>
 inline void rendezvous<I0, void>::clear()
 {
+    for (tamerpriv::simple_event *e = waiting_; e; e = e->next())
+	delete reinterpret_cast<I0 *>(e->rid());
     abstract_rendezvous::remove_waiting();
-    _bs.clear();
+    for (tamerpriv::simple_event *e = ready_; e; e = e->next())
+	delete reinterpret_cast<I0 *>(e->rid());
+    explicit_rendezvous::remove_ready();
 }
 
 
 template <>
-class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
+class rendezvous<uintptr_t> : public tamerpriv::explicit_rendezvous { public:
 
     inline rendezvous(rendezvous_flags flags = rnormal);
-
-    inline bool join(uintptr_t &);
-    inline void clear();
+    inline ~rendezvous();
 
     inline bool has_ready() const {
-	return _buf.size();
+	return ready_;
     }
     inline bool has_waiting() const {
 	return waiting_;
@@ -234,18 +232,21 @@ class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
 	return has_ready() || has_waiting();
     }
 
+    inline bool join(uintptr_t &);
+    inline void clear();
+
     inline void add(tamerpriv::simple_event *e, uintptr_t i0) TAMER_NOEXCEPT;
-    inline void do_complete(tamerpriv::simple_event *e, bool values);
-
-  protected:
-
-    tamerutil::debuffer<uintptr_t> _buf;
 
 };
 
 inline rendezvous<uintptr_t>::rendezvous(rendezvous_flags flags)
-    : abstract_rendezvous(flags, tamerpriv::rdefault)
+    : explicit_rendezvous(flags)
 {
+}
+
+inline rendezvous<uintptr_t>::~rendezvous()
+{
+    clear();
 }
 
 inline void rendezvous<uintptr_t>::add(tamerpriv::simple_event *e, uintptr_t i0) TAMER_NOEXCEPT
@@ -253,17 +254,10 @@ inline void rendezvous<uintptr_t>::add(tamerpriv::simple_event *e, uintptr_t i0)
     e->initialize(this, i0);
 }
 
-inline void rendezvous<uintptr_t>::do_complete(tamerpriv::simple_event *e, bool)
-{
-    _buf.push_back(e->rid());
-    unblock();
-}
-
 inline bool rendezvous<uintptr_t>::join(uintptr_t &i0)
 {
-    if (uintptr_t *x = _buf.front_ptr()) {
-	i0 = *x;
-	_buf.pop_front();
+    if (ready_) {
+	i0 = pop_ready();
 	return true;
     } else
 	return false;
@@ -272,7 +266,7 @@ inline bool rendezvous<uintptr_t>::join(uintptr_t &i0)
 inline void rendezvous<uintptr_t>::clear()
 {
     abstract_rendezvous::remove_waiting();
-    _buf.clear();
+    explicit_rendezvous::remove_ready();
 }
 
 
@@ -285,17 +279,16 @@ class rendezvous<T *> : public rendezvous<uintptr_t> { public:
 	: inherited(flags) {
     }
 
-    inline void add(tamerpriv::simple_event *e, T *i0) TAMER_NOEXCEPT {
-	inherited::add(e, reinterpret_cast<uintptr_t>(i0));
-    }
-
     inline bool join(T *&i0) {
-	if (uintptr_t *x = _buf.front_ptr()) {
-	    i0 = reinterpret_cast<T *>(*x);
-	    _buf.pop_front();
+	if (ready_) {
+	    i0 = reinterpret_cast<T *>(pop_ready());
 	    return true;
 	} else
 	    return false;
+    }
+
+    inline void add(tamerpriv::simple_event *e, T *i0) TAMER_NOEXCEPT {
+	inherited::add(e, reinterpret_cast<uintptr_t>(i0));
     }
 
 };
@@ -310,17 +303,16 @@ class rendezvous<int> : public rendezvous<uintptr_t> { public:
 	: inherited(flags) {
     }
 
-    inline void add(tamerpriv::simple_event *e, int i0) TAMER_NOEXCEPT {
-	inherited::add(e, static_cast<uintptr_t>(i0));
-    }
-
     inline bool join(int &i0) {
-	if (uintptr_t *x = _buf.front_ptr()) {
-	    i0 = static_cast<int>(*x);
-	    _buf.pop_front();
+	if (ready_) {
+	    i0 = static_cast<int>(pop_ready());
 	    return true;
 	} else
 	    return false;
+    }
+
+    inline void add(tamerpriv::simple_event *e, int i0) TAMER_NOEXCEPT {
+	inherited::add(e, static_cast<uintptr_t>(i0));
     }
 
 };
@@ -335,52 +327,33 @@ class rendezvous<bool> : public rendezvous<uintptr_t> { public:
 	: inherited(flags) {
     }
 
-    inline void add(tamerpriv::simple_event *e, bool i0) TAMER_NOEXCEPT {
-	inherited::add(e, static_cast<uintptr_t>(i0));
-    }
-
     inline bool join(bool &i0) {
-	if (uintptr_t *x = _buf.front_ptr()) {
-	    i0 = static_cast<bool>(*x);
-	    _buf.pop_front();
+	if (ready_) {
+	    i0 = static_cast<bool>(pop_ready());
 	    return true;
 	} else
 	    return false;
+    }
+
+    inline void add(tamerpriv::simple_event *e, bool i0) TAMER_NOEXCEPT {
+	inherited::add(e, static_cast<uintptr_t>(i0));
     }
 
 };
 
 
 template <>
-class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
+class rendezvous<void> : public tamerpriv::explicit_rendezvous { public:
 
-    rendezvous(rendezvous_flags flags = rnormal)
-	: abstract_rendezvous(flags, tamerpriv::rdefault), _nready(0) {
+    inline rendezvous(rendezvous_flags flags = rnormal)
+	: explicit_rendezvous(flags) {
     }
-
-    inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
-	e->initialize(this, 1);
-    }
-
-    inline void do_complete(tamerpriv::simple_event *, bool) {
-	_nready++;
-	unblock();
-    }
-
-    inline bool join() {
-	if (_nready) {
-	    _nready--;
-	    return true;
-	} else
-	    return false;
-    }
-    inline void clear() {
-	abstract_rendezvous::remove_waiting();
-	_nready = 0;
+    inline ~rendezvous() {
+	clear();
     }
 
     inline bool has_ready() const {
-	return _nready;
+	return ready_;
     }
     inline bool has_waiting() const {
 	return waiting_;
@@ -389,9 +362,21 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 	return has_ready() || has_waiting();
     }
 
-  protected:
+    inline bool join() {
+	if (ready_) {
+	    (void) pop_ready();
+	    return true;
+	} else
+	    return false;
+    }
+    inline void clear() {
+	abstract_rendezvous::remove_waiting();
+	explicit_rendezvous::remove_ready();
+    }
 
-    unsigned _nready;
+    inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
+	e->initialize(this, 1);
+    }
 
 };
 
@@ -400,6 +385,9 @@ class gather_rendezvous : public tamerpriv::abstract_rendezvous { public:
 
     inline gather_rendezvous(tamerpriv::tamer_closure *c)
 	: abstract_rendezvous(rnormal, tamerpriv::rgather), linked_closure_(c) {
+    }
+    inline ~gather_rendezvous() {
+	clear();
     }
 
     inline tamerpriv::tamer_closure *linked_closure() const {

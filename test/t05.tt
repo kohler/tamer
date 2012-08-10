@@ -1,0 +1,50 @@
+// -*- mode: c++ -*-
+/* Copyright (c) 2012, Eddie Kohler
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, subject to the conditions
+ * listed in the Tamer LICENSE file. These conditions include: you must
+ * preserve this copyright notice, and you cannot mention the copyright
+ * holders in advertising related to the Software without their permission.
+ * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
+ * notice is a summary of the Tamer LICENSE file; the license in that file is
+ * legally binding.
+ */
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <tamer/tamer.hh>
+#include <tamer/adapter.hh>
+#include <string>
+#include <stdlib.h>
+
+int n;
+
+tamed void test() {
+    tvars {
+	int j = 0;
+	tamer::rendezvous<std::string> r(tamer::rvolatile);
+	std::string s;
+    }
+    for (int i = 0; i < 5000; ++i) {
+	char buf[30];
+	sprintf(buf, "%d", i);
+	tamer::at_delay_usec(random() % 100000,
+			     tamer::make_event(r, std::string(buf)));
+    }
+    while (j < 10) {
+	twait(r, s);
+	fprintf(stderr, "%s\n", s.c_str());
+	++j;
+    }
+}
+
+int main(int, char **) {
+    tamer::initialize();
+    test();
+    while (!tamer::driver_empty())
+	tamer::once();
+    tamer::cleanup();
+}

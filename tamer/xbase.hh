@@ -24,6 +24,7 @@ inline event<> distribute(const event<> &, const event<> &);
 inline event<> distribute(const event<> &, const event<> &, const event<> &);
 template <typename T0> event<T0> unbind(const event<> &);
 class driver;
+class explicit_rendezvous;
 class gather_rendezvous;
 
 class tamer_error : public std::runtime_error { public:
@@ -105,6 +106,7 @@ class simple_event { public:
 
     inline abstract_rendezvous *rendezvous() const;
     inline uintptr_t rid() const;
+    inline simple_event *next() const;
 
     inline void initialize(abstract_rendezvous *r, uintptr_t rid);
 
@@ -131,12 +133,15 @@ class simple_event { public:
 
     void trigger_for_unuse();
 
+    friend class explicit_rendezvous;
+
 };
 
 
 enum rendezvous_type {
     rdefault,
-    rgather
+    rgather,
+    rexplicit
 };
 
 class abstract_rendezvous {
@@ -178,7 +183,6 @@ class abstract_rendezvous {
 		      const char *file, int line);
     inline void unblock();
     inline void run();
-    inline void remove_waiting();
 
     static inline bool has_unblocked() {
 	return unblocked;
@@ -205,6 +209,8 @@ class abstract_rendezvous {
 	return reinterpret_cast<abstract_rendezvous *>(uintptr_t(1));
     }
 
+    inline void remove_waiting();
+
   private:
     abstract_rendezvous(const abstract_rendezvous &);
     abstract_rendezvous &operator=(const abstract_rendezvous &);
@@ -212,6 +218,44 @@ class abstract_rendezvous {
 
     friend class simple_event;
     friend class driver;
+};
+
+class explicit_rendezvous : public abstract_rendezvous {
+  public:
+
+    inline explicit_rendezvous(rendezvous_flags flags)
+	: abstract_rendezvous(flags, rexplicit),
+	  ready_(), ready_ptail_(&ready_) {
+    }
+#if TAMER_DEBUG
+    inline ~explicit_rendezvous() {
+	assert(!ready_);
+    }
+#endif
+
+  protected:
+
+    simple_event *ready_;
+    simple_event **ready_ptail_;
+
+    inline uintptr_t pop_ready() {
+	simple_event *e = ready_;
+	if (!(ready_ = e->_r_next))
+	    ready_ptail_ = &ready_;
+	uintptr_t x = e->rid();
+	simple_event::unuse_clean(e);
+	return x;
+    }
+    inline void remove_ready() {
+	while (simple_event *e = ready_) {
+	    ready_ = e->_r_next;
+	    simple_event::unuse_clean(e);
+	}
+	ready_ptail_ = &ready_;
+    }
+
+    friend class simple_event;
+
 };
 
 
@@ -309,6 +353,10 @@ inline abstract_rendezvous *simple_event::rendezvous() const {
 
 inline uintptr_t simple_event::rid() const {
     return _rid;
+}
+
+inline simple_event *simple_event::next() const {
+    return _r_next;
 }
 
 inline void abstract_rendezvous::block(tamer_closure &c,

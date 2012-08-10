@@ -52,6 +52,13 @@ void simple_event::simple_trigger(bool values) {
 	if (r->rtype_ == rgather) {
 	    if (!r->waiting_)
 		r->unblock();
+	} else if (r->rtype_ == rexplicit) {
+	    explicit_rendezvous *er = static_cast<explicit_rendezvous *>(r);
+	    simple_event::use(x);
+	    *er->ready_ptail_ = x;
+	    er->ready_ptail_ = &x->_r_next;
+	    x->_r_next = 0;
+	    er->unblock();
 	} else
 	    r->do_complete(x, values);
     }
