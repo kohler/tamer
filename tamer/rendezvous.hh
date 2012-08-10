@@ -94,7 +94,7 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
      *  @param  rid     The occurrence's ID within this rendezvous.
      *  @param  values  True if the occurrence was triggered with values.
      */
-    inline void complete(tamerpriv::simple_event *e, bool values);
+    inline void do_complete(tamerpriv::simple_event *e, bool values);
 
   private:
 
@@ -123,12 +123,10 @@ inline void rendezvous<I0, I1>::add(tamerpriv::simple_event *e, const I0 &i0, co
 }
 
 template <typename I0, typename I1>
-inline void rendezvous<I0, I1>::complete(tamerpriv::simple_event *e, bool)
+inline void rendezvous<I0, I1>::do_complete(tamerpriv::simple_event *e, bool)
 {
-    e->precomplete();
     _bs.push_back_element(e->rid());
     unblock();
-    e->postcomplete();
 }
 
 template <typename I0, typename I1>
@@ -172,7 +170,7 @@ class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
     }
 
     inline void add(tamerpriv::simple_event *e, const I0 &i0);
-    inline void complete(tamerpriv::simple_event *e, bool values);
+    inline void do_complete(tamerpriv::simple_event *e, bool values);
 
   private:
 
@@ -193,12 +191,10 @@ inline void rendezvous<I0, void>::add(tamerpriv::simple_event *e, const I0 &i0)
 }
 
 template <typename I0>
-inline void rendezvous<I0, void>::complete(tamerpriv::simple_event *e, bool)
+inline void rendezvous<I0, void>::do_complete(tamerpriv::simple_event *e, bool)
 {
-    e->precomplete();
     _bs.push_back_element(e->rid());
     unblock();
-    e->postcomplete();
 }
 
 template <typename I0>
@@ -239,7 +235,7 @@ class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
     }
 
     inline void add(tamerpriv::simple_event *e, uintptr_t i0) TAMER_NOEXCEPT;
-    inline void complete(tamerpriv::simple_event *e, bool values);
+    inline void do_complete(tamerpriv::simple_event *e, bool values);
 
   protected:
 
@@ -259,13 +255,11 @@ inline void rendezvous<uintptr_t>::add(tamerpriv::simple_event *e, uintptr_t i0)
     e->initialize(this, i0);
 }
 
-inline void rendezvous<uintptr_t>::complete(tamerpriv::simple_event *e, bool)
+inline void rendezvous<uintptr_t>::do_complete(tamerpriv::simple_event *e, bool)
 {
-    e->precomplete();
     _nwaiting--;
     _buf.push_back(e->rid());
     unblock();
-    e->postcomplete();
 }
 
 inline bool rendezvous<uintptr_t>::join(uintptr_t &i0)
@@ -373,12 +367,10 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 	e->initialize(this, 1);
     }
 
-    inline void complete(tamerpriv::simple_event *e, bool) {
-	e->precomplete();
+    inline void do_complete(tamerpriv::simple_event *, bool) {
 	_nwaiting--;
 	_nready++;
 	unblock();
-	e->postcomplete();
     }
 
     inline bool join() {
@@ -422,13 +414,11 @@ class gather_rendezvous : public rendezvous<> { public:
 	return linked_closure_;
     }
 
-    inline void complete(tamerpriv::simple_event *e, bool) {
-	e->precomplete();
+    inline void do_complete(tamerpriv::simple_event *e, bool) {
 	_nwaiting--;
 	_nready++;
 	if (_nwaiting == 0)
 	    unblock();
-	e->postcomplete();
     }
 
   private:

@@ -34,21 +34,60 @@ void abstract_rendezvous::hard_free() {
 }
 
 
+void simple_event::simple_trigger(bool values) {
+    simple_event *x = this;
+    simple_event *to_delete = 0;
+
+ retry:
+    abstract_rendezvous *r = x->_r;
+    simple_event *next = x->_at_trigger;
+
+    if (r) {
+	// See also trigger_all_for_remove(), trigger_for_unuse().
+	x->_r = 0;
+	*x->_r_pprev = x->_r_next;
+	if (x->_r_next)
+	    x->_r_next->_r_pprev = x->_r_pprev;
+
+	r->do_complete(x, values);
+    }
+
+    // Important to keep an event in memory until all its at_triggers are
+    // triggered -- some functional rendezvous, like with_helper_rendezvous,
+    // depend on this property -- so don't delete just yet.
+    if (--x->_refcount == 0) {
+	x->_r_next = to_delete;
+	to_delete = x;
+    }
+
+    if (r && next) {
+	x = next;
+	values = false;
+	goto retry;
+    }
+
+    while ((x = to_delete)) {
+	to_delete = x->_r_next;
+	delete x;
+    }
+}
+
 void simple_event::trigger_all_for_remove() {
     for (simple_event *e = this; e; e = e->_r_next)
 	e->_r = 0;
     for (simple_event *e = this; e; e = e->_r_next)
-	e->postcomplete(true);
+	if (simple_event *t = e->_at_trigger)
+	    t->simple_trigger(false);
 }
 
 void simple_event::trigger_for_unuse() {
 #if TAMER_DEBUG
     assert(_r && _refcount == 0);
 #endif
-    abstract_rendezvous *r = _r;
-    _r = 0;
-    message::event_prematurely_dereferenced(this, r);
-    r->complete(this, false);
+    message::event_prematurely_dereferenced(this, _r);
+    _refcount = 2;		// to prevent a recursive call to unuse
+    simple_trigger(false);
+    _refcount = 0;		// restore old _refcount
 }
 
 
@@ -75,8 +114,7 @@ class distribute_rendezvous : public abstract_rendezvous { public:
 	}
     }
 
-    void complete(simple_event *e, bool) {
-	e->precomplete();
+    void do_complete(simple_event *e, bool) {
 	while (_es.size() && !_es.back())
 	    _es.pop_back();
 	if (!_es.size() || !e->rid()) {
@@ -85,7 +123,6 @@ class distribute_rendezvous : public abstract_rendezvous { public:
 		i->trigger();
 	    delete this;
 	}
-	e->postcomplete();
     }
 
   private:

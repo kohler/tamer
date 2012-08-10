@@ -52,11 +52,11 @@ class sigcancel_rendezvous : public rendezvous<> { public:
 	e->initialize(this, sig_installing);
     }
 
-    void complete(tamerpriv::simple_event *e, bool values) {
+    void do_complete(tamerpriv::simple_event *e, bool values) {
 	uintptr_t rid = e->rid();
 	if (!sig_handlers[rid] && sigismember(&sig_dispatching, rid) == 0)
 	    tamer_sigaction(rid, SIG_DFL);
-	rendezvous<>::complete(e, values);
+	rendezvous<>::do_complete(e, values);
     }
 
 };

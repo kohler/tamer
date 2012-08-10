@@ -32,15 +32,13 @@ class with_helper_rendezvous : public abstract_rendezvous { public:
 	e->initialize(this, 0);
     }
 
-    void complete(simple_event *e, bool) {
-	e->precomplete();
+    void do_complete(simple_event *, bool) {
 	if (*_e) {
 	    *_s0 = _v0;
 	    _e->simple_trigger(false);
 	    _e = 0;
 	} else
 	    *_s0 = int();
-	e->postcomplete();
 	delete this;
     }
 
@@ -74,10 +72,8 @@ class bind_rendezvous : public abstract_rendezvous { public:
 	e->initialize(this, 0);
     }
 
-    void complete(simple_event *e, bool) {
-	e->precomplete();
+    void do_complete(simple_event *, bool) {
 	_e.trigger(_v0);
-	e->postcomplete();
 	delete this;
     }
 
@@ -108,13 +104,11 @@ class map_rendezvous : public abstract_rendezvous { public:
 	e->initialize(this, 0);
     }
 
-    void complete(simple_event *e, bool values) {
-	e->precomplete();
+    void do_complete(simple_event *, bool values) {
 	if (values)
 	    _e.trigger(_f(_s0));
 	else if (_e)
 	    _e.unblocker().trigger();
-	e->postcomplete();
 	delete this;
     }
 
@@ -151,12 +145,10 @@ template <typename F> class function_rendezvous : public abstract_rendezvous { p
 	e->initialize(this, 0);
     }
 
-    void complete(simple_event *e, bool) {
-	e->precomplete();
+    void do_complete(simple_event *, bool) {
 	// in case _f() refers to an event on this rendezvous:
 	remove_all();
 	_f();
-	e->postcomplete();
 	delete this;
     }
 

@@ -403,10 +403,7 @@ void driver_tamer::once()
 		t_[0] = t_[nt_];
 		timer_reheapify_from(0);
 	    }
-	    if (*trigger)
-		trigger->simple_trigger(false);
-	    else
-		tamerpriv::simple_event::unuse_clean(trigger);
+	    trigger->simple_trigger(false);
 	}
     }
 
