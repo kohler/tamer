@@ -49,7 +49,11 @@ void simple_event::simple_trigger(bool values) {
 	if (x->_r_next)
 	    x->_r_next->_r_pprev = x->_r_pprev;
 
-	r->do_complete(x, values);
+	if (r->rtype_ == rgather) {
+	    if (!r->_events)
+		r->unblock();
+	} else
+	    r->do_complete(x, values);
     }
 
     // Important to keep an event in memory until all its at_triggers are
@@ -93,7 +97,8 @@ void simple_event::trigger_for_unuse() {
 
 class distribute_rendezvous : public abstract_rendezvous { public:
 
-    distribute_rendezvous() {
+    distribute_rendezvous()
+	: abstract_rendezvous(rnormal, rdefault) {
     }
 
     ~distribute_rendezvous() {

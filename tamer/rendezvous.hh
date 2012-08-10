@@ -112,7 +112,7 @@ class rendezvous : public tamerpriv::abstract_rendezvous { public:
 
 template <typename I0, typename I1>
 inline rendezvous<I0, I1>::rendezvous(rendezvous_flags flags)
-    : abstract_rendezvous(flags)
+    : abstract_rendezvous(flags, tamerpriv::rdefault)
 {
 }
 
@@ -180,7 +180,7 @@ class rendezvous<I0, void> : public tamerpriv::abstract_rendezvous { public:
 
 template <typename I0>
 inline rendezvous<I0, void>::rendezvous(rendezvous_flags flags)
-    : abstract_rendezvous(flags)
+    : abstract_rendezvous(flags, tamerpriv::rdefault)
 {
 }
 
@@ -245,7 +245,7 @@ class rendezvous<uintptr_t> : public tamerpriv::abstract_rendezvous { public:
 };
 
 inline rendezvous<uintptr_t>::rendezvous(rendezvous_flags flags)
-    : abstract_rendezvous(flags), _nwaiting(0)
+    : abstract_rendezvous(flags, tamerpriv::rdefault), _nwaiting(0)
 {
 }
 
@@ -359,7 +359,8 @@ template <>
 class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 
     rendezvous(rendezvous_flags flags = rnormal)
-	: abstract_rendezvous(flags), _nwaiting(0), _nready(0) {
+	: abstract_rendezvous(flags, tamerpriv::rdefault),
+	  _nwaiting(0), _nready(0) {
     }
 
     inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
@@ -404,21 +405,22 @@ class rendezvous<void> : public tamerpriv::abstract_rendezvous { public:
 };
 
 
-class gather_rendezvous : public rendezvous<> { public:
+class gather_rendezvous : public tamerpriv::abstract_rendezvous { public:
 
-    gather_rendezvous(tamerpriv::tamer_closure *c)
-	: linked_closure_(c) {
+    inline gather_rendezvous(tamerpriv::tamer_closure *c)
+	: abstract_rendezvous(rnormal, tamerpriv::rgather), linked_closure_(c) {
     }
 
     inline tamerpriv::tamer_closure *linked_closure() const {
 	return linked_closure_;
     }
 
-    inline void do_complete(tamerpriv::simple_event *e, bool) {
-	_nwaiting--;
-	_nready++;
-	if (_nwaiting == 0)
-	    unblock();
+    inline bool has_waiting() const {
+	return _events;
+    }
+
+    inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
+	e->initialize(this, 1);
     }
 
   private:

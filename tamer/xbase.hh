@@ -134,15 +134,24 @@ class simple_event { public:
 };
 
 
-class abstract_rendezvous { public:
+enum rendezvous_type {
+    rdefault,
+    rgather
+};
 
-    abstract_rendezvous(rendezvous_flags flags = rnormal)
-	: _events(0), _blocked_closure(0), _flags(flags) {
+class abstract_rendezvous {
+  public:
+    abstract_rendezvous(rendezvous_flags flags, rendezvous_type rtype)
+	: _events(0), _blocked_closure(0),
+	  rtype_(rtype), is_volatile_(flags == rvolatile) {
     }
 
     virtual inline ~abstract_rendezvous();
 
-    virtual void do_complete(simple_event *e, bool values) = 0;
+    virtual void do_complete(simple_event *e, bool values) {
+	assert(0);
+	(void) e, (void) values;
+    }
 
     virtual inline void clear();
 
@@ -150,12 +159,11 @@ class abstract_rendezvous { public:
 	return false;
     }
 
-    bool is_volatile() const {
-	return _flags == rvolatile;
+    inline bool is_volatile() const {
+	return is_volatile_;
     }
-
-    void set_volatile(bool v) {
-	_flags = (v ? rvolatile : rnormal);
+    inline void set_volatile(bool v) {
+	is_volatile_ = v;
     }
 
     virtual tamer_closure *linked_closure() const {
@@ -201,11 +209,11 @@ class abstract_rendezvous { public:
 	return r;
     }
 
-  private:
-
+  protected:
     simple_event *_events;
     tamer_closure *_blocked_closure;
-    rendezvous_flags _flags;
+    uint8_t rtype_;
+    bool is_volatile_;
     abstract_rendezvous *unblocked_next_;
 
     static abstract_rendezvous *unblocked;
@@ -213,14 +221,14 @@ class abstract_rendezvous { public:
     static inline abstract_rendezvous *unblocked_sentinel() {
 	return reinterpret_cast<abstract_rendezvous *>(uintptr_t(1));
     }
-    void hard_free();
 
+  private:
     abstract_rendezvous(const abstract_rendezvous &);
     abstract_rendezvous &operator=(const abstract_rendezvous &);
+    void hard_free();
 
     friend class simple_event;
     friend class driver;
-
 };
 
 

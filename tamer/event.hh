@@ -726,6 +726,12 @@ inline event<T0, T1, T2, T3> make_event(rendezvous<> &r, T0 &s0, T1 &s1, T2 &s2,
     return event<T0, T1, T2, T3>(r, s0, s1, s2, s3);
 }
 
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_event(gather_rendezvous &r, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
+{
+    return event<T0, T1, T2, T3>(r, s0, s1, s2, s3);
+}
+
 template <typename I0, typename I1, typename J0, typename J1, typename T0, typename T1, typename T2>
 inline event<T0, T1, T2> make_event(rendezvous<I0, I1> &r, const J0 &i0, const J1 &i1, T0 &s0, T1 &s1, T2 &s2)
 {
@@ -740,6 +746,12 @@ inline event<T0, T1, T2> make_event(rendezvous<I0> &r, const J0 &i0, T0 &s0, T1 
 
 template <typename T0, typename T1, typename T2>
 inline event<T0, T1, T2> make_event(rendezvous<> &r, T0 &s0, T1 &s1, T2 &s2)
+{
+    return event<T0, T1, T2>(r, s0, s1, s2);
+}
+
+template <typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> make_event(gather_rendezvous &r, T0 &s0, T1 &s1, T2 &s2)
 {
     return event<T0, T1, T2>(r, s0, s1, s2);
 }
@@ -762,6 +774,12 @@ inline event<T0, T1> make_event(rendezvous<> &r, T0 &s0, T1 &s1)
     return event<T0, T1>(r, s0, s1);
 }
 
+template <typename T0, typename T1>
+inline event<T0, T1> make_event(gather_rendezvous &r, T0 &s0, T1 &s1)
+{
+    return event<T0, T1>(r, s0, s1);
+}
+
 template <typename I0, typename I1, typename J0, typename J1, typename T0>
 inline event<T0> make_event(rendezvous<I0, I1> &r, const J0 &i0, const J1 &i1, T0 &s0)
 {
@@ -780,6 +798,12 @@ inline event<T0> make_event(rendezvous<> &r, T0 &s0)
     return event<T0>(r, s0);
 }
 
+template <typename T0>
+inline event<T0> make_event(gather_rendezvous &r, T0 &s0)
+{
+    return event<T0>(r, s0);
+}
+
 template <typename I0, typename I1, typename J0, typename J1>
 inline event<> make_event(rendezvous<I0, I1> &r, const J0 &i0, const J1 &i1)
 {
@@ -793,6 +817,11 @@ inline event<> make_event(rendezvous<I0> &r, const J0 &i0)
 }
 
 inline event<> make_event(rendezvous<> &r)
+{
+    return event<>(r);
+}
+
+inline event<> make_event(gather_rendezvous &r)
 {
     return event<>(r);
 }

@@ -23,7 +23,7 @@ namespace tamerpriv {
 class with_helper_rendezvous : public abstract_rendezvous { public:
 
     with_helper_rendezvous(simple_event *e, int *s0, int v0)
-	: _e(e), _s0(s0), _v0(v0) {
+	: abstract_rendezvous(rnormal, rdefault), _e(e), _s0(s0), _v0(v0) {
     }
     ~with_helper_rendezvous() {
     }
@@ -63,7 +63,7 @@ template <typename T0, typename V0>
 class bind_rendezvous : public abstract_rendezvous { public:
 
     bind_rendezvous(const event<T0> &e, const V0 &v0)
-	: _e(e), _v0(v0) {
+	: abstract_rendezvous(rnormal, rdefault), _e(e), _v0(v0) {
     }
     ~bind_rendezvous() {
     }
@@ -92,7 +92,7 @@ template <typename S0, typename T0, typename F>
 class map_rendezvous : public abstract_rendezvous { public:
 
     map_rendezvous(const F &f, const event<T0> &e)
-	: _f(f), _e(e) {
+	: abstract_rendezvous(rnormal, rdefault), _f(f), _e(e) {
     }
     ~map_rendezvous() {
     }
@@ -124,19 +124,19 @@ class map_rendezvous : public abstract_rendezvous { public:
 template <typename F> class function_rendezvous : public abstract_rendezvous { public:
 
     function_rendezvous()
-	: _f() {
+	: abstract_rendezvous(rnormal, rdefault), _f() {
     }
     template <typename X>
     function_rendezvous(X x)
-	: _f(x) {
+	: abstract_rendezvous(rnormal, rdefault), _f(x) {
     }
     template <typename X, typename Y>
     function_rendezvous(X x, Y y)
-	: _f(x, y) {
+	: abstract_rendezvous(rnormal, rdefault), _f(x, y) {
     }
     template <typename X, typename Y, typename Z>
     function_rendezvous(X x, Y y, Z z)
-	: _f(x, y, z) {
+	: abstract_rendezvous(rnormal, rdefault), _f(x, y, z) {
     }
     ~function_rendezvous() {
     }
