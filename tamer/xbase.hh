@@ -282,7 +282,7 @@ inline abstract_rendezvous::~abstract_rendezvous() {
 inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
 {
 #if TAMER_DEBUG
-    assert(_r != 0);
+    assert(_r == 0 && r != 0);
 #endif
     // NB this can be called before e has been fully initialized.
     _r = r;
