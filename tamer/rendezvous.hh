@@ -13,7 +13,7 @@
  * notice is a summary of the Tamer LICENSE file; the license in that file is
  * legally binding.
  */
-#include <tamer/util.hh>
+#include <cassert>
 #include <tamer/xbase.hh>
 namespace tamer {
 

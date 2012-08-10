@@ -13,6 +13,7 @@
  */
 #include "config.h"
 #include <tamer/tamer.hh>
+#include <tamer/util.hh>
 #include <sys/select.h>
 #include <stdio.h>
 #include <unistd.h>

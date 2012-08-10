@@ -14,6 +14,7 @@
  * legally binding.
  */
 #include <tamer/event.hh>
+#include <tamer/util.hh>
 namespace tamer {
 
 /** @file <tamer/lock.hh>
