@@ -20,34 +20,19 @@
 namespace tamer {
 namespace tamerpriv {
 
-class with_helper_rendezvous : public abstract_rendezvous { public:
-
+class with_helper_rendezvous : public functional_rendezvous {
+  public:
     with_helper_rendezvous(simple_event *e, int *s0, int v0)
-	: abstract_rendezvous(rnormal, rdefault), _e(e), _s0(s0), _v0(v0) {
+	: functional_rendezvous(hook), e_(e), s0_(s0), v0_(v0) {
     }
-    ~with_helper_rendezvous() {
-    }
-
     void add(simple_event *e) {
 	e->initialize(this, 0);
     }
-
-    void do_complete(simple_event *, bool) {
-	if (*_e) {
-	    *_s0 = _v0;
-	    _e->simple_trigger(false);
-	    _e = 0;
-	} else
-	    *_s0 = int();
-	delete this;
-    }
-
   private:
-
-    simple_event *_e;
-    int *_s0;
-    int _v0;
-
+    simple_event *e_;		// An e_->at_trigger() holds a reference
+    int *s0_;			// to this rendezvous, so this rendezvous
+    int v0_;			// doesn't hold a reference to e_.
+    static void hook(functional_rendezvous *fr, simple_event *, bool);
 };
 
 template <typename T0, typename T1, typename T2, typename T3>
@@ -60,107 +45,101 @@ inline event<> with_helper(event<T0, T1, T2, T3> e, int *result, int value) {
 
 
 template <typename T0, typename V0>
-class bind_rendezvous : public abstract_rendezvous { public:
-
+class bind_rendezvous : public functional_rendezvous {
+  public:
     bind_rendezvous(const event<T0> &e, const V0 &v0)
-	: abstract_rendezvous(rnormal, rdefault), _e(e), _v0(v0) {
+	: functional_rendezvous(hook), e_(e), v0_(v0) {
     }
-    ~bind_rendezvous() {
-    }
-
     void add(simple_event *e) {
 	e->initialize(this, 0);
     }
-
-    void do_complete(simple_event *, bool) {
-	_e.trigger(_v0);
-	delete this;
-    }
-
   private:
-
-    event<T0> _e;
-    V0 _v0;
-
+    event<T0> e_;
+    V0 v0_;
+    static void hook(functional_rendezvous *, simple_event *, bool);
 };
+
+template <typename T0, typename V0>
+void bind_rendezvous<T0, V0>::hook(functional_rendezvous *fr,
+				   simple_event *, bool) {
+    bind_rendezvous *self = static_cast<bind_rendezvous *>(fr);
+    self->e_.trigger(self->v0_);
+    delete self;
+}
 
 
 template <typename T> struct decay { public: typedef T type; };
 template <typename T0, typename T1> struct decay<T0(T1)> { public: typedef T0 (*type)(T1); };
 
 template <typename S0, typename T0, typename F>
-class map_rendezvous : public abstract_rendezvous { public:
-
+class map_rendezvous : public functional_rendezvous {
+  public:
     map_rendezvous(const F &f, const event<T0> &e)
-	: abstract_rendezvous(rnormal, rdefault), _f(f), _e(e) {
-    }
-    ~map_rendezvous() {
+	: functional_rendezvous(hook), f_(f), e_(e) {
     }
     S0 &slot0() {
-	return _s0;
+	return s0_;
     }
-
     void add(simple_event *e) {
 	e->initialize(this, 0);
     }
-
-    void do_complete(simple_event *, bool values) {
-	if (values)
-	    _e.trigger(_f(_s0));
-	else if (_e)
-	    _e.unblocker().trigger();
-	delete this;
-    }
-
   private:
-
-    S0 _s0;
-    typename decay<F>::type _f;
-    event<T0> _e;
-
+    S0 s0_;
+    typename decay<F>::type f_;
+    event<T0> e_;
+    static void hook(functional_rendezvous *, simple_event *, bool);
 };
 
+template <typename S0, typename T0, typename F>
+void map_rendezvous<S0, T0, F>::hook(functional_rendezvous *fr,
+				     simple_event *, bool values) {
+    map_rendezvous *self = static_cast<map_rendezvous *>(fr);
+    if (values)
+	self->e_.trigger(self->f_(self->s0_));
+    else if (self->e_)
+	self->e_.unblocker().trigger();
+    delete self;
+}
 
-template <typename F> class function_rendezvous : public abstract_rendezvous { public:
 
+template <typename F>
+class function_rendezvous : public functional_rendezvous {
+  public:
     function_rendezvous()
-	: abstract_rendezvous(rnormal, rdefault), _f() {
+	: functional_rendezvous(hook), f_() {
     }
     template <typename X>
     function_rendezvous(X x)
-	: abstract_rendezvous(rnormal, rdefault), _f(x) {
+	: functional_rendezvous(hook), f_(x) {
     }
     template <typename X, typename Y>
     function_rendezvous(X x, Y y)
-	: abstract_rendezvous(rnormal, rdefault), _f(x, y) {
+	: functional_rendezvous(hook), f_(x, y) {
     }
     template <typename X, typename Y, typename Z>
     function_rendezvous(X x, Y y, Z z)
-	: abstract_rendezvous(rnormal, rdefault), _f(x, y, z) {
+	: functional_rendezvous(hook), f_(x, y, z) {
     }
-    ~function_rendezvous() {
-    }
-
     void add(simple_event *e) {
 	e->initialize(this, 0);
     }
-
-    void do_complete(simple_event *, bool) {
-	// in case _f() refers to an event on this rendezvous:
-	remove_waiting();
-	_f();
-	delete this;
-    }
-
   private:
-
-    F _f;
-
+    F f_;
+    static void hook(functional_rendezvous *, simple_event *, bool);
 };
 
+template <typename F>
+void function_rendezvous<F>::hook(functional_rendezvous *fr,
+				  simple_event *, bool) {
+    function_rendezvous *self = static_cast<function_rendezvous *>(fr);
+    // in case _f() refers to an event on this rendezvous:
+    self->remove_waiting();
+    self->f_();
+    delete self;
+}
 
-inline void simple_event::at_trigger(simple_event *x, const event<> &at_e)
-{
+
+inline void simple_event::at_trigger(simple_event *x, const event<> &at_e) {
     if (!at_e)
 	/* ignore */;
     else if (!x || !x->_r) {

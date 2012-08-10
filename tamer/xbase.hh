@@ -139,9 +139,10 @@ class simple_event { public:
 
 
 enum rendezvous_type {
-    rdefault,
     rgather,
-    rexplicit
+    rexplicit,
+    rfunctional,
+    rdistribute
 };
 
 class abstract_rendezvous {
@@ -150,16 +151,10 @@ class abstract_rendezvous {
 	: waiting_(0), _blocked_closure(0),
 	  rtype_(rtype), is_volatile_(flags == rvolatile) {
     }
+    inline ~abstract_rendezvous();
 
-    virtual inline ~abstract_rendezvous();
-
-    virtual void do_complete(simple_event *e, bool values) {
-	assert(0);
-	(void) e, (void) values;
-    }
-
-    virtual bool is_distribute() const {
-	return false;
+    inline rendezvous_type rtype() const {
+	return rendezvous_type(rtype_);
     }
 
     inline bool is_volatile() const {
@@ -169,11 +164,8 @@ class abstract_rendezvous {
 	is_volatile_ = v;
     }
 
-    virtual tamer_closure *linked_closure() const {
-	return _blocked_closure;
-    }
-
-    tamer_closure *blocked_closure() const {
+    tamer_closure *linked_closure() const;
+    inline tamer_closure *blocked_closure() const {
 	return _blocked_closure;
     }
 
@@ -222,7 +214,6 @@ class abstract_rendezvous {
 
 class explicit_rendezvous : public abstract_rendezvous {
   public:
-
     inline explicit_rendezvous(rendezvous_flags flags)
 	: abstract_rendezvous(flags, rexplicit),
 	  ready_(), ready_ptail_(&ready_) {
@@ -234,7 +225,6 @@ class explicit_rendezvous : public abstract_rendezvous {
 #endif
 
   protected:
-
     simple_event *ready_;
     simple_event **ready_ptail_;
 
@@ -255,9 +245,25 @@ class explicit_rendezvous : public abstract_rendezvous {
     }
 
     friend class simple_event;
-
 };
 
+class functional_rendezvous : public abstract_rendezvous {
+  public:
+    typedef void (*hook_type)(functional_rendezvous *r,
+			      simple_event *e, bool values);
+
+    inline functional_rendezvous(hook_type f)
+	: abstract_rendezvous(rnormal, rfunctional), f_(f) {
+    }
+    inline ~functional_rendezvous() {
+	remove_waiting();
+    }
+
+  private:
+    hook_type f_;
+
+    friend class simple_event;
+};
 
 typedef void (*tamer_closure_activator)(tamer_closure *);
 
@@ -326,7 +332,9 @@ inline void abstract_rendezvous::remove_waiting() {
 
 inline abstract_rendezvous::~abstract_rendezvous() {
     // take all events off this rendezvous and call their triggerers
-    remove_waiting();
+#if TAMER_DEBUG
+    assert(!waiting_);
+#endif
     if (_blocked_closure)
 	hard_free();
 }

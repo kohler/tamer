@@ -390,10 +390,6 @@ class gather_rendezvous : public tamerpriv::abstract_rendezvous { public:
 	clear();
     }
 
-    inline tamerpriv::tamer_closure *linked_closure() const {
-	return linked_closure_;
-    }
-
     inline void clear() {
 	remove_waiting();
     }
@@ -409,6 +405,7 @@ class gather_rendezvous : public tamerpriv::abstract_rendezvous { public:
   private:
 
     tamerpriv::tamer_closure *linked_closure_;
+    friend class tamerpriv::abstract_rendezvous;
 
 };
 

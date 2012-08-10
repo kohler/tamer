@@ -36,29 +36,28 @@ static int tamer_sigaction(int signo, tamer_sighandler handler)
 namespace {
 
 volatile sig_atomic_t sig_active[NSIG];
-volatile int sig_installing = -1;
 event<> sig_handlers[NSIG];
 sigset_t sig_dispatching;
 
-class sigcancel_rendezvous : public rendezvous<> { public:
-
-    sigcancel_rendezvous() {
+class sigcancel_rendezvous : public tamerpriv::functional_rendezvous { public:
+    sigcancel_rendezvous()
+	: functional_rendezvous(hook) {
 	sigemptyset(&sig_dispatching);
     }
-
-    inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
-	assert(sig_installing >= 0 && sig_installing < NSIG);
-	e->initialize(this, sig_installing);
+    inline void add(tamerpriv::simple_event *e, int sig) TAMER_NOEXCEPT {
+	assert(sig >= 0 && sig < NSIG);
+	e->initialize(this, sig);
     }
-
-    void do_complete(tamerpriv::simple_event *e, bool values) {
-	uintptr_t rid = e->rid();
-	if (!sig_handlers[rid] && sigismember(&sig_dispatching, rid) == 0)
-	    tamer_sigaction(rid, SIG_DFL);
-	rendezvous<>::do_complete(e, values);
-    }
-
+    static void hook(tamerpriv::functional_rendezvous *fr,
+		     tamerpriv::simple_event *e, bool values);
 };
+
+void sigcancel_rendezvous::hook(tamerpriv::functional_rendezvous *,
+				tamerpriv::simple_event *e, bool) {
+    uintptr_t rid = e->rid();
+    if (!sig_handlers[rid] && sigismember(&sig_dispatching, rid) == 0)
+	tamer_sigaction(rid, SIG_DFL);
+}
 
 sigcancel_rendezvous sigcancelr;
 
@@ -105,8 +104,7 @@ void driver::at_signal(int signo, const event<> &trigger)
 	    tamer_sigaction(signo, tamer_signal_handler);
     }
 
-    sig_installing = signo;
-    sig_handlers[signo].at_trigger(make_event(sigcancelr));
+    sig_handlers[signo].at_trigger(event<>(sigcancelr, signo));
 }
 
 

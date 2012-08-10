@@ -33,6 +33,47 @@ void abstract_rendezvous::hard_free() {
     _blocked_closure->tamer_activator_(_blocked_closure);
 }
 
+tamer_closure *abstract_rendezvous::linked_closure() const {
+    if (rtype_ == rgather) {
+	const gather_rendezvous *gr = static_cast<const gather_rendezvous *>(this);
+	return gr->linked_closure_;
+    } else
+	return _blocked_closure;
+}
+
+
+class distribute_rendezvous : public abstract_rendezvous {
+  public:
+    distribute_rendezvous()
+	: abstract_rendezvous(rnormal, rdistribute) {
+    }
+    void add(simple_event *e, uintptr_t rid) {
+	e->initialize(this, rid);
+    }
+    void add_distribute(const event<> &e) {
+	if (e) {
+	    es_.push_back(e);
+	    es_.back().at_trigger(event<>(*this, 1));
+	}
+    }
+    void complete(simple_event *e);
+  private:
+    std::vector<event<> > es_;
+};
+
+void distribute_rendezvous::complete(simple_event *e) {
+    while (es_.size() && !es_.back())
+	es_.pop_back();
+    if (!es_.size() || !e->rid()) {
+	remove_waiting();
+	for (std::vector<event<> >::iterator i = es_.begin();
+	     i != es_.end();
+	     ++i)
+	    i->trigger();
+	delete this;
+    }
+}
+
 
 void simple_event::simple_trigger(bool values) {
     simple_event *x = this;
@@ -59,8 +100,13 @@ void simple_event::simple_trigger(bool values) {
 	    er->ready_ptail_ = &x->_r_next;
 	    x->_r_next = 0;
 	    er->unblock();
-	} else
-	    r->do_complete(x, values);
+	} else if (r->rtype_ == rfunctional) {
+	    functional_rendezvous *fr = static_cast<functional_rendezvous *>(r);
+	    fr->f_(fr, x, values);
+	} else if (r->rtype_ == rdistribute) {
+	    distribute_rendezvous *dr = static_cast<distribute_rendezvous *>(r);
+	    dr->complete(x);
+	}
     }
 
     // Important to keep an event in memory until all its at_triggers are
@@ -105,48 +151,6 @@ void simple_event::trigger_for_unuse() {
 }
 
 
-class distribute_rendezvous : public abstract_rendezvous { public:
-
-    distribute_rendezvous()
-	: abstract_rendezvous(rnormal, rdefault) {
-    }
-
-    ~distribute_rendezvous() {
-    }
-
-    void add(simple_event *e, uintptr_t rid) {
-	e->initialize(this, rid);
-    }
-
-    bool is_distribute() const {
-	return true;
-    }
-
-    void add_distribute(const event<> &e) {
-	if (e) {
-	    _es.push_back(e);
-	    _es.back().at_trigger(event<>(*this, 1));
-	}
-    }
-
-    void do_complete(simple_event *e, bool) {
-	while (_es.size() && !_es.back())
-	    _es.pop_back();
-	if (!_es.size() || !e->rid()) {
-	    remove_waiting();
-	    for (std::vector<event<> >::iterator i = _es.begin(); i != _es.end(); ++i)
-		i->trigger();
-	    delete this;
-	}
-    }
-
-  private:
-
-    std::vector<event<> > _es;
-
-};
-
-
 event<> hard_distribute(const event<> &e1, const event<> &e2) {
     if (e1.empty())
 	return e2;
@@ -154,7 +158,8 @@ event<> hard_distribute(const event<> &e1, const event<> &e2) {
 	return e1;
     else {
 	abstract_rendezvous *r = e1.__get_simple()->rendezvous();
-	if (r->is_distribute() && e1.__get_simple()->refcount() == 1
+	if (r->rtype() == rdistribute
+	    && e1.__get_simple()->refcount() == 1
 	    && e1.__get_simple()->has_at_trigger()) {
 	    // safe to reuse e1
 	    distribute_rendezvous *d = static_cast<distribute_rendezvous *>(r);

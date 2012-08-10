@@ -1,5 +1,5 @@
-// -*- mode: c++ -*-
-/* Copyright (c) 2012, Eddie Kohler
+/* Copyright (c) 2007-2012, Eddie Kohler
+ * Copyright (c) 2007, Regents of the University of California
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -11,29 +11,22 @@
  * notice is a summary of the Tamer LICENSE file; the license in that file is
  * legally binding.
  */
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <signal.h>
+#include "config.h"
 #include <tamer/tamer.hh>
-#include <tamer/adapter.hh>
+#include <tamer/xadapter.hh>
+namespace tamer {
+namespace tamerpriv {
 
-int loops = 5000000;
-int n;
-
-tamed void asap(tamer::event<> e) {
-    tvars { int i, r; }
-    for (i = 0; i < loops; ++i)
-	twait { tamer::at_asap(tamer::with_timeout(1, make_event(), r)); }
-    e.trigger();
+void with_helper_rendezvous::hook(functional_rendezvous *fr,
+				  simple_event *, bool) {
+    with_helper_rendezvous *self = static_cast<with_helper_rendezvous *>(fr);
+    if (*self->e_) {
+	*self->s0_ = self->v0_;
+	self->e_->simple_trigger(false);
+	self->e_ = 0;
+    } else
+	*self->s0_ = int();
+    delete self;
 }
 
-int main(int, char **) {
-    tamer::initialize();
-    tamer::rendezvous<> r;
-    tamer::event<> e = make_event(r);
-    asap(e);
-    while (e)
-	tamer::once();
-    tamer::cleanup();
-}
+}}
