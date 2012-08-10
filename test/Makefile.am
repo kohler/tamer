@@ -16,6 +16,7 @@ LIBEVENT_LIBS = @LIBEVENT_LIBS@
 MALLOC_LIBS = @MALLOC_LIBS@
 
 INCLUDES = -I$(top_srcdir) -I$(top_builddir)
+DEFS = -DTAMER_DEBUG
 
 TAMER = ../compiler/tamer
 .tt.cc: $(TAMER)
