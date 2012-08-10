@@ -301,13 +301,9 @@ AC_ARG_WITH([malloc],
 if test \( "$tamer_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
 	-o \( "$tamer_malloc" = jemalloc -a -z "$have_jemalloc" \); then
     AC_MSG_ERROR([$tamer_malloc not found])
-elif test "$tamer_malloc" = yes -o "$tamer_malloc" = default; then
-    AC_MSG_CHECKING([for malloc library])
-    if test -n "$have_jemalloc"; then tamer_malloc=jemalloc;
-    elif test -n "$have_tcmalloc_minimal"; then tamer_malloc=tcmalloc;
-    else tamer_malloc=malloc; fi
-    AC_MSG_RESULT([$tamer_malloc])
-elif test "$tamer_malloc" = no -o "$tamer_malloc" = malloc -o -z "$tamer_malloc"; then
+elif test "$tamer_malloc" = yes -o "$tamer_malloc" = default \
+	-o "$tamer_malloc" = no -o "$tamer_malloc" = malloc \
+	-o -z "$tamer_malloc"; then
     tamer_malloc=malloc
 elif test "$tamer_malloc" = jemalloc -o "$tamer_malloc" = tcmalloc; then
     :
