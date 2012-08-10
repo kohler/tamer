@@ -21,12 +21,19 @@ namespace tamer {
  *  loop.
  */
 
-/** @brief  Initializes the Tamer event loop.
+/** @brief  Initialize the Tamer event loop.
  *
  *  Must be called at least once before any primitive Tamer events are
  *  registered.
  */
 void initialize();
+
+/** @brief  Clean up the Tamer event loop.
+ *
+ *  Delete the driver. Should not be called unless all Tamer objects are
+ *  deleted.
+ */
+void cleanup();
 
 /** @brief  Fetches Tamer's current time.
  *  @return  Current timestamp.

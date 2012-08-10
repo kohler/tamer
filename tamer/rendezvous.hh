@@ -34,7 +34,7 @@ namespace tamer {
 template <typename I0, typename I1>
 class rendezvous : public tamerpriv::abstract_rendezvous { public:
 
-    /** @brief  Default constructor creates a fresh rendezvous.
+    /** @brief  Construct rendezvous.
      *  @param  flags  tamer::rnormal (default) or tamer::rvolatile
      *
      *  Pass tamer::rvolatile as the @a flags parameter to create a volatile

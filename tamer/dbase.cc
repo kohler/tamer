@@ -32,6 +32,12 @@ void initialize()
 	driver::main = driver::make_tamer();
 }
 
+void cleanup()
+{
+    delete driver::main;
+    driver::main = 0;
+}
+
 void driver::at_delay(double delay, const event<> &e)
 {
     if (delay <= 0)
