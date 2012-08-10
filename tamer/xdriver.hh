@@ -39,6 +39,7 @@ class driver { public:
     void at_delay(double delay, const event<> &e);
     inline void at_delay_sec(int delay, const event<> &e);
     inline void at_delay_msec(int delay, const event<> &e);
+    inline void at_delay_usec(int delay, const event<> &e);
 
     static void at_signal(int signo, const event<> &e);
 
@@ -115,6 +116,17 @@ inline void driver::at_delay_msec(int delay, const event<> &e) {
 	timeval tv;
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000;
+	at_delay(tv, e);
+    }
+}
+
+inline void driver::at_delay_usec(int delay, const event<> &e) {
+    if (delay <= 0)
+	at_asap(e);
+    else {
+	timeval tv;
+	tv.tv_sec = delay / 1000000;
+	tv.tv_usec = delay % 1000000;
 	at_delay(tv, e);
     }
 }

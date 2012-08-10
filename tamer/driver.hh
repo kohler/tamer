@@ -144,6 +144,17 @@ inline void at_delay_msec(int delay, const event<> &e) {
     driver::main->at_delay_msec(delay, e);
 }
 
+/** @brief  Register event for a given delay.
+ *  @param  delay  Delay time in microseconds.
+ *  @param  e      Event.
+ *
+ *  Triggers @a e when @a delay microseconds have elapsed since @c now(), or
+ *  soon afterwards.
+ */
+inline void at_delay_usec(int delay, const event<> &e) {
+    driver::main->at_delay_usec(delay, e);
+}
+
 /** @brief  Register event for signal occurrence.
  *  @param  signo  Signal number.
  *  @param  e      Event.
