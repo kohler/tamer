@@ -26,8 +26,8 @@ class driver { public:
     // basic functions
     enum { fdread = 0, fdwrite = 1 }; // the order is important
     virtual void at_fd(int fd, int action, const event<int> &e) = 0;
-    virtual void at_time(const timeval &expiry, const event<> &e) = 0;
-    virtual void at_asap(const event<> &e);
+    virtual void store_time(const timeval &expiry, tamerpriv::simple_event *se) = 0;
+    virtual void store_asap(tamerpriv::simple_event *se);
     virtual void kill_fd(int fd);
 
     inline void at_fd_read(int fd, const event<int> &e);
@@ -35,13 +35,28 @@ class driver { public:
     inline void at_fd_write(int fd, const event<int> &e);
     inline void at_fd_write(int fd, const event<> &e);
 
+    inline void at_time(const timeval &expiry, const event<> &e);
     inline void at_delay(timeval delay, const event<> &e);
     void at_delay(double delay, const event<> &e);
     inline void at_delay_sec(int delay, const event<> &e);
     inline void at_delay_msec(int delay, const event<> &e);
     inline void at_delay_usec(int delay, const event<> &e);
 
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    inline void at_time(const timeval &expiry, event<> &&e);
+    inline void at_delay(timeval delay, event<> &&e);
+    void at_delay(double delay, event<> &&e);
+    inline void at_delay_sec(int delay, event<> &&e);
+    inline void at_delay_msec(int delay, event<> &&e);
+    inline void at_delay_usec(int delay, event<> &&e);
+#endif
+
     static void at_signal(int signo, const event<> &e);
+
+    inline void at_asap(const event<> &e);
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    inline void at_asap(event<> &&e);
+#endif
 
     timeval now;
     inline void set_now();
@@ -67,9 +82,33 @@ inline driver::driver() {
 inline driver::~driver() {
 }
 
-inline void driver::at_asap(const event<> &e) {
-    at_time(now, e);
+inline void driver::at_time(const timeval &expiry, const event<> &e) {
+    tamerpriv::simple_event *se = e.__get_simple();
+    tamerpriv::simple_event::use(se);
+    store_time(expiry, se);
 }
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+inline void driver::at_time(const timeval &expiry, event<> &&e) {
+    store_time(expiry, e.__take_simple());
+}
+#endif
+
+inline void driver::store_asap(tamerpriv::simple_event *se) {
+    at_time(now, event<>::__make(se));
+}
+
+inline void driver::at_asap(const event<> &e) {
+    tamerpriv::simple_event *se = e.__get_simple();
+    tamerpriv::simple_event::use(se);
+    store_asap(se);
+}
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+inline void driver::at_asap(event<> &&e) {
+    store_asap(e.__take_simple());
+}
+#endif
 
 inline void driver::kill_fd(int) {
 }
@@ -130,6 +169,45 @@ inline void driver::at_delay_usec(int delay, const event<> &e) {
 	at_delay(tv, e);
     }
 }
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+inline void driver::at_delay(timeval delay, event<> &&e) {
+    timeradd(&delay, &now, &delay);
+    at_time(delay, TAMER_MOVE(e));
+}
+
+inline void driver::at_delay_sec(int delay, event<> &&e) {
+    if (delay <= 0)
+	at_asap(TAMER_MOVE(e));
+    else {
+	timeval tv = now;
+	tv.tv_sec += delay;
+	at_time(tv, TAMER_MOVE(e));
+    }
+}
+
+inline void driver::at_delay_msec(int delay, event<> &&e) {
+    if (delay <= 0)
+	at_asap(TAMER_MOVE(e));
+    else {
+	timeval tv;
+	tv.tv_sec = delay / 1000;
+	tv.tv_usec = (delay % 1000) * 1000;
+	at_delay(tv, TAMER_MOVE(e));
+    }
+}
+
+inline void driver::at_delay_usec(int delay, event<> &&e) {
+    if (delay <= 0)
+	at_asap(TAMER_MOVE(e));
+    else {
+	timeval tv;
+	tv.tv_sec = delay / 1000000;
+	tv.tv_usec = delay % 1000000;
+	at_delay(tv, TAMER_MOVE(e));
+    }
+}
+#endif
 
 }
 #endif /* TAMER_XDRIVER_HH */

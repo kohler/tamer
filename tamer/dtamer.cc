@@ -28,8 +28,8 @@ class driver_tamer : public driver { public:
     ~driver_tamer();
 
     virtual void at_fd(int fd, int action, const event<int> &e);
-    virtual void at_time(const timeval &expiry, const event<> &e);
-    virtual void at_asap(const event<> &e);
+    virtual void store_time(const timeval &expiry, tamerpriv::simple_event *se);
+    virtual void store_asap(tamerpriv::simple_event *se);
     virtual void kill_fd(int fd);
 
     virtual bool empty();
@@ -42,9 +42,9 @@ class driver_tamer : public driver { public:
 	timeval expiry_;
 	unsigned order_;
 	tamerpriv::simple_event *trigger_;
-	ttimer(const timeval &expiry, unsigned order, const event<> &trigger)
-	    : expiry_(expiry), order_(order), trigger_(trigger.__get_simple()) {
-	    tamerpriv::simple_event::use(trigger_);
+	ttimer(const timeval &expiry, unsigned order,
+	       tamerpriv::simple_event *trigger)
+	    : expiry_(expiry), order_(order), trigger_(trigger) {
 	}
 	bool operator>(const ttimer &x) const {
 	    if (expiry_.tv_sec != x.expiry_.tv_sec)
@@ -294,24 +294,23 @@ void driver_tamer::kill_fd(int fd)
 	    pprev = &t->next;
 }
 
-void driver_tamer::at_time(const timeval &expiry, const event<> &e)
+void driver_tamer::store_time(const timeval &expiry,
+			      tamerpriv::simple_event *se)
 {
-    if (nt_ == tcap_)
-	expand_timers();
-    if (e) {
-	(void) new(static_cast<void *>(&t_[nt_])) ttimer(expiry, ++torder_, e);
+    if (se) {
+	if (nt_ == tcap_)
+	    expand_timers();
+	(void) new(static_cast<void *>(&t_[nt_])) ttimer(expiry, ++torder_, se);
 	++nt_;
 	timer_reheapify_from(nt_ - 1);
     }
 }
 
-void driver_tamer::at_asap(const event<> &e)
+void driver_tamer::store_asap(tamerpriv::simple_event *se)
 {
-    if (e) {
+    if (se) {
 	if (asap_tail_ - asap_head_ == asap_capmask_ + 1)
 	    expand_asap();
-	tamerpriv::simple_event *se = e.__get_simple();
-	tamerpriv::simple_event::use(se);
 	asap_[asap_tail_ & asap_capmask_] = se;
 	++asap_tail_;
     }

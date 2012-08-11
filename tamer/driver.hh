@@ -107,6 +107,13 @@ inline void at_time(const timeval &expiry, const event<> &e) {
     driver::main->at_time(expiry, e);
 }
 
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+/** @overload */
+inline void at_time(const timeval &expiry, event<> &&e) {
+    driver::main->at_time(expiry, TAMER_MOVE(e));
+}
+#endif
+
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time.
  *  @param  e      Event.
@@ -117,6 +124,13 @@ inline void at_time(const timeval &expiry, const event<> &e) {
 inline void at_delay(const timeval &delay, const event<> &e) {
     driver::main->at_delay(delay, e);
 }
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+/** @overload */
+inline void at_delay(const timeval &delay, event<> &&e) {
+    driver::main->at_delay(delay, TAMER_MOVE(e));
+}
+#endif
 
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time.
@@ -129,6 +143,13 @@ inline void at_delay(double delay, const event<> &e) {
     driver::main->at_delay(delay, e);
 }
 
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+/** @overload */
+inline void at_delay(double delay, event<> &&e) {
+    driver::main->at_delay(delay, TAMER_MOVE(e));
+}
+#endif
+
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time.
  *  @param  e      Event.
@@ -139,6 +160,13 @@ inline void at_delay(double delay, const event<> &e) {
 inline void at_delay_sec(int delay, const event<> &e) {
     driver::main->at_delay_sec(delay, e);
 }
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+/** @overload */
+inline void at_delay_sec(int delay, event<> &&e) {
+    driver::main->at_delay_sec(delay, TAMER_MOVE(e));
+}
+#endif
 
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time in milliseconds.
@@ -151,6 +179,13 @@ inline void at_delay_msec(int delay, const event<> &e) {
     driver::main->at_delay_msec(delay, e);
 }
 
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+/** @overload */
+inline void at_delay_msec(int delay, event<> &&e) {
+    driver::main->at_delay_msec(delay, TAMER_MOVE(e));
+}
+#endif
+
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time in microseconds.
  *  @param  e      Event.
@@ -161,6 +196,13 @@ inline void at_delay_msec(int delay, const event<> &e) {
 inline void at_delay_usec(int delay, const event<> &e) {
     driver::main->at_delay_usec(delay, e);
 }
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+/** @overload */
+inline void at_delay_usec(int delay, event<> &&e) {
+    driver::main->at_delay_usec(delay, TAMER_MOVE(e));
+}
+#endif
 
 /** @brief  Register event for signal occurrence.
  *  @param  signo  Signal number.
@@ -181,6 +223,13 @@ inline void at_signal(int signo, const event<> &e) {
 inline void at_asap(const event<> &e) {
     driver::main->at_asap(e);
 }
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+/** @overload */
+inline void at_asap(event<> &&e) {
+    driver::main->at_asap(TAMER_MOVE(e));
+}
+#endif
 
 }
 #endif /* TAMER_DRIVER_HH */

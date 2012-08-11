@@ -27,7 +27,7 @@ class driver_libevent : public driver { public:
     ~driver_libevent();
 
     virtual void at_fd(int fd, int action, const event<int> &e);
-    virtual void at_time(const timeval &expiry, const event<> &e);
+    virtual void store_time(const timeval &expiry, tamerpriv::simple_event *se);
     virtual void kill_fd(int fd);
 
     virtual bool empty();
@@ -173,7 +173,8 @@ void driver_libevent::kill_fd(int fd)
 	    ep = &e->next;
 }
 
-void driver_libevent::at_time(const timeval &expiry, const event<> &trigger)
+void driver_libevent::store_time(const timeval &expiry,
+				 tamerpriv::simple_event *se)
 {
     if (!_efree)
 	expand_events();
@@ -185,7 +186,8 @@ void driver_libevent::at_time(const timeval &expiry, const event<> &trigger)
     timersub(&timeout, &now, &timeout);
     evtimer_add(&e->libevent, &timeout);
 
-    (void) new(static_cast<void *>(&e->trigger)) event<int>(trigger, no_slot());
+    tamerpriv::simple_event::use(se);
+    (void) new(static_cast<void *>(&e->trigger)) event<int>(event<>::__make(se), no_slot());
     e->next = _etimer;
     e->pprev = &_etimer;
     if (_etimer)
