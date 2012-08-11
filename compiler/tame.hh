@@ -321,6 +321,7 @@ public:
 
     const type_t &type() const { return _type; }
     const str &name() const { return _name; }
+    str name(bool move) const;
     type_t *get_type() { return &_type; }
     const type_t *get_type_const() const { return &_type; }
     bool is_complete() const { return _type.is_complete (); }
@@ -332,7 +333,7 @@ public:
     void set_type(const type_t &t) { _type = t; }
     initializer_t *initializer() const { return _initializer; }
 
-    str param_decl(const str &prfx) const;
+    str param_decl(bool move) const;
     str decl() const;
     str decl(const str &prfx, int n) const;
     str decl(const str &prfx) const;
@@ -363,7 +364,7 @@ public:
     size_t size() const { return _vars.size (); }
     bool add(const var_t &v);
     void declarations(strbuf &b, const str &padding) const;
-    void paramlist(strbuf &b, list_mode_t m, str prfx = "") const;
+    void paramlist(strbuf &b, list_mode_t m, bool move) const;
     void initialize(strbuf &b, bool self) const;
     bool exists(const str &n) const { return _tab.find(n) != _tab.end(); }
     const var_t *lookup(const str &n) const;
