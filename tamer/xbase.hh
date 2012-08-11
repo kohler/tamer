@@ -45,8 +45,9 @@ namespace tamerpriv {
 
 class simple_event;
 class abstract_rendezvous;
-class tamer_closure;
-class tamer_debug_closure;
+class explicit_rendezvous;
+struct tamer_closure;
+struct tamer_debug_closure;
 class distribute_rendezvous;
 event<> hard_distribute(const event<> &e1, const event<> &e2);
 

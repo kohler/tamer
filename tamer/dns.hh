@@ -46,8 +46,8 @@ namespace tamer {
 namespace dns {
 
 class packet_imp;
-class reply_imp;
-class search_list_imp;
+struct reply_imp;
+struct search_list_imp;
 class request_imp;
 class nameserver_imp;
 
