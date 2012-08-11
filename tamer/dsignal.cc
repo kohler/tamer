@@ -49,11 +49,11 @@ class sigcancel_rendezvous : public tamerpriv::functional_rendezvous { public:
 	e->initialize(this, sig);
     }
     static void hook(tamerpriv::functional_rendezvous *fr,
-		     tamerpriv::simple_event *e, bool values);
+		     tamerpriv::simple_event *e, bool values) TAMER_NOEXCEPT;
 };
 
 void sigcancel_rendezvous::hook(tamerpriv::functional_rendezvous *,
-				tamerpriv::simple_event *e, bool) {
+				tamerpriv::simple_event *e, bool) TAMER_NOEXCEPT {
     uintptr_t rid = e->rid();
     if (!sig_handlers[rid] && sigismember(&sig_dispatching, rid) == 0)
 	tamer_sigaction(rid, SIG_DFL);

@@ -55,38 +55,38 @@ class simple_event { public:
 
     // DO NOT derive from this class!
 
-    inline simple_event()
+    inline simple_event() TAMER_NOEXCEPT
 	: _refcount(1), _r(0) {
     }
 
     template <typename R, typename I0, typename I1>
-    inline simple_event(R &r, const I0 &i0, const I1 &i1);
+    inline simple_event(R &r, const I0 &i0, const I1 &i1) TAMER_NOEXCEPT;
 
     template <typename R, typename I0>
-    inline simple_event(R &r, const I0 &i0);
+    inline simple_event(R &r, const I0 &i0) TAMER_NOEXCEPT;
 
     template <typename R>
-    inline simple_event(R &r);
+    inline simple_event(R &r) TAMER_NOEXCEPT;
 
 #if TAMER_DEBUG
-    inline ~simple_event() {
+    inline ~simple_event() TAMER_NOEXCEPT {
 	assert(!_r);
     }
 #endif
 
-    static inline void use(simple_event *e) {
+    static inline void use(simple_event *e) TAMER_NOEXCEPT {
 	if (e)
 	    ++e->_refcount;
     }
 
-    static inline void unuse(simple_event *e) {
+    static inline void unuse(simple_event *e) TAMER_NOEXCEPT {
 	if (e && --e->_refcount == 0) {
 	    if (e->_r)
 		e->trigger_for_unuse();
 	    delete e;
 	}
     }
-    static inline void unuse_clean(simple_event *e) {
+    static inline void unuse_clean(simple_event *e) TAMER_NOEXCEPT {
 	if (e && --e->_refcount == 0)
 	    delete e;
     }
@@ -112,8 +112,8 @@ class simple_event { public:
     inline void initialize(abstract_rendezvous *r, uintptr_t rid);
 
     inline void simple_trigger(bool values);
-    static void simple_trigger(simple_event *x, bool values);
-    void trigger_list_for_remove();
+    static void simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT;
+    void trigger_list_for_remove() TAMER_NOEXCEPT;
 
     static inline void at_trigger(simple_event *x, const event<> &at_e);
 
@@ -133,7 +133,7 @@ class simple_event { public:
     simple_event(const simple_event &);
     simple_event &operator=(const simple_event &);
 
-    void trigger_for_unuse();
+    void trigger_for_unuse() TAMER_NOEXCEPT;
 
     friend class explicit_rendezvous;
 
@@ -153,7 +153,7 @@ class abstract_rendezvous {
 	: waiting_(0), _blocked_closure(0),
 	  rtype_(rtype), is_volatile_(flags == rvolatile) {
     }
-    inline ~abstract_rendezvous();
+    inline ~abstract_rendezvous() TAMER_NOEXCEPT;
 
     inline rendezvous_type rtype() const {
 	return rendezvous_type(rtype_);
@@ -203,7 +203,7 @@ class abstract_rendezvous {
 	return reinterpret_cast<abstract_rendezvous *>(uintptr_t(1));
     }
 
-    inline void remove_waiting();
+    inline void remove_waiting() TAMER_NOEXCEPT;
 
   private:
     abstract_rendezvous(const abstract_rendezvous &);
@@ -251,10 +251,11 @@ class explicit_rendezvous : public abstract_rendezvous {
 
 class functional_rendezvous : public abstract_rendezvous {
   public:
-    typedef void (*hook_type)(functional_rendezvous *r,
+    typedef void (*hook_type)(functional_rendezvous *fr,
 			      simple_event *e, bool values);
 
-    inline functional_rendezvous(hook_type f)
+    inline functional_rendezvous(void (*f)(functional_rendezvous *fr,
+					   simple_event *e, bool values) TAMER_NOEXCEPT)
 	: abstract_rendezvous(rnormal, rfunctional), f_(f) {
     }
     inline ~functional_rendezvous() {
@@ -262,7 +263,8 @@ class functional_rendezvous : public abstract_rendezvous {
     }
 
   private:
-    hook_type f_;
+    void (*f_)(functional_rendezvous *r,
+	       simple_event *e, bool values) TAMER_NOEXCEPT;
 
     friend class simple_event;
 };
@@ -325,14 +327,14 @@ void event_prematurely_dereferenced(simple_event *e, abstract_rendezvous *r);
 }
 
 
-inline void abstract_rendezvous::remove_waiting() {
+inline void abstract_rendezvous::remove_waiting() TAMER_NOEXCEPT {
     if (waiting_) {
 	waiting_->trigger_list_for_remove();
 	waiting_ = 0;
     }
 }
 
-inline abstract_rendezvous::~abstract_rendezvous() {
+inline abstract_rendezvous::~abstract_rendezvous() TAMER_NOEXCEPT {
     // take all events off this rendezvous and call their triggerers
 #if TAMER_DEBUG
     assert(!waiting_);

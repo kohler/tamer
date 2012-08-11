@@ -32,7 +32,7 @@ class with_helper_rendezvous : public functional_rendezvous {
     simple_event *e_;		// An e_->at_trigger() holds a reference
     int *s0_;			// to this rendezvous, so this rendezvous
     int v0_;			// doesn't hold a reference to e_.
-    static void hook(functional_rendezvous *fr, simple_event *, bool);
+    static void hook(functional_rendezvous *fr, simple_event *, bool) TAMER_NOEXCEPT;
 };
 
 template <typename T0, typename T1, typename T2, typename T3>
@@ -87,12 +87,12 @@ class map_rendezvous : public functional_rendezvous {
     S0 s0_;
     typename decay<F>::type f_;
     event<T0> e_;
-    static void hook(functional_rendezvous *, simple_event *, bool);
+    static void hook(functional_rendezvous *, simple_event *, bool) TAMER_NOEXCEPT;
 };
 
 template <typename S0, typename T0, typename F>
 void map_rendezvous<S0, T0, F>::hook(functional_rendezvous *fr,
-				     simple_event *, bool values) {
+				     simple_event *, bool values) TAMER_NOEXCEPT {
     map_rendezvous *self = static_cast<map_rendezvous *>(fr);
     if (values)
 	self->e_.trigger(self->f_(self->s0_));
@@ -125,12 +125,12 @@ class function_rendezvous : public functional_rendezvous {
     }
   private:
     F f_;
-    static void hook(functional_rendezvous *, simple_event *, bool);
+    static void hook(functional_rendezvous *, simple_event *, bool) TAMER_NOEXCEPT;
 };
 
 template <typename F>
 void function_rendezvous<F>::hook(functional_rendezvous *fr,
-				  simple_event *, bool) {
+				  simple_event *, bool) TAMER_NOEXCEPT {
     function_rendezvous *self = static_cast<function_rendezvous *>(fr);
     // in case _f() refers to an event on this rendezvous:
     self->remove_waiting();

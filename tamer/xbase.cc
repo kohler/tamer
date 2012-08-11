@@ -56,12 +56,12 @@ class distribute_rendezvous : public abstract_rendezvous {
 	    es_.back().at_trigger(event<>(*this, 1));
 	}
     }
-    void complete(simple_event *e);
+    void complete(simple_event *e) TAMER_NOEXCEPT;
   private:
     std::vector<event<> > es_;
 };
 
-void distribute_rendezvous::complete(simple_event *e) {
+void distribute_rendezvous::complete(simple_event *e) TAMER_NOEXCEPT {
     while (es_.size() && !es_.back())
 	es_.pop_back();
     if (!es_.size() || !e->rid()) {
@@ -75,7 +75,7 @@ void distribute_rendezvous::complete(simple_event *e) {
 }
 
 
-void simple_event::simple_trigger(simple_event *x, bool values) {
+void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
     if (!x)
 	return;
     simple_event *to_delete = 0;
@@ -130,7 +130,7 @@ void simple_event::simple_trigger(simple_event *x, bool values) {
     }
 }
 
-void simple_event::trigger_list_for_remove() {
+void simple_event::trigger_list_for_remove() TAMER_NOEXCEPT {
     // first, remove all the events (in case an at_trigger() is also waiting
     // on this rendezvous)
     for (simple_event *e = this; e; e = e->_r_next)
@@ -141,7 +141,7 @@ void simple_event::trigger_list_for_remove() {
 	    t->simple_trigger(false);
 }
 
-void simple_event::trigger_for_unuse() {
+void simple_event::trigger_for_unuse() TAMER_NOEXCEPT {
 #if TAMER_DEBUG
     assert(_r && _refcount == 0);
 #endif

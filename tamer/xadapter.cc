@@ -18,7 +18,7 @@ namespace tamer {
 namespace tamerpriv {
 
 void with_helper_rendezvous::hook(functional_rendezvous *fr,
-				  simple_event *, bool) {
+				  simple_event *, bool) TAMER_NOEXCEPT {
     with_helper_rendezvous *self = static_cast<with_helper_rendezvous *>(fr);
     if (*self->e_) {
 	*self->s0_ = self->v0_;
