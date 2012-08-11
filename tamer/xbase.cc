@@ -75,8 +75,9 @@ void distribute_rendezvous::complete(simple_event *e) {
 }
 
 
-void simple_event::simple_trigger(bool values) {
-    simple_event *x = this;
+void simple_event::simple_trigger(simple_event *x, bool values) {
+    if (!x)
+	return;
     simple_event *to_delete = 0;
 
  retry:
@@ -191,4 +192,25 @@ void event_prematurely_dereferenced(simple_event *, abstract_rendezvous *r) {
 
 }
 
-}}
+}
+
+
+
+void rendezvous<uintptr_t>::clear()
+{
+    abstract_rendezvous::remove_waiting();
+    explicit_rendezvous::remove_ready();
+}
+
+void rendezvous<>::clear()
+{
+    abstract_rendezvous::remove_waiting();
+    explicit_rendezvous::remove_ready();
+}
+
+void gather_rendezvous::clear()
+{
+    abstract_rendezvous::remove_waiting();
+}
+
+}

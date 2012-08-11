@@ -113,7 +113,8 @@ inline rendezvous<I0, I1>::rendezvous(rendezvous_flags flags)
 template <typename I0, typename I1>
 inline rendezvous<I0, I1>::~rendezvous()
 {
-    clear();
+    if (waiting_ || ready_)
+	clear();
 }
 
 template <typename I0, typename I1>
@@ -157,7 +158,7 @@ class rendezvous<I0, void> : public tamerpriv::explicit_rendezvous { public:
     inline ~rendezvous();
 
     inline bool join(I0 &);
-    inline void clear();
+    void clear();
 
     inline bool has_ready() const {
 	return ready_;
@@ -182,7 +183,8 @@ inline rendezvous<I0, void>::rendezvous(rendezvous_flags flags)
 template <typename I0>
 inline rendezvous<I0, void>::~rendezvous()
 {
-    clear();
+    if (waiting_ || ready_)
+	clear();
 }
 
 template <typename I0>
@@ -205,7 +207,7 @@ inline bool rendezvous<I0, void>::join(I0 &i0)
 }
 
 template <typename I0>
-inline void rendezvous<I0, void>::clear()
+void rendezvous<I0, void>::clear()
 {
     for (tamerpriv::simple_event *e = waiting_; e; e = e->next())
 	delete reinterpret_cast<I0 *>(e->rid());
@@ -233,7 +235,7 @@ class rendezvous<uintptr_t> : public tamerpriv::explicit_rendezvous { public:
     }
 
     inline bool join(uintptr_t &);
-    inline void clear();
+    void clear();
 
     inline void add(tamerpriv::simple_event *e, uintptr_t i0) TAMER_NOEXCEPT;
 
@@ -246,7 +248,8 @@ inline rendezvous<uintptr_t>::rendezvous(rendezvous_flags flags)
 
 inline rendezvous<uintptr_t>::~rendezvous()
 {
-    clear();
+    if (waiting_ || ready_)
+	clear();
 }
 
 inline void rendezvous<uintptr_t>::add(tamerpriv::simple_event *e, uintptr_t i0) TAMER_NOEXCEPT
@@ -261,12 +264,6 @@ inline bool rendezvous<uintptr_t>::join(uintptr_t &i0)
 	return true;
     } else
 	return false;
-}
-
-inline void rendezvous<uintptr_t>::clear()
-{
-    abstract_rendezvous::remove_waiting();
-    explicit_rendezvous::remove_ready();
 }
 
 
@@ -349,7 +346,8 @@ class rendezvous<void> : public tamerpriv::explicit_rendezvous { public:
 	: explicit_rendezvous(flags) {
     }
     inline ~rendezvous() {
-	clear();
+	if (waiting_ || ready_)
+	    clear();
     }
 
     inline bool has_ready() const {
@@ -369,10 +367,7 @@ class rendezvous<void> : public tamerpriv::explicit_rendezvous { public:
 	} else
 	    return false;
     }
-    inline void clear() {
-	abstract_rendezvous::remove_waiting();
-	explicit_rendezvous::remove_ready();
-    }
+    void clear();
 
     inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
 	e->initialize(this, 1);
@@ -387,12 +382,11 @@ class gather_rendezvous : public tamerpriv::abstract_rendezvous { public:
 	: abstract_rendezvous(rnormal, tamerpriv::rgather), linked_closure_(c) {
     }
     inline ~gather_rendezvous() {
-	clear();
+	if (waiting_)
+	    clear();
     }
 
-    inline void clear() {
-	remove_waiting();
-    }
+    void clear();
 
     inline bool has_waiting() const {
 	return waiting_;

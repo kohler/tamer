@@ -110,7 +110,8 @@ class simple_event { public:
 
     inline void initialize(abstract_rendezvous *r, uintptr_t rid);
 
-    void simple_trigger(bool values);
+    inline void simple_trigger(bool values);
+    static void simple_trigger(simple_event *x, bool values);
     void trigger_list_for_remove();
 
     static inline void at_trigger(simple_event *x, const event<> &at_e);
@@ -278,13 +279,13 @@ struct tamer_closure {
 template <typename T>
 class closure_owner {
   public:
-    closure_owner(T &c)
+    inline closure_owner(T &c)
 	: c_(&c) {
     }
-    ~closure_owner() {
+    inline ~closure_owner() {
 	delete c_;
     }
-    void reset() {
+    inline void reset() {
 	c_ = 0;
     }
   private:
@@ -294,14 +295,14 @@ class closure_owner {
 template <typename R>
 class rendezvous_owner {
   public:
-    rendezvous_owner(R &r)
+    inline rendezvous_owner(R &r)
 	: r_(&r) {
     }
-    ~rendezvous_owner() {
+    inline ~rendezvous_owner() {
 	if (r_)
 	    r_->clear();
     }
-    void reset() {
+    inline void reset() {
 	r_ = 0;
     }
   private:
@@ -365,6 +366,10 @@ inline uintptr_t simple_event::rid() const {
 
 inline simple_event *simple_event::next() const {
     return _r_next;
+}
+
+inline void simple_event::simple_trigger(bool values) {
+    simple_trigger(this, values);
 }
 
 inline void abstract_rendezvous::block(tamer_closure &c,

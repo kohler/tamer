@@ -620,10 +620,8 @@ class event<void, void, void, void> { public:
     }
 
     void trigger() {
-	if (_e && *_e) {
-	    _e->simple_trigger(false);
-	    _e = 0;
-	}
+	tamerpriv::simple_event::simple_trigger(_e, false);
+	_e = 0;
     }
 
     void operator()() {
