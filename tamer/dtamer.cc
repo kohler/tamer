@@ -13,7 +13,6 @@
  */
 #include "config.h"
 #include <tamer/tamer.hh>
-#include <tamer/util.hh>
 #include <sys/select.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -83,7 +82,10 @@ class driver_tamer : public driver { public:
     xfd_set *_fdset[4];
     int _fdset_cap;
 
-    tamerutil::debuffer<event<> > _asap;
+    tamerpriv::simple_event **asap_;
+    unsigned asap_head_;
+    unsigned asap_tail_;
+    unsigned asap_capmask_;
 
     int _fdcap;
     tfd_group *_fdgroup;
@@ -95,6 +97,7 @@ class driver_tamer : public driver { public:
     void timer_reheapify_from(int pos);
     void expand_fds();
     void cull_timers();
+    void expand_asap();
 
 };
 
@@ -102,6 +105,7 @@ class driver_tamer : public driver { public:
 driver_tamer::driver_tamer()
     : t_(0), nt_(0), tcap_(0), torder_(0),
       _fd(0), _nfds(0), _fdset_cap(sizeof(xfd_set) * 8),
+      asap_(0), asap_head_(0), asap_tail_(0), asap_capmask_(-1U),
       _fdcap(0), _fdgroup(0), _fdfree(0)
 {
     assert(FD_SETSIZE <= _fdset_cap);
@@ -119,6 +123,14 @@ driver_tamer::~driver_tamer()
     for (int i = 0; i < nt_; i++)
 	tamerpriv::simple_event::unuse(t_[i].trigger_);
     delete[] reinterpret_cast<char *>(t_);
+
+    // destroy all active asaps
+    while (asap_head_ != asap_tail_) {
+	tamerpriv::simple_event *e = asap_[asap_head_ & asap_capmask_];
+	tamerpriv::simple_event::unuse(e);
+	++asap_head_;
+    }
+    delete[] asap_;
 
     // destroy all active file descriptors
     while (_fd) {
@@ -148,6 +160,21 @@ void driver_tamer::expand_timers()
     delete[] reinterpret_cast<char *>(t_);
     t_ = nt;
     tcap_ = ntcap;
+}
+
+void driver_tamer::expand_asap()
+{
+    unsigned ncapmask =
+	(asap_capmask_ + 1 ? ((asap_capmask_ + 1) * 4 - 1) : 31);
+    tamerpriv::simple_event **na = new tamerpriv::simple_event *[ncapmask + 1];
+    unsigned i = 0;
+    for (unsigned x = asap_head_; x != asap_tail_; ++x, ++i)
+	na[i] = asap_[x & asap_capmask_];
+    delete[] asap_;
+    asap_ = na;
+    asap_capmask_ = ncapmask;
+    asap_head_ = 0;
+    asap_tail_ = i;
 }
 
 void driver_tamer::timer_reheapify_from(int pos)
@@ -280,7 +307,14 @@ void driver_tamer::at_time(const timeval &expiry, const event<> &e)
 
 void driver_tamer::at_asap(const event<> &e)
 {
-    _asap.push_back(e);
+    if (e) {
+	if (asap_tail_ - asap_head_ == asap_capmask_ + 1)
+	    expand_asap();
+	tamerpriv::simple_event *se = e.__get_simple();
+	tamerpriv::simple_event::use(se);
+	asap_[asap_tail_ & asap_capmask_] = se;
+	++asap_tail_;
+    }
 }
 
 void driver_tamer::cull_timers()
@@ -298,7 +332,7 @@ void driver_tamer::cull_timers()
 bool driver_tamer::empty()
 {
     cull_timers();
-    if (_asap.size()
+    if (asap_head_ != asap_tail_
 	|| nt_ != 0
 	|| sig_any_active
 	|| tamerpriv::abstract_rendezvous::has_unblocked()
@@ -312,7 +346,7 @@ void driver_tamer::once()
     // determine timeout
     cull_timers();
     struct timeval to, *toptr;
-    if (_asap.size()
+    if (asap_head_ != asap_tail_
 	|| (nt_ != 0 && !timercmp(&t_[0].expiry_, &now, >))
 	|| sig_any_active
 	|| tamerpriv::abstract_rendezvous::has_unblocked()) {
@@ -366,9 +400,10 @@ void driver_tamer::once()
 	dispatch_signals();
 
     // run asaps
-    while (event<> *e = _asap.front_ptr()) {
-	e->trigger();
-	_asap.pop_front();
+    while (asap_head_ != asap_tail_) {
+	tamerpriv::simple_event *se = asap_[asap_head_ & asap_capmask_];
+	++asap_head_;
+	se->simple_trigger(false);
     }
 
     // run file descriptors
