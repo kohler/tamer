@@ -87,9 +87,17 @@ event<> bind(event<T0> e, const V0 &v0) {
  *  triggers the result's unblocker.
  */
 template <typename T0>
-event<T0> unbind(const event<> &e) {
+inline event<T0> unbind(const event<> &e) {
     return event<T0>(e, no_slot());
 }
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+/** @overload */
+template <typename T0>
+inline event<T0> unbind(event<> &&e) {
+    return event<T0>(TAMER_MOVE(e), no_slot());
+}
+#endif
 
 /** @brief  Create an event that triggers another event with a mapped value.
  *  @param  e  Destination event taking T0 values.

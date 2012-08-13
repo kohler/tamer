@@ -22,7 +22,10 @@ template <typename I0=void, typename I1=void> class rendezvous;
 template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> class event;
 inline event<> distribute(const event<> &, const event<> &);
 inline event<> distribute(const event<> &, const event<> &, const event<> &);
-template <typename T0> event<T0> unbind(const event<> &);
+template <typename T0> inline event<T0> unbind(const event<> &e);
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+template <typename T0> inline event<T0> unbind(event<> &&e);
+#endif
 class driver;
 class explicit_rendezvous;
 class gather_rendezvous;
