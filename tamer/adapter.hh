@@ -29,24 +29,6 @@ const int overflow = -EOVERFLOW;
 const int closed = -EPIPE;
 }
 
-/** @brief  Create event that triggers @a e1 and @a e2 when triggered.
- *  @param  e1  First event.
- *  @param  e2  Second event.
- *  @return  Distributer event.
- *
- *  Triggering the returned event instantly triggers @a e1 and @a e2. The
- *  returned event is automatically triggered if @a e1 and @a e2 are both
- *  triggered separately.
- */
-inline event<> distribute(const event<> &e1, const event<> &e2) {
-    if (e1.empty())
-	return e2;
-    else if (e2.empty())
-	return e1;
-    else
-	return tamerpriv::hard_distribute(e1, e2);
-}
-
 /** @brief  Create event that triggers @a e1, @a e2, and @a e3 when triggered.
  *  @param  e1  First event.
  *  @param  e2  Second event.

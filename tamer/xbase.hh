@@ -20,10 +20,11 @@ namespace tamer {
 
 template <typename I0=void, typename I1=void> class rendezvous;
 template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> class event;
-inline event<> distribute(const event<> &, const event<> &);
-inline event<> distribute(const event<> &, const event<> &, const event<> &);
+event<> distribute(const event<> &e1, const event<> &e2);
+event<> distribute(const event<> &e1, const event<> &e2, const event<> &e3);
 template <typename T0> inline event<T0> unbind(const event<> &e);
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
+event<> distribute(event<> &&e1, event<> &&e2);
 template <typename T0> inline event<T0> unbind(event<> &&e);
 #endif
 class driver;
@@ -51,8 +52,6 @@ class abstract_rendezvous;
 class explicit_rendezvous;
 struct tamer_closure;
 struct tamer_debug_closure;
-class distribute_rendezvous;
-event<> hard_distribute(const event<> &e1, const event<> &e2);
 
 class simple_event { public:
 

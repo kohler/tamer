@@ -15,6 +15,49 @@
 #include <tamer/tamer.hh>
 #include <tamer/adapter.hh>
 #include <stdio.h>
+
+namespace {
+class distribute_rendezvous : public tamer::tamerpriv::abstract_rendezvous {
+  public:
+    distribute_rendezvous()
+	: abstract_rendezvous(tamer::rnormal, tamer::tamerpriv::rdistribute) {
+    }
+    void add(tamer::tamerpriv::simple_event *e, uintptr_t rid) {
+	e->initialize(this, rid);
+    }
+    void add_distribute(const tamer::event<> &e) {
+	if (e) {
+	    es_.push_back(e);
+	    es_.back().at_trigger(tamer::event<>(*this, 1));
+	}
+    }
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    void add_distribute(tamer::event<> &&e) {
+	if (e) {
+	    es_.push_back(TAMER_MOVE(e));
+	    es_.back().at_trigger(tamer::event<>(*this, 1));
+	}
+    }
+#endif
+    void complete(tamer::tamerpriv::simple_event *e) TAMER_NOEXCEPT;
+  private:
+    std::vector<tamer::event<> > es_;
+};
+
+void distribute_rendezvous::complete(tamer::tamerpriv::simple_event *e) TAMER_NOEXCEPT {
+    while (es_.size() && !es_.back())
+	es_.pop_back();
+    if (!es_.size() || !e->rid()) {
+	remove_waiting();
+	for (std::vector<tamer::event<> >::iterator i = es_.begin();
+	     i != es_.end();
+	     ++i)
+	    i->trigger();
+	delete this;
+    }
+}
+}
+
 namespace tamer {
 namespace tamerpriv {
 
@@ -39,39 +82,6 @@ tamer_closure *abstract_rendezvous::linked_closure() const {
 	return gr->linked_closure_;
     } else
 	return _blocked_closure;
-}
-
-
-class distribute_rendezvous : public abstract_rendezvous {
-  public:
-    distribute_rendezvous()
-	: abstract_rendezvous(rnormal, rdistribute) {
-    }
-    void add(simple_event *e, uintptr_t rid) {
-	e->initialize(this, rid);
-    }
-    void add_distribute(const event<> &e) {
-	if (e) {
-	    es_.push_back(e);
-	    es_.back().at_trigger(event<>(*this, 1));
-	}
-    }
-    void complete(simple_event *e) TAMER_NOEXCEPT;
-  private:
-    std::vector<event<> > es_;
-};
-
-void distribute_rendezvous::complete(simple_event *e) TAMER_NOEXCEPT {
-    while (es_.size() && !es_.back())
-	es_.pop_back();
-    if (!es_.size() || !e->rid()) {
-	remove_waiting();
-	for (std::vector<event<> >::iterator i = es_.begin();
-	     i != es_.end();
-	     ++i)
-	    i->trigger();
-	delete this;
-    }
 }
 
 
@@ -164,14 +174,41 @@ void simple_event::hard_at_trigger(simple_event *x, simple_event *at_e) {
 }
 
 
-event<> hard_distribute(const event<> &e1, const event<> &e2) {
+namespace message {
+
+void event_prematurely_dereferenced(simple_event *, abstract_rendezvous *r) {
+    tamer_closure *c = r->linked_closure();
+    if (r->is_volatile())
+	/* no error message */;
+    else if (c && int(c->tamer_block_position_) < 0) {
+	tamer_debug_closure *dc = static_cast<tamer_debug_closure *>(c);
+	fprintf(stderr, "%s:%d: avoided leak of active event\n",
+		dc->tamer_blocked_file_, dc->tamer_blocked_line_);
+    } else
+	fprintf(stderr, "avoided leak of active event\n");
+}
+
+} // namespace tamer::tamerpriv::message
+} // namespace tamer::tamerpriv
+
+
+/** @brief  Create event that triggers @a e1 and @a e2 when triggered.
+ *  @param  e1  First event.
+ *  @param  e2  Second event.
+ *  @return  Distributer event.
+ *
+ *  Triggering the returned event instantly triggers @a e1 and @a e2. The
+ *  returned event is automatically triggered if @a e1 and @a e2 are both
+ *  triggered separately.
+ */
+event<> distribute(const event<> &e1, const event<> &e2) {
     if (e1.empty())
 	return e2;
     else if (e2.empty())
 	return e1;
     else {
-	abstract_rendezvous *r = e1.__get_simple()->rendezvous();
-	if (r->rtype() == rdistribute
+	tamerpriv::abstract_rendezvous *r = e1.__get_simple()->rendezvous();
+	if (r->rtype() == tamerpriv::rdistribute
 	    && e1.__get_simple()->refcount() == 1
 	    && e1.__get_simple()->has_at_trigger()) {
 	    // safe to reuse e1
@@ -187,25 +224,31 @@ event<> hard_distribute(const event<> &e1, const event<> &e2) {
     }
 }
 
-
-namespace message {
-
-void event_prematurely_dereferenced(simple_event *, abstract_rendezvous *r) {
-    tamer_closure *c = r->linked_closure();
-    if (r->is_volatile())
-	/* no error message */;
-    else if (c && int(c->tamer_block_position_) < 0) {
-	tamer_debug_closure *dc = static_cast<tamer_debug_closure *>(c);
-	fprintf(stderr, "%s:%d: avoided leak of active event\n",
-		dc->tamer_blocked_file_, dc->tamer_blocked_line_);
-    } else
-	fprintf(stderr, "avoided leak of active event\n");
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+/** @overload */
+event<> distribute(event<> &&e1, event<> &&e2) {
+    if (e1.empty())
+	return e2;
+    else if (e2.empty())
+	return e1;
+    else {
+	tamerpriv::abstract_rendezvous *r = e1.__get_simple()->rendezvous();
+	if (r->rtype() == tamerpriv::rdistribute
+	    && e1.__get_simple()->refcount() == 1
+	    && e1.__get_simple()->has_at_trigger()) {
+	    // safe to reuse e1
+	    distribute_rendezvous *d = static_cast<distribute_rendezvous *>(r);
+	    d->add_distribute(TAMER_MOVE(e2));
+	    return e1;
+	} else {
+	    distribute_rendezvous *d = new distribute_rendezvous;
+	    d->add_distribute(TAMER_MOVE(e1));
+	    d->add_distribute(TAMER_MOVE(e2));
+	    return event<>(*d, 0);
+	}
+    }
 }
-
-}
-
-}
-
+#endif
 
 
 void rendezvous<uintptr_t>::clear()
@@ -225,4 +268,4 @@ void gather_rendezvous::clear()
     abstract_rendezvous::remove_waiting();
 }
 
-}
+} // namespace tamer
