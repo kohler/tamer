@@ -118,7 +118,7 @@ class simple_event { public:
     static void simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT;
     void trigger_list_for_remove() TAMER_NOEXCEPT;
 
-    static inline void at_trigger(simple_event *x, const event<> &at_e);
+    static inline void at_trigger(simple_event *x, simple_event *at_trigger);
 
     inline bool has_at_trigger() const {
 	return _r && _at_trigger && *_at_trigger;
@@ -137,6 +137,7 @@ class simple_event { public:
     simple_event &operator=(const simple_event &);
 
     void trigger_for_unuse() TAMER_NOEXCEPT;
+    static void hard_at_trigger(simple_event *x, simple_event *at_trigger);
 
     friend class explicit_rendezvous;
 

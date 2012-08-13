@@ -258,6 +258,11 @@ class event { public:
      */
     inline void at_trigger(const event<> &e);
 
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    /** @overload */
+    inline void at_trigger(event<> &&e);
+#endif
+
     /** @brief  Return a no-slot event for the same occurrence as @a e.
      *  @return  New event.
      *
@@ -402,6 +407,9 @@ class event<T0, T1, T2, void> { public:
     typedef const T2 &third_argument_type;
 
     inline void at_trigger(const event<> &e);
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    inline void at_trigger(event<> &&e);
+#endif
 
     inline event<> unblocker() const TAMER_NOEXCEPT;
     inline event<> bind_all() const TAMER_DEPRECATEDATTR;
@@ -508,6 +516,9 @@ class event<T0, T1, void, void>
     }
 
     inline void at_trigger(const event<> &e);
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    inline void at_trigger(event<> &&e);
+#endif
 
     inline event<> unblocker() const TAMER_NOEXCEPT;
     inline event<> bind_all() const TAMER_DEPRECATEDATTR;
@@ -612,6 +623,9 @@ class event<T0, void, void, void>
     }
 
     inline void at_trigger(const event<> &e);
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    inline void at_trigger(event<> &&e);
+#endif
 
     inline event<> unblocker() const TAMER_NOEXCEPT;
     inline event<> bind_all() const TAMER_DEPRECATEDATTR;
@@ -723,9 +737,16 @@ class event<void, void, void, void> { public:
 
     typedef void result_type;
 
-    void at_trigger(const event<> &e) {
-	tamerpriv::simple_event::at_trigger(_e, e);
+    inline void at_trigger(const event<> &e) {
+	tamerpriv::simple_event::use(e.__get_simple());
+	tamerpriv::simple_event::at_trigger(_e, e.__get_simple());
     }
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    inline void at_trigger(event<> &&e) {
+	tamerpriv::simple_event::at_trigger(_e, e.__take_simple());
+    }
+#endif
 
     event<> &unblocker() TAMER_NOEXCEPT {
 	return *this;
@@ -929,23 +950,49 @@ inline event<> make_event(gather_rendezvous &r)
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline void event<T0, T1, T2, T3>::at_trigger(const event<> &e) {
-    tamerpriv::simple_event::at_trigger(_e, e);
+    tamerpriv::simple_event::use(e.__get_simple());
+    tamerpriv::simple_event::at_trigger(_e, e.__get_simple());
 }
 
 template <typename T0, typename T1, typename T2>
 inline void event<T0, T1, T2>::at_trigger(const event<> &e) {
-    tamerpriv::simple_event::at_trigger(_e, e);
+    tamerpriv::simple_event::use(e.__get_simple());
+    tamerpriv::simple_event::at_trigger(_e, e.__get_simple());
 }
 
 template <typename T0, typename T1>
 inline void event<T0, T1>::at_trigger(const event<> &e) {
-    tamerpriv::simple_event::at_trigger(_e, e);
+    tamerpriv::simple_event::use(e.__get_simple());
+    tamerpriv::simple_event::at_trigger(_e, e.__get_simple());
 }
 
 template <typename T0>
 inline void event<T0>::at_trigger(const event<> &e) {
-    tamerpriv::simple_event::at_trigger(_e, e);
+    tamerpriv::simple_event::use(e.__get_simple());
+    tamerpriv::simple_event::at_trigger(_e, e.__get_simple());
 }
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+template <typename T0, typename T1, typename T2, typename T3>
+inline void event<T0, T1, T2, T3>::at_trigger(event<> &&e) {
+    tamerpriv::simple_event::at_trigger(_e, e.__take_simple());
+}
+
+template <typename T0, typename T1, typename T2>
+inline void event<T0, T1, T2>::at_trigger(event<> &&e) {
+    tamerpriv::simple_event::at_trigger(_e, e.__take_simple());
+}
+
+template <typename T0, typename T1>
+inline void event<T0, T1>::at_trigger(event<> &&e) {
+    tamerpriv::simple_event::at_trigger(_e, e.__take_simple());
+}
+
+template <typename T0>
+inline void event<T0>::at_trigger(event<> &&e) {
+    tamerpriv::simple_event::at_trigger(_e, e.__take_simple());
+}
+#endif
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<> event<T0, T1, T2, T3>::unblocker() const TAMER_NOEXCEPT {

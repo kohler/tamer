@@ -276,7 +276,7 @@ void driver_tamer::store_fd(int fd, int action, tamerpriv::simple_event *se,
 	if (fd >= _nfds)
 	    _nfds = fd + 1;
 	if (action <= fdwrite)
-	    tamerpriv::simple_event::at_trigger(se, make_event(_fdcancelr));
+	    tamerpriv::simple_event::at_trigger(se, make_event(_fdcancelr).__take_simple());
     }
 }
 

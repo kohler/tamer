@@ -151,6 +151,18 @@ void simple_event::trigger_for_unuse() TAMER_NOEXCEPT {
     _refcount = 0;		// restore old _refcount
 }
 
+void simple_event::hard_at_trigger(simple_event *x, simple_event *at_e) {
+    if (!at_e || !*at_e)
+	/* ignore */;
+    else if (!x || !*x)
+	at_e->simple_trigger(false);
+    else
+	x->_at_trigger =
+	    tamer::distribute(event<>::__make(x->_at_trigger),
+			      event<>::__make(at_e))
+	    .__take_simple();
+}
+
 
 event<> hard_distribute(const event<> &e1, const event<> &e2) {
     if (e1.empty())

@@ -139,19 +139,11 @@ void function_rendezvous<F>::hook(functional_rendezvous *fr,
 }
 
 
-inline void simple_event::at_trigger(simple_event *x, const event<> &at_e) {
-    if (!at_e)
-	/* ignore */;
-    else if (!x || !x->_r) {
-	at_e._e->simple_trigger(false);
-	at_e._e = 0;
-    } else if (!x->_at_trigger) {
-	x->_at_trigger = at_e._e;
-	use(x->_at_trigger);
-    } else
-	x->_at_trigger =
-	    tamer::distribute(event<>::__make(x->_at_trigger), at_e)
-	    .__take_simple();
+inline void simple_event::at_trigger(simple_event *x, simple_event *at_e) {
+    if (x && *x && !x->_at_trigger && at_e)
+	x->_at_trigger = at_e;
+    else
+	hard_at_trigger(x, at_e);
 }
 
 }}
