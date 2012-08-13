@@ -26,7 +26,8 @@ class driver_libevent : public driver { public:
     driver_libevent();
     ~driver_libevent();
 
-    virtual void at_fd(int fd, int action, const event<int> &e);
+    virtual void store_fd(int fd, int action, tamerpriv::simple_event *se,
+			  int *slot);
     virtual void store_time(const timeval &expiry, tamerpriv::simple_event *se);
     virtual void kill_fd(int fd);
 
@@ -36,7 +37,8 @@ class driver_libevent : public driver { public:
 
     struct eevent {
 	::event libevent;
-	event<int> trigger;
+	tamerpriv::simple_event *se;
+	int *slot;
 	eevent *next;
 	eevent **pprev;
 	driver_libevent *driver;
@@ -64,8 +66,9 @@ extern "C" {
 void libevent_trigger(int, short, void *arg)
 {
     driver_libevent::eevent *e = static_cast<driver_libevent::eevent *>(arg);
-    e->trigger.trigger(0);
-    e->trigger.~event();
+    if (*e->se && e->slot)
+	*e->slot = 0;
+    e->se->simple_trigger(true);
     *e->pprev = e->next;
     if (e->next)
 	e->next->pprev = e->pprev;
@@ -101,12 +104,12 @@ driver_libevent::~driver_libevent()
 {
     // discard all active events
     while (_etimer) {
-	_etimer->trigger.~event();
+	_etimer->se->simple_trigger(false);
 	::event_del(&_etimer->libevent);
 	_etimer = _etimer->next;
     }
     while (_efd) {
-	_efd->trigger.~event();
+	_efd->se->simple_trigger(false);
 	if (_efd->libevent.ev_events)
 	    ::event_del(&_efd->libevent);
 	_efd = _efd->next;
@@ -135,25 +138,27 @@ void driver_libevent::expand_events()
     }
 }
 
-void driver_libevent::at_fd(int fd, int action, const event<int> &trigger)
+void driver_libevent::store_fd(int fd, int action,
+			       tamerpriv::simple_event *se, int *slot)
 {
     assert(fd >= 0);
     if (!_efree)
 	expand_events();
+    if (se) {
+	eevent *e = _efree;
+	_efree = e->next;
+	event_set(&e->libevent, fd, (action == fdwrite ? EV_WRITE : EV_READ),
+		  libevent_trigger, e);
+	event_add(&e->libevent, 0);
 
-    eevent *e = _efree;
-    _efree = e->next;
-    event_set(&e->libevent, fd, (action == fdwrite ? EV_WRITE : EV_READ),
-	      libevent_trigger, e);
-    event_add(&e->libevent, 0);
-
-    e->next = _efd;
-    e->pprev = &_efd;
-    if (_efd)
-	_efd->pprev = &e->next;
-    _efd = e;
-
-    (void) new(static_cast<void *>(&e->trigger)) event<int>(trigger);
+	e->se = se;
+	e->slot = slot;
+	e->next = _efd;
+	e->pprev = &_efd;
+	if (_efd)
+	    _efd->pprev = &e->next;
+	_efd = e;
+    }
 }
 
 void driver_libevent::kill_fd(int fd)
@@ -162,8 +167,9 @@ void driver_libevent::kill_fd(int fd)
     for (eevent *e = *ep; e; e = *ep)
 	if (e->libevent.ev_fd == fd) {
 	    event_del(&e->libevent);
-	    e->trigger.trigger(-ECANCELED);
-	    e->trigger.~event();
+	    if (*e->se && e->slot)
+		*e->slot = -ECANCELED;
+	    e->se->simple_trigger(true);
 	    *ep = e->next;
 	    if (*ep)
 		(*ep)->pprev = ep;
@@ -178,40 +184,42 @@ void driver_libevent::store_time(const timeval &expiry,
 {
     if (!_efree)
 	expand_events();
-    eevent *e = _efree;
-    _efree = e->next;
+    if (se) {
+	eevent *e = _efree;
+	_efree = e->next;
 
-    evtimer_set(&e->libevent, libevent_trigger, e);
-    timeval timeout = expiry;
-    timersub(&timeout, &now, &timeout);
-    evtimer_add(&e->libevent, &timeout);
+	evtimer_set(&e->libevent, libevent_trigger, e);
+	timeval timeout = expiry;
+	timersub(&timeout, &now, &timeout);
+	evtimer_add(&e->libevent, &timeout);
 
-    tamerpriv::simple_event::use(se);
-    (void) new(static_cast<void *>(&e->trigger)) event<int>(event<>::__make(se), no_slot());
-    e->next = _etimer;
-    e->pprev = &_etimer;
-    if (_etimer)
-	_etimer->pprev = &e->next;
-    _etimer = e;
+	e->se = se;
+	e->slot = 0;
+	e->next = _etimer;
+	e->pprev = &_etimer;
+	if (_etimer)
+	    _etimer->pprev = &e->next;
+	_etimer = e;
+    }
 }
 
 bool driver_libevent::empty()
 {
     // remove dead events
-    while (_etimer && !_etimer->trigger) {
+    while (_etimer && !*_etimer->se) {
 	eevent *e = _etimer;
 	::event_del(&e->libevent);
-	e->trigger.~event();
+	tamerpriv::simple_event::unuse_clean(_etimer->se);
 	if ((_etimer = e->next))
 	    _etimer->pprev = &_etimer;
 	e->next = _efree;
 	_efree = e;
     }
-    while (_efd && !_efd->trigger) {
+    while (_efd && !*_efd->se) {
 	eevent *e = _efd;
 	if (e->libevent.ev_events)
 	    ::event_del(&e->libevent);
-	e->trigger.~event();
+	tamerpriv::simple_event::unuse_clean(_etimer->se);
 	if ((_efd = e->next))
 	    _efd->pprev = &_efd;
 	e->next = _efree;

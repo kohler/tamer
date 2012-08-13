@@ -27,7 +27,8 @@ class driver_tamer : public driver { public:
     driver_tamer();
     ~driver_tamer();
 
-    virtual void at_fd(int fd, int action, const event<int> &e);
+    virtual void store_fd(int fd, int action, tamerpriv::simple_event *se,
+			  int *slot);
     virtual void store_time(const timeval &expiry, tamerpriv::simple_event *se);
     virtual void store_asap(tamerpriv::simple_event *se);
     virtual void kill_fd(int fd);
@@ -58,7 +59,8 @@ class driver_tamer : public driver { public:
     struct tfd {
 	int fd : 30;
 	unsigned action : 2;
-	event<int> e;
+	tamerpriv::simple_event *se;
+	int *slot;
 	tfd *next;
     };
 
@@ -126,15 +128,14 @@ driver_tamer::~driver_tamer()
 
     // destroy all active asaps
     while (asap_head_ != asap_tail_) {
-	tamerpriv::simple_event *e = asap_[asap_head_ & asap_capmask_];
-	tamerpriv::simple_event::unuse(e);
+	tamerpriv::simple_event::unuse(asap_[asap_head_ & asap_capmask_]);
 	++asap_head_;
     }
     delete[] asap_;
 
     // destroy all active file descriptors
     while (_fd) {
-	_fd->e.~event();
+	tamerpriv::simple_event::unuse(_fd->se);
 	_fd = _fd->next;
     }
 
@@ -239,11 +240,12 @@ void driver_tamer::expand_fds()
     }
 }
 
-void driver_tamer::at_fd(int fd, int action, const event<int> &trigger)
+void driver_tamer::store_fd(int fd, int action, tamerpriv::simple_event *se,
+			    int *slot)
 {
     if (!_fdfree)
 	expand_fds();
-    if (trigger) {
+    if (se && *se) {
 	tfd *t = _fdfree;
 	_fdfree = t->next;
 	t->next = _fd;
@@ -251,7 +253,8 @@ void driver_tamer::at_fd(int fd, int action, const event<int> &trigger)
 
 	t->fd = fd;
 	t->action = action;
-	(void) new(static_cast<void *>(&t->e)) event<int>(trigger);
+	t->se = se;
+	t->slot = slot;
 
 	if (fd >= FD_SETSIZE) {
 	    int ncap = _fdset_cap * 2;
@@ -273,7 +276,7 @@ void driver_tamer::at_fd(int fd, int action, const event<int> &trigger)
 	if (fd >= _nfds)
 	    _nfds = fd + 1;
 	if (action <= fdwrite)
-	    t->e.at_trigger(make_event(_fdcancelr));
+	    tamerpriv::simple_event::at_trigger(se, make_event(_fdcancelr));
     }
 }
 
@@ -285,8 +288,9 @@ void driver_tamer::kill_fd(int fd)
     tfd **pprev = &_fd, *t;
     while ((t = *pprev))
 	if (t->fd == fd) {
-	    t->e.trigger(-ECANCELED);
-	    t->e.~event();
+	    if (*t->se && t->slot)
+		*t->slot = -ECANCELED;
+	    t->se->simple_trigger(true);
 	    *pprev = t->next;
 	    t->next = _fdfree;
 	    _fdfree = t;
@@ -367,8 +371,8 @@ void driver_tamer::once()
 	_nfds = 0;
 	tfd **pprev = &_fd, *t;
 	while ((t = *pprev))
-	    if (!t->e) {
-		t->e.~event();
+	    if (!*t->se) {
+		tamerpriv::simple_event::unuse_clean(t->se);
 		*pprev = t->next;
 		t->next = _fdfree;
 		_fdfree = t;
@@ -413,14 +417,15 @@ void driver_tamer::once()
 		&& (t->fd >= FD_SETSIZE
 		    || FD_ISSET(t->fd, &_fdset[t->action + 2]->fds))) {
 		FD_CLR(t->fd, &_fdset[t->action]->fds);
-		t->e.trigger(0);
-		t->e.~event();
+		if (*t->se && t->slot)
+		    *t->slot = 0;
+		t->se->simple_trigger(true);
 		_fdcancelr.join(); // reap the notifier we just triggered
 		*pprev = t->next;
 		t->next = _fdfree;
 		_fdfree = t;
-	    } else if (!t->e) {
-		t->e.~event();
+	    } else if (!*t->se) {
+		tamerpriv::simple_event::unuse_clean(t->se);
 		*pprev = t->next;
 		t->next = _fdfree;
 		_fdfree = t;

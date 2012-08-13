@@ -82,6 +82,16 @@ inline void at_fd_read(int fd, const event<int> &e) {
     driver::main->at_fd_read(fd, e);
 }
 
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+inline void at_fd_read(int fd, event<> &&e) {
+    driver::main->at_fd_read(fd, TAMER_MOVE(e));
+}
+
+inline void at_fd_read(int fd, event<int> &&e) {
+    driver::main->at_fd_read(fd, TAMER_MOVE(e));
+}
+#endif
+
 /** @brief  Register event for file descriptor writability.
  *  @param  fd  File descriptor.
  *  @param  e   Event.
@@ -96,6 +106,16 @@ inline void at_fd_write(int fd, const event<> &e) {
 inline void at_fd_write(int fd, const event<int> &e) {
     driver::main->at_fd_write(fd, e);
 }
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+inline void at_fd_write(int fd, event<> &&e) {
+    driver::main->at_fd_write(fd, TAMER_MOVE(e));
+}
+
+inline void at_fd_write(int fd, event<int> &&e) {
+    driver::main->at_fd_write(fd, TAMER_MOVE(e));
+}
+#endif
 
 /** @brief  Register event for a given time.
  *  @param  expiry  Time.

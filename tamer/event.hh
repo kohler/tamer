@@ -637,6 +637,16 @@ class event<T0, void, void, void>
 	return _e;
     }
 
+    tamerpriv::simple_event *__take_simple() {
+	tamerpriv::simple_event *se = _e;
+	_e = 0;
+	return se;
+    }
+
+    T0 *__get_slot0() const {
+	return _s0;
+    }
+
   private:
 
     tamerpriv::simple_event *_e;
@@ -748,13 +758,13 @@ class event<void, void, void, void> { public:
     }
 
     tamerpriv::simple_event *__take_simple() {
-	tamerpriv::simple_event *e = _e;
+	tamerpriv::simple_event *se = _e;
 	_e = 0;
-	return e;
+	return se;
     }
 
-    static inline event<> __make(tamerpriv::simple_event *e) {
-	return event<>(take_marker(), e);
+    static inline event<> __make(tamerpriv::simple_event *se) {
+	return event<>(take_marker(), se);
     }
 
   private:
@@ -762,8 +772,8 @@ class event<void, void, void, void> { public:
     mutable tamerpriv::simple_event *_e;
 
     struct take_marker { };
-    inline event(const take_marker &, tamerpriv::simple_event *e)
-	: _e(e) {
+    inline event(const take_marker &, tamerpriv::simple_event *se)
+	: _e(se) {
     }
 
     friend class tamerpriv::simple_event;
