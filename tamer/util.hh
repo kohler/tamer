@@ -438,6 +438,7 @@ template <typename T> class dlist : public dlist_element { public:
 	} else {
 	    _prev = e->_prev;
 	}
+	e->_prev = e->_next = 0;
     }
 
     T *pop_front() {

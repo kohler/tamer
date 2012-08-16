@@ -15,6 +15,7 @@
  */
 #include "config.h"
 #include <tamer/tamer.hh>
+#include <stdio.h>
 #include <tamer/util.hh>
 #include <map>
 #if HAVE_LIBEV
@@ -59,8 +60,11 @@ public:
     wrapper<T> *get(bool active)
     {
 	wrapper<T> *ret = _free.pop_front();
-	if (!ret) expand();
-	ret = _free.pop_front();
+	if (!ret) { 
+	    expand();
+	    ret = _free.pop_front();
+	}
+	assert (ret);
 	if (active) activate (ret);
 	return ret;
     }
@@ -78,11 +82,13 @@ protected:
     void expand() {
 
 	size_t ncap = (_ecap ? _ecap * 2 : 16);
-	
+
 	// Allocate space ncap of them
 	size_t sz = sizeof(wrapper_cluster<T>) + sizeof(wrapper<T>) * (ncap - 1);
 	unsigned char *buf = new unsigned char[sz];
+
 	wrapper_cluster<T> *cl = reinterpret_cast<wrapper_cluster<T> *>(buf);
+	new (cl) wrapper_cluster<T>;
 
 	_clusters.push_front (cl);
     
@@ -94,6 +100,8 @@ protected:
 	    e->driver = _driver;
 	    _free.push_front (e);
 	}
+
+	assert (_free.front());
     }
 
     tamerutil::dlist<wrapper<T> >         _free;
