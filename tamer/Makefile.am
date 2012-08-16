@@ -8,6 +8,7 @@ libtamer_la_SOURCES = \
 	driver.hh \
 	dbase.cc \
 	dinternal.hh dinternal.cc \
+	dlibev.cc \
 	dlibevent.cc \
 	dtamer.cc \
 	dsignal.cc \
