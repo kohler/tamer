@@ -28,45 +28,45 @@ namespace {
 class driver_libev;
 
 template<class T>
-struct eev : public tamerutil::dlist_element {
-    T libev;
+struct wrapper : public T, 
+		 public tamerutil::dlist_element {
     tamerpriv::simple_event *se;
     int *slot;
     driver_libev *driver;
 };
 
-typedef eev<ev_io> eev_io;
-typedef eev<ev_timer> eev_timer;
+typedef wrapper<ev_io> wrapper_io;
+typedef wrapper<ev_timer> wrapper_timer;
 
 template<class T>
-struct eev_cluster : public tamerutil::slist_element {
-    eev<T> e[1];
+struct wrapper_cluster : public tamerutil::slist_element {
+    wrapper<T> e[1];
 };
 
 template<class T>
-class eev_collection {
+class wrapper_collection {
 public:
 
-    eev_collection (driver_libev *d) : _driver (d) , _ecap (0) {}
+    wrapper_collection (driver_libev *d) : _driver (d) , _ecap (0) {}
 
-    ~eev_collection() 
+    ~wrapper_collection() 
     {
 	while (!_clusters.empty()) {
 	    delete[] reinterpret_cast<unsigned char *>(_clusters.pop_front());
 	}
     }
 
-    eev<T> *get(bool active)
+    wrapper<T> *get(bool active)
     {
-	eev<T> *ret = _free.pop_front();
+	wrapper<T> *ret = _free.pop_front();
 	if (!ret) expand();
 	ret = _free.pop_front();
 	if (active) activate (ret);
 	return ret;
     }
 
-    void activate(eev<T> *e) { _active.push_back(e); }
-    void deactivate(eev<T> *e) 
+    void activate(wrapper<T> *e) { _active.push_back(e); }
+    void deactivate(wrapper<T> *e) 
     { 
 	_active.remove(e); 
 	_free.push_front(e);
@@ -80,42 +80,42 @@ protected:
 	size_t ncap = (_ecap ? _ecap * 2 : 16);
 	
 	// Allocate space ncap of them
-	size_t sz = sizeof(eev_cluster<T>) + sizeof(eev<T>) * (ncap - 1);
+	size_t sz = sizeof(wrapper_cluster<T>) + sizeof(wrapper<T>) * (ncap - 1);
 	unsigned char *buf = new unsigned char[sz];
-	eev_cluster<T> *cl = reinterpret_cast<eev_cluster<T> *>(buf);
+	wrapper_cluster<T> *cl = reinterpret_cast<wrapper_cluster<T> *>(buf);
 
 	_clusters.push_front (cl);
     
 	// Use placement new to call ncap constructors....
-	new (cl->e) eev<T>[ncap];
+	new (cl->e) wrapper<T>[ncap];
 	
 	for (size_t i = 0; i < ncap; i++) {
-	    eev<T> *e = &cl->e[i];
+	    wrapper<T> *e = &cl->e[i];
 	    e->driver = _driver;
 	    _free.push_front (e);
 	}
     }
 
-    tamerutil::dlist<eev<T> >         _free;
-    tamerutil::dlist<eev<T> >         _active;
-    tamerutil::slist<eev_cluster<T> > _clusters;
+    tamerutil::dlist<wrapper<T> >         _free;
+    tamerutil::dlist<wrapper<T> >         _active;
+    tamerutil::slist<wrapper_cluster<T> > _clusters;
     driver_libev *_driver;
     size_t _ecap;
 };
 
-class eev_io_collection : public eev_collection<ev_io> {
+class wrapper_io_collection : public wrapper_collection<ev_io> {
 public:
-    eev_io_collection(driver_libev *d) : eev_collection<ev_io>(d) {}
+    wrapper_io_collection(driver_libev *d) : wrapper_collection<ev_io>(d) {}
 
-    ~eev_io_collection() 
+    ~wrapper_io_collection() 
     {
-	eev<ev_io> *e;
+	wrapper<ev_io> *e;
 	while ((e = _active.pop_front())) stop(e); 
     }
 
     void empty ()
     {
-	eev<ev_io> *e;
+	wrapper<ev_io> *e;
 	while ((e = _active.front()) && !*e->se) {
 	    stop(e);
 	    tamerpriv::simple_event::unuse_clean(e->se);
@@ -123,25 +123,25 @@ public:
 	}
     }
 
-    void stop(eev<ev_io> *e);
+    void stop(wrapper<ev_io> *e);
 
 
-    eev<ev_io> *get(bool active) 
+    wrapper<ev_io> *get(bool active) 
     {
-	eev<ev_io> * e = this->eev_collection<ev_io>::get(active);
+	wrapper<ev_io> * e = this->wrapper_collection<ev_io>::get(active);
 	if (active) activate(e);
 	return e;
     }
 
-    void activate(eev<ev_io> *e) 
+    void activate(wrapper<ev_io> *e) 
     {
-	this->eev_collection<ev_io>::activate(e);
-	_lookup.insert(pair_t (e->libev.fd, e));
+	this->wrapper_collection<ev_io>::activate(e);
+	_lookup.insert(pair_t (e->fd, e));
     }
 
-    void deactivate(eev<ev_io> *e) 
+    void deactivate(wrapper<ev_io> *e) 
     {
-	this->eev_collection<ev_io>::deactivate(e);
+	this->wrapper_collection<ev_io>::deactivate(e);
 	remove_from_lookup (e);
     }
 
@@ -150,21 +150,21 @@ public:
 	lookup_t::iterator first = _lookup.find (fd);
 	lookup_t::iterator it;
 	for (it = first; it != _lookup.end() && it->first == fd; it++) {
-	    eev<ev_io> *e = it->second;
+	    wrapper<ev_io> *e = it->second;
 	    stop(e);
 	    if (*e->se && e->slot)
 		*e->slot = -ECANCELED;
 	    e->se->simple_trigger(true);
-	    this->eev_collection<ev_io>::deactivate(e);
+	    this->wrapper_collection<ev_io>::deactivate(e);
 	}
 	_lookup.erase(first, it);
     }
 	
 private:
 
-    void remove_from_lookup(eev<ev_io> *e) 
+    void remove_from_lookup(wrapper<ev_io> *e) 
     {
-	int fd = e->libev.fd;
+	int fd = e->fd;
 	for (lookup_t::iterator it = _lookup.find(fd);
 	     it != _lookup.end() && it->first == fd; it++) {
 	    if (it->second == e) {
@@ -174,23 +174,23 @@ private:
 	}
     }
 
-    typedef std::map<int, eev<ev_io> *> lookup_t;
-    typedef std::pair<int, eev<ev_io> *> pair_t;
+    typedef std::map<int, wrapper<ev_io> *> lookup_t;
+    typedef std::pair<int, wrapper<ev_io> *> pair_t;
     lookup_t _lookup;
 };
 
-class eev_timer_collection : public eev_collection<ev_timer> {
+class wrapper_timer_collection : public wrapper_collection<ev_timer> {
 public:
-    eev_timer_collection(driver_libev *d) : eev_collection<ev_timer>(d) {}
-    ~eev_timer_collection() 
+    wrapper_timer_collection(driver_libev *d) : wrapper_collection<ev_timer>(d) {}
+    ~wrapper_timer_collection() 
     {
-	eev<ev_timer> *e;
+	wrapper<ev_timer> *e;
 	while ((e = _active.pop_front())) stop(e);
     }
 
     void empty ()
     {
-	eev<ev_timer> *e;
+	wrapper<ev_timer> *e;
 	while ((e = _active.front()) && !*e->se) {
 	    stop(e);
 	    tamerpriv::simple_event::unuse_clean(e->se);
@@ -198,7 +198,7 @@ public:
 	}
     }
 
-    void stop(eev<ev_timer> *e);
+    void stop(wrapper<ev_timer> *e);
 };
 
 class driver_libev: public driver {
@@ -218,23 +218,26 @@ public:
 
     struct ev_loop *_eloop;
 
-    eev_io_collection    _ios;
-    eev_timer_collection _timers;
-    eev<ev_io>           *_esignal;
+    wrapper_io_collection    _ios;
+    wrapper_timer_collection _timers;
+    wrapper<ev_io>           *_esignal;
 
 private:
 
 };
 
 
-void eev_io_collection::stop(eev<ev_io> *e) { ::ev_io_stop(e->driver->_eloop, &e->libev); }
-void eev_timer_collection::stop(eev<ev_timer> *e) { ::ev_timer_stop(e->driver->_eloop, &e->libev); }
+void wrapper_io_collection::stop(wrapper<ev_io> *e) 
+{ ::ev_io_stop(e->driver->_eloop, e); }
+
+void wrapper_timer_collection::stop(wrapper<ev_timer> *e) 
+{ ::ev_timer_stop(e->driver->_eloop, e); }
 
 extern "C" {
 
 void libev_io_trigger(struct ev_loop *, ev_io *arg, int) 
 {
-    eev_io *e = reinterpret_cast<eev_io *>(arg);
+    wrapper_io *e = static_cast<wrapper_io *>(arg);
     ::ev_io_stop (e->driver->_eloop, arg);
     if (*e->se && e->slot)
 	*e->slot = 0;
@@ -244,7 +247,7 @@ void libev_io_trigger(struct ev_loop *, ev_io *arg, int)
 
 void libev_timer_trigger(struct ev_loop *, ev_timer *arg, int)
 {
-    eev_timer *e = reinterpret_cast<eev_timer *>(arg);
+    wrapper_timer *e = static_cast<wrapper_timer *>(arg);
     ::ev_timer_stop (e->driver->_eloop, arg);
     if (*e->se && e->slot)
 	*e->slot = 0;
@@ -254,7 +257,7 @@ void libev_timer_trigger(struct ev_loop *, ev_timer *arg, int)
 
 void libev_sigtrigger(struct ev_loop *, ev_io *arg, int)
 {
-    eev<ev_io> *e = reinterpret_cast<eev<ev_io> *>(arg);
+    wrapper<ev_io> *e = static_cast<wrapper<ev_io> *>(arg);
     e->driver->dispatch_signals();
 }
 
@@ -270,7 +273,7 @@ driver_libev::driver_libev()
     at_signal(0, event<>());	// create signal_fd pipe
     _esignal = _ios.get(false);
 
-    ev_io *tmp = &_esignal->libev;
+    ev_io *tmp = _esignal;
 
     ev_io_init(tmp, libev_sigtrigger, sig_pipe[0], EV_READ);
     ev_io_start(_eloop, tmp);
@@ -280,7 +283,7 @@ driver_libev::driver_libev()
 driver_libev::~driver_libev() 
 {
     // Stop the special signal FD pipe.
-    ::ev_io_stop (_eloop, &_esignal->libev);
+    ::ev_io_stop (_eloop, _esignal);
 }
 
 void 
@@ -289,12 +292,12 @@ driver_libev::store_fd(int fd, int action,
 {
     assert(fd >= 0);
     if (se) {
-	eev<ev_io> *e = _ios.get(true);
+	wrapper<ev_io> *e = _ios.get(true);
 	e->se = se;
 	e->slot = slot;
 
 	action = (action == fdwrite ? EV_WRITE : EV_READ);
-	ev_io *tmp = &e->libev;
+	ev_io *tmp = e;
 	ev_io_init(tmp, libev_io_trigger, fd, action);
 	ev_io_start(_eloop, tmp);
 
@@ -312,7 +315,7 @@ driver_libev::store_time(const timeval &expiry,
 			 tamerpriv::simple_event *se)
 {
     if (se) {
-	eev<ev_timer> *e = _timers.get(true);
+	wrapper<ev_timer> *e = _timers.get(true);
 	e->se = se;
 	e->slot = 0;
 
@@ -320,7 +323,7 @@ driver_libev::store_time(const timeval &expiry,
 	timersub(&timeout, &now, &timeout);
 	ev_tstamp d = timeout.tv_sec;
 
-	ev_timer *tmp = &e->libev;
+	ev_timer *tmp = e;
 	ev_timer_init(tmp, libev_timer_trigger, d, 0);
 	ev_timer_start(_eloop, tmp);
     }
