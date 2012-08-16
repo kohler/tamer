@@ -285,6 +285,34 @@ were not found.
 fi
 AC_SUBST([LIBEVENT_LIBS])
 
+dnl
+dnl libev support
+dnl
+LIBEV_LIBS=
+AC_ARG_WITH([libev],
+	[AS_HELP_STRING([--with-libev], [include libev driver])],
+	[:], [with_libev=maybe])
+if test "$with_libev" != no; then
+    AC_CHECK_LIB([ev], [ev_run], [have_libev=yes])
+    AC_CHECK_HEADERS([ev++.h], [have_ev_h=yes])
+    if test "$have_libev" = yes -a "$have_ev_h" = yes; then
+	AC_DEFINE([HAVE_LIBEV], [1], [Define if Tame programs should use libev])
+	LIBEV_LIBS=-lev
+    elif test "$with_libev" = yes; then
+	AC_MSG_ERROR([
+=========================================
+
+You explicitly requested libev support, but <ev++.h> and/or -lev
+were not found.
+=========================================])
+    fi
+fi
+AC_SUBST([LIBEV_LIBS])
+
+DRIVER_LIBS='$(LIBEVENT_LIBS) $(LIBEV_LIBS)'
+AC_SUBST([DRIVER_LIBS])
+
+
 
 dnl
 dnl fast malloc support (for tests)
