@@ -1,3 +1,5 @@
+// -*- mode: c++; tab-width: 8; c-basic-offset: 4;  -*-
+
 /* Copyright (c) 2007-2012, Eddie Kohler
  * Copyright (c) 2007, Regents of the University of California
  *
@@ -13,21 +15,24 @@
  */
 #include "config.h"
 #include <tamer/tamer.hh>
-#if HAVE_LIBEVENT
-#include <event.h>
+#include <tamer/util.hh>
+#if HAVE_LIBEV
+#include <ev.h>
 #endif
 
 namespace tamer {
-#if HAVE_LIBEVENT
+#if HAVE_LIBEV
 namespace {
 
-class driver_libevent : public driver { public:
+class driver_libev: public driver
+{
+public:
 
-    driver_libevent();
-    ~driver_libevent();
+    driver_libev();
+    ~driver_libev();
 
     virtual void store_fd(int fd, int action, tamerpriv::simple_event *se,
-			  int *slot);
+                          int *slot);
     virtual void store_time(const timeval &expiry, tamerpriv::simple_event *se);
     virtual void kill_fd(int fd);
 
@@ -35,29 +40,31 @@ class driver_libevent : public driver { public:
     virtual void once();
     virtual void loop();
 
-    struct eevent {
+    struct eev : public tamerutil::dlist_element {
 	::event libevent;
 	tamerpriv::simple_event *se;
 	int *slot;
-	eevent *next;
-	eevent **pprev;
-	driver_libevent *driver;
+	driver_libev *driver;
     };
 
-    struct event_group {
-	event_group *next;
-	eevent e[1];
+    struct eev_group : public tamerutil::slist_element {
+	eev e[1];
     };
+
+    struct ev_loop *_eloop;
 
     eevent *_etimer;
     eevent *_efd;
 
-    event_group *_egroup;
-    eevent *_efree;
-    size_t _ecap;
-    eevent *_esignal;
+    tamer::dlist<eev> _efree;
+    tamer::slist<eev_group> _egroups;
 
-    void expand_events();
+    size_t _ecap;
+    eev *_esignal;
+
+private:
+    eev *get_eev();
+    void expand_eevs ();
 
 };
 
@@ -84,16 +91,12 @@ void libevent_sigtrigger(int, short, void *arg)
 }
 
 
-driver_libevent::driver_libevent()
-    : _etimer(0), _efd(0), _egroup(0), _efree(0), _ecap(0)
+driver_libev::driver_libev()
+    : _eloop (ev_default_loop(0))
 {
     set_now();
-    event_init();
-    event_priority_init(3);
     at_signal(0, event<>());	// create signal_fd pipe
-    expand_events();
-    _esignal = _efree;
-    _efree = _efree->next;
+    _esignal = get_eev()
     ::event_set(&_esignal->libevent, sig_pipe[0], EV_READ | EV_PERSIST,
 		libevent_sigtrigger, 0);
     ::event_priority_set(&_esignal->libevent, 0);
@@ -117,24 +120,39 @@ driver_libevent::~driver_libevent()
     ::event_del(&_esignal->libevent);
 
     // free event groups
-    while (_egroup) {
-	event_group *next = _egroup->next;
-	delete[] reinterpret_cast<unsigned char *>(_egroup);
-	_egroup = next;
+    while (!_egroups.empty()) {
+	delete[] reinterpret_cast<unsigned char *>(_egroups.pop_front());
     }
 }
 
-void driver_libevent::expand_events()
+eev *
+driver_libev::get_eev()
+{
+    eev *ret = _efree.pop_front();
+    if (!ret) {
+	expand_eevs();
+    }
+    ret = _efree.pop_front();
+    return ret;
+}
+
+void driver_libev::expand_eevs()
 {
     size_t ncap = (_ecap ? _ecap * 2 : 16);
 
-    event_group *ngroup = reinterpret_cast<event_group *>(new unsigned char[sizeof(event_group) + sizeof(eevent) * (ncap - 1)]);
-    ngroup->next = _egroup;
-    _egroup = ngroup;
+    // Allocate space ncap of them
+    size_t sz = sizeof(eev_group) + sizeof(eev) * (ncap - 1);
+
+    eev_group *ngroup = reinterpret_cast<eev_group *>(new unsigned char[sz]);
+    _egroups.push_front (ngroup);
+
+    // Use placement new to call ncap constructors....
+    new (ngroup->e) eev[ncap];
+
     for (size_t i = 0; i < ncap; i++) {
-	ngroup->e[i].driver = this;
-	ngroup->e[i].next = _efree;
-	_efree = &ngroup->e[i];
+	eev *e = &ngroup->e[i];
+	e->driver = this;
+	_efree.push_front (e);
     }
 }
 

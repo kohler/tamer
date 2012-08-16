@@ -294,7 +294,7 @@ AC_ARG_WITH([libev],
 	[:], [with_libev=maybe])
 if test "$with_libev" != no; then
     AC_CHECK_LIB([ev], [ev_run], [have_libev=yes])
-    AC_CHECK_HEADERS([ev++.h], [have_ev_h=yes])
+    AC_CHECK_HEADERS([ev.h], [have_ev_h=yes])
     if test "$have_libev" = yes -a "$have_ev_h" = yes; then
 	AC_DEFINE([HAVE_LIBEV], [1], [Define if Tame programs should use libev])
 	LIBEV_LIBS=-lev
@@ -302,7 +302,7 @@ if test "$with_libev" != no; then
 	AC_MSG_ERROR([
 =========================================
 
-You explicitly requested libev support, but <ev++.h> and/or -lev
+You explicitly requested libev support, but <ev.h> and/or -lev
 were not found.
 =========================================])
     fi

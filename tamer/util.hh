@@ -1,3 +1,4 @@
+// -*- mode: c++; tab-width: 8; c-basic-offset: 4;  -*-
 #ifndef TAMER_UTIL_HH
 #define TAMER_UTIL_HH 1
 /* Copyright (c) 2007-2012, Eddie Kohler
@@ -435,6 +436,47 @@ template <typename T> class dlist : public dlist_element { public:
 	    return 0;
     }
 
+};
+
+template <typename T> class slist;
+
+class slist_element
+{
+public:
+    slist_element () : _next (0) {}
+    void remove () { _next = 0; }
+
+private:
+    slist_element *_next;
+    template <typename T> friend class slist;
+};
+
+template <typename T> class slist 
+{
+public:
+    slist () { _next = 0; }
+
+    bool empty() const {
+	return _next == this;
+    }
+
+    void push_front (T *e) {
+	assert (!e->_next);
+	e->_next = _next;
+	_next = e;
+    }
+
+    T *front() const {
+	return (_next != this ? static_cast<T *>(_next) : 0);
+    }
+
+    T *pop_front() {
+	slist_element *e = front();
+	if (e) {
+	    _next = e->_next;
+	    e->_next = 0;
+	}
+	return static_cast<T *>(e);
 };
 
 }}
