@@ -451,7 +451,7 @@ private:
     template <typename T> friend class slist;
 };
 
-template <typename T> class slist 
+template <typename T> class slist  : public slist_element
 {
 public:
     slist () { _next = 0; }
@@ -477,6 +477,7 @@ public:
 	    e->_next = 0;
 	}
 	return static_cast<T *>(e);
+    }
 };
 
 }}
