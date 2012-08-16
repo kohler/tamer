@@ -136,7 +136,7 @@ public:
 
     wrapper<ev_io> *get(bool active) 
     {
-	wrapper<ev_io> * e = this->wrapper_collection<ev_io>::get(active);
+	wrapper<ev_io> * e = this->wrapper_collection<ev_io>::get(false);
 	if (active) activate(e);
 	return e;
     }
@@ -273,7 +273,7 @@ void libev_sigtrigger(struct ev_loop *, ev_io *arg, int)
 
 
 driver_libev::driver_libev()
-    : _eloop  (::ev_default_loop(0)),
+    : _eloop  (::ev_default_loop(EVBACKEND_SELECT)),
       _ios    (this),
       _timers (this)
 {
