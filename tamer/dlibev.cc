@@ -35,6 +35,9 @@ struct eev : public tamerutil::dlist_element {
     driver_libev *driver;
 };
 
+typedef eev<ev_io> eev_io;
+typedef eev<ev_timer> eev_timer;
+
 template<class T>
 struct eev_cluster : public tamerutil::slist_element {
     eev<T> e[1];
@@ -44,7 +47,7 @@ template<class T>
 class eev_collection {
 public:
 
-    eev_collection (driver_libev *d) : _driver (d) {}
+    eev_collection (driver_libev *d) : _driver (d) , _ecap (0) {}
 
     ~eev_collection() 
     {
@@ -68,15 +71,16 @@ public:
 	_active.remove(e); 
 	_free.push_front(e);
     }
-    
 
-private:
+    bool is_empty() const { return _active.empty(); }
+
+protected:
     void expand() {
 
 	size_t ncap = (_ecap ? _ecap * 2 : 16);
 	
 	// Allocate space ncap of them
-	size_t sz = sizeof(eev_group) + sizeof(eev) * (ncap - 1);
+	size_t sz = sizeof(eev_cluster<T>) + sizeof(eev<T>) * (ncap - 1);
 	unsigned char *buf = new unsigned char[sz];
 	eev_cluster<T> *cl = reinterpret_cast<eev_cluster<T> *>(buf);
 
@@ -86,51 +90,59 @@ private:
 	new (cl->e) eev<T>[ncap];
 	
 	for (size_t i = 0; i < ncap; i++) {
-	    eev<T> *e = &ngroup->e[i];
+	    eev<T> *e = &cl->e[i];
 	    e->driver = _driver;
 	    _free.push_front (e);
 	}
     }
 
-
-    tamer::dlist<eev<T> >         _free;
-    tamer::dlist<eev<T> >         _active;
-    tamer::slist<eev_cluster<T> > _clusters;
+    tamerutil::dlist<eev<T> >         _free;
+    tamerutil::dlist<eev<T> >         _active;
+    tamerutil::slist<eev_cluster<T> > _clusters;
     driver_libev *_driver;
+    size_t _ecap;
 };
 
 class eev_io_collection : public eev_collection<ev_io> {
 public:
+    eev_io_collection(driver_libev *d) : eev_collection<ev_io>(d) {}
+
     ~eev_io_collection() 
     {
 	eev<ev_io> *e;
-	while ((e = _active.pop_front())) {
-	    ::ev_io_stop (&e->libev);
+	while ((e = _active.pop_front())) stop(e); 
+    }
+
+    void empty ()
+    {
+	eev<ev_io> *e;
+	while ((e = _active.front()) && !*e->se) {
+	    stop(e);
+	    tamerpriv::simple_event::unuse_clean(e->se);
+	    deactivate(e);
 	}
     }
-    eev<T> *get(bool active) 
+
+    void stop(eev<ev_io> *e);
+
+
+    eev<ev_io> *get(bool active) 
     {
-	eev<T> * e = this->eev_collection<ev_io>::get(active);
+	eev<ev_io> * e = this->eev_collection<ev_io>::get(active);
 	if (active) activate(e);
 	return e;
     }
 
-    void activate(eev<evio> *e) 
+    void activate(eev<ev_io> *e) 
     {
 	this->eev_collection<ev_io>::activate(e);
-	_lookup.insert(std::pair<e->libev->fd, e>);
+	_lookup.insert(pair_t (e->libev.fd, e));
     }
 
-    void deactivate(eev<evio> *e) 
+    void deactivate(eev<ev_io> *e) 
     {
 	this->eev_collection<ev_io>::deactivate(e);
-	int fd = e->libev->fd;
-	for (lookup_t::iterator it = _lookup.find(fd);
-	     it != _lookup.end() && it->first == fd; it++) {
-	    if (it->second == e) {
-		_lookup.erase(it, it+1);
-	    }
-	}
+	remove_from_lookup (e);
     }
 
     void kill_fd (int fd) 
@@ -138,8 +150,8 @@ public:
 	lookup_t::iterator first = _lookup.find (fd);
 	lookup_t::iterator it;
 	for (it = first; it != _lookup.end() && it->first == fd; it++) {
-	    eev<ev_io> *e = it.second;
-	    ::ev_io_stop(_eloop, e->libev);
+	    eev<ev_io> *e = it->second;
+	    stop(e);
 	    if (*e->se && e->slot)
 		*e->slot = -ECANCELED;
 	    e->se->simple_trigger(true);
@@ -147,22 +159,46 @@ public:
 	}
 	_lookup.erase(first, it);
     }
-}
 	
 private:
-    typedef std::map<int, eev<eio> *> lookup_t;
+
+    void remove_from_lookup(eev<ev_io> *e) 
+    {
+	int fd = e->libev.fd;
+	for (lookup_t::iterator it = _lookup.find(fd);
+	     it != _lookup.end() && it->first == fd; it++) {
+	    if (it->second == e) {
+		_lookup.erase(it, ++it);
+		break;
+	    }
+	}
+    }
+
+    typedef std::map<int, eev<ev_io> *> lookup_t;
+    typedef std::pair<int, eev<ev_io> *> pair_t;
     lookup_t _lookup;
 };
 
 class eev_timer_collection : public eev_collection<ev_timer> {
 public:
+    eev_timer_collection(driver_libev *d) : eev_collection<ev_timer>(d) {}
     ~eev_timer_collection() 
     {
 	eev<ev_timer> *e;
-	while ((e = _active.pop_front())) {
-	    ::ev_timer_stop (&e->libev);
+	while ((e = _active.pop_front())) stop(e);
+    }
+
+    void empty ()
+    {
+	eev<ev_timer> *e;
+	while ((e = _active.front()) && !*e->se) {
+	    stop(e);
+	    tamerpriv::simple_event::unuse_clean(e->se);
+	    deactivate(e);
 	}
     }
+
+    void stop(eev<ev_timer> *e);
 };
 
 class driver_libev: public driver {
@@ -182,37 +218,46 @@ public:
 
     struct ev_loop *_eloop;
 
-    eevent *_etimer;
-    eevent *_efd;
-
     eev_io_collection    _ios;
     eev_timer_collection _timers;
-
-    size_t _ecap;
-
-    eev<ev_io>               *_esignal;
+    eev<ev_io>           *_esignal;
 
 private:
 
 };
 
 
+void eev_io_collection::stop(eev<ev_io> *e) { ::ev_io_stop(e->driver->_eloop, &e->libev); }
+void eev_timer_collection::stop(eev<ev_timer> *e) { ::ev_timer_stop(e->driver->_eloop, &e->libev); }
+
 extern "C" {
-void libev_trigger(EVP_P_ ev_io *arg, int revents) 
+
+void libev_io_trigger(struct ev_loop *, ev_io *arg, int) 
 {
-    eev<ev_io> *e = static_cast<eev<ev_io> *>(arg);
-    ev_io_stop (e->driver->_eloop, w);
+    eev_io *e = reinterpret_cast<eev_io *>(arg);
+    ::ev_io_stop (e->driver->_eloop, arg);
     if (*e->se && e->slot)
 	*e->slot = 0;
     e->se->simple_trigger(true);
     e->driver->_ios.deactivate(e);
 }
 
-void libev_sigtrigger(EVP_P_ ev_io *arg, int revents) {
+void libev_timer_trigger(struct ev_loop *, ev_timer *arg, int)
 {
-    eev<ev_io> *e = static_cast<eev<ev_io> *>(arg);
+    eev_timer *e = reinterpret_cast<eev_timer *>(arg);
+    ::ev_timer_stop (e->driver->_eloop, arg);
+    if (*e->se && e->slot)
+	*e->slot = 0;
+    e->se->simple_trigger(true);
+    e->driver->_timers.deactivate(e);
+}
+
+void libev_sigtrigger(struct ev_loop *, ev_io *arg, int)
+{
+    eev<ev_io> *e = reinterpret_cast<eev<ev_io> *>(arg);
     e->driver->dispatch_signals();
 }
+
 }
 
 
@@ -225,9 +270,11 @@ driver_libev::driver_libev()
     at_signal(0, event<>());	// create signal_fd pipe
     _esignal = _ios.get(false);
 
-    ::ev_io_init(&_esignal->libev, libev_sigtrigger, sig_pipe[0], EV_READ);
-    ::ev_io_start(_eloop, &_esignal->libev);
-    ::ev_set_priroty(&_esignal->libev, 0);
+    ev_io *tmp = &_esignal->libev;
+
+    ev_io_init(tmp, libev_sigtrigger, sig_pipe[0], EV_READ);
+    ev_io_start(_eloop, tmp);
+    ev_set_priority(tmp, 0);
 }
 
 driver_libev::~driver_libev() 
@@ -247,8 +294,9 @@ driver_libev::store_fd(int fd, int action,
 	e->slot = slot;
 
 	action = (action == fdwrite ? EV_WRITE : EV_READ);
-	::ev_io_init(&e->libev, libev_trigger, fd, action);
-	::ev_io_start(_eloop, &e->libev);
+	ev_io *tmp = &e->libev;
+	ev_io_init(tmp, libev_io_trigger, fd, action);
+	ev_io_start(_eloop, tmp);
 
     }
 }
@@ -259,8 +307,9 @@ driver_libev::kill_fd(int fd)
     _ios.kill_fd (fd);
 }
 
-void driver_libevent::store_time(const timeval &expiry,
-				 tamerpriv::simple_event *se)
+void 
+driver_libev::store_time(const timeval &expiry,
+			 tamerpriv::simple_event *se)
 {
     if (se) {
 	eev<ev_timer> *e = _timers.get(true);
@@ -271,52 +320,40 @@ void driver_libevent::store_time(const timeval &expiry,
 	timersub(&timeout, &now, &timeout);
 	ev_tstamp d = timeout.tv_sec;
 
-	::ev_timer_init(&e->libev, libevent_trigger, d, 0);
-	::ev_timer_start(_eloop, &e->libev);
+	ev_timer *tmp = &e->libev;
+	ev_timer_init(tmp, libev_timer_trigger, d, 0);
+	ev_timer_start(_eloop, tmp);
     }
 }
 
-bool driver_libevent::empty()
+bool 
+driver_libev::empty()
 {
     // remove dead events
-    while (_etimer && !*_etimer->se) {
-	eevent *e = _etimer;
-	::event_del(&e->libevent);
-	tamerpriv::simple_event::unuse_clean(_etimer->se);
-	if ((_etimer = e->next))
-	    _etimer->pprev = &_etimer;
-	e->next = _efree;
-	_efree = e;
-    }
-    while (_efd && !*_efd->se) {
-	eevent *e = _efd;
-	if (e->libevent.ev_events)
-	    ::event_del(&e->libevent);
-	tamerpriv::simple_event::unuse_clean(_etimer->se);
-	if ((_efd = e->next))
-	    _efd->pprev = &_efd;
-	e->next = _efree;
-	_efree = e;
-    }
+    _timers.empty();
+    _ios.empty();
 
-    if (_etimer || _efd
-	|| sig_any_active || tamerpriv::abstract_rendezvous::has_unblocked())
-	return false;
-    return true;
+    bool ret = _timers.is_empty() && _ios.is_empty() && 
+	!sig_any_active && !tamerpriv::abstract_rendezvous::has_unblocked();
+    return ret;
 }
 
-void driver_libevent::once()
+void 
+driver_libev::once()
 {
-    if (tamerpriv::abstract_rendezvous::has_unblocked())
-	::event_loop(EVLOOP_ONCE | EVLOOP_NONBLOCK);
-    else
-	::event_loop(EVLOOP_ONCE);
+    int flags = EVRUN_ONCE;
+    if (tamerpriv::abstract_rendezvous::has_unblocked()) 
+	flags |= EVRUN_NOWAIT;
+
+    ::ev_run(_eloop, flags);
+
     set_now();
     while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::pop_unblocked())
 	r->run();
 }
 
-void driver_libevent::loop()
+void 
+driver_libev::loop()
 {
     while (1)
 	once();
@@ -324,14 +361,14 @@ void driver_libevent::loop()
 
 }
 
-driver *driver::make_libevent()
+driver *driver::make_libev()
 {
-    return new driver_libevent;
+    return new driver_libev;
 }
 
 #else
 
-driver *driver::make_libevent()
+driver *driver::make_libev()
 {
     return 0;
 }

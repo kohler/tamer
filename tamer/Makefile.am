@@ -7,6 +7,7 @@ libtamer_la_SOURCES = \
 	bufferedio.hh bufferedio.tt \
 	driver.hh \
 	dbase.cc \
+	dlibev.cc \
 	dlibevent.cc \
 	dtamer.cc \
 	dsignal.cc \
@@ -21,7 +22,7 @@ libtamer_la_SOURCES = \
 	xadapter.hh xadapter.cc \
 	xbase.hh xbase.cc \
 	xdriver.hh \
-	xevent.hh
+	xevent.hh 
 pkginclude_HEADERS = \
 	adapter.hh \
 	autoconf.h \

@@ -425,6 +425,21 @@ template <typename T> class dlist : public dlist_element { public:
 	return (_next != this ? static_cast<T *>(_next) : 0);
     }
 
+    void remove (T *e) {
+
+	if (e->_prev != this) { 
+	    e->_prev->_next = e->_next;
+	} else {
+	    _next = e->_next;
+	}
+
+	if (e->_next != this) {
+	    e->_next->_prev = e->_prev;
+	} else {
+	    _prev = e->_prev;
+	}
+    }
+
     T *pop_front() {
 	if (_next != this) {
 	    dlist_element *e = _next;
