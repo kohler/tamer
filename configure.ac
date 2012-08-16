@@ -263,7 +263,7 @@ dnl
 dnl libevent support
 dnl
 
-LIBEVENT_LIBS=
+DRIVER_LIBS=
 AC_ARG_WITH([libevent], 
     [AS_HELP_STRING([--with-libevent], [include libevent driver])],
     [:], [with_libevent=maybe])
@@ -272,7 +272,7 @@ if test "$with_libevent" != no; then
     AC_CHECK_HEADERS([event.h], [have_event_h=yes])
     if test "$have_libevent" = yes -a "$have_event_h" = yes; then
 	AC_DEFINE([HAVE_LIBEVENT], [1], [Define if Tame programs should use libevent.])
-	LIBEVENT_LIBS=-levent
+	DRIVER_LIBS="$DRIVER_LIBS -levent"
     elif test "$with_libevent" = yes; then
 	AC_MSG_ERROR([
 =========================================
@@ -283,7 +283,32 @@ were not found.
 =========================================])
     fi
 fi
-AC_SUBST([LIBEVENT_LIBS])
+
+dnl
+dnl libev support
+dnl
+
+AC_ARG_WITH([libev],
+	[AS_HELP_STRING([--with-libev], [include libev driver])],
+	[:], [with_libev=maybe])
+if test "$with_libev" != no; then
+    AC_CHECK_LIB([ev], [ev_run], [have_libev=yes])
+    AC_CHECK_HEADERS([ev++.h], [have_ev_h=yes])
+    if test "$have_libev" = yes -a "$have_ev_h" = yes; then
+	AC_DEFINE([HAVE_LIBEV], [1], [Define if Tame programs should use libev])
+	DRIVER_LIBS="$DRIVER_LIBS -lev"
+    elif test "$with_libev" = yes; then
+	AC_MSG_ERROR([
+=========================================
+
+You explicitly requested libev support, but <ev++.h> and/or -lev
+were not found.
+
+=========================================])
+    fi
+fi
+
+AC_SUBST([DRIVER_LIBS])
 
 
 dnl
