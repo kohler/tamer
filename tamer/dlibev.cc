@@ -16,6 +16,7 @@
 #include "config.h"
 #include <tamer/tamer.hh>
 #include <tamer/util.hh>
+#include <map>
 #if HAVE_LIBEV
 #include <ev.h>
 #endif
@@ -24,8 +25,147 @@ namespace tamer {
 #if HAVE_LIBEV
 namespace {
 
-class driver_libev: public driver
-{
+class driver_libev;
+
+template<class T>
+struct eev : public tamerutil::dlist_element {
+    T libev;
+    tamerpriv::simple_event *se;
+    int *slot;
+    driver_libev *driver;
+};
+
+template<class T>
+struct eev_cluster : public tamerutil::slist_element {
+    eev<T> e[1];
+};
+
+template<class T>
+class eev_collection {
+public:
+
+    eev_collection (driver_libev *d) : _driver (d) {}
+
+    ~eev_collection() 
+    {
+	while (!_clusters.empty()) {
+	    delete[] reinterpret_cast<unsigned char *>(_clusters.pop_front());
+	}
+    }
+
+    eev<T> *get(bool active)
+    {
+	eev<T> *ret = _free.pop_front();
+	if (!ret) expand();
+	ret = _free.pop_front();
+	if (active) activate (ret);
+	return ret;
+    }
+
+    void activate(eev<T> *e) { _active.push_back(e); }
+    void deactivate(eev<T> *e) 
+    { 
+	_active.remove(e); 
+	_free.push_front(e);
+    }
+    
+
+private:
+    void expand() {
+
+	size_t ncap = (_ecap ? _ecap * 2 : 16);
+	
+	// Allocate space ncap of them
+	size_t sz = sizeof(eev_group) + sizeof(eev) * (ncap - 1);
+	unsigned char *buf = new unsigned char[sz];
+	eev_cluster<T> *cl = reinterpret_cast<eev_cluster<T> *>(buf);
+
+	_clusters.push_front (cl);
+    
+	// Use placement new to call ncap constructors....
+	new (cl->e) eev<T>[ncap];
+	
+	for (size_t i = 0; i < ncap; i++) {
+	    eev<T> *e = &ngroup->e[i];
+	    e->driver = _driver;
+	    _free.push_front (e);
+	}
+    }
+
+
+    tamer::dlist<eev<T> >         _free;
+    tamer::dlist<eev<T> >         _active;
+    tamer::slist<eev_cluster<T> > _clusters;
+    driver_libev *_driver;
+};
+
+class eev_io_collection : public eev_collection<ev_io> {
+public:
+    ~eev_io_collection() 
+    {
+	eev<ev_io> *e;
+	while ((e = _active.pop_front())) {
+	    ::ev_io_stop (&e->libev);
+	}
+    }
+    eev<T> *get(bool active) 
+    {
+	eev<T> * e = this->eev_collection<ev_io>::get(active);
+	if (active) activate(e);
+	return e;
+    }
+
+    void activate(eev<evio> *e) 
+    {
+	this->eev_collection<ev_io>::activate(e);
+	_lookup.insert(std::pair<e->libev->fd, e>);
+    }
+
+    void deactivate(eev<evio> *e) 
+    {
+	this->eev_collection<ev_io>::deactivate(e);
+	int fd = e->libev->fd;
+	for (lookup_t::iterator it = _lookup.find(fd);
+	     it != _lookup.end() && it->first == fd; it++) {
+	    if (it->second == e) {
+		_lookup.erase(it, it+1);
+	    }
+	}
+    }
+
+    void kill_fd (int fd) 
+    {
+	lookup_t::iterator first = _lookup.find (fd);
+	lookup_t::iterator it;
+	for (it = first; it != _lookup.end() && it->first == fd; it++) {
+	    eev<ev_io> *e = it.second;
+	    ::ev_io_stop(_eloop, e->libev);
+	    if (*e->se && e->slot)
+		*e->slot = -ECANCELED;
+	    e->se->simple_trigger(true);
+	    this->eev_collection<ev_io>::deactivate(e);
+	}
+	_lookup.erase(first, it);
+    }
+}
+	
+private:
+    typedef std::map<int, eev<eio> *> lookup_t;
+    lookup_t _lookup;
+};
+
+class eev_timer_collection : public eev_collection<ev_timer> {
+public:
+    ~eev_timer_collection() 
+    {
+	eev<ev_timer> *e;
+	while ((e = _active.pop_front())) {
+	    ::ev_timer_stop (&e->libev);
+	}
+    }
+};
+
+class driver_libev: public driver {
 public:
 
     driver_libev();
@@ -40,184 +180,99 @@ public:
     virtual void once();
     virtual void loop();
 
-    struct eev : public tamerutil::dlist_element {
-	::event libevent;
-	tamerpriv::simple_event *se;
-	int *slot;
-	driver_libev *driver;
-    };
-
-    struct eev_group : public tamerutil::slist_element {
-	eev e[1];
-    };
-
     struct ev_loop *_eloop;
 
     eevent *_etimer;
     eevent *_efd;
 
-    tamer::dlist<eev> _efree;
-    tamer::slist<eev_group> _egroups;
+    eev_io_collection    _ios;
+    eev_timer_collection _timers;
 
     size_t _ecap;
-    eev *_esignal;
+
+    eev<ev_io>               *_esignal;
 
 private:
-    eev *get_eev();
-    void expand_eevs ();
 
 };
 
 
 extern "C" {
-void libevent_trigger(int, short, void *arg)
+void libev_trigger(EVP_P_ ev_io *arg, int revents) 
 {
-    driver_libevent::eevent *e = static_cast<driver_libevent::eevent *>(arg);
+    eev<ev_io> *e = static_cast<eev<ev_io> *>(arg);
+    ev_io_stop (e->driver->_eloop, w);
     if (*e->se && e->slot)
 	*e->slot = 0;
     e->se->simple_trigger(true);
-    *e->pprev = e->next;
-    if (e->next)
-	e->next->pprev = e->pprev;
-    e->next = e->driver->_efree;
-    e->driver->_efree = e;
+    e->driver->_ios.deactivate(e);
 }
 
-void libevent_sigtrigger(int, short, void *arg)
+void libev_sigtrigger(EVP_P_ ev_io *arg, int revents) {
 {
-    driver_libevent::eevent *e = static_cast<driver_libevent::eevent *>(arg);
+    eev<ev_io> *e = static_cast<eev<ev_io> *>(arg);
     e->driver->dispatch_signals();
 }
 }
 
 
 driver_libev::driver_libev()
-    : _eloop (ev_default_loop(0))
+    : _eloop  (::ev_default_loop(0)),
+      _ios    (this),
+      _timers (this)
 {
     set_now();
     at_signal(0, event<>());	// create signal_fd pipe
-    _esignal = get_eev()
-    ::event_set(&_esignal->libevent, sig_pipe[0], EV_READ | EV_PERSIST,
-		libevent_sigtrigger, 0);
-    ::event_priority_set(&_esignal->libevent, 0);
-    ::event_add(&_esignal->libevent, 0);
+    _esignal = _ios.get(false);
+
+    ::ev_io_init(&_esignal->libev, libev_sigtrigger, sig_pipe[0], EV_READ);
+    ::ev_io_start(_eloop, &_esignal->libev);
+    ::ev_set_priroty(&_esignal->libev, 0);
 }
 
-driver_libevent::~driver_libevent()
+driver_libev::~driver_libev() 
 {
-    // discard all active events
-    while (_etimer) {
-	_etimer->se->simple_trigger(false);
-	::event_del(&_etimer->libevent);
-	_etimer = _etimer->next;
-    }
-    while (_efd) {
-	_efd->se->simple_trigger(false);
-	if (_efd->libevent.ev_events)
-	    ::event_del(&_efd->libevent);
-	_efd = _efd->next;
-    }
-    ::event_del(&_esignal->libevent);
-
-    // free event groups
-    while (!_egroups.empty()) {
-	delete[] reinterpret_cast<unsigned char *>(_egroups.pop_front());
-    }
+    // Stop the special signal FD pipe.
+    ::ev_io_stop (_eloop, &_esignal->libev);
 }
 
-eev *
-driver_libev::get_eev()
-{
-    eev *ret = _efree.pop_front();
-    if (!ret) {
-	expand_eevs();
-    }
-    ret = _efree.pop_front();
-    return ret;
-}
-
-void driver_libev::expand_eevs()
-{
-    size_t ncap = (_ecap ? _ecap * 2 : 16);
-
-    // Allocate space ncap of them
-    size_t sz = sizeof(eev_group) + sizeof(eev) * (ncap - 1);
-
-    eev_group *ngroup = reinterpret_cast<eev_group *>(new unsigned char[sz]);
-    _egroups.push_front (ngroup);
-
-    // Use placement new to call ncap constructors....
-    new (ngroup->e) eev[ncap];
-
-    for (size_t i = 0; i < ncap; i++) {
-	eev *e = &ngroup->e[i];
-	e->driver = this;
-	_efree.push_front (e);
-    }
-}
-
-void driver_libevent::store_fd(int fd, int action,
-			       tamerpriv::simple_event *se, int *slot)
+void 
+driver_libev::store_fd(int fd, int action,
+		       tamerpriv::simple_event *se, int *slot)
 {
     assert(fd >= 0);
-    if (!_efree)
-	expand_events();
     if (se) {
-	eevent *e = _efree;
-	_efree = e->next;
-	event_set(&e->libevent, fd, (action == fdwrite ? EV_WRITE : EV_READ),
-		  libevent_trigger, e);
-	event_add(&e->libevent, 0);
-
+	eev<ev_io> *e = _ios.get(true);
 	e->se = se;
 	e->slot = slot;
-	e->next = _efd;
-	e->pprev = &_efd;
-	if (_efd)
-	    _efd->pprev = &e->next;
-	_efd = e;
+
+	action = (action == fdwrite ? EV_WRITE : EV_READ);
+	::ev_io_init(&e->libev, libev_trigger, fd, action);
+	::ev_io_start(_eloop, &e->libev);
+
     }
 }
 
-void driver_libevent::kill_fd(int fd)
+void 
+driver_libev::kill_fd(int fd)
 {
-    eevent **ep = &_efd;
-    for (eevent *e = *ep; e; e = *ep)
-	if (e->libevent.ev_fd == fd) {
-	    event_del(&e->libevent);
-	    if (*e->se && e->slot)
-		*e->slot = -ECANCELED;
-	    e->se->simple_trigger(true);
-	    *ep = e->next;
-	    if (*ep)
-		(*ep)->pprev = ep;
-	    e->next = _efree;
-	    _efree = e;
-	} else
-	    ep = &e->next;
+    _ios.kill_fd (fd);
 }
 
 void driver_libevent::store_time(const timeval &expiry,
 				 tamerpriv::simple_event *se)
 {
-    if (!_efree)
-	expand_events();
     if (se) {
-	eevent *e = _efree;
-	_efree = e->next;
-
-	evtimer_set(&e->libevent, libevent_trigger, e);
-	timeval timeout = expiry;
-	timersub(&timeout, &now, &timeout);
-	evtimer_add(&e->libevent, &timeout);
-
+	eev<ev_timer> *e = _timers.get(true);
 	e->se = se;
 	e->slot = 0;
-	e->next = _etimer;
-	e->pprev = &_etimer;
-	if (_etimer)
-	    _etimer->pprev = &e->next;
-	_etimer = e;
+
+	timeval timeout = expiry;
+	timersub(&timeout, &now, &timeout);
+	ev_tstamp d = timeout.tv_sec;
+
+	::ev_timer_init(&e->libev, libevent_trigger, d, 0);
+	::ev_timer_start(_eloop, &e->libev);
     }
 }
 
