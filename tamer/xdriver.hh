@@ -73,6 +73,7 @@ class driver { public:
 
     static driver *make_tamer();
     static driver *make_libevent();
+    static driver *make_libev();
 
     static driver *main;
 

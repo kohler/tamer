@@ -26,10 +26,12 @@ driver *driver::main;
 
 void initialize()
 {
-    if (!driver::main && !getenv("TAMER_NOLIBEVENT"))
-	driver::main = driver::make_libevent();
-    if (!driver::main)
-	driver::main = driver::make_tamer();
+  if (!driver::main && getenv("TAMER_LIBEV")) 
+    driver::main = driver::make_libev();
+  if (!driver::main && !getenv("TAMER_NOLIBEVENT"))
+    driver::main = driver::make_libevent();
+  if (!driver::main)
+    driver::main = driver::make_tamer();
 }
 
 void cleanup()
