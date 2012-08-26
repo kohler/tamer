@@ -116,133 +116,8 @@ namespace tamer {
  *  automatically detects the right type of event to return.
  */
 template <typename T0, typename T1, typename T2, typename T3>
-class event { public:
-
-    /** @brief  Default constructor creates an empty event. */
-    event() TAMER_NOEXCEPT
-	: _e(0), _s0(0), _s1(0), _s2(0), _s3(0) {
-    }
-
-    /** @brief  Construct a two-ID, four-slot event on rendezvous @a r.
-     *  @param  r   Rendezvous.
-     *  @param  i0  First event ID.
-     *  @param  i1  Second event ID.
-     *  @param  s0  First trigger slot.
-     *  @param  s1  Second trigger slot.
-     *  @param  s2  Third trigger slot.
-     *  @param  s3  Fourth trigger slot.
-     */
-    template <typename R, typename I0, typename I1>
-    event(R &r, const I0 &i0, const I1 &i1, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
-	: _e(new tamerpriv::simple_event(r, i0, i1)),
-	  _s0(&s0), _s1(&s1), _s2(&s2), _s3(&s3) {
-    }
-
-    /** @brief  Construct a one-ID, four-slot event on rendezvous @a r.
-     *  @param  r   Rendezvous.
-     *  @param  i0  First event ID.
-     *  @param  s0  First trigger slot.
-     *  @param  s1  Second trigger slot.
-     *  @param  s2  Third trigger slot.
-     *  @param  s3  Fourth trigger slot.
-     */
-    template <typename R, typename I0>
-    event(R &r, const I0 &i0, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
-	: _e(new tamerpriv::simple_event(r, i0)),
-	  _s0(&s0), _s1(&s1), _s2(&s2), _s3(&s3) {
-    }
-
-    /** @brief  Construct a no-ID, four-slot event on rendezvous @a r.
-     *  @param  r   Rendezvous.
-     *  @param  s0  First trigger slot.
-     *  @param  s1  Second trigger slot.
-     *  @param  s2  Third trigger slot.
-     *  @param  s3  Fourth trigger slot.
-     */
-    template <typename R>
-    event(R &r, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
-	: _e(new tamerpriv::simple_event(r)),
-	  _s0(&s0), _s1(&s1), _s2(&s2), _s3(&s3) {
-    }
-
-    /** @brief  Copy-construct event from @a x.
-     *  @param  x  Source event.
-     */
-    event(const event<T0, T1, T2, T3> &x) TAMER_NOEXCEPT
-	: _e(x._e), _s0(x._s0), _s1(x._s1), _s2(x._s2), _s3(x._s3) {
-	tamerpriv::simple_event::use(_e);
-    }
-
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-    /** @brief  Move-construct event from @a x.
-     *  @param  x  Source event.
-     */
-    event(event<T0, T1, T2, T3> &&x) TAMER_NOEXCEPT
-	: _e(x._e), _s0(x._s0), _s1(x._s1), _s2(x._s2), _s3(x._s3) {
-	x._e = 0;
-    }
-#endif
-
-    /** @brief  Destroy the event instance.
-     *  @note   The underlying occurrence is canceled if this event was the
-     *          last remaining reference.
-     */
-    ~event() TAMER_NOEXCEPT {
-	tamerpriv::simple_event::unuse(_e);
-    }
-
-    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
-
-    /** @brief  Test if event is active.
-     *  @return  True if event is active, false if it is empty. */
-    operator unspecified_bool_type() const {
-	return _e ? (unspecified_bool_type) *_e : 0;
-    }
-
-    /** @brief  Test if event is empty.
-     *  @return  True if event is empty, false if it is active. */
-    bool operator!() const {
-	return !_e || _e->empty();
-    }
-
-    /** @brief  Test if event is empty.
-     *  @return  True if event is empty, false if it is active. */
-    bool empty() const {
-	return !_e || _e->empty();
-    }
-
-    /** @brief  Trigger event.
-     *  @param  v0  First trigger value.
-     *  @param  v1  Second trigger value.
-     *  @param  v2  Third trigger value.
-     *  @param  v3  Fourth trigger value.
-     *
-     *  Does nothing if event is empty.
-     */
-    void trigger(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3) {
-	if (_e && *_e) {
-	    if (_s0) *_s0 = v0;
-	    if (_s1) *_s1 = v1;
-	    if (_s2) *_s2 = v2;
-	    if (_s3) *_s3 = v3;
-	    _e->simple_trigger(true);
-	    _e = 0;
-	}
-    }
-
-    /** @brief  Trigger event.
-     *  @param  v0  First trigger value.
-     *  @param  v1  Second trigger value.
-     *  @param  v2  Third trigger value.
-     *  @param  v3  Fourth trigger value.
-     *
-     *  Does nothing if event is empty.
-     *
-     *  @note   This is a synonym for trigger().
-     */
-    void operator()(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3) {
-	trigger(v0, v1, v2, v3);
-    }
+class event {
+  public:
 
     typedef void result_type;
     typedef const T0 &first_argument_type;
@@ -250,76 +125,50 @@ class event { public:
     typedef const T2 &third_argument_type;
     typedef const T3 &fourth_argument_type;
 
-    /** @brief  Register a trigger notifier.
-     *  @param  e  Trigger notifier.
-     *
-     *  If this event is empty, @a e is triggered immediately.  Otherwise,
-     *  when this event is triggered, triggers @a e.
-     */
-    inline void at_trigger(const event<> &e);
+    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
+    inline event() TAMER_NOEXCEPT;
+    template <typename R, typename I0, typename I1>
+    inline event(R &r, const I0 &i0, const I1 &i1,
+		 T0 &s0, T1 &s1, T2 &s2, T3 &s3);
+    template <typename R, typename I0>
+    inline event(R &r, const I0 &i0, T0 &s0, T1 &s1, T2 &s2, T3 &s3);
+    template <typename R>
+    inline event(R &r, T0 &s0, T1 &s1, T2 &s2, T3 &s3);
+    inline event(const event<T0, T1, T2, T3> &x) TAMER_NOEXCEPT;
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
-    /** @overload */
+    inline event(event<T0, T1, T2, T3> &&x) TAMER_NOEXCEPT;
+#endif
+    inline ~event() TAMER_NOEXCEPT;
+
+    inline operator unspecified_bool_type() const;
+    inline bool operator!() const;
+    inline bool empty() const;
+
+    inline void trigger(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3);
+    inline void operator()(const T0 &v0, const T1 &v1, const T2 &v2, const T3 &v3);
+
+    inline void at_trigger(const event<> &e);
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
     inline void at_trigger(event<> &&e);
 #endif
 
-    /** @brief  Return a no-slot event for the same occurrence as @a e.
-     *  @return  New event.
-     *
-     *  The returned event refers to the same occurrence as this event, so
-     *  triggering either event makes both events empty.  The returned event
-     *  has no trigger slots, however, and unblocker().trigger() will leave
-     *  this event's slots unchanged.
-     */
     inline event<> unblocker() const TAMER_NOEXCEPT;
-
     inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
-    /** @brief  Assign this event to @a x.
-     *  @param  x  Source event.
-     */
-    event<T0, T1, T2, T3> &operator=(const event<T0, T1, T2, T3> &x) TAMER_NOEXCEPT {
-	tamerpriv::simple_event::use(x._e);
-	tamerpriv::simple_event::unuse(_e);
-	_e = x._e;
-	_s0 = x._s0;
-	_s1 = x._s1;
-	_s2 = x._s2;
-	_s3 = x._s3;
-	return *this;
-    }
-
+    inline event<T0, T1, T2, T3> &operator=(const event<T0, T1, T2, T3> &x) TAMER_NOEXCEPT;
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
-    /** @brief  Move-assign this event to @a x.
-     *  @param  x  Source event.
-     */
-    event<T0, T1, T2, T3> &operator=(event<T0, T1, T2, T3> &&x) TAMER_NOEXCEPT {
-	_e = x._e;
-	_s0 = x._s0;
-	_s1 = x._s1;
-	_s2 = x._s2;
-	_s3 = x._s3;
-	x._e = 0;
-	return *this;
-    }
+    inline event<T0, T1, T2, T3> &operator=(event<T0, T1, T2, T3> &&x) TAMER_NOEXCEPT;
 #endif
 
-    /** @internal
-     *  @brief  Fetch underlying occurrence.
-     *  @return  Underlying occurrence.
-     */
-    tamerpriv::simple_event *__get_simple() const {
-	return _e;
-    }
+    inline tamerpriv::simple_event *__get_simple() const;
 
   private:
-
     tamerpriv::simple_event *_e;
     T0 *_s0;
     T1 *_s1;
     T2 *_s2;
     T3 *_s3;
-
 };
 
 
@@ -804,6 +653,226 @@ class event<void, void, void, void> { public:
 /** @endcond */
 
 
+/** @brief  Default constructor creates an empty event. */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3>::event() TAMER_NOEXCEPT
+    : _e(0), _s0(0), _s1(0), _s2(0), _s3(0) {
+}
+
+/** @brief  Construct a two-ID, four-slot event on rendezvous @a r.
+ *  @param  r   Rendezvous.
+ *  @param  i0  First event ID.
+ *  @param  i1  Second event ID.
+ *  @param  s0  First trigger slot.
+ *  @param  s1  Second trigger slot.
+ *  @param  s2  Third trigger slot.
+ *  @param  s3  Fourth trigger slot.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+template <typename R, typename I0, typename I1>
+inline event<T0, T1, T2, T3>::event(R &r, const I0 &i0, const I1 &i1,
+				    T0 &s0, T1 &s1, T2 &s2, T3 &s3)
+    : _e(new tamerpriv::simple_event(r, i0, i1)),
+      _s0(&s0), _s1(&s1), _s2(&s2), _s3(&s3) {
+}
+
+/** @brief  Construct a one-ID, four-slot event on rendezvous @a r.
+ *  @param  r   Rendezvous.
+ *  @param  i0  First event ID.
+ *  @param  s0  First trigger slot.
+ *  @param  s1  Second trigger slot.
+ *  @param  s2  Third trigger slot.
+ *  @param  s3  Fourth trigger slot.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+template <typename R, typename I0>
+inline event<T0, T1, T2, T3>::event(R &r, const I0 &i0,
+				    T0 &s0, T1 &s1, T2 &s2, T3 &s3)
+    : _e(new tamerpriv::simple_event(r, i0)),
+      _s0(&s0), _s1(&s1), _s2(&s2), _s3(&s3) {
+}
+
+/** @brief  Construct a no-ID, four-slot event on rendezvous @a r.
+ *  @param  r   Rendezvous.
+ *  @param  s0  First trigger slot.
+ *  @param  s1  Second trigger slot.
+ *  @param  s2  Third trigger slot.
+ *  @param  s3  Fourth trigger slot.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+template <typename R>
+inline event<T0, T1, T2, T3>::event(R &r, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
+    : _e(new tamerpriv::simple_event(r)),
+      _s0(&s0), _s1(&s1), _s2(&s2), _s3(&s3) {
+}
+
+/** @brief  Copy-construct event from @a x.
+ *  @param  x  Source event.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3>::event(const event<T0, T1, T2, T3> &x) TAMER_NOEXCEPT
+    : _e(x._e), _s0(x._s0), _s1(x._s1), _s2(x._s2), _s3(x._s3) {
+    tamerpriv::simple_event::use(_e);
+}
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+/** @brief  Move-construct event from @a x.
+ *  @param  x  Source event.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3>::event(event<T0, T1, T2, T3> &&x) TAMER_NOEXCEPT
+    : _e(x._e), _s0(x._s0), _s1(x._s1), _s2(x._s2), _s3(x._s3) {
+    x._e = 0;
+}
+#endif
+
+/** @brief  Destroy the event instance.
+ *  @note   The underlying occurrence is canceled if this event was the
+ *          last remaining reference.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3>::~event() TAMER_NOEXCEPT {
+    tamerpriv::simple_event::unuse(_e);
+}
+
+/** @brief  Test if event is active.
+ *  @return  True if event is active, false if it is empty. */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3>::operator unspecified_bool_type() const {
+    return _e ? (unspecified_bool_type) *_e : 0;
+}
+
+/** @brief  Test if event is empty.
+ *  @return  True if event is empty, false if it is active. */
+template <typename T0, typename T1, typename T2, typename T3>
+inline bool event<T0, T1, T2, T3>::operator!() const {
+    return !_e || _e->empty();
+}
+
+/** @brief  Test if event is empty.
+ *  @return  True if event is empty, false if it is active. */
+template <typename T0, typename T1, typename T2, typename T3>
+inline bool event<T0, T1, T2, T3>::empty() const {
+    return !_e || _e->empty();
+}
+
+/** @brief  Trigger event.
+ *  @param  v0  First trigger value.
+ *  @param  v1  Second trigger value.
+ *  @param  v2  Third trigger value.
+ *  @param  v3  Fourth trigger value.
+ *
+ *  Does nothing if event is empty.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline void event<T0, T1, T2, T3>::trigger(const T0 &v0, const T1 &v1,
+					   const T2 &v2, const T3 &v3) {
+    if (_e && *_e) {
+	if (_s0) *_s0 = v0;
+	if (_s1) *_s1 = v1;
+	if (_s2) *_s2 = v2;
+	if (_s3) *_s3 = v3;
+	_e->simple_trigger(true);
+	_e = 0;
+    }
+}
+
+/** @brief  Trigger event.
+ *  @param  v0  First trigger value.
+ *  @param  v1  Second trigger value.
+ *  @param  v2  Third trigger value.
+ *  @param  v3  Fourth trigger value.
+ *
+ *  Does nothing if event is empty.
+ *
+ *  @note   This is a synonym for trigger().
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline void event<T0, T1, T2, T3>::operator()(const T0 &v0, const T1 &v1,
+					      const T2 &v2, const T3 &v3) {
+    trigger(v0, v1, v2, v3);
+}
+
+/** @brief  Register a trigger notifier.
+ *  @param  e  Trigger notifier.
+ *
+ *  If this event is empty, @a e is triggered immediately.  Otherwise,
+ *  when this event is triggered, triggers @a e.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline void event<T0, T1, T2, T3>::at_trigger(const event<> &e) {
+    tamerpriv::simple_event::use(e.__get_simple());
+    tamerpriv::simple_event::at_trigger(_e, e.__get_simple());
+}
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+/** @overload */
+template <typename T0, typename T1, typename T2, typename T3>
+inline void event<T0, T1, T2, T3>::at_trigger(event<> &&e) {
+    tamerpriv::simple_event::at_trigger(_e, e.__take_simple());
+}
+#endif
+
+/** @brief  Return a no-slot event for the same occurrence as @a e.
+ *  @return  New event.
+ *
+ *  The returned event refers to the same occurrence as this event, so
+ *  triggering either event makes both events empty.  The returned event
+ *  has no trigger slots, however, and unblocker().trigger() will leave
+ *  this event's slots unchanged.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<> event<T0, T1, T2, T3>::unblocker() const TAMER_NOEXCEPT {
+    tamerpriv::simple_event::use(_e);
+    return event<>::__make(_e);
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<> event<T0, T1, T2, T3>::bind_all() const {
+    return unblocker();
+}
+
+/** @brief  Assign this event to @a x.
+ *  @param  x  Source event.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> &event<T0, T1, T2, T3>::operator=(const event<T0, T1, T2, T3> &x) TAMER_NOEXCEPT {
+    tamerpriv::simple_event::use(x._e);
+    tamerpriv::simple_event::unuse(_e);
+    _e = x._e;
+    _s0 = x._s0;
+    _s1 = x._s1;
+    _s2 = x._s2;
+    _s3 = x._s3;
+    return *this;
+}
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+/** @brief  Move-assign this event to @a x.
+ *  @param  x  Source event.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> &event<T0, T1, T2, T3>::operator=(event<T0, T1, T2, T3> &&x) TAMER_NOEXCEPT {
+    _e = x._e;
+    _s0 = x._s0;
+    _s1 = x._s1;
+    _s2 = x._s2;
+    _s3 = x._s3;
+    x._e = 0;
+    return *this;
+}
+#endif
+
+/** @internal
+ *  @brief  Fetch underlying occurrence.
+ *  @return  Underlying occurrence.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline tamerpriv::simple_event *event<T0, T1, T2, T3>::__get_simple() const {
+    return _e;
+}
+
+
 /** @defgroup make_event Helper functions for making events
  *
  *  The @c make_event() helper function simplifies event creation.  @c
@@ -948,12 +1017,6 @@ inline event<> make_event(gather_rendezvous &r)
 
 /** @} */
 
-template <typename T0, typename T1, typename T2, typename T3>
-inline void event<T0, T1, T2, T3>::at_trigger(const event<> &e) {
-    tamerpriv::simple_event::use(e.__get_simple());
-    tamerpriv::simple_event::at_trigger(_e, e.__get_simple());
-}
-
 template <typename T0, typename T1, typename T2>
 inline void event<T0, T1, T2>::at_trigger(const event<> &e) {
     tamerpriv::simple_event::use(e.__get_simple());
@@ -973,11 +1036,6 @@ inline void event<T0>::at_trigger(const event<> &e) {
 }
 
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
-template <typename T0, typename T1, typename T2, typename T3>
-inline void event<T0, T1, T2, T3>::at_trigger(event<> &&e) {
-    tamerpriv::simple_event::at_trigger(_e, e.__take_simple());
-}
-
 template <typename T0, typename T1, typename T2>
 inline void event<T0, T1, T2>::at_trigger(event<> &&e) {
     tamerpriv::simple_event::at_trigger(_e, e.__take_simple());
@@ -993,12 +1051,6 @@ inline void event<T0>::at_trigger(event<> &&e) {
     tamerpriv::simple_event::at_trigger(_e, e.__take_simple());
 }
 #endif
-
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<> event<T0, T1, T2, T3>::unblocker() const TAMER_NOEXCEPT {
-    tamerpriv::simple_event::use(_e);
-    return event<>::__make(_e);
-}
 
 template <typename T0, typename T1, typename T2>
 inline event<> event<T0, T1, T2>::unblocker() const TAMER_NOEXCEPT {
@@ -1016,11 +1068,6 @@ template <typename T0>
 inline event<> event<T0>::unblocker() const TAMER_NOEXCEPT {
     tamerpriv::simple_event::use(_e);
     return event<>::__make(_e);
-}
-
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<> event<T0, T1, T2, T3>::bind_all() const {
-    return unblocker();
 }
 
 template <typename T0, typename T1, typename T2>
@@ -1052,5 +1099,5 @@ inline event<T0>::event(const event<> &e, const no_slot &) TAMER_NOEXCEPT
     tamerpriv::simple_event::use(_e);
 }
 
-}
+} // namespace tamer
 #endif /* TAMER_EVENT_HH */
