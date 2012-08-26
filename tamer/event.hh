@@ -13,7 +13,8 @@
  * notice is a summary of the Tamer LICENSE file; the license in that file is
  * legally binding.
  */
-#include <tamer/xevent.hh>
+#include <tamer/xbase.hh>
+#include <tamer/rendezvous.hh>
 #include <functional>
 namespace tamer {
 

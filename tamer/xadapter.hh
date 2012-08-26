@@ -138,13 +138,6 @@ void function_rendezvous<F>::hook(functional_rendezvous *fr,
     delete self;
 }
 
-
-inline void simple_event::at_trigger(simple_event *x, simple_event *at_e) {
-    if (x && *x && !x->_at_trigger && at_e)
-	x->_at_trigger = at_e;
-    else
-	hard_at_trigger(x, at_e);
-}
-
-}}
+} // namespace tamerpriv
+} // namespace tamer
 #endif /* TAMER_XADAPTER_HH */

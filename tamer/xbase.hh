@@ -15,6 +15,7 @@
  */
 #include <stdexcept>
 #include <stdint.h>
+#include <assert.h>
 #include <tamer/autoconf.h>
 namespace tamer {
 
@@ -346,6 +347,68 @@ inline abstract_rendezvous::~abstract_rendezvous() TAMER_NOEXCEPT {
 	hard_free();
 }
 
+inline void abstract_rendezvous::block(tamer_closure &c,
+				       unsigned position,
+				       const char *, int) {
+    assert(!_blocked_closure && &c);
+    _blocked_closure = &c;
+    unblocked_next_ = unblocked_sentinel();
+    c.tamer_block_position_ = position;
+}
+
+inline void abstract_rendezvous::block(tamer_debug_closure &c,
+				       unsigned position,
+				       const char *file, int line) {
+    block(static_cast<tamer_closure &>(c), -position, file, line);
+    c.tamer_blocked_file_ = file;
+    c.tamer_blocked_line_ = line;
+}
+
+inline void abstract_rendezvous::unblock() {
+    if (_blocked_closure && unblocked_next_ == unblocked_sentinel()) {
+	*unblocked_ptail = this;
+	unblocked_next_ = 0;
+	unblocked_ptail = &unblocked_next_;
+    }
+}
+
+inline void abstract_rendezvous::run() {
+    tamer_closure *c = _blocked_closure;
+    _blocked_closure = 0;
+    c->tamer_activator_(c);
+}
+
+
+template <typename R, typename I0, typename I1>
+inline simple_event::simple_event(R &r, const I0 &i0, const I1 &i1) TAMER_NOEXCEPT
+    : _refcount(1)
+{
+#if TAMER_DEBUG
+    _r = 0;
+#endif
+    r.add(this, i0, i1);
+}
+
+template <typename R, typename I0>
+inline simple_event::simple_event(R &r, const I0 &i0) TAMER_NOEXCEPT
+    : _refcount(1)
+{
+#if TAMER_DEBUG
+    _r = 0;
+#endif
+    r.add(this, i0);
+}
+
+template <typename R>
+inline simple_event::simple_event(R &r) TAMER_NOEXCEPT
+    : _refcount(1)
+{
+#if TAMER_DEBUG
+    _r = 0;
+#endif
+    r.add(this);
+}
+
 inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
 {
 #if TAMER_DEBUG
@@ -378,36 +441,13 @@ inline void simple_event::simple_trigger(bool values) {
     simple_trigger(this, values);
 }
 
-inline void abstract_rendezvous::block(tamer_closure &c,
-				       unsigned position,
-				       const char *, int) {
-    assert(!_blocked_closure && &c);
-    _blocked_closure = &c;
-    unblocked_next_ = unblocked_sentinel();
-    c.tamer_block_position_ = position;
+inline void simple_event::at_trigger(simple_event *x, simple_event *at_e) {
+    if (x && *x && !x->_at_trigger && at_e)
+	x->_at_trigger = at_e;
+    else
+	hard_at_trigger(x, at_e);
 }
 
-inline void abstract_rendezvous::block(tamer_debug_closure &c,
-				       unsigned position,
-				       const char *file, int line) {
-    block(static_cast<tamer_closure &>(c), -position, file, line);
-    c.tamer_blocked_file_ = file;
-    c.tamer_blocked_line_ = line;
-}
-
-inline void abstract_rendezvous::unblock() {
-    if (_blocked_closure && unblocked_next_ == unblocked_sentinel()) {
-	*unblocked_ptail = this;
-	unblocked_next_ = 0;
-	unblocked_ptail = &unblocked_next_;
-    }
-}
-
-inline void abstract_rendezvous::run() {
-    tamer_closure *c = _blocked_closure;
-    _blocked_closure = 0;
-    c->tamer_activator_(c);
-}
-
-}}
+} // namespace tamerpriv
+} // namespace tamer
 #endif /* TAMER_BASE_HH */

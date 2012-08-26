@@ -37,8 +37,7 @@ pkginclude_HEADERS = \
 	util.hh \
 	xadapter.hh \
 	xbase.hh \
-	xdriver.hh \
-	xevent.hh
+	xdriver.hh
 EXTRA_libtamer_la_SOURCES = \
 	fdhmsg.hh fdhmsg.cc \
 	fdh.hh fdh.tt
