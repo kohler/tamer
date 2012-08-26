@@ -45,23 +45,10 @@ event<T0, T1, T2, T3> distribute(event<T0, T1, T2, T3> e1,
 	return TAMER_MOVE(e2);
     if (e2.empty())
 	return TAMER_MOVE(e1);
-    tamerpriv::simple_event *es = e1.__get_simple();
-    tamerpriv::abstract_rendezvous *r = es->rendezvous();
-    if (r->rtype() == tamerpriv::rdistribute // maybe we can reuse rendezvous
-	&& es->refcount() == 1		     // ... if it's otherwise unused
-	&& es->rid() == 0		     // ... a normal distributer
-	&& !es->has_at_trigger()) {	     // ... and no at_trigger yet
-	tamerpriv::distribute_rendezvous<T0, T1, T2, T3> *dr =
-	    static_cast<tamerpriv::distribute_rendezvous<T0, T1, T2, T3> *>(r);
-	dr->add_distribute(TAMER_MOVE(e2));
-	return TAMER_MOVE(e1);
-    } else {
-	tamerpriv::distribute_rendezvous<T0, T1, T2, T3> *dr =
-	    new tamerpriv::distribute_rendezvous<T0, T1, T2, T3>;
-	dr->add_distribute(TAMER_MOVE(e1));
-	dr->add_distribute(TAMER_MOVE(e2));
-	return dr->make_event();
-    }
+    tamerpriv::distribute_rendezvous<T0, T1, T2, T3> *dr =
+	new tamerpriv::distribute_rendezvous<T0, T1, T2, T3>(TAMER_MOVE(e1),
+							     TAMER_MOVE(e2));
+    return dr->make_event();
 }
 
 /** @brief  Create event that triggers @a e1, @a e2, and @a e3 when triggered.

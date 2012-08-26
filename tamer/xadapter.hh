@@ -141,31 +141,22 @@ void function_rendezvous<F>::hook(functional_rendezvous *fr,
 template <typename T0, typename T1, typename T2, typename T3>
 class distribute_rendezvous : public functional_rendezvous {
   public:
-    distribute_rendezvous()
-	: functional_rendezvous(tamer::tamerpriv::rdistribute, hook) {
+    distribute_rendezvous(event<T0, T1, T2, T3> e1,
+			  event<T0, T1, T2, T3> e2)
+	: functional_rendezvous(tamer::tamerpriv::rdistribute, hook),
+	  e1_(TAMER_MOVE(e1)), e2_(TAMER_MOVE(e2)) {
+	e1_.at_trigger(event<>(*this, 1));
+	e2_.at_trigger(event<>(*this, 1));
     }
     void add(tamer::tamerpriv::simple_event *se, uintptr_t rid) {
 	se->initialize(this, rid);
     }
-    void add_distribute(const tamer::event<T0, T1, T2, T3> &e) {
-	if (e) {
-	    es_.push_back(e);
-	    es_.back().at_trigger(tamer::event<>(*this, 1));
-	}
-    }
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-    void add_distribute(tamer::event<T0, T1, T2, T3> &&e) {
-	if (e) {
-	    es_.push_back(TAMER_MOVE(e));
-	    es_.back().at_trigger(tamer::event<>(*this, 1));
-	}
-    }
-#endif
     event<T0, T1, T2, T3> make_event() {
 	return event<T0, T1, T2, T3>(*this, 0, vs_);
     }
   private:
-    std::vector<tamer::event<T0, T1, T2, T3> > es_;
+    tamer::event<T0, T1, T2, T3> e1_;
+    tamer::event<T0, T1, T2, T3> e2_;
     tamer::value_pack<T0, T1, T2, T3> vs_;
     static void hook(functional_rendezvous *, simple_event *, bool) TAMER_NOEXCEPT;
 };
@@ -176,16 +167,15 @@ void distribute_rendezvous<T0, T1, T2, T3>::hook(functional_rendezvous *fr,
 						 bool values) TAMER_NOEXCEPT {
     distribute_rendezvous<T0, T1, T2, T3> *dr =
 	static_cast<distribute_rendezvous<T0, T1, T2, T3> *>(fr);
-    while (!dr->es_.empty() && dr->es_.back().empty())
-	dr->es_.pop_back();
-    if (dr->es_.empty() || !se->rid()) {
+    if (se->rid() == 0 || (dr->e1_.empty() && dr->e2_.empty())) {
 	dr->remove_waiting();
-	typedef typename std::vector<tamer::event<T0, T1, T2, T3> >::iterator it_type;
-	for (it_type it = dr->es_.begin(); it != dr->es_.end(); ++it)
-	    if (values)
-		it->trigger(dr->vs_);
-	    else
-		it->unblock();
+	if (values) {
+	    dr->e1_.trigger(dr->vs_);
+	    dr->e2_.trigger(dr->vs_);
+	} else {
+	    dr->e1_.unblock();
+	    dr->e2_.unblock();
+	}
 	delete dr;
     }
 }
