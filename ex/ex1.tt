@@ -213,7 +213,7 @@ tamed void test_debug1() {
 }
 
 tamed void test_distribute() {
-    tvars { int i, j, k; };
+    tvars { int i, j, k, l; };
     ++n;
     twait {
 	tamer::event<int> e1 = make_event(i);
@@ -226,6 +226,19 @@ tamed void test_distribute() {
 	e1.trigger(1);
     }
     assert(i == 1 && j == 10 && k == 10);
+    i = j = k = 0;
+    twait {
+	tamer::event<int> ei = make_event(i), ej = make_event(j);
+	tamer::event<int> e1 = tamer::distribute(ei, ej);
+	e1.at_trigger(tamer::bind(make_event(k), 1));
+	e1 = tamer::distribute(TAMER_MOVE(e1), make_event(l));
+	assert(i == 0 && j == 0 && k == 0 && l == 0);
+	ei.trigger(1);
+	ej.trigger(1);
+	assert(i == 1 && j == 1 && k == 1 && l == 0);
+	e1.trigger(2);
+	assert(i == 1 && j == 1 && k == 1 && l == 2);
+    }
     --n;
 }
 

@@ -144,8 +144,8 @@ class distribute_rendezvous : public functional_rendezvous {
     distribute_rendezvous()
 	: functional_rendezvous(tamer::tamerpriv::rdistribute, hook) {
     }
-    void add(tamer::tamerpriv::simple_event *e, uintptr_t rid) {
-	e->initialize(this, rid);
+    void add(tamer::tamerpriv::simple_event *se, uintptr_t rid) {
+	se->initialize(this, rid);
     }
     void add_distribute(const tamer::event<T0, T1, T2, T3> &e) {
 	if (e) {
