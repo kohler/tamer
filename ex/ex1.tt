@@ -212,6 +212,23 @@ tamed void test_debug1() {
     --n;
 }
 
+tamed void test_distribute() {
+    tvars { int i, j, k; };
+    ++n;
+    twait {
+	tamer::event<int> e1 = make_event(i);
+	tamer::event<int> e2 = make_event(j);
+	tamer::event<int> e3 = make_event(k);
+	tamer::at_asap(tamer::bind(tamer::distribute(e1, e2, e3), 10));
+	tamer::at_asap(tamer::bind(e1, 1));
+	tamer::at_asap(tamer::bind(e2, 2));
+	tamer::at_asap(tamer::bind(e3, 3));
+	e1.trigger(1);
+    }
+    assert(i == 1 && j == 10 && k == 10);
+    --n;
+}
+
 int main(int, char **) {
     tamer::rendezvous<int> r;
     fprintf(stderr, "???????? *** %d\n\n", getpid());
@@ -233,6 +250,7 @@ int main(int, char **) {
 	tamer::once();
     fprintf(stderr, "!\n");
     test_debug1();
+    test_distribute();
     while (n > 0)
 	tamer::once();
 }
