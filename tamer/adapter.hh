@@ -353,12 +353,48 @@ inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterato
  *  Returns an event that calls (a copy of) @a f() when triggered. The call
  *  happens immediately, at trigger time.
  *
- *  @note @a f must have a public copy constructor and a public destructor.
+ *  @note @a f must have a public move constructor and a public destructor.
  */
 template <typename F>
-inline event<> fun_event(const F &f) {
+inline event<> fun_event(F f) {
     tamerpriv::function_rendezvous<F> *innerr =
-	new tamerpriv::function_rendezvous<F>(f);
+	new tamerpriv::function_rendezvous<F>(TAMER_MOVE(f));
+    return event<>(*innerr);
+}
+
+/** @brief  Create event that calls a function when triggered.
+ *  @param  f  Function object.
+ *  @param  arg  Argument.
+ *
+ *  Returns an event that calls @a f(@a arg) when triggered. The call happens
+ *  immediately, at trigger time.
+ *
+ *  @note @a f must have a public copy constructor and a public destructor.
+ */
+template <typename F, typename A>
+inline event<> fun_event(F f, A arg) {
+    tamerpriv::function_rendezvous<F, A> *innerr =
+	new tamerpriv::function_rendezvous<F, A>(TAMER_MOVE(f),
+						 TAMER_MOVE(arg));
+    return event<>(*innerr);
+}
+
+/** @brief  Create event that calls a function when triggered.
+ *  @param  f  Function object.
+ *  @param  arg1  First argument.
+ *  @param  arg2  Second argument.
+ *
+ *  Returns an event that calls @a f(@a arg1, @a arg2) when triggered. The
+ *  call happens immediately, at trigger time.
+ *
+ *  @note @a f must have a public copy constructor and a public destructor.
+ */
+template <typename F, typename A1, typename A2>
+inline event<> fun_event(F f, A1 arg1, A2 arg2) {
+    tamerpriv::function_rendezvous<F, A1, A2> *innerr =
+	new tamerpriv::function_rendezvous<F, A1, A2>(TAMER_MOVE(f),
+						      TAMER_MOVE(arg1),
+						      TAMER_MOVE(arg2));
     return event<>(*innerr);
 }
 
