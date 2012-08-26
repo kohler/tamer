@@ -370,13 +370,12 @@ void driver_tamer::once()
     // select!
     int nfds = nfds_;
     if (nfds > 0 || sig_pipe[0] >= 0) {
+	if (sig_pipe[0] > nfds)
+	    nfds = sig_pipe[0] + 1;
 	memcpy(_fdset[fdread + 2], _fdset[fdread], ((nfds + 63) & ~63) >> 3);
 	memcpy(_fdset[fdwrite + 2], _fdset[fdwrite], ((nfds + 63) & ~63) >> 3);
-	if (sig_pipe[0] >= 0) {
+	if (sig_pipe[0] >= 0)
 	    FD_SET(sig_pipe[0], &_fdset[fdread + 2]->fds);
-	    if (sig_pipe[0] > nfds)
-		nfds = sig_pipe[0] + 1;
-	}
 	nfds = select(nfds, &_fdset[fdread + 2]->fds,
 		      &_fdset[fdwrite + 2]->fds, 0, toptr);
     }
