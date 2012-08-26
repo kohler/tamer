@@ -113,10 +113,6 @@ class simple_event { public:
 
     static inline void at_trigger(simple_event *x, simple_event *at_trigger);
 
-    inline bool has_at_trigger() const {
-	return _r && _at_trigger && *_at_trigger;
-    }
-
   protected:
 
     unsigned _refcount;
