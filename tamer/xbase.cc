@@ -50,7 +50,6 @@ void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
 
  retry:
     abstract_rendezvous *r = x->_r;
-    simple_event *next = x->_at_trigger;
 
     if (r) {
 	// See also trigger_list_for_remove(), trigger_for_unuse().
@@ -84,10 +83,14 @@ void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
 	to_delete = x;
     }
 
-    if (r && next) {
-	x = next;
-	values = false;
-	goto retry;
+    if (r && x->at_trigger_) {
+	if (x->at_trigger_f_)
+	    x->at_trigger_f_(x->at_trigger_, x->at_trigger_arg2_);
+	else {
+	    x = static_cast<simple_event *>(x->at_trigger_);
+	    values = false;
+	    goto retry;
+	}
     }
 
     while ((x = to_delete)) {
@@ -103,8 +106,12 @@ void simple_event::trigger_list_for_remove() TAMER_NOEXCEPT {
 	e->_r = 0;
     // then call any left-behind at_triggers
     for (simple_event *e = this; e; e = e->_r_next)
-	if (simple_event *t = e->_at_trigger)
+	if (e->at_trigger_ && e->at_trigger_f_)
+	    e->at_trigger_f_(e->at_trigger_, e->at_trigger_arg2_);
+	else {
+	    simple_event *t = static_cast<simple_event *>(e->at_trigger_);
 	    t->simple_trigger(false);
+	}
 }
 
 void simple_event::trigger_for_unuse() TAMER_NOEXCEPT {
@@ -117,16 +124,40 @@ void simple_event::trigger_for_unuse() TAMER_NOEXCEPT {
     _refcount = 0;		// restore old _refcount
 }
 
+simple_event *simple_event::at_trigger_event() {
+    if (!at_trigger_f_)
+	return static_cast<simple_event *>(at_trigger_);
+    else
+	return tamer::fun_event(at_trigger_f_, at_trigger_,
+				at_trigger_arg2_).__take_simple();
+}
+
 void simple_event::hard_at_trigger(simple_event *x, simple_event *at_e) {
     if (!at_e || !*at_e)
 	/* ignore */;
     else if (!x || !*x)
 	at_e->simple_trigger(false);
-    else
-	x->_at_trigger =
-	    tamer::distribute(event<>::__make(x->_at_trigger),
+    else {
+	x->at_trigger_ =
+	    tamer::distribute(event<>::__make(x->at_trigger_event()),
 			      event<>::__make(at_e))
 	    .__take_simple();
+	x->at_trigger_f_ = 0;
+    }
+}
+
+void simple_event::hard_at_trigger(simple_event *x, void (*f)(void *, int),
+				   void *arg1, int arg2) {
+    if (!x || !*x)
+	f(arg1, arg2);
+    else {
+	simple_event *n = tamer::fun_event(f, arg1, arg2).__take_simple();
+	x->at_trigger_ =
+	    tamer::distribute(event<>::__make(x->at_trigger_event()),
+			      event<>::__make(n))
+	    .__take_simple();
+	x->at_trigger_f_ = 0;
+    }
 }
 
 

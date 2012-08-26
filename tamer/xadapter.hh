@@ -193,10 +193,10 @@ class distribute_rendezvous : public functional_rendezvous {
   public:
     distribute_rendezvous(event<T0, T1, T2, T3> e1,
 			  event<T0, T1, T2, T3> e2)
-	: functional_rendezvous(tamer::tamerpriv::rdistribute, hook),
+	: functional_rendezvous(tamerpriv::rdistribute, hook),
 	  e1_(TAMER_MOVE(e1)), e2_(TAMER_MOVE(e2)) {
-	e1_.at_trigger(event<>(*this, 1));
-	e2_.at_trigger(event<>(*this, 1));
+	tamerpriv::simple_event::at_trigger(e1_.__get_simple(), clear_hook, this, 0);
+	tamerpriv::simple_event::at_trigger(e2_.__get_simple(), clear_hook, this, 0);
     }
     void add(tamer::tamerpriv::simple_event *se, uintptr_t rid) {
 	se->initialize(this, rid);
@@ -209,25 +209,32 @@ class distribute_rendezvous : public functional_rendezvous {
     tamer::event<T0, T1, T2, T3> e2_;
     tamer::value_pack<T0, T1, T2, T3> vs_;
     static void hook(functional_rendezvous *, simple_event *, bool) TAMER_NOEXCEPT;
+    static void clear_hook(void *, int);
 };
 
 template <typename T0, typename T1, typename T2, typename T3>
 void distribute_rendezvous<T0, T1, T2, T3>::hook(functional_rendezvous *fr,
-						 simple_event *se,
+						 simple_event *,
 						 bool values) TAMER_NOEXCEPT {
     distribute_rendezvous<T0, T1, T2, T3> *dr =
 	static_cast<distribute_rendezvous<T0, T1, T2, T3> *>(fr);
-    if (se->rid() == 0 || (dr->e1_.empty() && dr->e2_.empty())) {
-	dr->remove_waiting();
-	if (values) {
-	    dr->e1_.trigger(dr->vs_);
-	    dr->e2_.trigger(dr->vs_);
-	} else {
-	    dr->e1_.unblock();
-	    dr->e2_.unblock();
-	}
-	delete dr;
+    dr->remove_waiting();
+    if (values) {
+	dr->e1_.trigger(dr->vs_);
+	dr->e2_.trigger(dr->vs_);
+    } else {
+	dr->e1_.unblock();
+	dr->e2_.unblock();
     }
+    delete dr;
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+void distribute_rendezvous<T0, T1, T2, T3>::clear_hook(void *arg, int) {
+    distribute_rendezvous<T0, T1, T2, T3> *dr =
+	static_cast<distribute_rendezvous<T0, T1, T2, T3> *>(arg);
+    if (dr->e1_.empty() && dr->e2_.empty() && dr->waiting_)
+	hook(dr, 0, false);
 }
 
 } // namespace tamerpriv

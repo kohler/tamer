@@ -52,7 +52,7 @@ class simple_event { public:
     // DO NOT derive from this class!
 
     inline simple_event() TAMER_NOEXCEPT
-	: _refcount(1), _r(0) {
+	: _r(0), _refcount(1) {
     }
 
     template <typename R, typename I0, typename I1>
@@ -112,21 +112,28 @@ class simple_event { public:
     void trigger_list_for_remove() TAMER_NOEXCEPT;
 
     static inline void at_trigger(simple_event *x, simple_event *at_trigger);
+    static inline void at_trigger(simple_event *x, void (*f)(void *, int),
+				  void *arg1, int arg2);
 
   protected:
 
-    unsigned _refcount;
     abstract_rendezvous *_r;
     uintptr_t _rid;
     simple_event *_r_next;
     simple_event **_r_pprev;
-    simple_event *_at_trigger;
+    void *at_trigger_;
+    void (*at_trigger_f_)(void *, int);
+    int at_trigger_arg2_;
+    unsigned _refcount;
 
     simple_event(const simple_event &);
     simple_event &operator=(const simple_event &);
 
     void trigger_for_unuse() TAMER_NOEXCEPT;
+    simple_event *at_trigger_event();
     static void hard_at_trigger(simple_event *x, simple_event *at_trigger);
+    static void hard_at_trigger(simple_event *x, void (*f)(void *, int),
+				void *arg1, int arg2);
 
     friend class explicit_rendezvous;
 
@@ -415,7 +422,8 @@ inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
     if (r->waiting_)
 	r->waiting_->_r_pprev = &_r_next;
     _r_next = r->waiting_;
-    _at_trigger = 0;
+    at_trigger_ = 0;
+    at_trigger_f_ = 0;
     r->waiting_ = this;
 }
 
@@ -436,10 +444,23 @@ inline void simple_event::simple_trigger(bool values) {
 }
 
 inline void simple_event::at_trigger(simple_event *x, simple_event *at_e) {
-    if (x && *x && !x->_at_trigger && at_e)
-	x->_at_trigger = at_e;
+    if (x && *x && !x->at_trigger_ && at_e)
+	x->at_trigger_ = at_e;
     else
 	hard_at_trigger(x, at_e);
+}
+
+inline void simple_event::at_trigger(simple_event *x, void (*f)(void *, int),
+				     void *arg1, int arg2) {
+#if TAMER_DEBUG
+    assert(arg1);
+#endif
+    if (x && *x && !x->at_trigger_) {
+	x->at_trigger_ = arg1;
+	x->at_trigger_f_ = f;
+	x->at_trigger_arg2_ = arg2;
+    } else
+	hard_at_trigger(x, f, arg1, arg2);
 }
 
 } // namespace tamerpriv
