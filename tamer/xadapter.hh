@@ -138,6 +138,58 @@ void function_rendezvous<F>::hook(functional_rendezvous *fr,
     delete self;
 }
 
+template <typename T0, typename T1, typename T2, typename T3>
+class distribute_rendezvous : public functional_rendezvous {
+  public:
+    distribute_rendezvous()
+	: functional_rendezvous(tamer::tamerpriv::rdistribute, hook) {
+    }
+    void add(tamer::tamerpriv::simple_event *e, uintptr_t rid) {
+	e->initialize(this, rid);
+    }
+    void add_distribute(const tamer::event<T0, T1, T2, T3> &e) {
+	if (e) {
+	    es_.push_back(e);
+	    es_.back().at_trigger(tamer::event<>(*this, 1));
+	}
+    }
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    void add_distribute(tamer::event<T0, T1, T2, T3> &&e) {
+	if (e) {
+	    es_.push_back(TAMER_MOVE(e));
+	    es_.back().at_trigger(tamer::event<>(*this, 1));
+	}
+    }
+#endif
+    event<T0, T1, T2, T3> make_event() {
+	return event<T0, T1, T2, T3>(*this, 0, vs_);
+    }
+  private:
+    std::vector<tamer::event<T0, T1, T2, T3> > es_;
+    tamer::value_pack<T0, T1, T2, T3> vs_;
+    static void hook(functional_rendezvous *, simple_event *, bool) TAMER_NOEXCEPT;
+};
+
+template <typename T0, typename T1, typename T2, typename T3>
+void distribute_rendezvous<T0, T1, T2, T3>::hook(functional_rendezvous *fr,
+						 simple_event *se,
+						 bool values) TAMER_NOEXCEPT {
+    distribute_rendezvous<T0, T1, T2, T3> *dr =
+	static_cast<distribute_rendezvous<T0, T1, T2, T3> *>(fr);
+    while (!dr->es_.empty() && dr->es_.back().empty())
+	dr->es_.pop_back();
+    if (dr->es_.empty() || !se->rid()) {
+	dr->remove_waiting();
+	typedef typename std::vector<tamer::event<T0, T1, T2, T3> >::iterator it_type;
+	for (it_type it = dr->es_.begin(); it != dr->es_.end(); ++it)
+	    if (values)
+		it->trigger(dr->vs_);
+	    else
+		it->unblock();
+	delete dr;
+    }
+}
+
 } // namespace tamerpriv
 } // namespace tamer
 #endif /* TAMER_XADAPTER_HH */

@@ -21,13 +21,6 @@ namespace tamer {
 
 template <typename I0=void, typename I1=void> class rendezvous;
 template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> class event;
-event<> distribute(const event<> &e1, const event<> &e2);
-event<> distribute(const event<> &e1, const event<> &e2, const event<> &e3);
-template <typename T0> inline event<T0> unbind(const event<> &e);
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-event<> distribute(event<> &&e1, event<> &&e2);
-template <typename T0> inline event<T0> unbind(event<> &&e);
-#endif
 class driver;
 class explicit_rendezvous;
 class gather_rendezvous;
@@ -261,6 +254,11 @@ class functional_rendezvous : public abstract_rendezvous {
     inline functional_rendezvous(void (*f)(functional_rendezvous *fr,
 					   simple_event *e, bool values) TAMER_NOEXCEPT)
 	: abstract_rendezvous(rnormal, rfunctional), f_(f) {
+    }
+    inline functional_rendezvous(rendezvous_type rtype,
+				 void (*f)(functional_rendezvous *fr,
+					   simple_event *e, bool values) TAMER_NOEXCEPT)
+	: abstract_rendezvous(rnormal, rtype), f_(f) {
     }
     inline ~functional_rendezvous() {
 	remove_waiting();

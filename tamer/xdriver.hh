@@ -150,11 +150,11 @@ inline void driver::at_fd_write(int fd, const event<int> &e) {
 }
 
 inline void driver::at_fd_read(int fd, const event<> &e) {
-    at_fd(fd, fdread, unbind<int>(e));
+    at_fd(fd, fdread, e);
 }
 
 inline void driver::at_fd_write(int fd, const event<> &e) {
-    at_fd(fd, fdwrite, unbind<int>(e));
+    at_fd(fd, fdwrite, e);
 }
 
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES

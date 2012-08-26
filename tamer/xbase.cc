@@ -16,48 +16,6 @@
 #include <tamer/adapter.hh>
 #include <stdio.h>
 
-namespace {
-class distribute_rendezvous : public tamer::tamerpriv::abstract_rendezvous {
-  public:
-    distribute_rendezvous()
-	: abstract_rendezvous(tamer::rnormal, tamer::tamerpriv::rdistribute) {
-    }
-    void add(tamer::tamerpriv::simple_event *e, uintptr_t rid) {
-	e->initialize(this, rid);
-    }
-    void add_distribute(const tamer::event<> &e) {
-	if (e) {
-	    es_.push_back(e);
-	    es_.back().at_trigger(tamer::event<>(*this, 1));
-	}
-    }
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-    void add_distribute(tamer::event<> &&e) {
-	if (e) {
-	    es_.push_back(TAMER_MOVE(e));
-	    es_.back().at_trigger(tamer::event<>(*this, 1));
-	}
-    }
-#endif
-    void complete(tamer::tamerpriv::simple_event *e) TAMER_NOEXCEPT;
-  private:
-    std::vector<tamer::event<> > es_;
-};
-
-void distribute_rendezvous::complete(tamer::tamerpriv::simple_event *e) TAMER_NOEXCEPT {
-    while (es_.size() && !es_.back())
-	es_.pop_back();
-    if (!es_.size() || !e->rid()) {
-	remove_waiting();
-	for (std::vector<tamer::event<> >::iterator i = es_.begin();
-	     i != es_.end();
-	     ++i)
-	    i->trigger();
-	delete this;
-    }
-}
-}
-
 namespace tamer {
 namespace tamerpriv {
 
@@ -111,12 +69,10 @@ void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
 	    er->ready_ptail_ = &x->_r_next;
 	    x->_r_next = 0;
 	    er->unblock();
-	} else if (r->rtype_ == rfunctional) {
+	} else {
+	    // rfunctional || rdistribute
 	    functional_rendezvous *fr = static_cast<functional_rendezvous *>(r);
 	    fr->f_(fr, x, values);
-	} else if (r->rtype_ == rdistribute) {
-	    distribute_rendezvous *dr = static_cast<distribute_rendezvous *>(r);
-	    dr->complete(x);
 	}
     }
 
@@ -190,65 +146,6 @@ void event_prematurely_dereferenced(simple_event *, abstract_rendezvous *r) {
 
 } // namespace tamer::tamerpriv::message
 } // namespace tamer::tamerpriv
-
-
-/** @brief  Create event that triggers @a e1 and @a e2 when triggered.
- *  @param  e1  First event.
- *  @param  e2  Second event.
- *  @return  Distributer event.
- *
- *  Triggering the returned event instantly triggers @a e1 and @a e2. The
- *  returned event is automatically triggered if @a e1 and @a e2 are both
- *  triggered separately.
- */
-event<> distribute(const event<> &e1, const event<> &e2) {
-    if (e1.empty())
-	return e2;
-    else if (e2.empty())
-	return e1;
-    else {
-	tamerpriv::abstract_rendezvous *r = e1.__get_simple()->rendezvous();
-	if (r->rtype() == tamerpriv::rdistribute
-	    && e1.__get_simple()->refcount() == 1
-	    && e1.__get_simple()->has_at_trigger()) {
-	    // safe to reuse e1
-	    distribute_rendezvous *d = static_cast<distribute_rendezvous *>(r);
-	    d->add_distribute(e2);
-	    return e1;
-	} else {
-	    distribute_rendezvous *d = new distribute_rendezvous;
-	    d->add_distribute(e1);
-	    d->add_distribute(e2);
-	    return event<>(*d, 0);
-	}
-    }
-}
-
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-/** @overload */
-event<> distribute(event<> &&e1, event<> &&e2) {
-    if (e1.empty())
-	return e2;
-    else if (e2.empty())
-	return e1;
-    else {
-	tamerpriv::abstract_rendezvous *r = e1.__get_simple()->rendezvous();
-	if (r->rtype() == tamerpriv::rdistribute
-	    && e1.__get_simple()->refcount() == 1
-	    && e1.__get_simple()->has_at_trigger()) {
-	    // safe to reuse e1
-	    distribute_rendezvous *d = static_cast<distribute_rendezvous *>(r);
-	    d->add_distribute(TAMER_MOVE(e2));
-	    return e1;
-	} else {
-	    distribute_rendezvous *d = new distribute_rendezvous;
-	    d->add_distribute(TAMER_MOVE(e1));
-	    d->add_distribute(TAMER_MOVE(e2));
-	    return event<>(*d, 0);
-	}
-    }
-}
-#endif
 
 
 void rendezvous<uintptr_t>::clear()

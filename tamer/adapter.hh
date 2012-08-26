@@ -29,6 +29,78 @@ const int overflow = -EOVERFLOW;
 const int closed = -EPIPE;
 }
 
+/** @brief  Create event that triggers @a e1 and @a e2 when triggered.
+ *  @param  e1  First event.
+ *  @param  e2  Second event.
+ *  @return  Distributer event.
+ *
+ *  Triggering the returned event instantly triggers @a e1 and @a e2 with the
+ *  same values. The returned event is automatically triggered if @a e1 and @a
+ *  e2 are both triggered separately.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+event<T0, T1, T2, T3> distribute(const event<T0, T1, T2, T3> &e1,
+				 const event<T0, T1, T2, T3> &e2) {
+    if (e1.empty())
+	return e2;
+    if (e2.empty())
+	return e1;
+    tamerpriv::simple_event *es = e1.__get_simple();
+    tamerpriv::abstract_rendezvous *r = es->rendezvous();
+    if (r->rtype() == tamerpriv::rdistribute
+	&& es->refcount() == 1
+	&& es->has_at_trigger()) {
+	// can reuse e1
+	tamerpriv::distribute_rendezvous<T0, T1, T2, T3> *dr =
+	    static_cast<tamerpriv::distribute_rendezvous<T0, T1, T2, T3> *>(r);
+	dr->add_distribute(e2);
+	return e1;
+    } else {
+	tamerpriv::distribute_rendezvous<T0, T1, T2, T3> *dr =
+	    new tamerpriv::distribute_rendezvous<T0, T1, T2, T3>;
+	dr->add_distribute(e1);
+	dr->add_distribute(e2);
+	return dr->make_event();
+    }
+}
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+/** @brief  Create event that triggers @a e1 and @a e2 when triggered.
+ *  @param  e1  First event.
+ *  @param  e2  Second event.
+ *  @return  Distributer event.
+ *
+ *  Triggering the returned event instantly triggers @a e1 and @a e2 with the
+ *  same values. The returned event is automatically triggered if @a e1 and @a
+ *  e2 are both triggered separately.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+event<T0, T1, T2, T3> distribute(event<T0, T1, T2, T3> &&e1,
+				 event<T0, T1, T2, T3> &&e2) {
+    if (e1.empty())
+	return e2;
+    if (e2.empty())
+	return e1;
+    tamerpriv::simple_event *es = e1.__get_simple();
+    tamerpriv::abstract_rendezvous *r = es->rendezvous();
+    if (r->rtype() == tamerpriv::rdistribute
+	&& es->refcount() == 1
+	&& es->has_at_trigger()) {
+	// can reuse e1
+	tamerpriv::distribute_rendezvous<T0, T1, T2, T3> *dr =
+	    static_cast<tamerpriv::distribute_rendezvous<T0, T1, T2, T3> *>(r);
+	dr->add_distribute(TAMER_MOVE(e2));
+	return e1;
+    } else {
+	tamerpriv::distribute_rendezvous<T0, T1, T2, T3> *dr =
+	    new tamerpriv::distribute_rendezvous<T0, T1, T2, T3>;
+	dr->add_distribute(TAMER_MOVE(e1));
+	dr->add_distribute(TAMER_MOVE(e2));
+	return dr->make_event();
+    }
+}
+#endif
+
 /** @brief  Create event that triggers @a e1, @a e2, and @a e3 when triggered.
  *  @param  e1  First event.
  *  @param  e2  Second event.
@@ -37,7 +109,10 @@ const int closed = -EPIPE;
  *
  *  Equivalent to distribute(distribute(@a e1, @a e2), @a e3).
  */
-inline event<> distribute(const event<> &e1, const event<> &e2, const event<> &e3) {
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> distribute(const event<T0, T1, T2, T3> &e1,
+					const event<T0, T1, T2, T3> &e2,
+					const event<T0, T1, T2, T3> &e3) {
     return distribute(distribute(e1, e2), e3);
 }
 
