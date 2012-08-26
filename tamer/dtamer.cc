@@ -57,16 +57,8 @@ class driver_tamer : public driver { public:
     };
 
     struct tfd {
-	int fd : 30;
-	unsigned action : 2;
-	tamerpriv::simple_event *se;
-	int *slot;
-	tfd *next;
-    };
-
-    struct tfd_group {
-	tfd_group *next;
-	tfd t[1];
+	tamerpriv::simple_event *se[2];
+	int *slot[2];
     };
 
     union xfd_set {
@@ -79,8 +71,9 @@ class driver_tamer : public driver { public:
     int tcap_;
     unsigned torder_;
 
-    tfd *_fd;
-    int _nfds;
+    tfd *fds_;
+    int nfds_;
+    int fdcap_;
     xfd_set *_fdset[4];
     int _fdset_cap;
 
@@ -89,15 +82,11 @@ class driver_tamer : public driver { public:
     unsigned asap_tail_;
     unsigned asap_capmask_;
 
-    int _fdcap;
-    tfd_group *_fdgroup;
-    tfd *_fdfree;
-    rendezvous<> _fdcancelr;
-
     void expand_timers();
     void check_timers() const;
     void timer_reheapify_from(int pos);
-    void expand_fds();
+    static void fd_disinterest(void *driver, int fd);
+    void expand_fds(int need_fd);
     void cull_timers();
     void expand_asap();
 
@@ -106,16 +95,16 @@ class driver_tamer : public driver { public:
 
 driver_tamer::driver_tamer()
     : t_(0), nt_(0), tcap_(0), torder_(0),
-      _fd(0), _nfds(0), _fdset_cap(sizeof(xfd_set) * 8),
-      asap_(0), asap_head_(0), asap_tail_(0), asap_capmask_(-1U),
-      _fdcap(0), _fdgroup(0), _fdfree(0)
+      fds_(0), nfds_(0), fdcap_(0), _fdset_cap(sizeof(xfd_set) * 8),
+      asap_(0), asap_head_(0), asap_tail_(0), asap_capmask_(-1U)
 {
     assert(FD_SETSIZE <= _fdset_cap);
     expand_timers();
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 4; ++i) {
 	_fdset[i] = reinterpret_cast<xfd_set *>(new char[_fdset_cap / 8]);
-    FD_ZERO(&_fdset[fdread]->fds);
-    FD_ZERO(&_fdset[fdwrite]->fds);
+	if (i < 2)
+	    memset(_fdset[i], 0, _fdset_cap / 8);
+    }
     set_now();
 }
 
@@ -134,17 +123,13 @@ driver_tamer::~driver_tamer()
     delete[] asap_;
 
     // destroy all active file descriptors
-    while (_fd) {
-	tamerpriv::simple_event::unuse(_fd->se);
-	_fd = _fd->next;
+    for (int i = nfds_ - 1; i >= 0; --i) {
+	tamerpriv::simple_event *e0 = fds_[i].se[0], *e1 = fds_[i].se[1];
+	fds_[i].se[0] = fds_[i].se[1] = 0;
+	tamerpriv::simple_event::unuse(e0);
+	tamerpriv::simple_event::unuse(e1);
     }
-
-    // free file descriptor groups
-    while (_fdgroup) {
-	tfd_group *next = _fdgroup->next;
-	delete[] reinterpret_cast<unsigned char *>(_fdgroup);
-	_fdgroup = next;
-    }
+    delete[] fds_;
 
     // free fd_sets
     for (int i = 0; i < 4; ++i)
@@ -227,36 +212,60 @@ void driver_tamer::check_timers() const
 }
 #endif
 
-void driver_tamer::expand_fds()
+void driver_tamer::expand_fds(int need_fd)
 {
-    int ncap = (_fdcap ? _fdcap * 2 : 16);
+    if (need_fd >= fdcap_) {
+	int ncap = (fdcap_ ? (fdcap_ + 2) * 2 - 2 : 30);
+	while (ncap < need_fd)
+	    ncap = (ncap + 2) * 2 - 2;
 
-    tfd_group *ngroup = reinterpret_cast<tfd_group *>(new unsigned char[sizeof(tfd_group) + sizeof(tfd) * (ncap - 1)]);
-    ngroup->next = _fdgroup;
-    _fdgroup = ngroup;
-    for (int i = 0; i < ncap; i++) {
-	ngroup->t[i].next = _fdfree;
-	_fdfree = &ngroup->t[i];
+        tfd *fds = new tfd[ncap];
+	memcpy(fds, fds_, sizeof(tfd) * nfds_);
+        delete[] fds_;
+	fds_ = fds;
+	fdcap_ = ncap;
     }
+    if (need_fd >= nfds_) {
+	memset(fds_ + nfds_, 0, sizeof(tfd) * (need_fd - nfds_ + 1));
+	nfds_ = need_fd + 1;
+    }
+}
+
+void driver_tamer::fd_disinterest(void *arg, int fd)
+{
+    driver_tamer *dt = static_cast<driver_tamer *>(arg);
+    tfd *t = &dt->fds_[fd];
+    for (int action = 0; action < 2; ++action)
+	if (t->se[action] && t->se[action]->empty()) {
+	    tamer::tamerpriv::simple_event::unuse_clean(t->se[action]);
+	    t->se[action] = 0;
+	    FD_CLR(fd, &dt->_fdset[action]->fds);
+	}
+    while (dt->nfds_ && !t->se[0] && !t->se[1] && fd == dt->nfds_ - 1)
+	--dt->nfds_;
 }
 
 void driver_tamer::store_fd(int fd, int action, tamerpriv::simple_event *se,
 			    int *slot)
 {
-    if (!_fdfree)
-	expand_fds();
-    if (se && *se) {
-	tfd *t = _fdfree;
-	_fdfree = t->next;
-	t->next = _fd;
-	_fd = t;
+    assert(fd >= 0);
+    if (se && *se && (action == 0 || action == 1)) {
+	if (fd >= nfds_)
+	    expand_fds(fd);
+	tfd &t = fds_[fd];
+	if (t.se[action]) {
+	    assert(!t.se[action]->empty());
+	    tamer::event<int> e =
+		tamer::distribute(tamer::event<int>::__make(t.se[action],
+							    t.slot[action]),
+				  tamer::event<int>::__make(se, slot));
+	    se = e.__take_simple();
+	    slot = e.__get_slot0();
+	}
+	t.se[action] = se;
+	t.slot[action] = slot;
 
-	t->fd = fd;
-	t->action = action;
-	t->se = se;
-	t->slot = slot;
-
-	if (fd >= FD_SETSIZE) {
+	if (fd >= _fdset_cap) {
 	    int ncap = _fdset_cap * 2;
 	    while (ncap < fd)
 		ncap *= 2;
@@ -273,29 +282,25 @@ void driver_tamer::store_fd(int fd, int action, tamerpriv::simple_event *se,
 	}
 
 	FD_SET(fd, &_fdset[action]->fds);
-	if (fd >= _nfds)
-	    _nfds = fd + 1;
-	if (action <= fdwrite)
-	    tamerpriv::simple_event::at_trigger(se, make_event(_fdcancelr).__take_simple());
+	tamerpriv::simple_event::at_trigger(se, fd_disinterest, this, fd);
     }
 }
 
 void driver_tamer::kill_fd(int fd)
 {
     assert(fd >= 0);
-    FD_CLR(fd, &_fdset[fdread]->fds);
-    FD_CLR(fd, &_fdset[fdwrite]->fds);
-    tfd **pprev = &_fd, *t;
-    while ((t = *pprev))
-	if (t->fd == fd) {
-	    if (*t->se && t->slot)
-		*t->slot = -ECANCELED;
-	    t->se->simple_trigger(true);
-	    *pprev = t->next;
-	    t->next = _fdfree;
-	    _fdfree = t;
-	} else
-	    pprev = &t->next;
+    if (fd < nfds_) {
+	FD_CLR(fd, &_fdset[fdread]->fds);
+	FD_CLR(fd, &_fdset[fdwrite]->fds);
+	tfd &t = fds_[fd];
+	for (int action = 0; action < 2; ++action) {
+	    tamer::tamerpriv::simple_event *se = t.se[action];
+	    t.se[action] = 0;	// prevent double-free by fd_disinterest
+	    if (se && t.slot[action])
+		*t.slot[action] = -ECANCELED;
+	    tamer::tamerpriv::simple_event::simple_trigger(se, true);
+	}
+    }
 }
 
 void driver_tamer::store_time(const timeval &expiry,
@@ -339,7 +344,7 @@ bool driver_tamer::empty()
 	|| nt_ != 0
 	|| sig_any_active
 	|| tamerpriv::abstract_rendezvous::has_unblocked()
-	|| _nfds != 0)
+	|| nfds_ != 0)
 	return false;
     return true;
 }
@@ -362,30 +367,8 @@ void driver_tamer::once()
 	toptr = &to;
     }
 
-    // get rid of canceled descriptors, if any
-    if (_fdcancelr.has_ready()) {
-	while (_fdcancelr.join())
-	    /* nada */;
-	memset(_fdset[fdread]->s, 0, ((_nfds + 63) & ~63) >> 3);
-	memset(_fdset[fdwrite]->s, 0, ((_nfds + 63) & ~63) >> 3);
-	_nfds = 0;
-	tfd **pprev = &_fd, *t;
-	while ((t = *pprev))
-	    if (!*t->se) {
-		tamerpriv::simple_event::unuse_clean(t->se);
-		*pprev = t->next;
-		t->next = _fdfree;
-		_fdfree = t;
-	    } else {
-		FD_SET(t->fd, &_fdset[t->action]->fds);
-		if (t->fd >= _nfds)
-		    _nfds = t->fd + 1;
-		pprev = &t->next;
-	    }
-    }
-
     // select!
-    int nfds = _nfds;
+    int nfds = nfds_;
     if (nfds > 0 || sig_pipe[0] >= 0) {
 	memcpy(_fdset[fdread + 2], _fdset[fdread], ((nfds + 63) & ~63) >> 3);
 	memcpy(_fdset[fdwrite + 2], _fdset[fdwrite], ((nfds + 63) & ~63) >> 3);
@@ -411,26 +394,17 @@ void driver_tamer::once()
 
     // run file descriptors
     if (nfds > 0) {
-	tfd **pprev = &_fd, *t;
-	while ((t = *pprev))
-	    if (t->action <= fdwrite
-		&& (t->fd >= FD_SETSIZE
-		    || FD_ISSET(t->fd, &_fdset[t->action + 2]->fds))) {
-		FD_CLR(t->fd, &_fdset[t->action]->fds);
-		if (*t->se && t->slot)
-		    *t->slot = 0;
-		t->se->simple_trigger(true);
-		_fdcancelr.join(); // reap the notifier we just triggered
-		*pprev = t->next;
-		t->next = _fdfree;
-		_fdfree = t;
-	    } else if (!*t->se) {
-		tamerpriv::simple_event::unuse_clean(t->se);
-		*pprev = t->next;
-		t->next = _fdfree;
-		_fdfree = t;
-	    } else
-		pprev = &t->next;
+	for (int fd = nfds - 1; fd >= 0; --fd) {
+	    tfd &t = fds_[fd];
+	    for (int action = 0; action < 2; ++action)
+		if (FD_ISSET(fd, &_fdset[2 + action]->fds) && t.se[action]) {
+		    tamerpriv::simple_event *se = t.se[action];
+		    t.se[action] = 0; // prevent double-free by fd_disinterest
+		    if (t.slot[action])
+			*t.slot[action] = 0;
+		    se->simple_trigger(true);
+		}
+	}
     }
 
     // run the timers that worked
@@ -452,30 +426,17 @@ void driver_tamer::once()
 	r->run();
 }
 
-#if 0
-void driver_tamer::print_fds()
-{
-    tfd *t = _fd;
-    while (t) {
-	fprintf(stderr, "%d.%d ", t->fd, t->action);
-	t = t->next;
-    }
-    if (_fd)
-	fprintf(stderr, "\n");
-}
-#endif
-
 void driver_tamer::loop()
 {
     while (1)
 	once();
 }
 
-}
+} // namespace
 
 driver *driver::make_tamer()
 {
     return new driver_tamer;
 }
 
-}
+} // namespace tamer

@@ -504,10 +504,19 @@ class event<T0, void, void, void>
 	return _s0;
     }
 
+    static inline event<T0> __make(tamerpriv::simple_event *se, T0 *s0) {
+	return event<T0>(take_marker(), se, s0);
+    }
+
   private:
 
     tamerpriv::simple_event *_e;
     T0 *_s0;
+
+    struct take_marker { };
+    inline event(const take_marker &, tamerpriv::simple_event *se, T0 *s0)
+	: _e(se), _s0(s0) {
+    }
 
 };
 
