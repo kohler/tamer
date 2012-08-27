@@ -63,14 +63,14 @@
 #endif
 
 #if __GNUC__ && TAMER_DEBUG
-#define TAMER_MAKE_ANNOTATED_EVENT(r, ...) tamer::make_annotated_event(__FILE__, __LINE__, r, ## __VA_ARGS__)
-#define TAMER_MAKE_FN_ANNOTATED_EVENT(r, ...) tamer::make_annotated_event(__PRETTY_FUNCTION__, 0, r, ## __VA_ARGS__)
+#define TAMER_MAKE_ANNOTATED_EVENT(r, ...) make_annotated_event(__FILE__, __LINE__, r, ## __VA_ARGS__)
+#define TAMER_MAKE_FN_ANNOTATED_EVENT(r, ...) make_annotated_event(__PRETTY_FUNCTION__, 0, r, ## __VA_ARGS__)
 #elif TAMER_DEBUG
-#define TAMER_MAKE_ANNOTATED_EVENT(r, ...) tamer::make_annotated_event(__FILE__, __LINE__, r, ## __VA_ARGS__)
-#define TAMER_MAKE_FN_ANNOTATED_EVENT(r, ...) tamer::make_annotated_event(__FILE__, __LINE__, r, ## __VA_ARGS__)
+#define TAMER_MAKE_ANNOTATED_EVENT(r, ...) make_annotated_event(__FILE__, __LINE__, r, ## __VA_ARGS__)
+#define TAMER_MAKE_FN_ANNOTATED_EVENT(r, ...) make_annotated_event(__FILE__, __LINE__, r, ## __VA_ARGS__)
 #else
-#define TAMER_MAKE_ANNOTATED_EVENT tamer::make_event
-#define TAMER_MAKE_FN_ANNOTATED_EVENT tamer::make_event
+#define TAMER_MAKE_ANNOTATED_EVENT make_event
+#define TAMER_MAKE_FN_ANNOTATED_EVENT make_event
 #endif
 
 #endif

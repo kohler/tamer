@@ -208,7 +208,7 @@ class distribute_rendezvous : public functional_rendezvous,
 	se->initialize(this, rid);
     }
     event<T0, T1, T2, T3> make_event() {
-	return TAMER_MAKE_FN_ANNOTATED_EVENT(*this, 0, vs_);
+	return tamer::TAMER_MAKE_FN_ANNOTATED_EVENT(*this, 0, vs_);
     }
   private:
     tamer::event<T0, T1, T2, T3> e1_;
