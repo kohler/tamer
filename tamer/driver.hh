@@ -48,6 +48,11 @@ inline void set_now() {
     driver::main->set_now();
 }
 
+/** @brief  Translate a time to a double. */
+inline double dtime(const timeval tv) {
+    return tv.tv_sec + tv.tv_usec / 1000000.;
+}
+
 /** @brief  Test whether driver events are pending.
  *  @return  True if no driver events are pending, otherwise false.
  *
@@ -104,6 +109,11 @@ inline void at_fd_write(int fd, event<int> e) {
  *  Triggers @a e at timestamp @a expiry, or soon afterwards.
  */
 inline void at_time(const timeval &expiry, event<> e) {
+    driver::main->at_time(expiry, e);
+}
+
+/** @overload */
+inline void at_time(double expiry, event<> e) {
     driver::main->at_time(expiry, e);
 }
 

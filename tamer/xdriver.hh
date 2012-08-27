@@ -36,6 +36,7 @@ class driver { public:
     inline void at_fd_write(int fd, event<int> e);
     inline void at_fd_write(int fd, event<> e);
 
+    inline void at_time(double expiry, event<> e);
     inline void at_delay(timeval delay, event<> e);
     void at_delay(double delay, event<> e);
     inline void at_delay_sec(int delay, event<> e);
@@ -97,6 +98,13 @@ inline void driver::at_fd_read(int fd, event<> e) {
 
 inline void driver::at_fd_write(int fd, event<> e) {
     at_fd(fd, fdwrite, e);
+}
+
+inline void driver::at_time(double expiry, event<> e) {
+    timeval tv;
+    tv.tv_sec = (long) expiry;
+    tv.tv_usec = (long) ((expiry - tv.tv_sec) * 1000000);
+    at_time(tv, e);
 }
 
 inline void driver::at_delay(timeval delay, event<> e) {
