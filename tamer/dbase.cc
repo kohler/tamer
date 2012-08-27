@@ -38,7 +38,7 @@ void cleanup()
     driver::main = 0;
 }
 
-void driver::at_delay(double delay, const event<> &e)
+void driver::at_delay(double delay, event<> e)
 {
     if (delay <= 0)
 	at_asap(e);
@@ -54,24 +54,5 @@ void driver::at_delay(double delay, const event<> &e)
 	at_time(tv, e);
     }
 }
-
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-void driver::at_delay(double delay, event<> &&e)
-{
-    if (delay <= 0)
-	at_asap(TAMER_MOVE(e));
-    else {
-	timeval tv = now;
-	long ldelay = (long) delay;
-	tv.tv_sec += ldelay;
-	tv.tv_usec += (long) ((delay - ldelay) * 1000000 + 0.5);
-	if (tv.tv_usec >= 1000000) {
-	    tv.tv_sec++;
-	    tv.tv_usec -= 1000000;
-	}
-	at_time(tv, TAMER_MOVE(e));
-    }
-}
-#endif
 
 }

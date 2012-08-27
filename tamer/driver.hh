@@ -74,23 +74,13 @@ inline void loop() {
  *  Triggers @a e when @a fd becomes readable.  Cancels @a e when @a fd is
  *  closed.
  */
-inline void at_fd_read(int fd, const event<> &e) {
+inline void at_fd_read(int fd, event<> e) {
     driver::main->at_fd_read(fd, e);
 }
 
-inline void at_fd_read(int fd, const event<int> &e) {
+inline void at_fd_read(int fd, event<int> e) {
     driver::main->at_fd_read(fd, e);
 }
-
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-inline void at_fd_read(int fd, event<> &&e) {
-    driver::main->at_fd_read(fd, TAMER_MOVE(e));
-}
-
-inline void at_fd_read(int fd, event<int> &&e) {
-    driver::main->at_fd_read(fd, TAMER_MOVE(e));
-}
-#endif
 
 /** @brief  Register event for file descriptor writability.
  *  @param  fd  File descriptor.
@@ -99,23 +89,13 @@ inline void at_fd_read(int fd, event<int> &&e) {
  *  Triggers @a e when @a fd becomes writable.  Cancels @a e when @a fd is
  *  closed.
  */
-inline void at_fd_write(int fd, const event<> &e) {
+inline void at_fd_write(int fd, event<> e) {
     driver::main->at_fd_write(fd, e);
 }
 
-inline void at_fd_write(int fd, const event<int> &e) {
+inline void at_fd_write(int fd, event<int> e) {
     driver::main->at_fd_write(fd, e);
 }
-
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-inline void at_fd_write(int fd, event<> &&e) {
-    driver::main->at_fd_write(fd, TAMER_MOVE(e));
-}
-
-inline void at_fd_write(int fd, event<int> &&e) {
-    driver::main->at_fd_write(fd, TAMER_MOVE(e));
-}
-#endif
 
 /** @brief  Register event for a given time.
  *  @param  expiry  Time.
@@ -123,17 +103,10 @@ inline void at_fd_write(int fd, event<int> &&e) {
  *
  *  Triggers @a e at timestamp @a expiry, or soon afterwards.
  */
-inline void at_time(const timeval &expiry, const event<> &e) {
+inline void at_time(const timeval &expiry, event<> e) {
     driver::main->at_time(expiry, e);
 }
 
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-/** @overload */
-inline void at_time(const timeval &expiry, event<> &&e) {
-    driver::main->at_time(expiry, TAMER_MOVE(e));
-}
-#endif
-
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time.
  *  @param  e      Event.
@@ -141,17 +114,10 @@ inline void at_time(const timeval &expiry, event<> &&e) {
  *  Triggers @a e when @a delay seconds have elapsed since @c now(), or soon
  *  afterwards.
  */
-inline void at_delay(const timeval &delay, const event<> &e) {
+inline void at_delay(const timeval &delay, event<> e) {
     driver::main->at_delay(delay, e);
 }
 
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-/** @overload */
-inline void at_delay(const timeval &delay, event<> &&e) {
-    driver::main->at_delay(delay, TAMER_MOVE(e));
-}
-#endif
-
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time.
  *  @param  e      Event.
@@ -159,17 +125,10 @@ inline void at_delay(const timeval &delay, event<> &&e) {
  *  Triggers @a e when @a delay seconds have elapsed since @c now(), or soon
  *  afterwards.
  */
-inline void at_delay(double delay, const event<> &e) {
+inline void at_delay(double delay, event<> e) {
     driver::main->at_delay(delay, e);
 }
 
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-/** @overload */
-inline void at_delay(double delay, event<> &&e) {
-    driver::main->at_delay(delay, TAMER_MOVE(e));
-}
-#endif
-
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time.
  *  @param  e      Event.
@@ -177,16 +136,9 @@ inline void at_delay(double delay, event<> &&e) {
  *  Triggers @a e when @a delay seconds have elapsed since @c now(), or soon
  *  afterwards.
  */
-inline void at_delay_sec(int delay, const event<> &e) {
+inline void at_delay_sec(int delay, event<> e) {
     driver::main->at_delay_sec(delay, e);
 }
-
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-/** @overload */
-inline void at_delay_sec(int delay, event<> &&e) {
-    driver::main->at_delay_sec(delay, TAMER_MOVE(e));
-}
-#endif
 
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time in milliseconds.
@@ -195,16 +147,9 @@ inline void at_delay_sec(int delay, event<> &&e) {
  *  Triggers @a e when @a delay milliseconds have elapsed since @c now(), or
  *  soon afterwards.
  */
-inline void at_delay_msec(int delay, const event<> &e) {
+inline void at_delay_msec(int delay, event<> e) {
     driver::main->at_delay_msec(delay, e);
 }
-
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-/** @overload */
-inline void at_delay_msec(int delay, event<> &&e) {
-    driver::main->at_delay_msec(delay, TAMER_MOVE(e));
-}
-#endif
 
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time in microseconds.
@@ -213,16 +158,9 @@ inline void at_delay_msec(int delay, event<> &&e) {
  *  Triggers @a e when @a delay microseconds have elapsed since @c now(), or
  *  soon afterwards.
  */
-inline void at_delay_usec(int delay, const event<> &e) {
+inline void at_delay_usec(int delay, event<> e) {
     driver::main->at_delay_usec(delay, e);
 }
-
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-/** @overload */
-inline void at_delay_usec(int delay, event<> &&e) {
-    driver::main->at_delay_usec(delay, TAMER_MOVE(e));
-}
-#endif
 
 /** @brief  Register event for signal occurrence.
  *  @param  signo  Signal number.
@@ -231,7 +169,7 @@ inline void at_delay_usec(int delay, event<> &&e) {
  *  Triggers @a e soon after @a signo is received.  The signal @a signo
  *  is blocked while @a e is triggered and unblocked afterwards.
  */
-inline void at_signal(int signo, const event<> &e) {
+inline void at_signal(int signo, event<> e) {
     driver::at_signal(signo, e);
 }
 
@@ -240,16 +178,9 @@ inline void at_signal(int signo, const event<> &e) {
  *
  *  Triggers @a e the next time through the driver loop.
  */
-inline void at_asap(const event<> &e) {
+inline void at_asap(event<> e) {
     driver::main->at_asap(e);
 }
-
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-/** @overload */
-inline void at_asap(event<> &&e) {
-    driver::main->at_asap(TAMER_MOVE(e));
-}
-#endif
 
 }
 #endif /* TAMER_DRIVER_HH */
