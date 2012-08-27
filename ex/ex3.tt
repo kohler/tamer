@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <string.h>
 #include <tamer/tamer.hh>
 #include <tamer/lock.hh>
 
@@ -69,7 +70,7 @@ tamed void f4() {
     twait { m.acquire(tamer::with_timeout_msec(1000, make_event(), outcome)); }
     //twait { m.acquire(make_event()); }
     if (outcome < 0)
-	printf("FX\n");
+	printf("FX %d %s\n", outcome, strerror(-outcome));
     else
 	printf("F\n");
     m.release();
