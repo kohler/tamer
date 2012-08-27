@@ -22,8 +22,8 @@ void with_helper_rendezvous::hook(functional_rendezvous *fr,
     with_helper_rendezvous *self = static_cast<with_helper_rendezvous *>(fr);
     if (*self->e_) {
 	*self->s0_ = self->v0_;
+	tamerpriv::simple_event::use(self->e_);
 	self->e_->simple_trigger(false);
-	self->e_ = 0;
     } else
 	*self->s0_ = int();
     delete self;
