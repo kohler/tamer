@@ -30,6 +30,7 @@ int vars_lineno;
 %token <str> T_ID
 %token <str> T_NUM
 %token <str> T_PASSTHROUGH
+%token <str> T_COMMENT
 
 /* Tokens for C++ Variable Modifiers */
 %token T_CONST
@@ -105,9 +106,11 @@ fn_or_twait: fn
 	;
 
 passthrough: T_PASSTHROUGH		{ $$ = $1; }
+	| T_COMMENT			{ $$ = $1; }
+	;
 
 passthroughs: /* empty */	    { $$ = lstr(get_yy_lineno(), ""); }
-	| passthroughs T_PASSTHROUGH 
+	| passthroughs passthrough 
 	{
 	   strbuf b;
 	   b << $1 << $2;
@@ -201,7 +204,7 @@ default_return: T_DEFAULT_RETURN '{' passthroughs '}'
 vars:	T_VARS 
 	{
 	  vars_lineno = get_yy_lineno ();
-	} 
+	}
 	'{' declaration_list_opt '}'
 	{
 	  tame_vars_t *v = new tame_vars_t (state->function (), vars_lineno);
@@ -362,6 +365,7 @@ declaration: declaration_specifiers
 	  state->set_decl_specifier ($1);
 	}
 	init_declarator_list_opt ';'
+	| T_COMMENT
 	;
 
 init_declarator_list_opt: /* empty */

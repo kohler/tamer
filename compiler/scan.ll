@@ -37,12 +37,9 @@ static int tame_ret (int s, int t);
 int get_yy_lineno () { return lineno ;}
 str get_yy_loc ();
 int tame_on = 1;
-int gobble_flag =0;
 int lineno_return ();
 int loc_return ();
 int filename_return ();
-
-#define GOBBLE_RET if (!gobble_flag) return std_ret (T_PASSTHROUGH)
 %}
 
 %option stack
@@ -350,8 +347,8 @@ twait/[ \t\n({/]           { return tame_ret (TWAIT_ENTER, T_TWAIT); }
 
 
 <TAME,TAME_BASE,INITIAL>{
-"//"		{ yy_push_state (CXX_COMMENT); gobble_flag = 1; }
-"/*"		{ yy_push_state (C_COMMENT); gobble_flag = 1; }
+"//"		{ yy_push_state(CXX_COMMENT); return std_ret(T_COMMENT); }
+"/*"		{ yy_push_state(C_COMMENT); return std_ret(T_COMMENT); }
 }
 
 <INITIAL>{
@@ -362,14 +359,10 @@ tamed/[ \t\n/]   { return tame_ret(SIG_PARSE, T_TAMED); }
 }
 
 <CXX_COMMENT>{
-\n		{ ++lineno; yy_pop_state (); GOBBLE_RET; }
-"//"		{ yy_push_state(CXX_COMMENT); gobble_flag = 0;
-	          return std_ret(T_PASSTHROUGH); }
-"/*"		{ yy_push_state(C_COMMENT); gobble_flag = 0;
-	          return std_ret(T_PASSTHROUGH); }
-[^T\n]+|[T]	{ GOBBLE_RET; }
-TAME_OFF	{ tame_on = 0; GOBBLE_RET; }
-TAME_ON		{ tame_on = 1; GOBBLE_RET; }
+\n		{ ++lineno; yy_pop_state(); return std_ret(T_COMMENT); }
+[^T\n]+|[T]	{ return std_ret(T_COMMENT); }
+TAME_OFF	{ tame_on = 0; return std_ret(T_COMMENT); }
+TAME_ON		{ tame_on = 1; return std_ret(T_COMMENT); }
 }
 
 <RETURN_PARAMS>{
@@ -379,18 +372,18 @@ TAME_ON		{ tame_on = 1; GOBBLE_RET; }
 }
 
 <C_COMMENT>{
-TAME_OFF	{ tame_on = 0; GOBBLE_RET; }
-TAME_ON		{ tame_on = 1; GOBBLE_RET; }
-"*/"		{ yy_pop_state (); GOBBLE_RET; }
-[^*\nT]+|[*T]	{ GOBBLE_RET; }
-\n		{ ++lineno; yylval.str = lstr(lineno, yytext); GOBBLE_RET; }
+TAME_OFF	{ tame_on = 0; return std_ret(T_COMMENT); }
+TAME_ON		{ tame_on = 1; return std_ret(T_COMMENT); }
+"*/"		{ yy_pop_state (); return std_ret(T_COMMENT); }
+[^*\nT]+|[*T]	{ return std_ret(T_COMMENT); }
+\n		{ ++lineno; return std_ret(T_COMMENT); }
 }
 
 
 <FULL_PARSE,SIG_PARSE,FN_ENTER,VARS_ENTER,HALF_PARSE,PP,PP_BASE,PP_EQUALS,BB,EXPR_LIST,EXPR_LIST_BASE,ID_LIST,RETURN_PARAMS,EXPR_LIST_BR,EXPR_LIST_BR_BASE,DEFRET_ENTER,TWAIT_BODY,TWAIT_BODY_BASE>{
 
-"//"		{ gobble_flag = 1; yy_push_state (CXX_COMMENT); }
-"/*"		{ gobble_flag = 1; fprintf(stderr, "!\n"); yy_push_state (C_COMMENT); }
+"//"		{ yy_push_state(CXX_COMMENT); return std_ret(T_COMMENT); }
+"/*"		{ yy_push_state(C_COMMENT); return std_ret(T_COMMENT); }
 
 }
 
