@@ -226,7 +226,7 @@ tamed void test_distribute() {
 	e1.trigger(1);
     }
     assert(i == 1 && j == 10 && k == 10);
-    i = j = k = 0;
+    i = j = k = l = 0;
     twait {
 	tamer::event<int> ei = make_event(i), ej = make_event(j);
 	tamer::event<int> e1 = tamer::distribute(ei, ej);
