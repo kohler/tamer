@@ -108,7 +108,7 @@ void simple_event::trigger_list_for_remove() TAMER_NOEXCEPT {
     for (simple_event *e = this; e; e = e->_r_next)
 	if (e->at_trigger_ && e->at_trigger_f_)
 	    e->at_trigger_f_(e->at_trigger_, e->at_trigger_arg2_);
-	else {
+	else if (e->at_trigger_) {
 	    simple_event *t = static_cast<simple_event *>(e->at_trigger_);
 	    t->simple_trigger(false);
 	}
@@ -151,10 +151,9 @@ void simple_event::hard_at_trigger(simple_event *x, void (*f)(void *, int),
     if (!x || !*x)
 	f(arg1, arg2);
     else {
-	simple_event *n = tamer::fun_event(f, arg1, arg2).__take_simple();
 	x->at_trigger_ =
 	    tamer::distribute(event<>::__make(x->at_trigger_event()),
-			      event<>::__make(n))
+			      tamer::fun_event(f, arg1, arg2))
 	    .__take_simple();
 	x->at_trigger_f_ = 0;
     }
