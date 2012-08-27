@@ -237,12 +237,13 @@ void driver_tamer::fd_disinterest(void *arg, int fd)
     tfd *t = &dt->fds_[fd];
     for (int action = 0; action < 2; ++action)
 	if (t->se[action] && t->se[action]->empty()) {
-	    tamer::tamerpriv::simple_event::unuse_clean(t->se[action]);
+	    tamerpriv::simple_event::unuse_clean(t->se[action]);
 	    t->se[action] = 0;
 	    FD_CLR(fd, &dt->_fdset[action]->fds);
 	}
-    while (dt->nfds_ && !t->se[0] && !t->se[1] && fd == dt->nfds_ - 1)
-	--dt->nfds_;
+    if (fd == dt->nfds_ - 1)
+	while (dt->nfds_ && (t = &dt->fds_[dt->nfds_ - 1]) && !t->se[0] && !t->se[1])
+	    --dt->nfds_;
 }
 
 void driver_tamer::store_fd(int fd, int action, tamerpriv::simple_event *se,
@@ -294,11 +295,11 @@ void driver_tamer::kill_fd(int fd)
 	FD_CLR(fd, &_fdset[fdwrite]->fds);
 	tfd &t = fds_[fd];
 	for (int action = 0; action < 2; ++action) {
-	    tamer::tamerpriv::simple_event *se = t.se[action];
+	    tamerpriv::simple_event *se = t.se[action];
 	    t.se[action] = 0;	// prevent double-free by fd_disinterest
 	    if (se && t.slot[action])
 		*t.slot[action] = -ECANCELED;
-	    tamer::tamerpriv::simple_event::simple_trigger(se, true);
+	    tamerpriv::simple_event::simple_trigger(se, true);
 	}
     }
 }
