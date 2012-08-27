@@ -19,6 +19,11 @@
 #include <tamer/autoconf.h>
 namespace tamer {
 
+// Improve error messages from overloaded functions.
+template <typename R> class two_argument_rendezvous_tag {};
+template <typename R> class one_argument_rendezvous_tag {};
+template <typename R> class zero_argument_rendezvous_tag {};
+
 template <typename I0=void, typename I1=void> class rendezvous;
 template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> class event;
 class driver;
@@ -51,55 +56,25 @@ class simple_event { public:
 
     // DO NOT derive from this class!
 
-    inline simple_event() TAMER_NOEXCEPT
-	: _r(0), _refcount(1) {
-    }
+    typedef bool (simple_event::*unspecified_bool_type)() const;
 
+    inline simple_event() TAMER_NOEXCEPT;
     template <typename R, typename I0, typename I1>
     inline simple_event(R &r, const I0 &i0, const I1 &i1) TAMER_NOEXCEPT;
-
     template <typename R, typename I0>
     inline simple_event(R &r, const I0 &i0) TAMER_NOEXCEPT;
-
     template <typename R>
     inline simple_event(R &r) TAMER_NOEXCEPT;
-
 #if TAMER_DEBUG
-    inline ~simple_event() TAMER_NOEXCEPT {
-	assert(!_r);
-    }
+    inline ~simple_event() TAMER_NOEXCEPT;
 #endif
 
-    static inline void use(simple_event *e) TAMER_NOEXCEPT {
-	if (e)
-	    ++e->_refcount;
-    }
+    static inline void use(simple_event *e) TAMER_NOEXCEPT;
+    static inline void unuse(simple_event *e) TAMER_NOEXCEPT;
+    static inline void unuse_clean(simple_event *e) TAMER_NOEXCEPT;
 
-    static inline void unuse(simple_event *e) TAMER_NOEXCEPT {
-	if (e && --e->_refcount == 0) {
-	    if (e->_r)
-		e->trigger_for_unuse();
-	    delete e;
-	}
-    }
-    static inline void unuse_clean(simple_event *e) TAMER_NOEXCEPT {
-	if (e && --e->_refcount == 0)
-	    delete e;
-    }
-
-    unsigned refcount() const {
-	return _refcount;
-    }
-
-    typedef unsigned (simple_event::*unspecified_bool_type)() const;
-
-    operator unspecified_bool_type() const {
-	return _r ? &simple_event::refcount : 0;
-    }
-
-    bool empty() const {
-	return _r == 0;
-    }
+    inline operator unspecified_bool_type() const;
+    inline bool empty() const;
 
     inline abstract_rendezvous *rendezvous() const;
     inline uintptr_t rid() const;
@@ -380,10 +355,13 @@ inline void abstract_rendezvous::run() {
 }
 
 
+inline simple_event::simple_event() TAMER_NOEXCEPT
+    : _r(0), _refcount(1) {
+}
+
 template <typename R, typename I0, typename I1>
 inline simple_event::simple_event(R &r, const I0 &i0, const I1 &i1) TAMER_NOEXCEPT
-    : _refcount(1)
-{
+    : _refcount(1) {
 #if TAMER_DEBUG
     _r = 0;
 #endif
@@ -392,8 +370,7 @@ inline simple_event::simple_event(R &r, const I0 &i0, const I1 &i1) TAMER_NOEXCE
 
 template <typename R, typename I0>
 inline simple_event::simple_event(R &r, const I0 &i0) TAMER_NOEXCEPT
-    : _refcount(1)
-{
+    : _refcount(1) {
 #if TAMER_DEBUG
     _r = 0;
 #endif
@@ -402,16 +379,20 @@ inline simple_event::simple_event(R &r, const I0 &i0) TAMER_NOEXCEPT
 
 template <typename R>
 inline simple_event::simple_event(R &r) TAMER_NOEXCEPT
-    : _refcount(1)
-{
+    : _refcount(1) {
 #if TAMER_DEBUG
     _r = 0;
 #endif
     r.add(this);
 }
 
-inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
-{
+#if TAMER_DEBUG
+inline simple_event::~simple_event() TAMER_NOEXCEPT {
+    assert(!_r);
+}
+#endif
+
+inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid) {
 #if TAMER_DEBUG
     assert(_r == 0 && r != 0);
 #endif
@@ -425,6 +406,32 @@ inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid)
     at_trigger_ = 0;
     at_trigger_f_ = 0;
     r->waiting_ = this;
+}
+
+inline void simple_event::use(simple_event *e) TAMER_NOEXCEPT {
+    if (e)
+	++e->_refcount;
+}
+
+inline void simple_event::unuse(simple_event *e) TAMER_NOEXCEPT {
+    if (e && --e->_refcount == 0) {
+	if (e->_r)
+	    e->trigger_for_unuse();
+	delete e;
+    }
+}
+
+inline void simple_event::unuse_clean(simple_event *e) TAMER_NOEXCEPT {
+    if (e && --e->_refcount == 0)
+	delete e;
+}
+
+inline simple_event::operator unspecified_bool_type() const {
+    return _r ? &simple_event::empty : 0;
+}
+
+inline bool simple_event::empty() const {
+    return _r == 0;
 }
 
 inline abstract_rendezvous *simple_event::rendezvous() const {
@@ -462,6 +469,24 @@ inline void simple_event::at_trigger(simple_event *x, void (*f)(void *, int),
     } else
 	hard_at_trigger(x, f, arg1, arg2);
 }
+
+template <typename T> struct rid_cast {
+    static inline uintptr_t in(T x) TAMER_NOEXCEPT {
+	return static_cast<uintptr_t>(x);
+    }
+    static inline T out(uintptr_t x) TAMER_NOEXCEPT {
+	return static_cast<T>(x);
+    }
+};
+
+template <typename T> struct rid_cast<T *> {
+    static inline uintptr_t in(T *x) TAMER_NOEXCEPT {
+	return reinterpret_cast<uintptr_t>(x);
+    }
+    static inline T *out(uintptr_t x) TAMER_NOEXCEPT {
+	return reinterpret_cast<T *>(x);
+    }
+};
 
 } // namespace tamerpriv
 } // namespace tamer

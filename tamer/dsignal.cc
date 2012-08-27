@@ -39,7 +39,8 @@ volatile sig_atomic_t sig_active[NSIG];
 event<> sig_handlers[NSIG];
 sigset_t sig_dispatching;
 
-class sigcancel_rendezvous : public tamerpriv::functional_rendezvous { public:
+class sigcancel_rendezvous : public tamerpriv::functional_rendezvous,
+			     public zero_argument_rendezvous_tag<sigcancel_rendezvous> { public:
     sigcancel_rendezvous()
 	: functional_rendezvous(hook) {
 	sigemptyset(&sig_dispatching);

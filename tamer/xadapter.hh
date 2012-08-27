@@ -15,12 +15,12 @@
  */
 #include <tamer/event.hh>
 #include <tamer/driver.hh>
-#include <vector>
 #include <errno.h>
 namespace tamer {
 namespace tamerpriv {
 
-class with_helper_rendezvous : public functional_rendezvous {
+class with_helper_rendezvous : public functional_rendezvous,
+			       public zero_argument_rendezvous_tag<with_helper_rendezvous> {
   public:
     with_helper_rendezvous(simple_event *e, int *s0, int v0)
 	: functional_rendezvous(hook), e_(e), s0_(s0), v0_(v0) {
@@ -45,7 +45,8 @@ inline event<> with_helper(event<T0, T1, T2, T3> e, int *result, int value) {
 
 
 template <typename T0, typename V0>
-class bind_rendezvous : public functional_rendezvous {
+class bind_rendezvous : public functional_rendezvous,
+			public zero_argument_rendezvous_tag<bind_rendezvous<T0, V0> > {
   public:
     bind_rendezvous(const event<T0> &e, const V0 &v0)
 	: functional_rendezvous(hook), e_(e), v0_(v0) {
@@ -72,7 +73,8 @@ template <typename T> struct decay { public: typedef T type; };
 template <typename T0, typename T1> struct decay<T0(T1)> { public: typedef T0 (*type)(T1); };
 
 template <typename S0, typename T0, typename F>
-class map_rendezvous : public functional_rendezvous {
+class map_rendezvous : public functional_rendezvous,
+		       public zero_argument_rendezvous_tag<map_rendezvous<S0, T0, F> > {
   public:
     map_rendezvous(const F &f, const event<T0> &e)
 	: functional_rendezvous(hook), f_(f), e_(e) {
@@ -106,7 +108,8 @@ template <typename F, typename A1=void, typename A2=void>
 class function_rendezvous;
 
 template <typename F, typename A1, typename A2>
-class function_rendezvous : public functional_rendezvous {
+class function_rendezvous : public functional_rendezvous,
+			    public zero_argument_rendezvous_tag<function_rendezvous<F, A1, A2> > {
   public:
     function_rendezvous(F f, A1 arg1, A2 arg2)
 	: functional_rendezvous(hook), f_(TAMER_MOVE(f)),
@@ -135,7 +138,8 @@ void function_rendezvous<F, A1, A2>::hook(functional_rendezvous *fr,
 
 
 template <typename F, typename A>
-class function_rendezvous<F, A, void> : public functional_rendezvous {
+class function_rendezvous<F, A> : public functional_rendezvous,
+				  public zero_argument_rendezvous_tag<function_rendezvous<F, A> > {
   public:
     function_rendezvous(F f, A arg)
 	: functional_rendezvous(hook), f_(TAMER_MOVE(f)),
@@ -163,7 +167,8 @@ void function_rendezvous<F, A, void>::hook(functional_rendezvous *fr,
 
 
 template <typename F>
-class function_rendezvous<F, void, void> : public functional_rendezvous {
+class function_rendezvous<F> : public functional_rendezvous,
+			       public zero_argument_rendezvous_tag<function_rendezvous<F> > {
   public:
     function_rendezvous(F f)
 	: functional_rendezvous(hook), f_(TAMER_MOVE(f)) {
@@ -189,7 +194,8 @@ void function_rendezvous<F, void, void>::hook(functional_rendezvous *fr,
 
 
 template <typename T0, typename T1, typename T2, typename T3>
-class distribute_rendezvous : public functional_rendezvous {
+class distribute_rendezvous : public functional_rendezvous,
+			      public one_argument_rendezvous_tag<distribute_rendezvous<T0, T1, T2, T3> > {
   public:
     distribute_rendezvous(event<T0, T1, T2, T3> e1,
 			  event<T0, T1, T2, T3> e2)

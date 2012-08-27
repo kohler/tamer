@@ -177,13 +177,6 @@ void event_prematurely_dereferenced(simple_event *, abstract_rendezvous *r) {
 } // namespace tamer::tamerpriv::message
 } // namespace tamer::tamerpriv
 
-
-void rendezvous<uintptr_t>::clear()
-{
-    abstract_rendezvous::remove_waiting();
-    explicit_rendezvous::remove_ready();
-}
-
 void rendezvous<>::clear()
 {
     abstract_rendezvous::remove_waiting();
