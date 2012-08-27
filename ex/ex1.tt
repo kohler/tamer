@@ -271,4 +271,5 @@ int main(int, char **) {
     test_distribute();
     while (n > 0)
 	tamer::once();
+    tamer::cleanup();
 }
