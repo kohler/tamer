@@ -429,7 +429,7 @@ class event<T0, void, void, void>
     template <typename R>
     inline event(R &r, value_pack<T0> &s);
 
-    inline event(const event<> &e, const no_slot &marker) TAMER_NOEXCEPT;
+    inline event(event<> e, const no_slot &marker) TAMER_NOEXCEPT;
 
     event(const event<T0> &x) TAMER_NOEXCEPT
 	: _e(x._e), _s0(x._s0) {
@@ -1409,9 +1409,8 @@ inline event<> event<>::bind_all() const {
 }
 
 template <typename T0>
-inline event<T0>::event(const event<> &e, const no_slot &) TAMER_NOEXCEPT
-    : _e(e.__get_simple()), _s0(0) {
-    tamerpriv::simple_event::use(_e);
+inline event<T0>::event(event<> e, const no_slot &) TAMER_NOEXCEPT
+    : _e(e.__take_simple()), _s0(0) {
 }
 
 } // namespace tamer

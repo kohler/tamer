@@ -25,26 +25,22 @@ class driver { public:
 
     // basic functions
     enum { fdread = 0, fdwrite = 1 }; // the order is important
-    virtual void store_fd(int fd, int action, tamerpriv::simple_event *se, int *slot) = 0;
-    virtual void store_time(const timeval &expiry, tamerpriv::simple_event *se) = 0;
-    virtual void store_asap(tamerpriv::simple_event *se);
+    virtual void at_fd(int fd, int action, event<int> e) = 0;
+    virtual void at_time(const timeval &expiry, event<> e) = 0;
+    virtual void at_asap(event<> e);
     virtual void kill_fd(int fd);
 
-    inline void at_fd(int fd, int action, event<int> e);
     inline void at_fd(int fd, int action, event<> e);
     inline void at_fd_read(int fd, event<int> e);
     inline void at_fd_read(int fd, event<> e);
     inline void at_fd_write(int fd, event<int> e);
     inline void at_fd_write(int fd, event<> e);
 
-    inline void at_time(const timeval &expiry, event<> e);
     inline void at_delay(timeval delay, event<> e);
     void at_delay(double delay, event<> e);
     inline void at_delay_sec(int delay, event<> e);
     inline void at_delay_msec(int delay, event<> e);
     inline void at_delay_usec(int delay, event<> e);
-
-    inline void at_asap(event<> e);
 
     static void at_signal(int signo, const event<> &e);
 
@@ -72,27 +68,15 @@ inline driver::driver() {
 inline driver::~driver() {
 }
 
-inline void driver::store_asap(tamerpriv::simple_event *se) {
-    at_time(now, event<>::__make(se));
+inline void driver::at_asap(event<> e) {
+    at_time(now, e);
 }
 
 inline void driver::kill_fd(int) {
 }
 
-inline void driver::at_fd(int fd, int action, event<int> e) {
-    store_fd(fd, action, e.__take_simple(), e.__get_slot0());
-}
-
 inline void driver::at_fd(int fd, int action, event<> e) {
-    store_fd(fd, action, e.__take_simple(), 0);
-}
-
-inline void driver::at_time(const timeval &expiry, event<> e) {
-    store_time(expiry, e.__take_simple());
-}
-
-inline void driver::at_asap(event<> e) {
-    store_asap(e.__take_simple());
+    at_fd(fd, action, event<int>(e, no_slot()));
 }
 
 inline void driver::set_now() {

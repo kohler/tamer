@@ -26,9 +26,8 @@ class driver_libevent : public driver { public:
     driver_libevent();
     ~driver_libevent();
 
-    virtual void store_fd(int fd, int action, tamerpriv::simple_event *se,
-			  int *slot);
-    virtual void store_time(const timeval &expiry, tamerpriv::simple_event *se);
+    virtual void at_fd(int fd, int action, event<int> e);
+    virtual void at_time(const timeval &expiry, event<> e);
     virtual void kill_fd(int fd);
 
     virtual bool empty();
@@ -138,26 +137,25 @@ void driver_libevent::expand_events()
     }
 }
 
-void driver_libevent::store_fd(int fd, int action,
-			       tamerpriv::simple_event *se, int *slot)
+void driver_libevent::at_fd(int fd, int action, event<int> e)
 {
     assert(fd >= 0);
     if (!_efree)
 	expand_events();
-    if (se) {
-	eevent *e = _efree;
-	_efree = e->next;
-	event_set(&e->libevent, fd, (action == fdwrite ? EV_WRITE : EV_READ),
-		  libevent_trigger, e);
-	event_add(&e->libevent, 0);
+    if (e) {
+	eevent *ee = _efree;
+	_efree = ee->next;
+	event_set(&ee->libevent, fd, (action == fdwrite ? EV_WRITE : EV_READ),
+		  libevent_trigger, ee);
+	event_add(&ee->libevent, 0);
 
-	e->se = se;
-	e->slot = slot;
-	e->next = _efd;
-	e->pprev = &_efd;
+	ee->se = e.__take_simple();
+	ee->slot = e.__get_slot0();
+	ee->next = _efd;
+	ee->pprev = &_efd;
 	if (_efd)
-	    _efd->pprev = &e->next;
-	_efd = e;
+	    _efd->pprev = &ee->next;
+	_efd = ee;
     }
 }
 
@@ -179,27 +177,26 @@ void driver_libevent::kill_fd(int fd)
 	    ep = &e->next;
 }
 
-void driver_libevent::store_time(const timeval &expiry,
-				 tamerpriv::simple_event *se)
+void driver_libevent::at_time(const timeval &expiry, event<> e)
 {
     if (!_efree)
 	expand_events();
-    if (se) {
-	eevent *e = _efree;
-	_efree = e->next;
+    if (e) {
+	eevent *ee = _efree;
+	_efree = ee->next;
 
-	evtimer_set(&e->libevent, libevent_trigger, e);
+	evtimer_set(&ee->libevent, libevent_trigger, ee);
 	timeval timeout = expiry;
 	timersub(&timeout, &now, &timeout);
-	evtimer_add(&e->libevent, &timeout);
+	evtimer_add(&ee->libevent, &timeout);
 
-	e->se = se;
-	e->slot = 0;
-	e->next = _etimer;
-	e->pprev = &_etimer;
+	ee->se = e.__take_simple();
+	ee->slot = 0;
+	ee->next = _etimer;
+	ee->pprev = &_etimer;
 	if (_etimer)
-	    _etimer->pprev = &e->next;
-	_etimer = e;
+	    _etimer->pprev = &ee->next;
+	_etimer = ee;
     }
 }
 
