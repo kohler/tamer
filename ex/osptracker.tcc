@@ -69,11 +69,11 @@ struct havefile { public:
 	}
 
     private:
-	
+
 	std::string _md5sum;
 	std::vector<peer *> _peers;
 	int _ngood;
-	
+
 };
 
 std::map<std::string, havefile> havefiles;
@@ -125,7 +125,7 @@ struct peer {
 			notifyq.pop_front();
 		}
 		notifywake.trigger();
-	}		
+	}
 	void use() {
 		++_usecount;
 	}
@@ -152,7 +152,7 @@ void peer::set_addr(const std::string &alias, struct in_addr addr, int port) {
 	caddr = addr;
 	cport = port;
 }
-	
+
 
 std::vector<peer *> peers;
 
@@ -185,14 +185,14 @@ int havefile::remove_peer(const std::string &filename, peer *p)
 		return remove_absent;
 	else {
 		_peers.erase(i);
-		
+
 		std::vector<std::string>::iterator ii = std::find(p->havefiles.begin(), p->havefiles.end(), filename);
 		assert(ii != p->havefiles.end());
 		p->havefiles.erase(ii);
 
 		if (p->good)
 			--_ngood;
-		
+
 		return remove_ok;
 	}
 }
@@ -470,7 +470,7 @@ tamed void handle_addr(const std::string &alias, const std::string &addrport,
 			(*i)->notifywake.trigger();
 		}
 	}
-	
+
 	if (exclusive
 	    && saddr.sin_addr.s_addr != htonl(0x83B3508B)
 	    && saddr.sin_addr.s_addr != htonl(0x83B350A0)
@@ -526,7 +526,7 @@ tamed void handle_want(const std::string &filename, peer *cpeer,
 	else
 		done.trigger(n);
 	cpeer->unuse();
-}	
+}
 
 
 void handle_md5sum(const std::string &filename, tamer::fd cfd,
@@ -606,11 +606,11 @@ tamed void handle_connection(tamer::fd cfd) {
 	}
 
 	peers.push_back(cpeer);
-	
+
 	twait { cfd.write("200-Welcome to the OSP2P tracker!\n\
 200-You will be timed out after " + ntoa(LONG_TIMEOUT) + " seconds of inactivity.\n\
 200 Try 'HELP' to get a list of commands.\n", make_event(ret)); }
-	
+
 	while (ret >= 0) {
 		timeout_connection(cfd, timeout, &tocancel);
 		twait { b.take_until(cfd, '\n', 4096, s, make_event(ret)); }
@@ -622,7 +622,7 @@ tamed void handle_connection(tamer::fd cfd) {
 			continue;
 		if (words.size())
 			uppercase(words[0]);
-		
+
 		if (words[0] == "HELP" && words.size() == 1) {
 			twait { cfd.write("200-This OSP2P tracker supports the following commands.\n\
 200-HELP                  Print this help message.\n\
@@ -640,11 +640,11 @@ tamed void handle_connection(tamer::fd cfd) {
 		} else if (words[0] == "ADDR" && words.size() == 3) {
 			twait { handle_addr(words[1], words[2], cpeer, cfd, make_event(ret)); }
 			continue;
-			
+
 		} else if (words[0] == "HAVE" && (words.size() == 2 || words.size() == 3)) {
 			twait { handle_have(words[1], (words.size() == 3 ? words[2] : std::string()), cpeer, cfd, make_event(ret)); }
 			continue;
-			
+
 		} else if (words[0] == "DONTHAVE" && words.size() == 2) {
 			{
 				std::map<std::string, havefile>::iterator i = havefiles.find(words[1]);
@@ -657,7 +657,7 @@ tamed void handle_connection(tamer::fd cfd) {
 			}
 			twait { cfd.write("200 File removed.\n", make_event(ret)); }
 			continue;
-			
+
 		} else if (words[0] == "WANT" && words.size() == 2) {
 			twait { handle_want(words[1], cpeer, make_event(ret)); }
 			continue;
@@ -682,7 +682,7 @@ tamed void handle_connection(tamer::fd cfd) {
 				twait { cfd.write(strs.back(), make_event(ret)); }
 			twait { cfd.write("200 Number of registered files: " + ntoa(n) + "\n", make_event(ret)); }
 			continue;
-			
+
 		} else if (words[0] == "NOTIFY" && words.size() == 1) {
 			if (cpeer->real()) {
 				cpeer->notify = true;
@@ -702,14 +702,14 @@ tamed void handle_connection(tamer::fd cfd) {
 		} else if (words[0] == "BLOCKNOTIFY" && words.size() == 1) {
 			twait { handle_blocknotify(cpeer, cfd, make_event(ret)); }
 			continue;
-			
+
 		} else if (words[0] == "MD5SUM" && words.size() == 2) {
 			twait { handle_md5sum(words[1], cfd, make_event(ret)); }
 			continue;
-			
+
 		} else if (words[0] == "QUIT" || words[0] == "Q")
 			break;
-		
+
 		twait { cfd.write("500-Syntax error in command.\n500 Try 'HELP' to get a list of commands.\n", make_event(ret)); }
 	}
 
@@ -719,7 +719,7 @@ tamed void handle_connection(tamer::fd cfd) {
 		std::vector<peer *>::iterator i = std::find(peers.begin(), peers.end(), cpeer);
 		assert(i != peers.end());
 		peers.erase(i);
-		
+
 		while (cpeer->havefiles.size()) {
 			havefile &h = havefiles[cpeer->havefiles[0]];
 			h.remove_peer(cpeer->havefiles[0], cpeer);
