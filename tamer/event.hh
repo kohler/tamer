@@ -292,11 +292,12 @@ class event<T0, T1, T2, void> { public:
 
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
     event<T0, T1, T2> &operator=(event<T0, T1, T2> &&x) TAMER_NOEXCEPT {
+	tamerpriv::simple_event *se = _e;
 	_e = x._e;
 	_s0 = x._s0;
 	_s1 = x._s1;
 	_s2 = x._s2;
-	x._e = 0;
+	x._e = se;
 	return *this;
     }
 #endif
@@ -388,10 +389,11 @@ class event<T0, T1, void, void>
 
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
     event<T0, T1> &operator=(event<T0, T1> &&x) TAMER_NOEXCEPT {
+	tamerpriv::simple_event *se = _e;
 	_e = x._e;
 	_s0 = x._s0;
 	_s1 = x._s1;
-	x._e = 0;
+	x._e = se;
 	return *this;
     }
 #endif
@@ -483,9 +485,10 @@ class event<T0, void, void, void>
 
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
     event<T0> &operator=(event<T0> &&x) TAMER_NOEXCEPT {
+	tamerpriv::simple_event *se = _e;
 	_e = x._e;
 	_s0 = x._s0;
-	x._e = 0;
+	x._e = se;
 	return *this;
     }
 #endif
@@ -612,8 +615,9 @@ class event<void, void, void, void> { public:
 
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
     event<> &operator=(event<> &&x) TAMER_NOEXCEPT {
+	tamerpriv::simple_event *se = _e;
 	_e = x._e;
-	x._e = 0;
+	x._e = se;
 	return *this;
     }
 #endif
@@ -882,12 +886,13 @@ inline event<T0, T1, T2, T3> &event<T0, T1, T2, T3>::operator=(const event<T0, T
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> &event<T0, T1, T2, T3>::operator=(event<T0, T1, T2, T3> &&x) TAMER_NOEXCEPT {
+    tamerpriv::simple_event *se = _e;
     _e = x._e;
     _s0 = x._s0;
     _s1 = x._s1;
     _s2 = x._s2;
     _s3 = x._s3;
-    x._e = 0;
+    x._e = se;
     return *this;
 }
 #endif
