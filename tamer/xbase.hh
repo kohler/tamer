@@ -69,18 +69,18 @@ class simple_event { public:
     inline ~simple_event() TAMER_NOEXCEPT;
 #endif
 
+    inline void initialize(abstract_rendezvous *r, uintptr_t rid);
+    inline void annotate(const char *file, int line);
+
     static inline void use(simple_event *e) TAMER_NOEXCEPT;
     static inline void unuse(simple_event *e) TAMER_NOEXCEPT;
     static inline void unuse_clean(simple_event *e) TAMER_NOEXCEPT;
 
     inline operator unspecified_bool_type() const;
     inline bool empty() const;
-
     inline abstract_rendezvous *rendezvous() const;
     inline uintptr_t rid() const;
     inline simple_event *next() const;
-
-    inline void initialize(abstract_rendezvous *r, uintptr_t rid);
 
     inline void simple_trigger(bool values);
     static void simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT;
@@ -100,6 +100,10 @@ class simple_event { public:
     void (*at_trigger_f_)(void *, int);
     int at_trigger_arg2_;
     unsigned _refcount;
+#if TAMER_DEBUG
+    const char *annotate_file_;
+    int annotate_line_;
+#endif
 
     simple_event(const simple_event &);
     simple_event &operator=(const simple_event &);
@@ -357,6 +361,10 @@ inline void abstract_rendezvous::run() {
 
 inline simple_event::simple_event() TAMER_NOEXCEPT
     : _r(0), _refcount(1) {
+#if TAMER_DEBUG
+    annotate_file_ = 0;
+    annotate_line_ = 0;
+#endif
 }
 
 template <typename R, typename I0, typename I1>
@@ -364,6 +372,8 @@ inline simple_event::simple_event(R &r, const I0 &i0, const I1 &i1) TAMER_NOEXCE
     : _refcount(1) {
 #if TAMER_DEBUG
     _r = 0;
+    annotate_file_ = 0;
+    annotate_line_ = 0;
 #endif
     r.add(this, i0, i1);
 }
@@ -373,6 +383,8 @@ inline simple_event::simple_event(R &r, const I0 &i0) TAMER_NOEXCEPT
     : _refcount(1) {
 #if TAMER_DEBUG
     _r = 0;
+    annotate_file_ = 0;
+    annotate_line_ = 0;
 #endif
     r.add(this, i0);
 }
@@ -382,6 +394,8 @@ inline simple_event::simple_event(R &r) TAMER_NOEXCEPT
     : _refcount(1) {
 #if TAMER_DEBUG
     _r = 0;
+    annotate_file_ = 0;
+    annotate_line_ = 0;
 #endif
     r.add(this);
 }
@@ -389,6 +403,12 @@ inline simple_event::simple_event(R &r) TAMER_NOEXCEPT
 #if TAMER_DEBUG
 inline simple_event::~simple_event() TAMER_NOEXCEPT {
     assert(!_r);
+# if TAMER_DEBUG > 1
+    if (annotate_file_ && annotate_line_)
+	fprintf(stderr, "destroy simple_event(%p) %s:%d\n", this, annotate_file_, annotate_line_);
+    else if (annotate_file_)
+	fprintf(stderr, "destroy simple_event(%p) %s\n", this, annotate_file_);
+# endif
 }
 #endif
 
@@ -432,6 +452,21 @@ inline simple_event::operator unspecified_bool_type() const {
 
 inline bool simple_event::empty() const {
     return _r == 0;
+}
+
+inline void simple_event::annotate(const char *file, int line) {
+#if TAMER_DEBUG
+    annotate_file_ = file;
+    annotate_line_ = line;
+# if TAMER_DEBUG > 1
+    if (file && line)
+	fprintf(stderr, "annotate simple_event(%p) %s:%d\n", this, file, line);
+    else if (file)
+	fprintf(stderr, "annotate simple_event(%p) %s\n", this, file);
+# endif
+#else
+    (void) file, (void) line;
+#endif
 }
 
 inline abstract_rendezvous *simple_event::rendezvous() const {

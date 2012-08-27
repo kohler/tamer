@@ -67,8 +67,10 @@ tamed void waitsig() {
 tamed void scatter() {
     tvars { int i(1), j; tamer::rendezvous<int> r; tamer::event<> e, e2; }
     n++;
-    tamer::at_delay_msec(500, e = tamer::distribute(tamer::make_event(r, i), tamer::make_event(r, 2), tamer::make_event(r, 3)));
-    tamer::at_delay_msec(502, tamer::distribute(tamer::make_event(r, 0), e));
+    tamer::at_delay_msec(500, e = tamer::distribute(TAMER_MAKE_ANNOTATED_EVENT(r, i),
+						    TAMER_MAKE_ANNOTATED_EVENT(r, 2),
+						    TAMER_MAKE_ANNOTATED_EVENT(r, 3)));
+    tamer::at_delay_msec(502, tamer::distribute(TAMER_MAKE_ANNOTATED_EVENT(r, 0), e));
     j = 0;
     while (r.has_events()) {
 	twait(r, i);
@@ -78,8 +80,10 @@ tamed void scatter() {
     }
     // should print "== distributed 1, 2, 3, 0"
 
-    tamer::at_delay_msec(500, e = tamer::distribute(tamer::make_event(r, 1), tamer::make_event(r, 2), tamer::make_event(r, 3)));
-    (void) tamer::distribute(e, tamer::make_event(r, 0));
+    tamer::at_delay_msec(500, e = tamer::distribute(TAMER_MAKE_ANNOTATED_EVENT(r, 1),
+						    TAMER_MAKE_ANNOTATED_EVENT(r, 2),
+						    TAMER_MAKE_ANNOTATED_EVENT(r, 3)));
+    (void) tamer::distribute(e, TAMER_MAKE_ANNOTATED_EVENT(r, 0));
     // should print "avoided leak of active event" (because we just threw away
     // that event), then "== distributed 1, 2, 3, 0"
     j = 0;
@@ -95,10 +99,10 @@ tamed void scatter() {
 tamed void cancellina() {
     tvars { int i(1), j; tamer::rendezvous<int> r; tamer::event<> e; }
     n++;
-    tamer::at_delay_msec(500, e = tamer::make_event(r, 1));
-    e.at_trigger(tamer::make_event(r, 100));
-    e.at_trigger(tamer::make_event(r, 101));
-    e.at_trigger(tamer::make_event(r, 102));
+    tamer::at_delay_msec(500, e = TAMER_MAKE_ANNOTATED_EVENT(r, 1));
+    e.at_trigger(TAMER_MAKE_ANNOTATED_EVENT(r, 100));
+    e.at_trigger(TAMER_MAKE_ANNOTATED_EVENT(r, 101));
+    e.at_trigger(TAMER_MAKE_ANNOTATED_EVENT(r, 102));
     e.trigger();
     j = 0;
     while (r.has_events()) {
@@ -114,9 +118,9 @@ tamed void cancellina2() {
     tvars { int i(1), j(1), k; tamer::rendezvous<int, int> r; tamer::event<> e1;
 	tamer::event<> e2; tamer::event<> e3; tamer::event<> e4; }
     n++;
-    e1 = tamer::make_event(r, 1, 1);
-    e2 = tamer::make_event(r, 2, 2);
-    e3 = tamer::make_event(r, 3, 3);
+    e1 = TAMER_MAKE_ANNOTATED_EVENT(r, 1, 1);
+    e2 = TAMER_MAKE_ANNOTATED_EVENT(r, 2, 2);
+    e3 = TAMER_MAKE_ANNOTATED_EVENT(r, 3, 3);
     e4 = tamer::distribute(e1, e2, e3);
     tamer::at_delay_msec(500, e4);
     e1.trigger();
@@ -146,7 +150,7 @@ tamed void bindery() {
 	fprintf(stderr, "=== before bindery %d\n", i);
     }
     fprintf(stderr, "=== after bindery %d\n", i);
-    tamer::at_delay_msec(600, tamer::bind(e = make_event(r, i), 3));
+    tamer::at_delay_msec(600, tamer::bind(e = TAMER_MAKE_ANNOTATED_EVENT(r, i), 3));
     e.unblocker().trigger();
     while (r.has_events()) {
 	twait(r);
@@ -156,7 +160,7 @@ tamed void bindery() {
     // should print "after bindery 2 2", b/c e.unblocker() was triggered,
     // avoiding the bind
     assert(i == 2);
-    tamer::at_delay_msec(600, ee = tamer::bind(make_event(r, i), 4));
+    tamer::at_delay_msec(600, ee = tamer::bind(TAMER_MAKE_ANNOTATED_EVENT(r, i), 4));
     ee.unblocker().trigger();
     while (r.has_events()) {
 	twait(r);
@@ -228,7 +232,8 @@ tamed void test_distribute() {
     assert(i == 1 && j == 10 && k == 10);
     i = j = k = l = 0;
     twait {
-	tamer::event<int> ei = make_event(i), ej = make_event(j);
+	tamer::event<int> ei = make_event(i),
+	    ej = make_event(j);
 	tamer::event<int> e1 = tamer::distribute(ei, ej);
 	e1.at_trigger(tamer::bind(make_event(k), 1));
 	e1 = tamer::distribute(TAMER_MOVE(e1), make_event(l));
@@ -248,7 +253,7 @@ int main(int, char **) {
     tamer::initialize();
     waitr(r);
     delay1(100, tamer::event<>());
-    delay1(1000, tamer::make_event(r, 10));
+    delay1(1000, TAMER_MAKE_ANNOTATED_EVENT(r, 10));
     delay1(250, tamer::event<>());
     delay1(400, tamer::event<>());
     scatter();

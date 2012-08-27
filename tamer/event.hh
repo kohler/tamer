@@ -1327,6 +1327,166 @@ inline event<> make_event(zero_argument_rendezvous_tag<R> &r)
 
 /** @} */
 
+/** @brief  Construct a two-ID, four-slot event on rendezvous @a r.
+ *  @param  r   Rendezvous.
+ *  @param  i0  First event ID.
+ *  @param  i1  Second event ID.
+ *  @param  t0  First trigger slot.
+ *  @param  t1  Second trigger slot.
+ *  @param  t2  Third trigger slot.
+ *  @param  t3  Fourth trigger slot.
+ *
+ *  @note Versions of this function exist for any combination of two, one, or
+ *  zero event IDs and four, three, two, one, or zero trigger slots.  For
+ *  example, <code>make_event(r)</code> creates a zero-ID, zero-slot event on
+ *  <code>rendezvous<> r</code>, while <code>make_event(r, 1, i, j)</code>
+ *  might create a one-ID, two-slot event on <code>rendezvous<int> r</code>.
+ */
+template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R> &r, const J0 &i0, const J1 &i1, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
+{
+    event<T0, T1, T2, T3> e(static_cast<R &>(r), i0, i1, s0, s1, s2, s3);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R> &r, const J0 &i0, const J1 &i1, value_pack<T0, T1, T2, T3> &sp)
+{
+    event<T0, T1, T2, T3> e(static_cast<R &>(r), i0, i1, sp);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename J0, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R> &r, const J0 &i0, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
+{
+    event<T0, T1, T2, T3> e(static_cast<R &>(r), i0, s0, s1, s2, s3);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename J0, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R> &r, const J0 &i0, value_pack<T0, T1, T2, T3> &sp)
+{
+    event<T0, T1, T2, T3> e(static_cast<R &>(r), i0, sp);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R> &r, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
+{
+    event<T0, T1, T2, T3> e(static_cast<R &>(r), s0, s1, s2, s3);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R> &r, value_pack<T0, T1, T2, T3> &sp)
+{
+    event<T0, T1, T2, T3> e(static_cast<R &>(r), sp);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R> &r, const J0 &i0, const J1 &i1, T0 &s0, T1 &s1, T2 &s2)
+{
+    event<T0, T1, T2> e(static_cast<R &>(r), i0, i1, s0, s1, s2);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename J0, typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R> &r, const J0 &i0, T0 &s0, T1 &s1, T2 &s2)
+{
+    event<T0, T1, T2> e(static_cast<R &>(r), i0, s0, s1, s2);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R> &r, T0 &s0, T1 &s1, T2 &s2)
+{
+    event<T0, T1, T2> e(static_cast<R &>(r), s0, s1, s2);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename J0, typename J1, typename T0, typename T1>
+inline event<T0, T1> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R> &r, const J0 &i0, const J1 &i1, T0 &s0, T1 &s1)
+{
+    event<T0, T1> e(static_cast<R &>(r), i0, i1, s0, s1);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename J0, typename T0, typename T1>
+inline event<T0, T1> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R> &r, const J0 &i0, T0 &s0, T1 &s1)
+{
+    event<T0, T1> e(static_cast<R &>(r), i0, s0, s1);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename T0, typename T1>
+inline event<T0, T1> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R> &r, T0 &s0, T1 &s1)
+{
+    event<T0, T1> e(static_cast<R &>(r), s0, s1);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename J0, typename J1, typename T0>
+inline event<T0> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R> &r, const J0 &i0, const J1 &i1, T0 &s0)
+{
+    event<T0> e(static_cast<R &>(r), i0, i1, s0);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename J0, typename T0>
+inline event<T0> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R> &r, const J0 &i0, T0 &s0)
+{
+    event<T0> e(static_cast<R &>(r), i0, s0);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename T0>
+inline event<T0> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R> &r, T0 &s0)
+{
+    event<T0> e(static_cast<R &>(r), s0);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename J0, typename J1>
+inline event<> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R> &r, const J0 &i0, const J1 &i1)
+{
+    event<> e(static_cast<R &>(r), i0, i1);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R, typename J0>
+inline event<> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R> &r, const J0 &i0)
+{
+    event<> e(static_cast<R &>(r), i0);
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+template <typename R>
+inline event<> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R> &r)
+{
+    event<> e(static_cast<R &>(r));
+    e.__get_simple()->annotate(file, line);
+    return e;
+}
+
+
 template <typename T0, typename T1, typename T2>
 inline void event<T0, T1, T2>::at_trigger(const event<> &e) {
     tamerpriv::simple_event::use(e.__get_simple());

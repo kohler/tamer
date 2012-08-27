@@ -79,7 +79,7 @@ template <typename T0, typename V0>
 event<> bind(event<T0> e, const V0 &v0) {
     tamerpriv::bind_rendezvous<T0, V0> *r =
 	new tamerpriv::bind_rendezvous<T0, V0>(e, v0);
-    event<> bound(*r);
+    event<> bound = TAMER_MAKE_FN_ANNOTATED_EVENT(*r);
     e.at_trigger(bound);
     return bound;
 }
@@ -121,7 +121,7 @@ template <typename S0, typename T0, typename F>
 event<S0> map(event<T0> e, const F &f) {
     tamerpriv::map_rendezvous<S0, T0, F> *r =
 	new tamerpriv::map_rendezvous<S0, T0, F>(f, e);
-    event<S0> mapped(*r, r->slot0());
+    event<S0> mapped = TAMER_MAKE_FN_ANNOTATED_EVENT(*r, r->slot0());
     e.at_trigger(mapped.unblocker());
     return mapped;
 }
@@ -376,7 +376,7 @@ inline event<> fun_event(F f, A arg) {
     tamerpriv::function_rendezvous<F, A> *innerr =
 	new tamerpriv::function_rendezvous<F, A>(TAMER_MOVE(f),
 						 TAMER_MOVE(arg));
-    return event<>(*innerr);
+    return TAMER_MAKE_FN_ANNOTATED_EVENT(*innerr);
 }
 
 /** @brief  Create event that calls a function when triggered.
@@ -395,7 +395,7 @@ inline event<> fun_event(F f, A1 arg1, A2 arg2) {
 	new tamerpriv::function_rendezvous<F, A1, A2>(TAMER_MOVE(f),
 						      TAMER_MOVE(arg1),
 						      TAMER_MOVE(arg2));
-    return event<>(*innerr);
+    return TAMER_MAKE_FN_ANNOTATED_EVENT(*innerr);
 }
 
 } /* namespace tamer */
