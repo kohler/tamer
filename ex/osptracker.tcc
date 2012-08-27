@@ -31,6 +31,10 @@
 #include <deque>
 #include <map>
 #include <sstream>
+#include <algorithm>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <string.h>
 #include "md5.h"
 
 #define SHORT_TIMEOUT 60
@@ -100,6 +104,8 @@ struct peer {
 	std::string calias;
 	struct in_addr caddr;
 	int cport;
+	struct in_addr xaddr;
+	int xaddr_num;
 	tamer::fd cfd;
 	bool notify;
 	bool good;
@@ -145,6 +151,14 @@ peer::peer(tamer::fd fd)
 	  notify(false), good(true), blocknotify(false), _usecount(1)
 {
 	caddr.s_addr = INADDR_ANY;
+
+	struct sockaddr_in saddr;
+	socklen_t saddrlen = sizeof(saddr);
+	if (getpeername(fd.value(), (struct sockaddr *) &saddr, &saddrlen) != -1
+	    && saddr.sin_family == AF_INET)
+		xaddr = saddr.sin_addr;
+	else
+		xaddr.s_addr = INADDR_ANY;
 }
 
 void peer::set_addr(const std::string &alias, struct in_addr addr, int port) {
@@ -308,7 +322,7 @@ tamed void notify(peer *pp, peer *cpeer)
 	cpeer->use();
 	twait {
 		tamer::event<tamer::fd> e = make_event(sock);
-		pp->cfd.at_close(e.bind_all());
+		pp->cfd.at_close(e.unblocker());
 		tamer::fdx::tcp_connect(pp->caddr, pp->cport, tamer::add_timeout_sec(5, e));
 	}
 	// will be a noop if sock is not connected
@@ -406,6 +420,9 @@ tamed void handle_addr(const std::string &alias, const std::string &addrport,
 		int ret = 0;
 	}
 
+	if (!cfd)
+		return;
+
 	// check syntax of request
 	if (cpeer->real()) {
 		cfd.write("300-You have already registered an address.\n300 To change your address, you must open a new connection.\n", done);
@@ -423,7 +440,6 @@ tamed void handle_addr(const std::string &alias, const std::string &addrport,
 	}
 
 	// check client's declared endpoint address vs. its actual address
-	assert(cfd);
 	saddrlen = sizeof(saddr);
 	if (getpeername(cfd.value(), (struct sockaddr *) &saddr, &saddrlen) == -1
 	    || saddr.sin_family != AF_INET) {
@@ -444,10 +460,10 @@ tamed void handle_addr(const std::string &alias, const std::string &addrport,
 	} else if (saddr.sin_addr.s_addr != xaddr.s_addr) {
 		s = inet_ntoa(saddr.sin_addr);
 		twait {
-			cfd.write("200-The address you provided, " + std::string(inet_ntoa(xaddr)) + ", differs from the address\n\
-200-you connected with, " + s + ".  I'll use " + s + ".\n\
-200-This may mean that there's a firewall between the peer and the tracker,\n\
-200-which could cause a problem later (we'll see).\n", make_event(ret));
+			cfd.write("220-The address you provided, " + std::string(inet_ntoa(xaddr)) + ", differs from the address\n\
+220-you connected with, " + s + ".  I'll use " + s + ".\n\
+220-Probably there is a firewall between the peer and the tracker.\n\
+220-As a result, OTHER PEERS WILL LIKELY NOT BE ABLE TO CONNECT TO YOU.\n", make_event(ret));
 		}
 		xaddr = saddr.sin_addr;
 	}
@@ -731,6 +747,18 @@ tamed void handle_connection(tamer::fd cfd) {
 	cfd.close();
 }
 
+static bool peer_xaddr_compare(const peer *a, const peer *b) {
+	return a->xaddr.s_addr < b->xaddr.s_addr;
+}
+
+static std::vector<int> xaddr_counts;
+
+static bool peer_xaddr_count_compare(const peer *a, const peer *b) {
+ 	return xaddr_counts[a->xaddr_num] < xaddr_counts[b->xaddr_num]
+		|| (xaddr_counts[a->xaddr_num] == xaddr_counts[b->xaddr_num]
+		    && a->xaddr.s_addr < b->xaddr.s_addr);
+}
+
 tamed void accept_loop(int port) {
 	tvars { tamer::fd lf, cf; int ret; }
 
@@ -743,9 +771,24 @@ tamed void accept_loop(int port) {
 
 	while (1) {
 		twait { lf.accept(0, 0, make_event(cf)); }
-		if (!cf)
-			exit(1);
-		handle_connection(cf);
+		if (cf)
+			handle_connection(cf);
+		else if (cf.error() == -ENFILE || cf.error() == -EMFILE) {
+			// Too many connections.  Kill some victims.
+			std::vector<peer *> ordered_peers(peers);
+			std::sort(ordered_peers.begin(), ordered_peers.end(), peer_xaddr_compare);
+			xaddr_counts.clear();
+			for (std::vector<peer *>::iterator i = ordered_peers.begin(); i < ordered_peers.end(); ++i) {
+				if (i == ordered_peers.begin() || (*i)->xaddr.s_addr != i[-1]->xaddr.s_addr)
+					xaddr_counts.push_back(0);
+				(*i)->xaddr_num = xaddr_counts.size();
+				++xaddr_counts.back();
+			}
+			std::sort(ordered_peers.begin(), ordered_peers.end(), peer_xaddr_count_compare);
+			for (std::vector<peer *>::size_type i = ordered_peers.size();
+			     i >= ordered_peers.size() - 20 && i > 0; --i)
+				kill_connection(ordered_peers[i - 1]->cfd, "500 Killing peer because of out-of-control registrations from its address.\n");
+		}
 	}
 }
 
@@ -755,6 +798,12 @@ int main(int argc, char *argv[]) {
 
 	tamer::initialize();
 	srandom(time(NULL) + getpid() * getppid());
+
+	// Lots and lots of open files
+	struct rlimit rlim;
+	getrlimit(RLIMIT_NOFILE, &rlim);
+	rlim.rlim_cur = 5000;
+	setrlimit(RLIMIT_NOFILE, &rlim);
 
 	// Ignore broken-pipe signals: if a connection dies, server should not
 	signal(SIGPIPE, SIG_IGN);
