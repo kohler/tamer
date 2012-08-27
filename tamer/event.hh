@@ -1218,16 +1218,34 @@ inline event<T0, T1, T2, T3> make_event(two_argument_rendezvous_tag<R> &r, const
     return event<T0, T1, T2, T3>(static_cast<R &>(r), i0, i1, s0, s1, s2, s3);
 }
 
+template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_event(two_argument_rendezvous_tag<R> &r, const J0 &i0, const J1 &i1, value_pack<T0, T1, T2, T3> &sp)
+{
+    return event<T0, T1, T2, T3>(static_cast<R &>(r), i0, i1, sp);
+}
+
 template <typename R, typename J0, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_event(one_argument_rendezvous_tag<R> &r, const J0 &i0, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
 {
     return event<T0, T1, T2, T3>(static_cast<R &>(r), i0, s0, s1, s2, s3);
 }
 
+template <typename R, typename J0, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_event(one_argument_rendezvous_tag<R> &r, const J0 &i0, value_pack<T0, T1, T2, T3> &sp)
+{
+    return event<T0, T1, T2, T3>(static_cast<R &>(r), i0, sp);
+}
+
 template <typename R, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_event(zero_argument_rendezvous_tag<R> &r, T0 &s0, T1 &s1, T2 &s2, T3 &s3)
 {
     return event<T0, T1, T2, T3>(static_cast<R &>(r), s0, s1, s2, s3);
+}
+
+template <typename R, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_event(zero_argument_rendezvous_tag<R> &r, value_pack<T0, T1, T2, T3> &sp)
+{
+    return event<T0, T1, T2, T3>(static_cast<R &>(r), sp);
 }
 
 template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2>
