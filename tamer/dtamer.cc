@@ -376,7 +376,7 @@ void driver_tamer::once()
 
     // run file descriptors
     if (nfds > 0) {
-	for (int fd = nfds - 1; fd >= 0; --fd) {
+	for (int fd = nfds_ - 1; fd >= 0; --fd) {
 	    tfd &t = fds_[fd];
 	    for (int action = 0; action < 2; ++action)
 		if (FD_ISSET(fd, &_fdset[2 + action]->fds) && t.e[action])
