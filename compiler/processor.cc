@@ -1094,23 +1094,16 @@ tame_ret_t::output (outputter_t *o)
   output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
   strbuf b;
 
-  // always do end of scope checks
-  b << "  do { /*" << TAME_CLOSURE_NAME << "->end_of_scope_checks (" 
-    << _line_number << ");*/\n";
-  o->output_str(b.str());
-  b.str(str());
-
   o->switch_to_mode (OUTPUT_PASSTHROUGH, _line_number);
-  
-  b << "    return ";
-  if (_params.length())
-    b << _params;
-  b << ";  } while (0)";
+  b << "return";
+  if (_params.length()) {
+      b << " ";
+      b << _params;
+  }
   o->output_str(b.str());
 
   tame_env_t::output (o);
   o->switch_to_mode (om);
-
 }
 
 void
@@ -1119,12 +1112,7 @@ tame_fn_return_t::output (outputter_t *o)
   strbuf b;
   output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
 
-  b << "  do {\n";
-
-  b << "  /*" << TAME_CLOSURE_NAME << "->end_of_scope_checks (" 
-    << _line_number << ");*/\n";
   b << "  " << _fn->return_expr () << ";\n";
-  b << "  } while (0);\n";
   o->output_str (b.str());
   o->switch_to_mode (om);
 }
@@ -1133,7 +1121,7 @@ str
 parse_state_t::loc (unsigned l) const
 {
   strbuf b;
-  b << _infile_name << ":" << l << ": in function " 
+  b << _infile_name << ":" << l << ": in function "
     << function_const ().name ();
   return b.str();
 }
