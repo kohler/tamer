@@ -352,16 +352,17 @@ void driver_tamer::loop(loop_flags flags)
 
     // select!
     int nfds = nfds_;
-    if (nfds > 0 || sig_pipe[0] >= 0) {
-	if (sig_pipe[0] > nfds)
-	    nfds = sig_pipe[0] + 1;
+    if (sig_pipe[0] > nfds)
+	nfds = sig_pipe[0] + 1;
+    if (nfds > 0) {
 	memcpy(_fdset[fdread + 2], _fdset[fdread], ((nfds + 63) & ~63) >> 3);
 	memcpy(_fdset[fdwrite + 2], _fdset[fdwrite], ((nfds + 63) & ~63) >> 3);
 	if (sig_pipe[0] >= 0)
 	    FD_SET(sig_pipe[0], &_fdset[fdread + 2]->fds);
+    }
+    if (nfds > 0 || !toptr || to.tv_sec != 0 || to.tv_usec != 0)
 	nfds = select(nfds, &_fdset[fdread + 2]->fds,
 		      &_fdset[fdwrite + 2]->fds, 0, toptr);
-    }
 
     // run signals
     if (sig_any_active)
