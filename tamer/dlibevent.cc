@@ -30,6 +30,7 @@ class driver_libevent : public driver { public:
     virtual void at_time(const timeval &expiry, event<> e);
     virtual void kill_fd(int fd);
 
+    void cull();
     virtual bool empty();
     virtual void loop(loop_flags flags);
 
@@ -199,9 +200,7 @@ void driver_libevent::at_time(const timeval &expiry, event<> e)
     }
 }
 
-bool driver_libevent::empty()
-{
-    // remove dead events
+void driver_libevent::cull() {
     while (_etimer && !*_etimer->se) {
 	eevent *e = _etimer;
 	::event_del(&e->libevent);
@@ -221,9 +220,14 @@ bool driver_libevent::empty()
 	e->next = _efree;
 	_efree = e;
     }
+}
 
-    if (_etimer || _efd
-	|| sig_any_active || tamerpriv::abstract_rendezvous::has_unblocked())
+bool driver_libevent::empty() {
+    cull();
+    if (_etimer
+	|| _efd
+	|| sig_any_active
+	|| tamerpriv::abstract_rendezvous::has_unblocked())
 	return false;
     return true;
 }
@@ -231,10 +235,16 @@ bool driver_libevent::empty()
 void driver_libevent::loop(loop_flags flags)
 {
  again:
-    if (tamerpriv::abstract_rendezvous::has_unblocked())
-	::event_loop(EVLOOP_ONCE | EVLOOP_NONBLOCK);
-    else
-	::event_loop(EVLOOP_ONCE);
+    int event_flags = EVLOOP_ONCE;
+    if (sig_any_active
+	|| tamerpriv::abstract_rendezvous::has_unblocked())
+	event_flags |= EVLOOP_NONBLOCK;
+    else {
+	cull();
+	if (!_etimer && !_efd && sig_nforeground == 0) // no events scheduled
+	    return;
+    }
+    ::event_loop(event_flags);
     set_now();
     while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::pop_unblocked())
 	r->run();
@@ -243,18 +253,15 @@ void driver_libevent::loop(loop_flags flags)
 }
 
 } // namespace
-
-driver *driver::make_libevent()
-{
-    return new driver_libevent;
-}
-
-#else
-
-driver *driver::make_libevent()
-{
-    return 0;
-}
-
 #endif
+
+driver *driver::make_libevent()
+{
+#if HAVE_LIBEVENT
+    return new driver_libevent;
+#else
+    return 0;
+#endif
+}
+
 } // namespace tamer

@@ -52,6 +52,6 @@ int main(int, char *[]) {
     shared(3);
     exclusive(4);
     shared(5);
-    while (!tamer::driver_empty())
-	tamer::once();
+    tamer::loop();
+    tamer::cleanup();
 }

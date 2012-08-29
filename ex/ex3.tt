@@ -96,7 +96,6 @@ int main(int, char **) {
     f2();
     f3();
     f4();
-    while (!tamer::driver_empty())
-	tamer::once();
+    tamer::loop();
     tamer::cleanup();
 }

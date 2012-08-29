@@ -44,7 +44,6 @@ tamed void test() {
 int main(int, char **) {
     tamer::initialize();
     test();
-    while (!tamer::driver_empty())
-	tamer::once();
+    tamer::loop();
     tamer::cleanup();
 }

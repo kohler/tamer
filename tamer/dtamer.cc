@@ -343,12 +343,14 @@ void driver_tamer::loop(loop_flags flags)
 	|| tamerpriv::abstract_rendezvous::has_unblocked()) {
 	timerclear(&to);
 	toptr = &to;
-    } else if (nt_ == 0)
-	toptr = 0;
-    else {
+    } else if (nt_ != 0) {
 	timersub(&t_[0].expiry_, &now, &to);
 	toptr = &to;
-    }
+    } else if (sig_nforeground == 0)
+	// no events scheduled!
+	return;
+    else
+	toptr = 0;
 
     // select!
     int nfds = nfds_;

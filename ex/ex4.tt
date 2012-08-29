@@ -27,6 +27,6 @@ tamed void test_error()
 int main(int, char **) {
     tamer::initialize();
     test_error();
-    while (!tamer::driver_empty())
-	tamer::once();
+    tamer::loop();
+    tamer::cleanup();
 }

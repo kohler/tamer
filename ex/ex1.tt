@@ -1,5 +1,5 @@
 // -*- mode: c++ -*-
-/* Copyright (c) 2007, Eddie Kohler
+/* Copyright (c) 2007-2012, Eddie Kohler
  * Copyright (c) 2007, Regents of the University of California
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -19,45 +19,35 @@
 #include <tamer/tamer.hh>
 #include <tamer/adapter.hh>
 
-int n;
-
 tamed void delay1(int x, tamer::event<> e) {
-    n++;
     twait { tamer::at_delay_msec(x, make_event()); }
     fprintf(stderr, "%ld.%06d: %d!\n", (long int) tamer::driver::main->now.tv_sec, (int) tamer::driver::main->now.tv_usec, x);
-    n--;
     e.trigger();
 }
 
 tamed void stdiny() {
     tvars { int fail = -1; }
-    n++;
     twait {
 	//tamer::at_fd_read(0, with_timeout(t, make_event(), fail));
 	//tamer::at_fd_read(0, with_signal(SIGINT, make_event(), fail));
 	tamer::at_fd_read(0, make_event());
     }
     fprintf(stderr, "====stdin result %d\n", fail);
-    n--;
 }
 
 tamed void waitr(tamer::rendezvous<int> &r) {
     tvars { int x (); }
-    n++;
     fprintf(stderr, "====waitr %d\n", x);
     twait(r, x);
     fprintf(stderr, "====waitr %d\n", x);
-    n--;
 }
 
 tamed void waitsig() {
     tvars { int i (0); }
     while (i < 3) {
-	n++;
 	twait {
 	    tamer::at_signal(SIGINT, make_event());
 	}
-	n--;
 	fprintf(stderr, "== sig %d\n", i);
 	i++;
     }
@@ -66,7 +56,6 @@ tamed void waitsig() {
 
 tamed void scatter() {
     tvars { int i(1), j; tamer::rendezvous<int> r; tamer::event<> e, e2; }
-    n++;
     tamer::at_delay_msec(500, e = tamer::distribute(TAMER_MAKE_ANNOTATED_EVENT(r, i),
 						    TAMER_MAKE_ANNOTATED_EVENT(r, 2),
 						    TAMER_MAKE_ANNOTATED_EVENT(r, 3)));
@@ -93,12 +82,10 @@ tamed void scatter() {
 	assert(i == "1230"[j] - '0');
 	++j;
     }
-    n--;
 }
 
 tamed void cancellina() {
     tvars { int i(1), j; tamer::rendezvous<int> r; tamer::event<> e; }
-    n++;
     tamer::at_delay_msec(500, e = TAMER_MAKE_ANNOTATED_EVENT(r, 1));
     e.at_trigger(TAMER_MAKE_ANNOTATED_EVENT(r, 100));
     e.at_trigger(TAMER_MAKE_ANNOTATED_EVENT(r, 101));
@@ -111,13 +98,11 @@ tamed void cancellina() {
 	assert(i == "\001\144\145\146"[j]);
 	++j;
     }
-    n--;
 }
 
 tamed void cancellina2() {
     tvars { int i(1), j(1), k; tamer::rendezvous<int, int> r; tamer::event<> e1;
 	tamer::event<> e2; tamer::event<> e3; tamer::event<> e4; }
-    n++;
     e1 = TAMER_MAKE_ANNOTATED_EVENT(r, 1, 1);
     e2 = TAMER_MAKE_ANNOTATED_EVENT(r, 2, 2);
     e3 = TAMER_MAKE_ANNOTATED_EVENT(r, 3, 3);
@@ -138,13 +123,11 @@ tamed void cancellina2() {
 	++k;
     }
     fprintf(stderr, "=== done cancellina2\n");
-    n--;
 }
 
 tamed void bindery() {
     tvars { int i(1); tamer::rendezvous<> r; tamer::event<int> e;
 	tamer::event<> ee; }
-    n++;
     twait {
 	tamer::at_delay_msec(600, tamer::bind(make_event(i), 2));
 	fprintf(stderr, "=== before bindery %d\n", i);
@@ -170,7 +153,6 @@ tamed void bindery() {
     // should print "after bindery 3 4", b/c ee.unblocker() == ee was
     // triggered, affecting the bind
     assert(i == 4);
-    n--;
 }
 
 int add1(int x) {
@@ -180,7 +162,6 @@ int add1(int x) {
 tamed void mappery() {
     tvars { int i(1); tamer::rendezvous<> r; tamer::event<int> e;
 	tamer::event<> ee; }
-    n++;
     twait {
 	tamer::at_delay_msec(700, tamer::bind(tamer::map<int>(make_event(i), add1), 2));
 	fprintf(stderr, "=== before mappery %d\n", i);
@@ -199,7 +180,6 @@ tamed void mappery() {
     }
     fprintf(stderr, "=== after mappery %d\n", i); // should be 11
     assert(i == 11);
-    n--;
 }
 
 tamed void test_debug2(tamer::event<> a) {
@@ -209,16 +189,13 @@ tamed void test_debug2(tamer::event<> a) {
 }
 
 tamed void test_debug1() {
-    ++n;
     twait {
 	test_debug2(make_event());
     }
-    --n;
 }
 
 tamed void test_distribute() {
     tvars { int i, j, k, l; };
-    ++n;
     twait {
 	tamer::event<int> e1 = make_event(i);
 	tamer::event<int> e2 = make_event(j);
@@ -244,7 +221,6 @@ tamed void test_distribute() {
 	e1.trigger(2);
 	assert(i == 1 && j == 1 && k == 1 && l == 2);
     }
-    --n;
 }
 
 int main(int, char **) {
@@ -264,12 +240,10 @@ int main(int, char **) {
     //fcntl(0, F_SETFD, O_NONBLOCK);
     //stdiny();
     //waitsig();
-    while (n > 0)
-	tamer::once();
+    tamer::loop();
     fprintf(stderr, "!\n");
     test_debug1();
     test_distribute();
-    while (n > 0)
-	tamer::once();
+    tamer::loop();
     tamer::cleanup();
 }

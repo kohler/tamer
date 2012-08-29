@@ -24,6 +24,11 @@ enum loop_flags {
     loop_once = 1
 };
 
+enum signal_flags {
+    signal_default = 0,
+    signal_background = 1
+};
+
 class driver { public:
 
     inline driver();
@@ -49,7 +54,8 @@ class driver { public:
     inline void at_delay_msec(int delay, event<> e);
     inline void at_delay_usec(int delay, event<> e);
 
-    static void at_signal(int signo, const event<> &e);
+    static void at_signal(int signo, event<> e,
+			  signal_flags flags = signal_default);
 
     timeval now;
     inline void set_now();
@@ -64,6 +70,7 @@ class driver { public:
 
     static volatile sig_atomic_t sig_any_active;
     static int sig_pipe[2];
+    static unsigned sig_nforeground;
     static void dispatch_signals();
 
 };

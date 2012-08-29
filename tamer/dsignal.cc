@@ -22,6 +22,7 @@ namespace tamer {
 
 volatile sig_atomic_t driver::sig_any_active;
 int driver::sig_pipe[2] = { -1, -1 };
+unsigned driver::sig_nforeground = 0;
 
 extern "C" { typedef void (*tamer_sighandler)(int); }
 static int tamer_sigaction(int signo, tamer_sighandler handler)
@@ -46,7 +47,7 @@ class sigcancel_rendezvous : public tamerpriv::functional_rendezvous,
 	sigemptyset(&sig_dispatching);
     }
     inline void add(tamerpriv::simple_event *e, int sig) TAMER_NOEXCEPT {
-	assert(sig >= 0 && sig < NSIG);
+	assert(sig >= 0 && sig < 2*NSIG);
 	e->initialize(this, sig);
     }
     static void hook(tamerpriv::functional_rendezvous *fr,
@@ -56,13 +57,16 @@ class sigcancel_rendezvous : public tamerpriv::functional_rendezvous,
 void sigcancel_rendezvous::hook(tamerpriv::functional_rendezvous *,
 				tamerpriv::simple_event *e, bool) TAMER_NOEXCEPT {
     uintptr_t rid = e->rid();
-    if (!sig_handlers[rid] && sigismember(&sig_dispatching, rid) == 0)
-	tamer_sigaction(rid, SIG_DFL);
+    int signo = rid >> 1;
+    if (!sig_handlers[signo] && sigismember(&sig_dispatching, signo) == 0)
+	tamer_sigaction(signo, SIG_DFL);
+    if (rid & 1)
+	--driver::sig_nforeground;
 }
 
 sigcancel_rendezvous sigcancelr;
 
-}
+} // namespace
 
 
 extern "C" {
@@ -79,7 +83,7 @@ static void tamer_signal_handler(int signo) {
 }
 
 
-void driver::at_signal(int signo, const event<> &trigger)
+void driver::at_signal(int signo, event<> trigger, signal_flags flags)
 {
     assert(signo >= 0 && signo < NSIG);
 
@@ -93,19 +97,13 @@ void driver::at_signal(int signo, const event<> &trigger)
     if (!trigger)		// special case forces creation of signal pipe
 	return;
 
-    if (sig_handlers[signo]) {
-	tamerpriv::simple_event *simple = sig_handlers[signo].__get_simple();
-	sig_handlers[signo] = distribute(sig_handlers[signo], trigger);
-	if (simple == sig_handlers[signo].__get_simple())
-	    // we already have a canceler
-	    return;
-    } else {
-	sig_handlers[signo] = trigger;
-	if (sigismember(&sig_dispatching, signo) == 0)
-	    tamer_sigaction(signo, tamer_signal_handler);
-    }
+    bool foreground = (flags & signal_background) == 0;
+    trigger.at_trigger(event<>(sigcancelr, (signo << 1) + foreground));
+    sig_nforeground += foreground;
 
-    sig_handlers[signo].at_trigger(event<>(sigcancelr, signo));
+    sig_handlers[signo] = distribute(sig_handlers[signo], trigger);
+    if (sigismember(&sig_dispatching, signo) == 0)
+	tamer_sigaction(signo, tamer_signal_handler);
 }
 
 
@@ -146,4 +144,4 @@ void driver::dispatch_signals()
     sigemptyset(&sig_dispatching);
 }
 
-}
+} // namespace tamer
