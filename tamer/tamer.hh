@@ -42,7 +42,7 @@
 /** @brief Major version number for this Tamer release. */
 #define TAMER_MAJOR_VERSION   1
 /** @brief Minor version number for this Tamer release. */
-#define TAMER_MINOR_VERSION   2
+#define TAMER_MINOR_VERSION   5
 /** @brief Release level for this Tamer release. */
 #define TAMER_RELEASE_LEVEL   0
 
