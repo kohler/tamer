@@ -33,8 +33,7 @@ class driver_tamer : public driver { public:
     virtual void kill_fd(int fd);
 
     virtual bool empty();
-    virtual void once();
-    virtual void loop();
+    virtual void loop(loop_flags flags);
 
   private:
 
@@ -332,8 +331,9 @@ bool driver_tamer::empty()
     return true;
 }
 
-void driver_tamer::once()
+void driver_tamer::loop(loop_flags flags)
 {
+ again:
     // determine timeout
     cull_timers();
     struct timeval to, *toptr;
@@ -401,12 +401,10 @@ void driver_tamer::once()
     // run active closures
     while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::pop_unblocked())
 	r->run();
-}
 
-void driver_tamer::loop()
-{
-    while (1)
-	once();
+    // check flags
+    if (flags == loop_forever)
+	goto again;
 }
 
 } // namespace

@@ -18,6 +18,12 @@
 #include <signal.h>
 namespace tamer {
 
+enum loop_flags {
+    loop_default = 0,
+    loop_forever = 0,
+    loop_once = 1
+};
+
 class driver { public:
 
     inline driver();
@@ -49,8 +55,7 @@ class driver { public:
     inline void set_now();
 
     virtual bool empty() = 0;
-    virtual void once() = 0;
-    virtual void loop() = 0;
+    virtual void loop(loop_flags flag) = 0;
 
     static driver *make_tamer();
     static driver *make_libevent();

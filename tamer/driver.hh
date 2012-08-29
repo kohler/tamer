@@ -62,14 +62,19 @@ inline bool driver_empty() {
     return driver::main->empty();
 }
 
-/** @brief  Run driver loop once. */
-inline void once() {
-    driver::main->once();
+/** @brief  Run driver loop according to @a flags. */
+inline void loop(loop_flags flags) {
+    driver::main->loop(flags);
 }
 
 /** @brief  Run driver loop indefinitely. */
 inline void loop() {
-    driver::main->loop();
+    driver::main->loop(loop_forever);
+}
+
+/** @brief  Run driver loop once. */
+inline void once() {
+    driver::main->loop(loop_once);
 }
 
 /** @brief  Register event for file descriptor readability.

@@ -31,8 +31,7 @@ class driver_libevent : public driver { public:
     virtual void kill_fd(int fd);
 
     virtual bool empty();
-    virtual void once();
-    virtual void loop();
+    virtual void loop(loop_flags flags);
 
     struct eevent {
 	::event libevent;
@@ -229,8 +228,9 @@ bool driver_libevent::empty()
     return true;
 }
 
-void driver_libevent::once()
+void driver_libevent::loop(loop_flags flags)
 {
+ again:
     if (tamerpriv::abstract_rendezvous::has_unblocked())
 	::event_loop(EVLOOP_ONCE | EVLOOP_NONBLOCK);
     else
@@ -238,15 +238,11 @@ void driver_libevent::once()
     set_now();
     while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::pop_unblocked())
 	r->run();
+    if (flags == loop_forever)
+	goto again;
 }
 
-void driver_libevent::loop()
-{
-    while (1)
-	once();
-}
-
-}
+} // namespace
 
 driver *driver::make_libevent()
 {
@@ -261,4 +257,4 @@ driver *driver::make_libevent()
 }
 
 #endif
-}
+} // namespace tamer
