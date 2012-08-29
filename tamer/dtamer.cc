@@ -32,7 +32,6 @@ class driver_tamer : public driver { public:
     virtual void at_asap(event<> e);
     virtual void kill_fd(int fd);
 
-    virtual bool empty();
     virtual void loop(loop_flags flags);
 
   private:
@@ -317,18 +316,6 @@ void driver_tamer::cull_timers()
 	    timer_reheapify_from(0);
 	}
     }
-}
-
-bool driver_tamer::empty()
-{
-    cull_timers();
-    if (asap_head_ != asap_tail_
-	|| nt_ != 0
-	|| sig_any_active
-	|| tamerpriv::abstract_rendezvous::has_unblocked()
-	|| nfds_ != 0)
-	return false;
-    return true;
 }
 
 void driver_tamer::loop(loop_flags flags)

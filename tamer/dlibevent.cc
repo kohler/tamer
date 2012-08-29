@@ -31,7 +31,6 @@ class driver_libevent : public driver { public:
     virtual void kill_fd(int fd);
 
     void cull();
-    virtual bool empty();
     virtual void loop(loop_flags flags);
 
     struct eevent {
@@ -220,16 +219,6 @@ void driver_libevent::cull() {
 	e->next = _efree;
 	_efree = e;
     }
-}
-
-bool driver_libevent::empty() {
-    cull();
-    if (_etimer
-	|| _efd
-	|| sig_any_active
-	|| tamerpriv::abstract_rendezvous::has_unblocked())
-	return false;
-    return true;
 }
 
 void driver_libevent::loop(loop_flags flags)

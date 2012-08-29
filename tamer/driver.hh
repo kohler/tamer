@@ -53,15 +53,6 @@ inline double dtime(const timeval tv) {
     return tv.tv_sec + tv.tv_usec / 1000000.;
 }
 
-/** @brief  Test whether driver events are pending.
- *  @return  True if no driver events are pending, otherwise false.
- *
- *  If @c driver_empty() is true, then @c once() will hang forever.
- */
-inline bool driver_empty() {
-    return driver::main->empty();
-}
-
 /** @brief  Run driver loop according to @a flags. */
 inline void loop(loop_flags flags) {
     driver::main->loop(flags);

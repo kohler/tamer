@@ -60,7 +60,6 @@ class driver { public:
     timeval now;
     inline void set_now();
 
-    virtual bool empty() = 0;
     virtual void loop(loop_flags flag) = 0;
 
     static driver *make_tamer();
