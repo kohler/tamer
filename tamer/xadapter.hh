@@ -57,12 +57,12 @@ class bind_rendezvous : public functional_rendezvous,
   private:
     event<T0> e_;
     V0 v0_;
-    static void hook(functional_rendezvous *, simple_event *, bool);
+    static void hook(functional_rendezvous *, simple_event *, bool) TAMER_NOEXCEPT;
 };
 
 template <typename T0, typename V0>
 void bind_rendezvous<T0, V0>::hook(functional_rendezvous *fr,
-				   simple_event *, bool) {
+				   simple_event *, bool) TAMER_NOEXCEPT {
     bind_rendezvous *self = static_cast<bind_rendezvous *>(fr);
     self->e_.trigger(self->v0_);
     delete self;

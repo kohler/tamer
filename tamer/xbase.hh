@@ -128,7 +128,7 @@ enum rendezvous_type {
 
 class abstract_rendezvous {
   public:
-    abstract_rendezvous(rendezvous_flags flags, rendezvous_type rtype)
+    abstract_rendezvous(rendezvous_flags flags, rendezvous_type rtype) TAMER_NOEXCEPT
 	: waiting_(0), _blocked_closure(0),
 	  rtype_(rtype), is_volatile_(flags == rvolatile) {
     }
@@ -195,7 +195,7 @@ class abstract_rendezvous {
 
 class explicit_rendezvous : public abstract_rendezvous {
   public:
-    inline explicit_rendezvous(rendezvous_flags flags)
+    inline explicit_rendezvous(rendezvous_flags flags) TAMER_NOEXCEPT
 	: abstract_rendezvous(flags, rexplicit),
 	  ready_(), ready_ptail_(&ready_) {
     }
