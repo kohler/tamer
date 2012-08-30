@@ -13,6 +13,7 @@
  */
 #include "config.h"
 #include <tamer/tamer.hh>
+#include "dinternal.hh"
 #if HAVE_LIBEVENT
 #include <event.h>
 #endif
@@ -21,8 +22,12 @@ namespace tamer {
 #if HAVE_LIBEVENT
 namespace {
 
-class driver_libevent : public driver { public:
+extern "C" {
+void libevent_fdtrigger(int fd, short, void *arg);
+}
 
+class driver_libevent : public driver {
+  public:
     driver_libevent();
     ~driver_libevent();
 
@@ -48,7 +53,29 @@ class driver_libevent : public driver { public:
     };
 
     eevent *_etimer;
-    eevent *_efd;
+
+    struct fdp {
+	::event base;
+
+	inline fdp(driver_libevent *d, int fd) {
+	    ::event_set(&base, fd, 0, libevent_fdtrigger, d);
+	}
+	inline ~fdp() {
+	    ::event_del(&base);
+	}
+	inline void move(driver_libevent *d, int fd, fdp &other) {
+	    int x = ::event_pending(&other.base, EV_READ | EV_WRITE, 0)
+		& (EV_READ | EV_WRITE);
+	    ::event_del(&other.base);
+	    ::event_set(&base, fd, x | EV_PERSIST, libevent_fdtrigger, d);
+	    if (x)
+		::event_add(&base, 0);
+	}
+    };
+
+    driver_fdset<fdp> fds_;
+    int fdactive_;
+    ::event signal_base_;
 
     event_group *_egroup;
     eevent *_efree;
@@ -56,13 +83,23 @@ class driver_libevent : public driver { public:
     eevent *_esignal;
 
     void expand_events();
-
+    static void fd_disinterest(void *driver, int fd);
+    void update_fds();
 };
 
 
 extern "C" {
-void libevent_trigger(int, short, void *arg)
-{
+void libevent_fdtrigger(int fd, short what, void *arg) {
+    driver_libevent *d = static_cast<driver_libevent *>(arg);
+    driver_fd<driver_libevent::fdp> &x = d->fds_[fd];
+    if (what & EV_READ)
+	x.e[0].trigger(0);
+    if (what & EV_WRITE)
+	x.e[1].trigger(0);
+    d->fds_.push_change(fd);
+}
+
+void libevent_trigger(int, short, void *arg) {
     driver_libevent::eevent *e = static_cast<driver_libevent::eevent *>(arg);
     if (*e->se && e->slot)
 	*e->slot = 0;
@@ -79,40 +116,33 @@ void libevent_sigtrigger(int, short, void *arg)
     driver_libevent::eevent *e = static_cast<driver_libevent::eevent *>(arg);
     e->driver->dispatch_signals();
 }
-}
+} // extern "C"
 
 
 driver_libevent::driver_libevent()
-    : _etimer(0), _efd(0), _egroup(0), _efree(0), _ecap(0)
+    : _etimer(0), fdactive_(0), _egroup(0), _efree(0), _ecap(0)
 {
+    ::event_init();
+    ::event_priority_init(3);
+#if HAVE_EVENT_GET_STRUCT_EVENT_SIZE
+    assert(sizeof(::event) >= event_get_struct_event_size());
+#endif
     set_now();
-    event_init();
-    event_priority_init(3);
     at_signal(0, event<>());	// create signal_fd pipe
-    expand_events();
-    _esignal = _efree;
-    _efree = _efree->next;
-    ::event_set(&_esignal->libevent, sig_pipe[0], EV_READ | EV_PERSIST,
-		libevent_sigtrigger, 0);
-    ::event_priority_set(&_esignal->libevent, 0);
-    ::event_add(&_esignal->libevent, 0);
+    ::event_set(&signal_base_, sig_pipe[0], EV_READ | EV_PERSIST,
+		libevent_sigtrigger, this);
+    ::event_priority_set(&signal_base_, 0);
+    ::event_add(&signal_base_, 0);
 }
 
-driver_libevent::~driver_libevent()
-{
+driver_libevent::~driver_libevent() {
     // discard all active events
     while (_etimer) {
 	_etimer->se->simple_trigger(false);
 	::event_del(&_etimer->libevent);
 	_etimer = _etimer->next;
     }
-    while (_efd) {
-	_efd->se->simple_trigger(false);
-	if (_efd->libevent.ev_events)
-	    ::event_del(&_efd->libevent);
-	_efd = _efd->next;
-    }
-    ::event_del(&_esignal->libevent);
+    ::event_del(&signal_base_);
 
     // free event groups
     while (_egroup) {
@@ -122,8 +152,7 @@ driver_libevent::~driver_libevent()
     }
 }
 
-void driver_libevent::expand_events()
-{
+void driver_libevent::expand_events() {
     size_t ncap = (_ecap ? _ecap * 2 : 16);
 
     event_group *ngroup = reinterpret_cast<event_group *>(new unsigned char[sizeof(event_group) + sizeof(eevent) * (ncap - 1)]);
@@ -136,44 +165,53 @@ void driver_libevent::expand_events()
     }
 }
 
-void driver_libevent::at_fd(int fd, int action, event<int> e)
-{
-    assert(fd >= 0);
-    if (!_efree)
-	expand_events();
-    if (e) {
-	eevent *ee = _efree;
-	_efree = ee->next;
-	event_set(&ee->libevent, fd, (action == fdwrite ? EV_WRITE : EV_READ),
-		  libevent_trigger, ee);
-	event_add(&ee->libevent, 0);
+void driver_libevent::fd_disinterest(void *arg, int fd) {
+    driver_libevent *d = static_cast<driver_libevent *>(arg);
+    d->fds_.push_change(fd);
+}
 
-	ee->se = e.__take_simple();
-	ee->slot = e.__get_slot0();
-	ee->next = _efd;
-	ee->pprev = &_efd;
-	if (_efd)
-	    _efd->pprev = &ee->next;
-	_efd = ee;
+void driver_libevent::at_fd(int fd, int action, event<int> e) {
+    assert(fd >= 0);
+    if (e && (action == 0 || action == 1)) {
+	fds_.expand(this, fd);
+	driver_fd<fdp> &x = fds_[fd];
+	if (x.e[action])
+	    e = tamer::distribute(TAMER_MOVE(x.e[action]), TAMER_MOVE(e));
+	x.e[action] = e;
+	tamerpriv::simple_event::at_trigger(e.__get_simple(),
+					    fd_disinterest, this, fd);
+	fds_.push_change(fd);
     }
 }
 
-void driver_libevent::kill_fd(int fd)
-{
-    eevent **ep = &_efd;
-    for (eevent *e = *ep; e; e = *ep)
-	if (e->libevent.ev_fd == fd) {
-	    event_del(&e->libevent);
-	    if (*e->se && e->slot)
-		*e->slot = -ECANCELED;
-	    e->se->simple_trigger(true);
-	    *ep = e->next;
-	    if (*ep)
-		(*ep)->pprev = ep;
-	    e->next = _efree;
-	    _efree = e;
-	} else
-	    ep = &e->next;
+void driver_libevent::kill_fd(int fd) {
+    assert(fd >= 0);
+    if (fd < fds_.nfds_) {
+	driver_fd<fdp> &x = fds_[fd];
+	for (int action = 0; action < 2; ++action)
+	    x.e[action].trigger(-ECANCELED);
+	fds_.push_change(fd);
+    }
+}
+
+void driver_libevent::update_fds() {
+    int fd;
+    while ((fd = fds_.pop_change()) >= 0) {
+	driver_fd<fdp> &x = fds_[fd];
+	int want_what = (x.e[0] ? EV_READ : 0) | (x.e[1] ? EV_WRITE : 0);
+	int have_what = ::event_pending(&x.base, EV_READ | EV_WRITE, 0)
+	    & (EV_READ | EV_WRITE);
+	if (want_what != have_what) {
+	    fdactive_ += (want_what != 0) - (have_what != 0);
+	    if (have_what != 0)
+		::event_del(&x.base);
+	    if (want_what != 0) {
+		::event_set(&x.base, fd, want_what | EV_PERSIST,
+			    libevent_fdtrigger, this);
+		::event_add(&x.base, 0);
+	    }
+	}
+    }
 }
 
 void driver_libevent::at_time(const timeval &expiry, event<> e)
@@ -209,31 +247,28 @@ void driver_libevent::cull() {
 	e->next = _efree;
 	_efree = e;
     }
-    while (_efd && !*_efd->se) {
-	eevent *e = _efd;
-	if (e->libevent.ev_events)
-	    ::event_del(&e->libevent);
-	tamerpriv::simple_event::unuse_clean(_etimer->se);
-	if ((_efd = e->next))
-	    _efd->pprev = &_efd;
-	e->next = _efree;
-	_efree = e;
-    }
 }
 
 void driver_libevent::loop(loop_flags flags)
 {
  again:
+    // fix file descriptors
+    if (fds_.has_change())
+	update_fds();
+
     int event_flags = EVLOOP_ONCE;
     if (sig_any_active
 	|| tamerpriv::abstract_rendezvous::has_unblocked())
 	event_flags |= EVLOOP_NONBLOCK;
     else {
 	cull();
-	if (!_etimer && !_efd && sig_nforeground == 0) // no events scheduled
+	if (!_etimer && fdactive_ == 0 && sig_nforeground == 0)
+	    // no events scheduled
 	    return;
     }
+
     ::event_loop(event_flags);
+
     set_now();
     while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::pop_unblocked())
 	r->run();

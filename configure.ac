@@ -215,7 +215,7 @@ void h(int a, ...) {
     va_end(val);
 }], [h(2, 3, 4);], ac_cv_va_list_addr=yes, ac_cv_va_list_addr=no)])
 if test "x$ac_cv_va_list_addr" = xyes; then
-    AC_DEFINE(HAVE_ADDRESSABLE_VA_LIST, 1, [Define if the va_list type is addressable.])
+    AC_DEFINE([HAVE_ADDRESSABLE_VA_LIST], [1], [Define if the va_list type is addressable.])
 fi
 
 
@@ -273,6 +273,7 @@ if test "$with_libevent" != no; then
     if test "$have_libevent" = yes -a "$have_event_h" = yes; then
 	AC_DEFINE([HAVE_LIBEVENT], [1], [Define if Tame programs may use libevent.])
 	DRIVER_LIBS="$DRIVER_LIBS -levent"
+	AC_CHECK_DECLS([event_get_struct_event_size], [], [], [#include <event.h>])
     elif test "$with_libevent" = yes; then
 	AC_MSG_ERROR([
 =========================================

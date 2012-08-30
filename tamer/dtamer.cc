@@ -13,6 +13,7 @@
  */
 #include "config.h"
 #include <tamer/tamer.hh>
+#include "dinternal.hh"
 #include <sys/select.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -53,8 +54,11 @@ class driver_tamer : public driver { public:
 	}
     };
 
-    struct tfd {
-	event<int> e[2];
+    struct fdp {
+	inline fdp(driver_tamer *, int) {
+	}
+	inline void move(driver_tamer *, int, fdp &) {
+	}
     };
 
     union xfd_set {
@@ -67,9 +71,8 @@ class driver_tamer : public driver { public:
     int tcap_;
     unsigned torder_;
 
-    tfd *fds_;
-    int nfds_;
-    int fdcap_;
+    driver_fdset<fdp> fds_;
+    int fdbound_;
     xfd_set *_fdset[4];
     int _fdset_cap;
 
@@ -82,8 +85,8 @@ class driver_tamer : public driver { public:
     void check_timers() const;
     void timer_reheapify_from(int pos);
     static void fd_disinterest(void *driver, int fd);
-    void expand_fds(int need_fd);
     void cull_timers();
+    void update_fds();
     void expand_asap();
 
 };
@@ -91,7 +94,7 @@ class driver_tamer : public driver { public:
 
 driver_tamer::driver_tamer()
     : t_(0), nt_(0), tcap_(0), torder_(0),
-      fds_(0), nfds_(0), fdcap_(0), _fdset_cap(sizeof(xfd_set) * 8),
+      fdbound_(0), _fdset_cap(sizeof(xfd_set) * 8),
       asap_(0), asap_head_(0), asap_tail_(0), asap_capmask_(-1U)
 {
     assert(FD_SETSIZE <= _fdset_cap);
@@ -117,13 +120,6 @@ driver_tamer::~driver_tamer()
 	++asap_head_;
     }
     delete[] asap_;
-
-    // destroy all active file descriptors
-    for (int i = nfds_ - 1; i >= 0; --i) {
-	fds_[i].e[0].unblock();
-	fds_[i].e[1].unblock();
-    }
-    delete[] reinterpret_cast<char *>(fds_);
 
     // free fd_sets
     for (int i = 0; i < 4; ++i)
@@ -206,50 +202,39 @@ void driver_tamer::check_timers() const
 }
 #endif
 
-void driver_tamer::expand_fds(int need_fd)
-{
-    if (need_fd >= fdcap_) {
-	int ncap = (fdcap_ ? (fdcap_ + 2) * 2 - 2 : 30);
-	while (ncap < need_fd)
-	    ncap = (ncap + 2) * 2 - 2;
-
-        tfd *fds = reinterpret_cast<tfd *>(new char[ncap * sizeof(tfd)]);
-	memcpy(fds, fds_, sizeof(tfd) * nfds_);
-        delete[] reinterpret_cast<char *>(fds_);
-	fds_ = fds;
-	fdcap_ = ncap;
-    }
-    if (need_fd >= nfds_) {
-	memset(fds_ + nfds_, 0, sizeof(tfd) * (need_fd - nfds_ + 1));
-	nfds_ = need_fd + 1;
-    }
-}
-
-void driver_tamer::fd_disinterest(void *arg, int fd)
-{
+void driver_tamer::fd_disinterest(void *arg, int fd) {
     driver_tamer *dt = static_cast<driver_tamer *>(arg);
-    tfd *t = &dt->fds_[fd];
-    for (int action = 0; action < 2; ++action)
-	if (!t->e[action]) {
-	    t->e[action] = event<int>();
-	    FD_CLR(fd, &dt->_fdset[action]->fds);
-	}
-    if (fd == dt->nfds_ - 1)
-	while (dt->nfds_ && (t = &dt->fds_[dt->nfds_ - 1]) && !t->e[0] && !t->e[1])
-	    --dt->nfds_;
+    dt->fds_.push_change(fd);
 }
 
-void driver_tamer::at_fd(int fd, int action, event<int> e)
-{
+void driver_tamer::at_fd(int fd, int action, event<int> e) {
     assert(fd >= 0);
     if (e && (action == 0 || action == 1)) {
-	if (fd >= nfds_)
-	    expand_fds(fd);
-	tfd &t = fds_[fd];
-	if (t.e[action])
-	    e = tamer::distribute(TAMER_MOVE(t.e[action]), TAMER_MOVE(e));
-	t.e[action] = e;
+	fds_.expand(this, fd);
+	driver_fd<fdp> &x = fds_[fd];
+	if (x.e[action])
+	    e = tamer::distribute(TAMER_MOVE(x.e[action]), TAMER_MOVE(e));
+	x.e[action] = e;
+	tamerpriv::simple_event::at_trigger(e.__get_simple(),
+					    fd_disinterest, this, fd);
+	fds_.push_change(fd);
+    }
+}
 
+void driver_tamer::kill_fd(int fd) {
+    assert(fd >= 0);
+    if (fd < fds_.nfds_) {
+	driver_fd<fdp> &x = fds_[fd];
+	for (int action = 0; action < 2; ++action)
+	    x.e[action].trigger(-ECANCELED);
+	fds_.push_change(fd);
+    }
+}
+
+void driver_tamer::update_fds() {
+    int fd;
+    while ((fd = fds_.pop_change()) >= 0) {
+	driver_fd<fdp> &x = fds_[fd];
 	if (fd >= _fdset_cap) {
 	    int ncap = _fdset_cap * 2;
 	    while (ncap < fd)
@@ -265,22 +250,20 @@ void driver_tamer::at_fd(int fd, int action, event<int> e)
 	    }
 	    _fdset_cap = ncap;
 	}
-
-	FD_SET(fd, &_fdset[action]->fds);
-	tamerpriv::simple_event::at_trigger(t.e[action].__get_simple(),
-					    fd_disinterest, this, fd);
-    }
-}
-
-void driver_tamer::kill_fd(int fd)
-{
-    assert(fd >= 0);
-    if (fd < nfds_) {
-	FD_CLR(fd, &_fdset[fdread]->fds);
-	FD_CLR(fd, &_fdset[fdwrite]->fds);
-	tfd &t = fds_[fd];
 	for (int action = 0; action < 2; ++action)
-	    t.e[action].trigger(-ECANCELED);
+	    if (x.e[action])
+		FD_SET(fd, &_fdset[action]->fds);
+	    else
+		FD_CLR(fd, &_fdset[action]->fds);
+	if (x.e[0] || x.e[1]) {
+	    if (fd >= fdbound_)
+		fdbound_ = fd + 1;
+	} else if (fd + 1 == fdbound_)
+	    do {
+		--fdbound_;
+	    } while (fdbound_ > 0
+		     && !fds_[fdbound_ - 1].e[0]
+		     && !fds_[fdbound_ - 1].e[1]);
     }
 }
 
@@ -306,8 +289,7 @@ void driver_tamer::at_asap(event<> e)
     }
 }
 
-void driver_tamer::cull_timers()
-{
+void driver_tamer::cull_timers() {
     while (nt_ != 0 && t_[0].trigger_->empty()) {
 	tamerpriv::simple_event::unuse(t_[0].trigger_);
 	--nt_;
@@ -321,6 +303,10 @@ void driver_tamer::cull_timers()
 void driver_tamer::loop(loop_flags flags)
 {
  again:
+    // fix file descriptors
+    if (fds_.has_change())
+	update_fds();
+
     // determine timeout
     cull_timers();
     struct timeval to, *toptr;
@@ -333,14 +319,14 @@ void driver_tamer::loop(loop_flags flags)
     } else if (nt_ != 0) {
 	timersub(&t_[0].expiry_, &now, &to);
 	toptr = &to;
-    } else if (nfds_ == 0 && sig_nforeground == 0)
+    } else if (fdbound_ == 0 && sig_nforeground == 0)
 	// no events scheduled!
 	return;
     else
 	toptr = 0;
 
     // select!
-    int nfds = nfds_;
+    int nfds = fdbound_;
     if (sig_pipe[0] > nfds)
 	nfds = sig_pipe[0] + 1;
     if (nfds > 0) {
@@ -366,11 +352,11 @@ void driver_tamer::loop(loop_flags flags)
 
     // run file descriptors
     if (nfds > 0) {
-	for (int fd = nfds_ - 1; fd >= 0; --fd) {
-	    tfd &t = fds_[fd];
+	for (int fd = 0; fd < fdbound_; ++fd) {
+	    driver_fd<fdp> &x = fds_[fd];
 	    for (int action = 0; action < 2; ++action)
-		if (FD_ISSET(fd, &_fdset[2 + action]->fds) && t.e[action])
-		    t.e[action].trigger(0);
+		if (FD_ISSET(fd, &_fdset[2 + action]->fds) && x.e[action])
+		    x.e[action].trigger(0);
 	}
     }
 

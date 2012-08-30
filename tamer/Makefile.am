@@ -7,6 +7,7 @@ libtamer_la_SOURCES = \
 	bufferedio.hh bufferedio.tt \
 	driver.hh \
 	dbase.cc \
+	dinternal.hh \
 	dlibevent.cc \
 	dtamer.cc \
 	dsignal.cc \
