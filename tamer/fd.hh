@@ -67,377 +67,66 @@ namespace tamer {
  *  <code>f.write()</code> calls hypothetically happen in parallel.
  */
 class fd {
-
     struct fdimp;
 
   public:
-
-    /** @brief  Default constructor creates an invalid file descriptor.
-     *
-     *  The resulting file descriptor returns an error() of -EBADF.  This
-     *  error code is also returned by any file descriptor operation.
-     */
-    inline fd();
-
-    /** @brief  Creates a wrapper for the file descriptor @a f.
-     *  @param  f  File descriptor value.
-     *
-     *  Somewhat like the stdio fdopen() function, this constructor takes
-     *  control of its file descriptor argument.  In particular, when the
-     *  last reference to the resulting object is destroyed, @a f is closed
-     *  automatically.
-     *
-     *  @a f may be a negative error code, in which case error() will return
-     *  the given value.
-     */
-    explicit inline fd(int f);
-
-    /** @brief  Construct another wrapper for file descriptor @a f.
-     *  @param  f  Source file descriptor.
-     *
-     *  The resulting object and the argument @a f both refer to the same file
-     *  descriptor.  The underlying file descriptor is reference counted, and
-     *  will not be automatically destroyed until both @a f and the resulting
-     *  object go out of scope.
-     */
-    inline fd(const fd &f);
-
-    /** @brief  Destroy the file descriptor wrapper.
-     *  @note   The underlying file descriptor is closed if this was the last
-     *          remaining wrapper.
-     */
-    inline ~fd();
-
-    /** @brief  Make a file descriptor use nonblocking I/O.
-     *  @param  f  File descriptor value.
-     *  @note   This function's argument is a file descriptor value, not an
-     *          fd wrapper object.  Particularly useful for e.g.
-     *          standard input.
-     */
-    static int make_nonblocking(int f);
-
-    /** @brief  Make a file descriptor use blocking I/O.
-     *  @param  f  File descriptor value.
-     *  @note   This function's argument is a file descriptor value, not an
-     *          fd wrapper object.
-     */
-    static int make_blocking(int f);
-
-    /** @brief  Open a file descriptor.
-     *  @param  filename  File name.
-     *  @param  flags     Open flags (@c O_RDONLY, @c O_EXCL, and so forth).
-     *  @param  mode      Permissions mode (used when creating a file).
-     *  @return File descriptor.
-     *
-     *  Opens and returns a file descriptor for the named file.  The returned
-     *  file descriptor is <em>not</em> made nonblocking by default, but you
-     *  may add @c O_NONBLOCK to @a flags yourself.  To check whether the open
-     *  succeeded, use valid() or error() on the resulting file descriptor.
-     *
-     *  @sa open(const char *, int, event<fd>)
-     */
-    static fd open(const char *filename, int flags, mode_t mode = 0777);
-
-    /** @brief  Open a file descriptor.
-     *  @param  filename  File name.
-     *  @param  flags     Open flags (@c O_RDONLY, @c O_EXCL, and so forth).
-     *  @param  mode      Permissions mode (used when creating a file).
-     *  @param  result    Event triggered on completion.
-     *
-     *  Opens a file descriptor for the named file, returning it via the
-     *  @a result event.  The returned file descriptor is made nonblocking.
-     *  To check whether the open succeeded, use valid() or error() on the
-     *  resulting file descriptor.
-     *
-     *  @sa open(const char *, int, event<fd>)
-     */
-    static void open(const char *filename, int flags, mode_t mode,
-		     event<fd> result);
-
-    /** @brief  Open a file descriptor.
-     *  @param  filename  File name.
-     *  @param  flags     Open flags (@c O_RDONLY, @c O_EXCL, and so forth).
-     *  @param  result    Event triggered on completion.
-     *
-     *  Like open(const char *, int, mode_t, event<fd>), passing 0777
-     *  for the @a mode argument.
-     *
-     *  @sa open(const char *, int, mode_t, event<fd>)
-     */
-    static inline void open(const char *filename, int flags, event<fd> result);
-
-    /** @brief  Create a socket file descriptor.
-     *  @param  domain    Socket domain.
-     *  @param  type      Socket type.
-     *  @param  protocol  Socket protocol.
-     *
-     *  The returned socket is nonblocking.  Use valid() or error() to check
-     *  for errors.
-     */
-    static fd socket(int domain, int type, int protocol);
-
-    /** @brief  Create a pipe.
-     *  @param  rfd  Set to file descriptor for read end of pipe.
-     *  @param  wfd  Set to file descriptor for write end of pipe.
-     *  @return  0 on success or a negative error code.
-     *
-     *  The returned file descriptors are nonblocking.
-     */
-    static int pipe(fd &rfd, fd &wfd);
-
-    /** @brief  Test if file descriptor is valid.
-     *  @return  True if file descriptor is valid, false if not.
-     */
-    inline bool valid() const;
-
     typedef ref_ptr<fdimp> fd::*unspecified_bool_type;
-
-    /** @brief  Test if file descriptor is valid.
-     *  @return  True if file descriptor is valid, false if not.
-     */
-    inline operator unspecified_bool_type() const;
-
-    /** @brief  Test if file descriptor is invalid.
-     *  @return  False if file descriptor is valid, true if not.
-     */
-    inline bool operator!() const;
-
-    /** @brief  Check for file descriptor error.
-     *  @return  0 if file descriptor is valid, otherwise a negative
-     *          error code.
-     */
-    inline int error() const;
-
-    /** @brief  Return file descriptor value.
-     *  @return  File descriptor value if file descriptor is valid, otherwise
-     *          a negative error code.
-     */
-    inline int value() const;
-
-    /** @brief  Register a close notifier.
-     *  @param  e  Close notifier.
-     *
-     *  If this file descriptor is invalid, triggers @a e immediately.
-     *  Otherwise, triggers @a e when this file descriptor is closed (either
-     *  by an explicit close() or as a result of file descriptor references
-     *  going out of scope).
-     */
-    inline void at_close(event<> e);
-
-    /** @brief  Return a closer event.
-     *  @return  Closer event.
-     *
-     *  Triggering the returned event will immediately close the file
-     *  descriptor.  Returns an empty event if the file descriptor is invalid.
-     */
-    event<> closer();
-
-    /** @brief  Fetch file status.
-     *  @param[out]  stat  Status structure.
-     *  @param       done  Event triggered on completion.
-     *
-     *  @a done is triggered with 0 on success, or a negative error code.
-     */
-    inline void fstat(struct stat &stat, event<int> done);
-
     enum { default_backlog = 128 };
 
-    /** @brief  Set socket file descriptor for listening.
-     *  @param  backlog  Maximum length of pending connection queue.
-     *
-     *  Returns 0 on success, or a negative error code.
-     *
-     *  @sa tamer::fdx::tcp_listen
-     */
-    int listen(int backlog = default_backlog);
+    inline fd();
+    explicit inline fd(int f);
+    inline fd(const fd &f);
+    inline ~fd();
 
-    /** @brief  Bind socket file descriptor to local address.
-     *  @param  addr     Local socket address.
-     *  @param  addrlen  Length of local socket address.
-     *
-     *  Returns 0 on success, or a negative error code.
-     */
-    int bind(const struct sockaddr *addr, socklen_t addrlen);
+    inline fd &operator=(const fd &f);
 
-    /** @brief  Accept new connection on listening socket file descriptor.
-     *  @param[out]     addr     Socket address of connecting client.
-     *  @param[in,out]  addrlen  Length of @a addr.
-     *  @param          result   Event triggered on completion.
-     *
-     *  Accepts a new connection on a listening socket, returning it via the
-     *  @a result event.  The returned file descriptor is made nonblocking.
-     *  To check whether the accept succeeded, use valid() or error() on the
-     *  resulting file descriptor.
-     *
-     *  If @a addr is not null, it is filled in with the connecting client's
-     *  address.  On input, @a addrlen should equal the space available for @a
-     *  addr; on output, it is set to the space used for @a addr.
-     *
-     *  @sa accept(const event<fd> &)
-     */
-    inline void accept(struct sockaddr *addr, socklen_t *addrlen,
-		       event<fd> result);
+    static fd open(const char *filename, int flags, mode_t mode = 0777);
+    static void open(const char *filename, int flags, mode_t mode,
+		     event<fd> result);
+    static inline void open(const char *filename, int flags, event<fd> result);
 
-    /** @brief  Accept new connection on listening socket file descriptor.
-     *  @param  result  Event triggered on completion.
-     *
-     *  Equivalent to accept(NULL, NULL, result).
-     */
-    inline void accept(const event<fd> &result);
+    static fd socket(int domain, int type, int protocol);
+    static int pipe(fd &rfd, fd &wfd);
 
-    /** @brief  Connect socket file descriptor.
-     *  @param  addr     Remote address.
-     *  @param  addrlen  Length of remote address.
-     *  @param  done     Event triggered on completion.
-     *
-     *  @a done is triggered with 0 on success, or a negative error code.
-     *
-     *  @sa tamer::fdx::tcp_connect
-     */
-    inline void connect(const struct sockaddr *addr, socklen_t addrlen,
-			event<int> done);
+    inline bool valid() const;
+    inline operator unspecified_bool_type() const;
+    inline bool operator!() const;
+    inline int error() const;
+    inline int value() const;
 
-    /** @brief  Read from file descriptor.
-     *  @param[out]  buf     Buffer.
-     *  @param       size    Buffer size.
-     *  @param[out]  nread   Number of characters read.
-     *  @param       done    Event triggered on completion.
-     *
-     *  Reads @a size bytes from the file descriptor, blocking until @a size
-     *  bytes are available (or end-of-file or an error condition).  @a done
-     *  is triggered with 0 on success or end-of-file, or a negative error
-     *  code.  @a nread is kept up to date as the read progresses.
-     *
-     *  @sa read_once(void *, size_t, size_t &, event<int>)
-     */
-    inline void read(void *buf, size_t size, size_t &nread, event<int> done);
-
-    /** @brief  Read from file descriptor.
-     *  @param[out]  buf     Buffer.
-     *  @param       size    Buffer size.
-     *  @param       done    Event triggered on completion.
-     *
-     *  Reads @a size bytes from the file descriptor, blocking until @a size
-     *  bytes are available (or end-of-file or an error condition).  Similar
-     *  to read(void *, size_t, size_t &, event<int>), but does not return the
-     *  number of characters actually read.
-     */
-    inline void read(void *buf, size_t size, const event<int> &done);
-
-    /** @brief  Read once from file descriptor.
-     *  @param[out]  buf     Buffer.
-     *  @param       size    Buffer size.
-     *  @param[out]  nread   Number of characters read.
-     *  @param       done    Event triggered on completion.
-     *
-     *  Reads at most @a size bytes from the file descriptor.  Blocks until at
-     *  least one byte is read (or end-of-file or an error condition), but
-     *  unlike read(), @a done is triggered after the @em first successful
-     *  read, even if less than @a size bytes are read.  @a done is triggered
-     *  with 0 on success, or a negative error code.  @a nread is kept up to
-     *  date as the read progresses.
-     *
-     *  @sa read(void *, size_t, size_t &, event<int>)
-     */
-    inline void read_once(void *buf, size_t size, size_t &nread,
-			  event<int> done);
-
-    /** @brief  Write to file descriptor.
-     *  @param       buf       Buffer.
-     *  @param       size      Buffer size.
-     *  @param[out]  nwritten  Number of characters written.
-     *  @param       done      Event triggered on completion.
-     *
-     *  @a done is triggered with 0 on success or end-of-file, or a negative
-     *  error code.  @a nwritten is kept up to date as the write progresses.
-     *
-     *  @sa write(std::string, size_t, event<int>)
-     */
-    inline void write(const void *buf, size_t size, size_t &nwritten,
-		      event<int> done);
-
-    /** @brief  Write to file descriptor.
-     *  @param  buf   Buffer.
-     *  @param  size  Buffer size.
-     *  @param  done  Event triggered on completion.
-     *
-     *  Similar to write(const void *, size_t, size_t &, event<int>), but does
-     *  not return the number of characters actually written.
-     */
-    inline void write(const void *buf, size_t size, const event<int> &done);
-
-    /** @brief  Write string to file descriptor.
-     *  @param       buf       Buffer.
-     *  @param[out]  nwritten  Number of characters written.
-     *  @param       done      Event triggered on completion.
-     *
-     *  Equivalent to write(buf.data(), buf.length(), nwritten, done).
-     */
-    inline void write(std::string buf, size_t &nwritten, event<int> done);
-
-    /** @brief  Write string to file descriptor.
-     *  @param  buf   Buffer.
-     *  @param  done  Event triggered on completion.
-     *
-     *  Equivalent to write(buf.data(), buf.length(), done).
-     */
-    inline void write(const std::string &buf, const event<int> &done);
-
-    /** @brief  Write once to file descriptor.
-     *  @param       buf       Buffer.
-     *  @param       size      Buffer size.
-     *  @param[out]  nwritten  Number of characters written.
-     *  @param       done      Event triggered on completion.
-     *
-     *  Writes at most @a size bytes to the file descriptor.  Blocks until at
-     *  least one byte is written (or end-of-file or an error condition), but
-     *  unlike write(), @a done is triggered after the @em first successful
-     *  read, even if less than @a size bytes are written.  @a done is
-     *  triggered with 0 on success, or a negative error code.  @a nwritten is
-     *  kept up to date as the read progresses.
-     *
-     *  @sa write(const void *, size_t, size_t &, event<int>)
-     */
-    inline void write_once(const void *buf, size_t size, size_t &nwritten,
-			   event<int> done);
-
-    /** @brief  Send a message on a file descriptor.
-     *  @param  buf          Buffer.
-     *  @param  size         Buffer size.
-     *  @param  transfer_fd  File descriptor to send with the message.
-     *  @param  done         Event triggered on completion.
-     */
-    inline void sendmsg(const void *buf, size_t size, int transfer_fd,
-			event<int> done);
-
-    /** @overload */
-    inline void sendmsg(const void *buf, size_t size, const event<int> &done);
-
-    /** @brief  Close file descriptor.
-     *  @param  done  Event triggered on completion.
-     *
-     *  @a done is triggered with 0 on success, or a negative error code.
-     */
-    void close(event<int> done);
-
-    /** @brief  Close file descriptor.
-     *
-     *  Equivalent to close(event<int>()).
-     */
+    inline void at_close(event<> e);
+    event<> closer();
+    inline void close(event<int> done);
     inline void close();
-
-    /** @brief  Close file descriptor, marking it with an error.
-     *  @param  errcode  Negative error code.
-     *
-     *  After error_close(@a errcode), the valid() function will return false,
-     *  and error() will return @a errcode.
-     */
     inline void error_close(int errcode);
 
-    /** @brief  Assign this file descriptor to refer to @a f.
-     *  @param  f  Source file descriptor.
-     */
-    inline fd &operator=(const fd &f);
+    void read(void *buf, size_t size, size_t &nread, event<int> done);
+    inline void read(void *buf, size_t size, const event<int> &done);
+    void read_once(void *buf, size_t size, size_t &nread, event<int> done);
+
+    void write(const void *buf, size_t size, size_t &nwritten, event<int> done);
+    inline void write(const void *buf, size_t size, const event<int> &done);
+    void write(std::string buf, size_t &nwritten, event<int> done);
+    inline void write(const std::string &buf, const event<int> &done);
+    void write_once(const void *buf, size_t size, size_t &nwritten,
+		    event<int> done);
+
+    inline void sendmsg(const void *buf, size_t size, int transfer_fd,
+			event<int> done);
+    inline void sendmsg(const void *buf, size_t size, const event<int> &done);
+
+    void fstat(struct stat &stat, event<int> done);
+
+    int listen(int backlog = default_backlog);
+    int bind(const struct sockaddr *addr, socklen_t addrlen);
+    void accept(struct sockaddr *addr, socklen_t *addrlen, event<fd> result);
+    inline void accept(const event<fd> &result);
+    void connect(const struct sockaddr *addr, socklen_t addrlen,
+		 event<int> done);
+
+    static int make_nonblocking(int f);
+    static int make_blocking(int f);
+    inline int make_nonblocking();
 
   private:
 
@@ -455,7 +144,6 @@ class fd {
     };
 
     struct fdimp : public enable_ref_ptr_with_full_release<fdimp> {
-
 	int _fd;
 	mutex _rlock;
 	mutex _wlock;
@@ -471,39 +159,22 @@ class fd {
 #endif
 	{
 	}
-
-	void accept(struct sockaddr *addr, socklen_t *addrlen,
-		    event<fd> result);
-	void connect(const struct sockaddr *addr, socklen_t addrlen,
-		     event<int> done);
-	void fstat(struct stat &stat_out, event<int> done);
-	void read(void *buf, size_t size, size_t &nread, event<int> done);
-	void read_once(void *buf, size_t size, size_t &nread, event<int> done);
-	void write(const void *buf, size_t size, size_t &nwritten, event<int> done);
-	void write(std::string buf, size_t &nwritten, event<int> done);
-	void write_once(const void *buf, size_t size, size_t &nwritten, event<int> done);
-	void sendmsg(const void *buf, size_t size, int fd_to_send, event<int> done);
 	void full_release() {
 	    if (_fd >= 0)
 		close();
 	}
 	int close(int leave_error = -EBADF);
-
-      private:
-
-	class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_ &);
-	class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_ &);
-	class closure__read__PvkRkQi_; void read(closure__read__PvkRkQi_ &);
-	class closure__read_once__PvkRkQi_; void read_once(closure__read_once__PvkRkQi_ &);
-	class closure__write__PKvkRkQi_; void write(closure__write__PKvkRkQi_ &);
-	class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &);
-	class closure__write_once__PKvkRkQi_; void write_once(closure__write_once__PKvkRkQi_ &);
-	class closure__sendmsg__PKvkiQi_; void sendmsg(closure__sendmsg__PKvkiQi_ &);
     };
 
+    class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_ &);
+    class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_ &);
+    class closure__read__PvkRkQi_; void read(closure__read__PvkRkQi_ &);
+    class closure__read_once__PvkRkQi_; void read_once(closure__read_once__PvkRkQi_ &);
+    class closure__write__PKvkRkQi_; void write(closure__write__PKvkRkQi_ &);
+    class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &);
+    class closure__write_once__PKvkRkQi_; void write_once(closure__write_once__PKvkRkQi_ &);
+    class closure__sendmsg__PKvkiQi_; void sendmsg(closure__sendmsg__PKvkiQi_ &);
     class closure__open__PKci6mode_tQ2fd_; static void open(closure__open__PKci6mode_tQ2fd_ &);
-
-    struct fdcloser;
 
     ref_ptr<fdimp> _p;
 
@@ -514,42 +185,125 @@ class fd {
 
 };
 
+namespace fdx {
+
+void tcp_listen(int port, int backlog, event<fd> result);
+inline void tcp_listen(int port, event<fd> result);
+void tcp_connect(struct in_addr addr, int port, event<fd> result);
+void udp_connect(struct in_addr addr, int port, event<fd> result);
+
+struct exec_fd {
+    enum fdtype {
+	fdtype_newin, fdtype_newout, fdtype_share, fdtype_transfer
+    };
+    int child_fd;
+    fdtype type;
+    fd f;
+    inline exec_fd(int child_fd, fdtype type, fd f = fd());
+};
+
+pid_t exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
+	   const std::vector<const char *> &argv, char * const envp[]);
+inline pid_t execv(fd &in, fd &out, const char *program,
+		   const std::vector<const char *> &argv);
+inline pid_t execv(fd &in, fd &out, fd &err, const char *program,
+		   const std::vector<const char *> &argv);
+inline pid_t execvp(fd &in, fd &out, const char *program,
+		    const std::vector<const char *> &argv);
+inline pid_t execvp(fd &in, fd &out, fd &err, const char *program,
+		    const std::vector<const char *> &argv);
+
+} // namespace fdx
+
+/** @brief  Construct an invalid file descriptor.
+ *
+ *  The resulting file descriptor has error() == -EBADF. This error code is
+ *  also returned by any file descriptor operation.
+ */
 inline fd::fd()
     : _p() {
 }
 
+/** @brief  Creates a wrapper for the file descriptor @a f.
+ *  @param  f  File descriptor value.
+ *
+ *  Somewhat like the stdio fdopen() function, this constructor takes control
+ *  of its file descriptor argument. In particular, when the last reference to
+ *  the resulting object is destroyed, @a f is closed automatically.
+ *
+ *  @a f may be a negative error code, in which case error() will return the
+ *  given value.
+ */
 inline fd::fd(int value)
     : _p(value == -EBADF ? 0 : new fdimp(value)) {
 }
 
+/** @brief  Construct another wrapper for file descriptor @a f.
+ *  @param  f  Source file descriptor.
+ *
+ *  The resulting object and the argument @a f both refer to the same file
+ *  descriptor. The underlying file descriptor is reference counted, and will
+ *  not be automatically destroyed until both @a f and the resulting object go
+ *  out of scope.
+ */
 inline fd::fd(const fd &other)
     : _p(other._p) {
 }
 
+/** @brief  Destroy the file descriptor wrapper.
+ *  @note   The underlying file descriptor is closed if this was the last
+ *          remaining wrapper.
+ */
 inline fd::~fd() {
 }
 
+/** @brief  Assign this file descriptor to refer to @a f.
+ *  @param  f  Source file descriptor.
+ */
 inline fd &fd::operator=(const fd &other) {
     _p = other._p;
     return *this;
 }
 
+/** @brief  Open a file descriptor.
+ *  @param  filename  File name.
+ *  @param  flags     Open flags (@c O_RDONLY, @c O_EXCL, and so forth).
+ *  @param  result    Event triggered on completion.
+ *
+ *  Like open(const char *, int, mode_t, event<fd>), passing 0777 for the @a
+ *  mode argument.
+ *
+ *  @sa open(const char *, int, mode_t, event<fd>)
+ */
 inline void fd::open(const char *filename, int flags, event<fd> f) {
     open(filename, flags, 0777, f);
 }
 
-inline fd::operator unspecified_bool_type() const {
-    return _p && _p->_fd >= 0 ? &fd::_p : 0;
-}
-
+/** @brief  Test if file descriptor is valid.
+ *  @return  True if file descriptor is valid, false if not.
+ */
 inline bool fd::valid() const {
     return _p && _p->_fd >= 0;
 }
 
+/** @brief  Test if file descriptor is valid.
+ *  @return  True if file descriptor is valid, false if not.
+ */
+inline fd::operator unspecified_bool_type() const {
+    return _p && _p->_fd >= 0 ? &fd::_p : 0;
+}
+
+/** @brief  Test if file descriptor is invalid.
+ *  @return  False if file descriptor is valid, true if not.
+ */
 inline bool fd::operator!() const {
     return !_p || _p->_fd < 0;
 }
 
+/** @brief  Check for file descriptor error.
+ *  @return  0 if file descriptor is valid, otherwise a negative
+ *          error code.
+ */
 inline int fd::error() const {
     if (_p)
 	return (_p->_fd >= 0 ? 0 : _p->_fd);
@@ -557,10 +311,21 @@ inline int fd::error() const {
 	return -EBADF;
 }
 
+/** @brief  Return file descriptor value.
+ *  @return  File descriptor value if file descriptor is valid, otherwise
+ *          a negative error code.
+ */
 inline int fd::value() const {
     return (_p ? _p->_fd : -EBADF);
 }
 
+/** @brief  Register a close notifier.
+ *  @param  e  Close notifier.
+ *
+ *  If this file descriptor is invalid, triggers @a e immediately. Otherwise,
+ *  triggers @a e when this file descriptor is closed (either by an explicit
+ *  close() or as a result of file descriptor references going out of scope).
+ */
 inline void fd::at_close(event<> e) {
     if (*this)
 	_p->_at_close = distribute(_p->_at_close, e);
@@ -568,105 +333,93 @@ inline void fd::at_close(event<> e) {
 	e.trigger();
 }
 
-inline void fd::fstat(struct stat &stat_out, event<int> done) {
-    if (_p)
-	_p->fstat(stat_out, done);
-    else
-	done.trigger(-EBADF);
+/** @brief  Close file descriptor.
+ *  @param  done  Event triggered on completion.
+ *
+ *  @a done is triggered with 0 on success, or a negative error code.
+ */
+inline void fd::close(event<int> done)
+{
+    done.trigger(*this ? _p->close() : -EBADF);
 }
 
-inline void fd::accept(struct sockaddr *addr, socklen_t *addrlen, event<fd> result) {
+/** @brief  Close file descriptor.
+ */
+inline void fd::close()
+{
     if (_p)
-	_p->accept(addr, addrlen, result);
-    else
-	result.trigger(fd());
+	_p->close();
 }
 
+/** @brief  Accept new connection on listening socket file descriptor.
+ *  @param  result  Event triggered on completion.
+ *
+ *  Equivalent to accept(NULL, NULL, result).
+ */
 inline void fd::accept(const event<fd> &result) {
     accept(0, 0, result);
 }
 
-inline void fd::connect(const struct sockaddr *addr, socklen_t addrlen, event<int> done) {
-    if (_p)
-	_p->connect(addr, addrlen, done);
-    else
-	done.trigger(-EBADF);
-}
-
-inline void fd::read(void *buf, size_t size, size_t &nread, event<int> done) {
-    nread = 0;
-    if (_p)
-	_p->read(buf, size, nread, done);
-    else
-	done.trigger(-EBADF);
-}
-
+/** @brief  Read from file descriptor.
+ *  @param[out]  buf     Buffer.
+ *  @param       size    Buffer size.
+ *  @param       done    Event triggered on completion.
+ *
+ *  Reads @a size bytes from the file descriptor, blocking until @a size bytes
+ *  are available (or end-of-file or an error condition). Similar to read(void
+ *  *, size_t, size_t &, event<int>), but does not return the number of
+ *  characters actually read.
+ */
 inline void fd::read(void *buf, size_t size, const event<int> &done) {
     read(buf, size, garbage_size, done);
 }
 
-inline void fd::read_once(void *buf, size_t size, size_t &nread, event<int> done) {
-    nread = 0;
-    if (_p)
-	_p->read_once(buf, size, nread, done);
-    else
-	done.trigger(-EBADF);
-}
 
-inline void fd::write(const void *buf, size_t size, size_t &nwritten, event<int> done) {
-    nwritten = 0;
-    if (_p)
-	_p->write(buf, size, nwritten, done);
-    else
-	done.trigger(-EBADF);
-}
-
+/** @brief  Write to file descriptor.
+ *  @param  buf   Buffer.
+ *  @param  size  Buffer size.
+ *  @param  done  Event triggered on completion.
+ *
+ *  Similar to write(const void *, size_t, size_t &, event<int>), but does
+ *  not return the number of characters actually written.
+ */
 inline void fd::write(const void *buf, size_t size, const event<int> &done) {
     write(buf, size, garbage_size, done);
 }
 
-inline void fd::write(std::string buf, size_t &nwritten, event<int> done) {
-    nwritten = 0;
-    if (_p)
-	_p->write(buf, nwritten, done);
-    else
-	done.trigger(-EBADF);
-}
-
+/** @brief  Write string to file descriptor.
+ *  @param  buf   Buffer.
+ *  @param  done  Event triggered on completion.
+ *
+ *  Equivalent to write(buf.data(), buf.length(), done).
+ */
 inline void fd::write(const std::string &buf, const event<int> &done) {
     write(buf, garbage_size, done);
 }
 
-inline void fd::write_once(const void *buf, size_t size, size_t &nwritten, event<int> done) {
-    nwritten = 0;
-    if (_p)
-	_p->write_once(buf, size, nwritten, done);
-    else
-	done.trigger(-EBADF);
-}
-
-inline void fd::sendmsg(const void *buf, size_t size, int transfer_fd, event<int> done) {
-    if (_p)
-	_p->sendmsg(buf, size, transfer_fd, done);
-    else
-	done.trigger(-EBADF);
-}
-
+/** @overload */
 inline void fd::sendmsg(const void *buf, size_t size, const event<int> &done) {
     sendmsg(buf, size, -1, done);
 }
 
-inline void fd::close() {
-    if (*this)
-	_p->close();
-}
-
+/** @brief  Close file descriptor, marking it with an error.
+ *  @param  errcode  Negative error code.
+ *
+ *  After error_close(@a errcode), the valid() function will return false,
+ *  and error() will return @a errcode.
+ */
 inline void fd::error_close(int errcode) {
     assert(errcode < 0);
     if (_p)
 	_p->close(errcode);
     else if (errcode != -EBADF)
 	_p = ref_ptr<fdimp>(new fdimp(errcode));
+}
+
+/** @brief  Make this file descriptor use nonblocking I/O.
+ */
+inline int fd::make_nonblocking() {
+    return make_nonblocking(_p ? _p->_fd : -EBADF);
 }
 
 /** @brief  Test whether two file descriptors refer to the same object.
@@ -697,19 +450,6 @@ namespace fdx {
 
 /** @brief  Open a nonblocking TCP connection on port @a port.
  *  @param  port     Listening port (in host byte order).
- *  @param  backlog  Maximum connection backlog.
- *  @param  result   Event triggered on completion.
- *
- *  Returns the new listening file descriptor via the @a result event.  The
- *  returned file descriptor is made nonblocking, and is opened with the @c
- *  SO_REUSEADDR option.  To check whether the function succeeded, use valid()
- *  or error() on the resulting file descriptor.
- */
-void tcp_listen(int port, int backlog, event<fd> result);
-
-
-/** @brief  Open a nonblocking TCP connection on port @a port.
- *  @param  port     Listening port (in host byte order).
  *  @param  result   Event triggered on completion.
  *
  *  Equivalent to tcp_listen(port, fd::default_backlog, result).
@@ -719,37 +459,9 @@ inline void tcp_listen(int port, event<fd> result) {
 }
 
 
-/** @brief  Create a nonblocking TCP connection to @a addr:@a port.
- *  @param  addr    Remote host.
- *  @param  port    Remote port (in host byte order).
- *  @param  result  Event triggered on completion.
- *
- *  Returns the connected file descriptor via the @a result event.  The
- *  returned file descriptor is made nonblocking.  To check whether the
- *  connect attempt succeeded, use valid() or error() on the resulting file
- *  descriptor.
- */
-void tcp_connect(struct in_addr addr, int port, event<fd> result);
-
-void udp_connect(struct in_addr addr, int port, event<fd> result);
-
-
-struct exec_fd {
-    enum fdtype {
-	fdtype_newin, fdtype_newout, fdtype_share, fdtype_transfer
-    };
-    int child_fd;
-    fdtype type;
-    fd f;
-    exec_fd(int child_fd, fdtype type, fd f = fd()) {
-	this->child_fd = child_fd;
-	this->type = type;
-	this->f = f;
-    }
-};
-
-pid_t exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
-	   const std::vector<const char *> &argv, char * const envp[]);
+inline exec_fd::exec_fd(int child_fd, fdtype type, fd f)
+    : child_fd(child_fd), type(type), f(f) {
+}
 
 inline pid_t execv(fd &in, fd &out, const char *program,
 		   const std::vector<const char *> &argv) {
@@ -799,5 +511,6 @@ inline pid_t execvp(fd &in, fd &out, fd &err, const char *program,
     return r;
 }
 
-}}
+} // namespace fdx
+} // namespace tamer
 #endif /* TAMER_FD_HH */

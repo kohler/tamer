@@ -38,8 +38,16 @@ static fdhelper _fdhm;
 
 size_t fd::garbage_size;
 
+/** @brief  Make a file descriptor use nonblocking I/O.
+ *  @param  f  File descriptor value.
+ *  @note   This function's argument is a file descriptor value, not an
+ *          fd wrapper object.  Particularly useful for e.g.
+ *          standard input.
+ */
 int fd::make_nonblocking(int f)
 {
+    if (f < 0)
+	return f;
     int flags = 1;
     if (::ioctl(f, FIONBIO, &flags) == 0)
 	return 0;
@@ -49,6 +57,11 @@ int fd::make_nonblocking(int f)
     return ::fcntl(f, F_SETFL, flags | O_NONBLOCK);
 }
 
+/** @brief  Make a file descriptor use blocking I/O.
+ *  @param  f  File descriptor value.
+ *  @note   This function's argument is a file descriptor value, not an
+ *          fd wrapper object.
+ */
 int fd::make_blocking(int f)
 {
     int flags = 0;
@@ -60,6 +73,12 @@ int fd::make_blocking(int f)
     return ::fcntl(f, F_SETFL, flags & ~O_NONBLOCK);
 }
 
+/** @brief  Return a closer event.
+ *  @return  Closer event.
+ *
+ *  Triggering the returned event will immediately close the file descriptor.
+ *  Returns an empty event if the file descriptor is invalid.
+ */
 event<> fd::closer()
 {
     if (*this) {
@@ -70,6 +89,19 @@ event<> fd::closer()
 	return event<>();
 }
 
+/** @brief  Open a file descriptor.
+ *  @param  filename  File name.
+ *  @param  flags     Open flags (@c O_RDONLY, @c O_EXCL, and so forth).
+ *  @param  mode      Permissions mode (used when creating a file).
+ *  @return File descriptor.
+ *
+ *  Opens and returns a file descriptor for the named file.  The returned
+ *  file descriptor is <em>not</em> made nonblocking by default, but you
+ *  may add @c O_NONBLOCK to @a flags yourself.  To check whether the open
+ *  succeeded, use valid() or error() on the resulting file descriptor.
+ *
+ *  @sa open(const char *, int, event<fd>)
+ */
 fd fd::open(const char *filename, int flags, mode_t mode) {
     int f = ::open(filename, flags, mode);
     return fd(f == -1 ? -errno : f);
@@ -85,6 +117,19 @@ tamed static void fd::open(const char *filename, int flags, mode_t mode, event<f
     done.trigger(nfd);
 }
 #else
+/** @brief  Open a file descriptor.
+ *  @param  filename  File name.
+ *  @param  flags     Open flags (@c O_RDONLY, @c O_EXCL, and so forth).
+ *  @param  mode      Permissions mode (used when creating a file).
+ *  @param  result    Event triggered on completion.
+ *
+ *  Opens a file descriptor for the named file, returning it via the @a result
+ *  event. The returned file descriptor is made nonblocking. To check whether
+ *  the open succeeded, use valid() or error() on the resulting file
+ *  descriptor.
+ *
+ *  @sa open(const char *, int, event<fd>)
+ */
 void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
 {
     fd nfd;
@@ -94,6 +139,13 @@ void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
 }
 #endif
 
+/** @brief  Create a pipe.
+ *  @param  rfd  Set to file descriptor for read end of pipe.
+ *  @param  wfd  Set to file descriptor for write end of pipe.
+ *  @return  0 on success or a negative error code.
+ *
+ *  The returned file descriptors are nonblocking.
+ */
 int fd::pipe(fd &rfd, fd &wfd)
 {
     int pfd[2], r = ::pipe(pfd);
@@ -109,130 +161,193 @@ int fd::pipe(fd &rfd, fd &wfd)
     }
 }
 
-void fd::fdimp::fstat(struct stat &stat_out, event<int> done)
+/** @brief  Fetch file status.
+ *  @param[out]  stat  Status structure.
+ *  @param       done  Event triggered on completion.
+ *
+ *  @a done is triggered with 0 on success, or a negative error code.
+ */
+void fd::fstat(struct stat &stat_out, event<int> done)
 {
+    fdimp *fi = _p.get();
+    if (fi && fi->_fd >= 0) {
 #if HAVE_TAMER_FDHELPER
-    _fdhm.fstat(_fd, stat_out, done);
+	_fdhm.fstat(fi->_fd, stat_out, done);
 #else
-    int x = ::fstat(_fd, &stat_out);
-    done.trigger(x == -1 ? -errno : 0);
+	int x = ::fstat(fi->_fd, &stat_out);
+	done.trigger(x == -1 ? -errno : 0);
 #endif
+    } else
+	done.trigger(-EBADF);
 }
 
-tamed void fd::fdimp::read(void *buf, size_t size, size_t &nread, event<int> done)
+/** @brief  Read from file descriptor.
+ *  @param[out]  buf     Buffer.
+ *  @param       size    Buffer size.
+ *  @param[out]  nread   Number of characters read.
+ *  @param       done    Event triggered on completion.
+ *
+ *  Reads @a size bytes from the file descriptor, blocking until @a size
+ *  bytes are available (or end-of-file or an error condition).  @a done
+ *  is triggered with 0 on success or end-of-file, or a negative error
+ *  code.  @a nread is kept up to date as the read progresses.
+ *
+ *  @sa read_once(void *, size_t, size_t &, event<int>)
+ */
+tamed void fd::read(void *buf, size_t size, size_t &nread, event<int> done)
 {
     tvars {
-	passive_ref_ptr<fd::fdimp> hold(this);
 	size_t pos = 0;
 	ssize_t amt;
+	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
     }
 
-    if (_fd < 0) {
+    nread = 0;
+
+    if (!fi || fi->_fd < 0) {
 	done.trigger(-EBADF);
 	return;
     }
 
 #if HAVE_TAMER_FDHELPER
-    if (_is_file) {
-	_fdhm.read(_fd, buf, size, nread, done);
+    if (fi->_is_file) {
+	_fdhm.read(fi->_fd, buf, size, nread, done);
 	return;
     }
 #endif
 
-    twait { _rlock.acquire(make_event()); }
+    twait { fi->_rlock.acquire(make_event()); }
 
-    while (pos != size && done && _fd >= 0) {
-	amt = ::read(_fd, static_cast<char *>(buf) + pos, size - pos);
+    while (pos != size && done && fi->_fd >= 0) {
+	amt = ::read(fi->_fd, static_cast<char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
 	    nread = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(_fd, make_event()); }
+	    twait { tamer::at_fd_read(fi->_fd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
 
-    _rlock.release();
-    done.trigger(pos == size || _fd >= 0 ? 0 : -ECANCELED);
+    fi->_rlock.release();
+    done.trigger(pos == size || fi->_fd >= 0 ? 0 : -ECANCELED);
 }
 
-tamed void fd::fdimp::read_once(void *buf, size_t size, size_t &nread, event<int> done)
+/** @brief  Read once from file descriptor.
+ *  @param[out]  buf     Buffer.
+ *  @param       size    Buffer size.
+ *  @param[out]  nread   Number of characters read.
+ *  @param       done    Event triggered on completion.
+ *
+ *  Reads at most @a size bytes from the file descriptor. Blocks until at
+ *  least one byte is read (or end-of-file or an error condition), but unlike
+ *  read(), @a done is triggered after the @em first successful read, even if
+ *  less than @a size bytes are read. @a done is triggered with 0 on success,
+ *  or a negative error code. @a nread is kept up to date as the read
+ *  progresses.
+ *
+ *  @sa read(void *, size_t, size_t &, event<int>)
+ */
+tamed void fd::read_once(void *buf, size_t size, size_t &nread, event<int> done)
 {
     tvars {
 	ssize_t amt;
-	passive_ref_ptr<fd::fdimp> hold(this);
+	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
     }
 
-    if (_fd < 0) {
+    nread = 0;
+
+    if (!fi || fi->_fd < 0) {
 	done.trigger(-EBADF);
 	return;
     }
 
-    twait { _rlock.acquire(make_event()); }
+    twait { fi->_rlock.acquire(make_event()); }
 
-    while (done && _fd >= 0) {
-	amt = ::read(_fd, static_cast<char *>(buf), size);
+    while (done && fi->_fd >= 0) {
+	amt = ::read(fi->_fd, static_cast<char *>(buf), size);
 	if (amt != (ssize_t) -1) {
 	    nread = amt;
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(_fd, make_event()); }
+	    twait { tamer::at_fd_read(fi->_fd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
 
-    _rlock.release();
+    fi->_rlock.release();
     done.trigger(0);
 }
 
-tamed void fd::fdimp::write(const void *buf, size_t size, size_t &nwritten, event<int> done)
+/** @brief  Write to file descriptor.
+ *  @param       buf       Buffer.
+ *  @param       size      Buffer size.
+ *  @param[out]  nwritten  Number of characters written.
+ *  @param       done      Event triggered on completion.
+ *
+ *  @a done is triggered with 0 on success or end-of-file, or a negative
+ *  error code.  @a nwritten is kept up to date as the write progresses.
+ *
+ *  @sa write(std::string, size_t, event<int>)
+ */
+tamed void fd::write(const void *buf, size_t size, size_t &nwritten,
+		     event<int> done)
 {
     tvars {
-	passive_ref_ptr<fd::fdimp> hold(this);
 	size_t pos = 0;
 	ssize_t amt;
+	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
     }
 
-    if (_fd < 0) {
+    nwritten = 0;
+
+    if (!fi || fi->_fd < 0) {
 	done.trigger(-EBADF);
 	return;
     }
 
 #if HAVE_TAMER_FDHELPER
-    if (_is_file) {
-	_fdhm.write(_fd, buf, size, nwritten, done);
+    if (fi->_is_file) {
+	_fdhm.write(fi->_fd, buf, size, nwritten, done);
 	return;
     }
 #endif
 
-    twait { _wlock.acquire(make_event()); }
+    twait { fi->_wlock.acquire(make_event()); }
 
-    while (pos != size && done && _fd >= 0) {
-	amt = ::write(_fd, static_cast<const char *>(buf) + pos, size - pos);
+    while (pos != size && done && fi->_fd >= 0) {
+	amt = ::write(fi->_fd, static_cast<const char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
 	    nwritten = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(_fd, make_event()); }
+	    twait { tamer::at_fd_write(fi->_fd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
 
-    _wlock.release();
-    done.trigger(pos == size || _fd >= 0 ? 0 : -ECANCELED);
+    fi->_wlock.release();
+    done.trigger(pos == size || fi->_fd >= 0 ? 0 : -ECANCELED);
 }
 
-tamed void fd::fdimp::write(std::string s, size_t &nwritten, event<int> done)
+/** @brief  Write string to file descriptor.
+ *  @param       buf       Buffer.
+ *  @param[out]  nwritten  Number of characters written.
+ *  @param       done      Event triggered on completion.
+ *
+ *  Equivalent to write(buf.data(), buf.length(), nwritten, done).
+ */
+tamed void fd::write(std::string s, size_t &nwritten, event<int> done)
 {
     twait { // This twait block prevents s from being destroyed.
 	done.at_trigger(make_event());
@@ -240,85 +355,120 @@ tamed void fd::fdimp::write(std::string s, size_t &nwritten, event<int> done)
     }
 }
 
-tamed void fd::fdimp::write_once(const void *buf, size_t size, size_t &nwritten, event<int> done)
+/** @brief  Write once to file descriptor.
+ *  @param       buf       Buffer.
+ *  @param       size      Buffer size.
+ *  @param[out]  nwritten  Number of characters written.
+ *  @param       done      Event triggered on completion.
+ *
+ *  Writes at most @a size bytes to the file descriptor.  Blocks until at
+ *  least one byte is written (or end-of-file or an error condition), but
+ *  unlike write(), @a done is triggered after the @em first successful
+ *  read, even if less than @a size bytes are written.  @a done is
+ *  triggered with 0 on success, or a negative error code.  @a nwritten is
+ *  kept up to date as the read progresses.
+ *
+ *  @sa write(const void *, size_t, size_t &, event<int>)
+ */
+tamed void fd::write_once(const void *buf, size_t size, size_t &nwritten, event<int> done)
 {
     tvars {
-	passive_ref_ptr<fd::fdimp> hold(this);
 	ssize_t amt;
+	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
     }
 
-    if (_fd < 0) {
+    nwritten = 0;
+
+    if (!fi || fi->_fd < 0) {
 	done.trigger(-EBADF);
 	return;
     }
 
-    twait { _wlock.acquire(make_event()); }
+    twait { fi->_wlock.acquire(make_event()); }
 
-    while (done && _fd >= 0) {
-	amt = ::write(_fd, static_cast<const char *>(buf), size);
+    while (done && fi->_fd >= 0) {
+	amt = ::write(fi->_fd, static_cast<const char *>(buf), size);
 	if (amt != (ssize_t) -1) {
 	    nwritten = amt;
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(_fd, make_event()); }
+	    twait { tamer::at_fd_write(fi->_fd, make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
 
-    _wlock.release();
+    fi->_wlock.release();
     done.trigger(0);
 }
 
-tamed void fd::fdimp::sendmsg(const void *buf, size_t size, int transfer_fd,
-			      event<int> done)
+/** @brief  Send a message on a file descriptor.
+ *  @param  buf          Buffer.
+ *  @param  size         Buffer size.
+ *  @param  transfer_fd  File descriptor to send with the message.
+ *  @param  done         Event triggered on completion.
+ */
+tamed void fd::sendmsg(const void *buf, size_t size, int transfer_fd,
+		       event<int> done)
 {
     tvars {
 	struct msghdr msg;
 	struct iovec iov;
 	char transfer_fd_space[64];
 	ssize_t amt;
+	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
+    }
+
+    if (!fi || fi->_fd < 0) {
+	done.trigger(-EBADF);
+	return;
     }
 
     // prepare message
-    {
-	msg.msg_name = 0;
-	msg.msg_namelen = 0;
-	msg.msg_iov = &iov;
-	msg.msg_iovlen = 1;
-	msg.msg_flags = 0;
-	iov.iov_base = const_cast<void *>(buf);
-	iov.iov_len = size;
+    msg.msg_name = 0;
+    msg.msg_namelen = 0;
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    msg.msg_flags = 0;
+    iov.iov_base = const_cast<void *>(buf);
+    iov.iov_len = size;
 
-	if (transfer_fd < 0) {
-	    msg.msg_control = 0;
-	    msg.msg_controllen = 0;
-	} else {
-	    msg.msg_control = transfer_fd_space;
-	    msg.msg_controllen = CMSG_SPACE(sizeof(int));
-	    struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-	    cmsg->cmsg_level = SOL_SOCKET;
-	    cmsg->cmsg_type = SCM_RIGHTS;
-	    cmsg->cmsg_len = CMSG_LEN(sizeof(int));
-	    memcpy(CMSG_DATA(cmsg), &transfer_fd, sizeof(int));
-	}
+    if (transfer_fd < 0) {
+	msg.msg_control = 0;
+	msg.msg_controllen = 0;
+    } else {
+	msg.msg_control = transfer_fd_space;
+	msg.msg_controllen = CMSG_SPACE(sizeof(int));
+	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_RIGHTS;
+	cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+	memcpy(CMSG_DATA(cmsg), &transfer_fd, sizeof(int));
     }
 
     // send message
-    while (done && _fd >= 0) {
-	amt = ::sendmsg(_fd, &msg, 0);
+    while (done && fi->_fd >= 0) {
+	amt = ::sendmsg(fi->_fd, &msg, 0);
 	if (amt != (ssize_t) -1)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(_fd, make_event()); }
+	    twait { tamer::at_fd_write(fi->_fd, make_event()); }
 	} else if (errno != EINTR)
 	    done.trigger(-errno);
     }
 
-    done.trigger(_fd >= 0 ? 0 : -ECANCELED);
+    done.trigger(fi->_fd >= 0 ? 0 : -ECANCELED);
 }
 
+/** @brief  Create a socket file descriptor.
+ *  @param  domain    Socket domain.
+ *  @param  type      Socket type.
+ *  @param  protocol  Socket protocol.
+ *
+ *  The returned socket is nonblocking.  Use valid() or error() to check
+ *  for errors.
+ */
 fd fd::socket(int domain, int type, int protocol)
 {
     int f = ::socket(domain, type, protocol);
@@ -327,6 +477,13 @@ fd fd::socket(int domain, int type, int protocol)
     return fd(f == -1 ? -errno : f);
 }
 
+/** @brief  Set socket file descriptor for listening.
+ *  @param  backlog  Maximum length of pending connection queue.
+ *
+ *  Returns 0 on success, or a negative error code.
+ *
+ *  @sa tamer::fdx::tcp_listen
+ */
 int fd::listen(int backlog)
 {
     if (*this)
@@ -335,6 +492,12 @@ int fd::listen(int backlog)
 	return -EBADF;
 }
 
+/** @brief  Bind socket file descriptor to local address.
+ *  @param  addr     Local socket address.
+ *  @param  addrlen  Length of local socket address.
+ *
+ *  Returns 0 on success, or a negative error code.
+ */
 int fd::bind(const struct sockaddr *addr, socklen_t addrlen)
 {
     if (*this)
@@ -343,72 +506,102 @@ int fd::bind(const struct sockaddr *addr, socklen_t addrlen)
 	return -EBADF;
 }
 
-tamed void fd::fdimp::accept(struct sockaddr *addr_out, socklen_t *addrlen_out, event<fd> done)
+/** @brief  Accept new connection on listening socket file descriptor.
+ *  @param[out]     addr     Socket address of connecting client.
+ *  @param[in,out]  addrlen  Length of @a addr.
+ *  @param          result   Event triggered on completion.
+ *
+ *  Accepts a new connection on a listening socket, returning it via the
+ *  @a result event.  The returned file descriptor is made nonblocking.
+ *  To check whether the accept succeeded, use valid() or error() on the
+ *  resulting file descriptor.
+ *
+ *  If @a addr is not null, it is filled in with the connecting client's
+ *  address.  On input, @a addrlen should equal the space available for @a
+ *  addr; on output, it is set to the space used for @a addr.
+ *
+ *  @sa accept(const event<fd> &)
+ */
+tamed void fd::accept(struct sockaddr *addr_out, socklen_t *addrlen_out,
+		      event<fd> done)
 {
     tvars {
 	int f = -ECANCELED;
-	passive_ref_ptr<fd::fdimp> hold(this);
+	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
     }
 
-    if (_fd < 0) {
+    if (!fi || fi->_fd < 0) {
 	done.trigger(fd());
 	return;
     }
 
-    twait { _rlock.acquire(make_event()); }
+    twait { fi->_rlock.acquire(make_event()); }
 
-    while (done && _fd >= 0) {
-	f = ::accept(_fd, addr_out, addrlen_out);
+    while (done && fi->_fd >= 0) {
+	f = ::accept(fi->_fd, addr_out, addrlen_out);
 	if (f >= 0) {
 	    make_nonblocking(f);
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(_fd, make_event()); }
+	    twait { tamer::at_fd_read(fi->_fd, make_event()); }
 	} else if (errno != EINTR) {
 	    f = -errno;
 	    break;
 	}
     }
 
-    _rlock.release();
+    fi->_rlock.release();
     done.trigger(fd(f));
 }
 
-tamed void fd::fdimp::connect(const struct sockaddr *addr, socklen_t addrlen, event<int> done)
+/** @brief  Connect socket file descriptor.
+ *  @param  addr     Remote address.
+ *  @param  addrlen  Length of remote address.
+ *  @param  done     Event triggered on completion.
+ *
+ *  @a done is triggered with 0 on success, or a negative error code.
+ *
+ *  @sa tamer::fdx::tcp_connect
+ */
+tamed void fd::connect(const struct sockaddr *addr, socklen_t addrlen,
+		       event<int> done)
 {
     tvars {
 	int x, ret(0);
-	passive_ref_ptr<fd::fdimp> hold(this);
+	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
     }
 
-    if (_fd < 0) {
+    if (!fi || fi->_fd < 0) {
 	done.trigger(-EBADF);
 	return;
     }
 
-    twait { _wlock.acquire(make_event()); }
+    twait { fi->_wlock.acquire(make_event()); }
 
-    x = ::connect(_fd, addr, addrlen);
+    x = ::connect(fi->_fd, addr, addrlen);
     if (x == -1 && errno != EINPROGRESS)
 	ret = -errno;
     else if (x == -1) {
-	twait { tamer::at_fd_write(_fd, make_event()); }
+	twait { tamer::at_fd_write(fi->_fd, make_event()); }
 	socklen_t socklen = sizeof(x);
-	if (!done || _fd < 0)
+	if (!done || fi->_fd < 0)
 	    ret = -ECANCELED;
-	else if (getsockopt(_fd, SOL_SOCKET, SO_ERROR, (void *) &x, &socklen) == -1)
+	else if (getsockopt(fi->_fd, SOL_SOCKET, SO_ERROR, (void *) &x, &socklen) == -1)
 	    ret = -errno;
 	else if (ret > 0)
 	    ret = -x;
     }
 
-    _wlock.release();
+    fi->_wlock.release();
     done.trigger(ret);
 }
 
 
-int fd::fdimp::close(int leave_error)
-{
+/** @brief  Close file descriptor.
+ *
+ *  Equivalent to close(event<int>()).
+ */
+int fd::fdimp::close(int leave_error) {
     int my_fd = _fd;
     if (my_fd >= 0 || leave_error != -EBADF)
 	_fd = leave_error;
@@ -421,20 +614,24 @@ int fd::fdimp::close(int leave_error)
 	}
 	driver::main->kill_fd(my_fd);
 	_at_close.trigger();
-	_at_close = event<>();
 	return x;
     } else
 	return -EBADF;
 }
 
-void fd::close(event<int> done)
-{
-    done.trigger(*this ? _p->close() : -EBADF);
-}
-
 
 namespace fdx {
 
+/** @brief  Open a nonblocking TCP connection on port @a port.
+ *  @param  port     Listening port (in host byte order).
+ *  @param  backlog  Maximum connection backlog.
+ *  @param  result   Event triggered on completion.
+ *
+ *  Returns the new listening file descriptor via the @a result event.  The
+ *  returned file descriptor is made nonblocking, and is opened with the @c
+ *  SO_REUSEADDR option.  To check whether the function succeeded, use valid()
+ *  or error() on the resulting file descriptor.
+ */
 void tcp_listen(int port, int backlog, event<fd> result)
 {
     fd f = fd::socket(AF_INET, SOCK_STREAM, 0);
@@ -456,6 +653,16 @@ void tcp_listen(int port, int backlog, event<fd> result)
     result.trigger(f);
 }
 
+/** @brief  Create a nonblocking TCP connection to @a addr:@a port.
+ *  @param  addr    Remote host.
+ *  @param  port    Remote port (in host byte order).
+ *  @param  result  Event triggered on completion.
+ *
+ *  Returns the connected file descriptor via the @a result event.  The
+ *  returned file descriptor is made nonblocking.  To check whether the
+ *  connect attempt succeeded, use valid() or error() on the resulting file
+ *  descriptor.
+ */
 tamed void tcp_connect(struct in_addr addr, int port, event<fd> result)
 {
     tvars {
