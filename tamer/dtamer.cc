@@ -203,8 +203,8 @@ void driver_tamer::check_timers() const
 #endif
 
 void driver_tamer::fd_disinterest(void *arg, int fd) {
-    driver_tamer *dt = static_cast<driver_tamer *>(arg);
-    dt->fds_.push_change(fd);
+    driver_tamer *d = static_cast<driver_tamer *>(arg);
+    d->fds_.push_change(fd);
 }
 
 void driver_tamer::at_fd(int fd, int action, event<int> e) {
@@ -222,8 +222,7 @@ void driver_tamer::at_fd(int fd, int action, event<int> e) {
 }
 
 void driver_tamer::kill_fd(int fd) {
-    assert(fd >= 0);
-    if (fd < fds_.nfds_) {
+    if (fd >= 0 && fd < fds_.nfds_) {
 	driver_fd<fdp> &x = fds_[fd];
 	for (int action = 0; action < 2; ++action)
 	    x.e[action].trigger(-ECANCELED);

@@ -185,8 +185,7 @@ void driver_libevent::at_fd(int fd, int action, event<int> e) {
 }
 
 void driver_libevent::kill_fd(int fd) {
-    assert(fd >= 0);
-    if (fd < fds_.nfds_) {
+    if (fd >= 0 && fd < fds_.nfds_) {
 	driver_fd<fdp> &x = fds_[fd];
 	for (int action = 0; action < 2; ++action)
 	    x.e[action].trigger(-ECANCELED);
