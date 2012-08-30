@@ -1,4 +1,4 @@
-noinst_PROGRAMS = ex1 ex2 ex3 ex4 ex5 ex6 tamer-yes
+noinst_PROGRAMS = ex1 ex2 ex3 ex4 ex5 ex6 tamer-yes tamer-echosrv
 EXTRA_PROGRAMS = osptracker
 
 ex1_SOURCES = ex1.tt
@@ -25,6 +25,9 @@ osptracker_LDADD = ../tamer/libtamer.la $(DRIVER_LIBS) $(MALLOC_LIBS)
 tamer_yes_SOURCES = tamer-yes.tcc
 tamer_yes_LDADD = ../tamer/libtamer.la $(DRIVER_LIBS) $(MALLOC_LIBS)
 
+tamer_echosrv_SOURCES = tamer-echosrv.tcc
+tamer_echosrv_LDADD = ../tamer/libtamer.la $(DRIVER_LIBS) $(MALLOC_LIBS)
+
 DRIVER_LIBS = @DRIVER_LIBS@
 MALLOC_LIBS = @MALLOC_LIBS@
 
@@ -44,7 +47,8 @@ ex5.cc: ex5.tt $(TAMER)
 ex6.cc: ex6.tt $(TAMER)
 osptracker.cc: osptracker.tcc $(TAMER)
 tamer-yes.cc: tamer-yes.tcc $(TAMER)
+tamer-echosrv.cc: tamer-echosrv.tcc $(TAMER)
 
 clean-local:
 	-rm -f ex1.cc ex2.cc ex3.cc ex4.cc ex5.cc ex6.cc \
-		osptracker.cc tamer-yes.cc
+		osptracker.cc tamer-yes.cc tamer-echosrv.cc
