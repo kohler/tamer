@@ -210,7 +210,7 @@ tamed void nameserver_imp::init(event<int> e) {
   assert(!_udp);
   addr.s_addr = _addr;
 
-  twait { fdx::udp_connect(addr, _port, make_event(_udp)); }
+  twait { udp_connect(addr, _port, make_event(_udp)); }
   e.trigger(_udp.error());
 
   while (_udp) {
@@ -247,7 +247,7 @@ tamed void nameserver_imp::init_tcp(event<int> e, timeval timeout) {
   assert(!_tcp);
   addr.s_addr = _addr;
   //TODO with_timeout doesn't actually set j to 0 as described in spec
-  twait { fdx::tcp_connect(addr, _port, with_timeout(timeout, make_event(_tcp), j)); }
+  twait { tcp_connect(addr, _port, with_timeout(timeout, make_event(_tcp), j)); }
   e.trigger(_tcp.error());
   if (j)
     goto clean_up;

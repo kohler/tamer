@@ -521,7 +521,7 @@ fd fd::socket(int domain, int type, int protocol)
  *
  *  Returns 0 on success, or a negative error code.
  *
- *  @sa tamer::fdx::tcp_listen
+ *  @sa tamer::tcp_listen
  */
 int fd::listen(int backlog)
 {
@@ -600,7 +600,7 @@ tamed void fd::accept(struct sockaddr *addr_out, socklen_t *addrlen_out,
  *
  *  @a done is triggered with 0 on success, or a negative error code.
  *
- *  @sa tamer::fdx::tcp_connect
+ *  @sa tamer::tcp_connect
  */
 tamed void fd::connect(const struct sockaddr *addr, socklen_t addrlen,
 		       event<int> done)
@@ -658,8 +658,6 @@ int fd::fdimp::close(int leave_error) {
 	return -EBADF;
 }
 
-
-namespace fdx {
 
 /** @brief  Open a nonblocking TCP connection on port @a port.
  *  @param  port     Listening port (in host byte order).
@@ -835,5 +833,4 @@ pid_t exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
     return child;
 }
 
-} // namespace tamer::fdx
 } // namespace tamer

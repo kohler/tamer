@@ -323,7 +323,7 @@ tamed void notify(peer *pp, peer *cpeer)
 	twait {
 		tamer::event<tamer::fd> e = make_event(sock);
 		pp->cfd.at_close(e.unblocker());
-		tamer::fdx::tcp_connect(pp->caddr, pp->cport, tamer::add_timeout_sec(5, e));
+		tamer::tcp_connect(pp->caddr, pp->cport, tamer::add_timeout_sec(5, e));
 	}
 	// will be a noop if sock is not connected
 	twait {
@@ -763,7 +763,7 @@ tamed void accept_loop(int port) {
 	tvars { tamer::fd lf, cf; int ret; }
 
 	// Create the socket, exit on error
-	twait { tamer::fdx::tcp_listen(port, make_event(lf)); }
+	twait { tamer::tcp_listen(port, make_event(lf)); }
 	if (!lf)
 		die("listen");
 	if (fcntl(lf.value(), F_SETFD, FD_CLOEXEC) < 0)

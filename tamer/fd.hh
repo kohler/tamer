@@ -154,8 +154,6 @@ class fd {
 
 };
 
-namespace fdx {
-
 void tcp_listen(int port, int backlog, event<fd> result);
 inline void tcp_listen(int port, event<fd> result);
 fd tcp_listen(int port, int backlog);
@@ -184,7 +182,6 @@ inline pid_t execvp(fd &in, fd &out, const char *program,
 inline pid_t execvp(fd &in, fd &out, fd &err, const char *program,
 		    const std::vector<const char *> &argv);
 
-} // namespace fdx
 
 /** @brief  Construct an invalid file descriptor.
  *
@@ -445,13 +442,6 @@ inline bool operator!=(const fd &a, const fd &b) {
 }
 
 
-namespace fdx {
-
-/** @namespace tamer::fdx
- *  @brief  Namespace containing extensions to Tamer's file descriptor
- *  support, such as helper functions for creating TCP connections.
- */
-
 /** @brief  Open a nonblocking TCP connection on port @a port.
  *  @param  port     Listening port (in host byte order).
  *  @param  backlog  Maximum connection backlog.
@@ -538,6 +528,5 @@ inline pid_t execvp(fd &in, fd &out, fd &err, const char *program,
     return r;
 }
 
-} // namespace fdx
 } // namespace tamer
 #endif /* TAMER_FD_HH */
