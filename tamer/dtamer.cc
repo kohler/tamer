@@ -333,7 +333,7 @@ void driver_tamer::loop(loop_flags flags)
     } else if (nt_ != 0) {
 	timersub(&t_[0].expiry_, &now, &to);
 	toptr = &to;
-    } else if (sig_nforeground == 0)
+    } else if (nfds_ == 0 && sig_nforeground == 0)
 	// no events scheduled!
 	return;
     else
