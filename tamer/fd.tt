@@ -32,6 +32,45 @@ extern char **environ;
 
 namespace tamer {
 
+/** @class fd tamer/fd.hh <tamer/fd.hh>
+ *  @brief  A file descriptor wrapper with event-based access functions.
+ *
+ *  The fd class wraps file descriptors in a convenient interface for Tamer
+ *  event-based programming.  Its methods resemble Unix system calls,
+ *  but adapted for Tamer events.
+ *
+ *  fd wrappers are reference-counted and may be freely passed as arguments,
+ *  copied, assigned, and destroyed.  Many fd wrappers may refer to the same
+ *  underlying file descriptor.  This file descriptor is closed when the last
+ *  wrapper to reference it is destroyed.  Alternately, the close() member
+ *  function explicitly closes the underlying file descriptor.
+ *
+ *  When a file descriptor is closed, any pending tamer::at_fd_read() and
+ *  tamer::at_fd_write() events are canceled, and any pending read(), write(),
+ *  accept(), connect(), and similar pending fd methods will terminate with
+ *  the @c -ECANCELED error code (or, equivalently, tamer::outcome::cancel).
+ *  Any fd methods on a closed file descriptor return the @c -EBADF error code.
+ *
+ *  The fd object ensures that reads complete in the order they are called,
+ *  and similarly for writes.  Thus, the following code:
+ *
+ *  @code
+ *     tamed void greeting(tamer::fd f) {
+ *         tvars {
+ *             int ret;
+ *         }
+ *         twait {
+ *             f.write("Hello, ", make_event(ret));
+ *             f.write("world", make_event(ret));
+ *             f.write("!", make_event(ret));
+ *         }
+ *     }
+ *  @endcode
+ *
+ *  will always output "<code>Hello, world!</code>", even though the three
+ *  <code>f.write()</code> calls hypothetically happen in parallel.
+ */
+
 #if HAVE_TAMER_FDHELPER
 static fdhelper _fdhm;
 #endif
@@ -625,14 +664,14 @@ namespace fdx {
 /** @brief  Open a nonblocking TCP connection on port @a port.
  *  @param  port     Listening port (in host byte order).
  *  @param  backlog  Maximum connection backlog.
- *  @param  result   Event triggered on completion.
+ *  @return File descriptor.
  *
- *  Returns the new listening file descriptor via the @a result event.  The
- *  returned file descriptor is made nonblocking, and is opened with the @c
- *  SO_REUSEADDR option.  To check whether the function succeeded, use valid()
- *  or error() on the resulting file descriptor.
+ *  The returned file descriptor is made nonblocking, and is opened with the
+ *  @c SO_REUSEADDR option. A negative value is returned on error. To check
+ *  whether the function succeeded, use valid() or error() on the resulting
+ *  file descriptor.
  */
-void tcp_listen(int port, int backlog, event<fd> result)
+fd tcp_listen(int port, int backlog)
 {
     fd f = fd::socket(AF_INET, SOCK_STREAM, 0);
     if (f) {
@@ -650,7 +689,7 @@ void tcp_listen(int port, int backlog, event<fd> result)
 	if (ret < 0 && f)
 	    f.error_close(ret);
     }
-    result.trigger(f);
+    return f;
 }
 
 /** @brief  Create a nonblocking TCP connection to @a addr:@a port.
@@ -796,4 +835,5 @@ pid_t exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
     return child;
 }
 
-}}
+} // namespace tamer::fdx
+} // namespace tamer

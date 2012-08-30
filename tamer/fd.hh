@@ -28,44 +28,6 @@ namespace tamer {
  *  @brief  Event-based file descriptor wrapper class.
  */
 
-/** @class fd tamer/fd.hh <tamer/fd.hh>
- *  @brief  A file descriptor wrapper with event-based access functions.
- *
- *  The fd class wraps file descriptors in a convenient interface for Tamer
- *  event-based programming.  Its methods resemble Unix system calls,
- *  but adapted for Tamer events.
- *
- *  fd wrappers are reference-counted and may be freely passed as arguments,
- *  copied, assigned, and destroyed.  Many fd wrappers may refer to the same
- *  underlying file descriptor.  This file descriptor is closed when the last
- *  wrapper to reference it is destroyed.  Alternately, the close() member
- *  function explicitly closes the underlying file descriptor.
- *
- *  When a file descriptor is closed, any pending tamer::at_fd_read() and
- *  tamer::at_fd_write() events are canceled, and any pending read(), write(),
- *  accept(), connect(), and similar pending fd methods will terminate with
- *  the @c -ECANCELED error code (or, equivalently, tamer::outcome::cancel).
- *  Any fd methods on a closed file descriptor return the @c -EBADF error code.
- *
- *  The fd object ensures that reads complete in the order they are called,
- *  and similarly for writes.  Thus, the following code:
- *
- *  @code
- *     tamed void greeting(tamer::fd f) {
- *         tvars {
- *             int ret;
- *         }
- *         twait {
- *             f.write("Hello, ", make_event(ret));
- *             f.write("world", make_event(ret));
- *             f.write("!", make_event(ret));
- *         }
- *     }
- *  @endcode
- *
- *  will always output "<code>Hello, world!</code>", even though the three
- *  <code>f.write()</code> calls hypothetically happen in parallel.
- */
 class fd {
     struct fdimp;
 
@@ -80,10 +42,10 @@ class fd {
 
     inline fd &operator=(const fd &f);
 
-    static fd open(const char *filename, int flags, mode_t mode = 0777);
     static void open(const char *filename, int flags, mode_t mode,
 		     event<fd> result);
     static inline void open(const char *filename, int flags, event<fd> result);
+    static fd open(const char *filename, int flags, mode_t mode = 0777);
 
     static fd socket(int domain, int type, int protocol);
     static int pipe(fd &rfd, fd &wfd);
@@ -101,26 +63,33 @@ class fd {
     inline void error_close(int errcode);
 
     void read(void *buf, size_t size, size_t &nread, event<int> done);
-    inline void read(void *buf, size_t size, const event<int> &done);
+    inline void read(void *buf, size_t size, size_t &nread, event<> done);
+    inline void read(void *buf, size_t size, event<int> done);
+    inline void read(void *buf, size_t size, event<> done);
     void read_once(void *buf, size_t size, size_t &nread, event<int> done);
+    inline void read_once(void *buf, size_t size, size_t &nread, event<> done);
 
     void write(const void *buf, size_t size, size_t &nwritten, event<int> done);
-    inline void write(const void *buf, size_t size, const event<int> &done);
+    inline void write(const void *buf, size_t size, size_t &nwritten, event<> done);
+    inline void write(const void *buf, size_t size, event<int> done);
+    inline void write(const void *buf, size_t size, event<> done);
     void write(std::string buf, size_t &nwritten, event<int> done);
-    inline void write(const std::string &buf, const event<int> &done);
-    void write_once(const void *buf, size_t size, size_t &nwritten,
-		    event<int> done);
+    inline void write(const std::string &buf, size_t &nwritten, event<> done);
+    inline void write(const std::string &buf, event<int> done);
+    inline void write(const std::string &buf, event<> done);
+    void write_once(const void *buf, size_t size, size_t &nwritten, event<int> done);
+    inline void write_once(const void *buf, size_t size, size_t &nwritten, event<> done);
 
     inline void sendmsg(const void *buf, size_t size, int transfer_fd,
 			event<int> done);
-    inline void sendmsg(const void *buf, size_t size, const event<int> &done);
+    inline void sendmsg(const void *buf, size_t size, event<int> done);
 
     void fstat(struct stat &stat, event<int> done);
 
     int listen(int backlog = default_backlog);
     int bind(const struct sockaddr *addr, socklen_t addrlen);
     void accept(struct sockaddr *addr, socklen_t *addrlen, event<fd> result);
-    inline void accept(const event<fd> &result);
+    inline void accept(event<fd> result);
     void connect(const struct sockaddr *addr, socklen_t addrlen,
 		 event<int> done);
 
@@ -189,6 +158,8 @@ namespace fdx {
 
 void tcp_listen(int port, int backlog, event<fd> result);
 inline void tcp_listen(int port, event<fd> result);
+fd tcp_listen(int port, int backlog);
+inline fd tcp_listen(int port);
 void tcp_connect(struct in_addr addr, int port, event<fd> result);
 void udp_connect(struct in_addr addr, int port, event<fd> result);
 
@@ -356,8 +327,12 @@ inline void fd::close()
  *
  *  Equivalent to accept(NULL, NULL, result).
  */
-inline void fd::accept(const event<fd> &result) {
+inline void fd::accept(event<fd> result) {
     accept(0, 0, result);
+}
+
+inline void fd::read(void *buf, size_t size, size_t &nread, event<> done) {
+    read(buf, size, nread, unbind<int>(done));
 }
 
 /** @brief  Read from file descriptor.
@@ -370,10 +345,22 @@ inline void fd::accept(const event<fd> &result) {
  *  *, size_t, size_t &, event<int>), but does not return the number of
  *  characters actually read.
  */
-inline void fd::read(void *buf, size_t size, const event<int> &done) {
+inline void fd::read(void *buf, size_t size, event<int> done) {
     read(buf, size, garbage_size, done);
 }
 
+inline void fd::read(void *buf, size_t size, event<> done) {
+    read(buf, size, unbind<int>(done));
+}
+
+inline void fd::read_once(void *buf, size_t size, size_t &nread, event<> done) {
+    read_once(buf, size, nread, unbind<int>(done));
+}
+
+
+inline void fd::write(const void *buf, size_t size, size_t &nwritten, event<> done) {
+    write(buf, size, nwritten, unbind<int>(done));
+}
 
 /** @brief  Write to file descriptor.
  *  @param  buf   Buffer.
@@ -383,8 +370,16 @@ inline void fd::read(void *buf, size_t size, const event<int> &done) {
  *  Similar to write(const void *, size_t, size_t &, event<int>), but does
  *  not return the number of characters actually written.
  */
-inline void fd::write(const void *buf, size_t size, const event<int> &done) {
+inline void fd::write(const void *buf, size_t size, event<int> done) {
     write(buf, size, garbage_size, done);
+}
+
+inline void fd::write(const void *buf, size_t size, event<> done) {
+    write(buf, size, unbind<int>(done));
+}
+
+inline void fd::write(const std::string &buf, size_t &nwritten, event<> done) {
+    write(buf, nwritten, unbind<int>(done));
 }
 
 /** @brief  Write string to file descriptor.
@@ -393,12 +388,21 @@ inline void fd::write(const void *buf, size_t size, const event<int> &done) {
  *
  *  Equivalent to write(buf.data(), buf.length(), done).
  */
-inline void fd::write(const std::string &buf, const event<int> &done) {
+inline void fd::write(const std::string &buf, event<int> done) {
     write(buf, garbage_size, done);
 }
 
+inline void fd::write(const std::string &buf, event<> done) {
+    write(buf, unbind<int>(done));
+}
+
+inline void fd::write_once(const void *buf, size_t size, size_t &nwritten, event<> done) {
+    write_once(buf, size, nwritten, unbind<int>(done));
+}
+
+
 /** @overload */
-inline void fd::sendmsg(const void *buf, size_t size, const event<int> &done) {
+inline void fd::sendmsg(const void *buf, size_t size, event<int> done) {
     sendmsg(buf, size, -1, done);
 }
 
@@ -450,6 +454,20 @@ namespace fdx {
 
 /** @brief  Open a nonblocking TCP connection on port @a port.
  *  @param  port     Listening port (in host byte order).
+ *  @param  backlog  Maximum connection backlog.
+ *  @param  result   Event triggered on completion.
+ *
+ *  Returns the new listening file descriptor via the @a result event.  The
+ *  returned file descriptor is made nonblocking, and is opened with the @c
+ *  SO_REUSEADDR option.  To check whether the function succeeded, use valid()
+ *  or error() on the resulting file descriptor.
+ */
+inline void tcp_listen(int port, int backlog, event<fd> result) {
+    result.trigger(tcp_listen(port, backlog));
+}
+
+/** @brief  Open a nonblocking TCP connection on port @a port.
+ *  @param  port     Listening port (in host byte order).
  *  @param  result   Event triggered on completion.
  *
  *  Equivalent to tcp_listen(port, fd::default_backlog, result).
@@ -458,6 +476,15 @@ inline void tcp_listen(int port, event<fd> result) {
     tcp_listen(port, fd::default_backlog, result);
 }
 
+/** @brief  Open a nonblocking TCP connection on port @a port.
+ *  @param  port     Listening port (in host byte order).
+ *  @return  File descriptor.
+ *
+ *  Equivalent to tcp_listen(port, fd::default_backlog).
+ */
+inline fd tcp_listen(int port) {
+    return tcp_listen(port, fd::default_backlog);
+}
 
 inline exec_fd::exec_fd(int child_fd, fdtype type, fd f)
     : child_fd(child_fd), type(type), f(f) {
