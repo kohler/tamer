@@ -80,8 +80,7 @@ class fd {
     void write_once(const void *buf, size_t size, size_t &nwritten, event<int> done);
     inline void write_once(const void *buf, size_t size, size_t &nwritten, event<> done);
 
-    inline void sendmsg(const void *buf, size_t size, int transfer_fd,
-			event<int> done);
+    void sendmsg(const void *buf, size_t size, int transfer_fd, event<int> done);
     inline void sendmsg(const void *buf, size_t size, event<int> done);
 
     void fstat(struct stat &stat, event<int> done);
