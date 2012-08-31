@@ -252,7 +252,7 @@ void driver_libevent::loop(loop_flags flags)
 
     int event_flags = EVLOOP_ONCE;
     if (sig_any_active
-	|| tamerpriv::abstract_rendezvous::has_unblocked())
+	|| tamerpriv::blocking_rendezvous::has_unblocked())
 	event_flags |= EVLOOP_NONBLOCK;
     else {
 	cull();
@@ -264,7 +264,7 @@ void driver_libevent::loop(loop_flags flags)
     ::event_loop(event_flags);
 
     set_now();
-    while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::pop_unblocked())
+    while (tamerpriv::blocking_rendezvous *r = tamerpriv::blocking_rendezvous::pop_unblocked())
 	r->run();
     if (flags == loop_forever)
 	goto again;

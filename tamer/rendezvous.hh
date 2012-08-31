@@ -46,7 +46,7 @@ class rendezvous : private tamerpriv::explicit_rendezvous,
     void clear();
 
     inline void add(tamerpriv::simple_event *e, const I0 &i0, const I1 &i1);
-    using tamerpriv::abstract_rendezvous::block;
+    using tamerpriv::blocking_rendezvous::block;
 
   private:
     struct eventid {
@@ -164,7 +164,7 @@ class rendezvous<I0> : public tamerpriv::explicit_rendezvous,
     void clear();
 
     inline void add(tamerpriv::simple_event *e, const I0 &i0);
-    using tamerpriv::abstract_rendezvous::block;
+    using tamerpriv::blocking_rendezvous::block;
 };
 
 template <typename I0>
@@ -221,7 +221,7 @@ class simple_rendezvous : public tamerpriv::explicit_rendezvous,
     void clear();
 
     inline void add(tamerpriv::simple_event *e, T i0) TAMER_NOEXCEPT;
-    using tamerpriv::abstract_rendezvous::block;
+    using tamerpriv::blocking_rendezvous::block;
 };
 
 template <typename T>
@@ -318,16 +318,16 @@ class rendezvous<> : private tamerpriv::explicit_rendezvous,
     inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
 	e->initialize(this, 1);
     }
-    using tamerpriv::abstract_rendezvous::block;
+    using tamerpriv::blocking_rendezvous::block;
 };
 
 
-class gather_rendezvous : public tamerpriv::abstract_rendezvous,
+class gather_rendezvous : public tamerpriv::blocking_rendezvous,
 			  public zero_argument_rendezvous_tag<gather_rendezvous> {
   public:
 
     inline gather_rendezvous(tamerpriv::tamer_closure *c)
-	: abstract_rendezvous(rnormal, tamerpriv::rgather), linked_closure_(c) {
+	: blocking_rendezvous(rnormal, tamerpriv::rgather), linked_closure_(c) {
     }
     inline ~gather_rendezvous() {
 	if (waiting_)
@@ -343,7 +343,7 @@ class gather_rendezvous : public tamerpriv::abstract_rendezvous,
     inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
 	e->initialize(this, 1);
     }
-    using tamerpriv::abstract_rendezvous::block;
+    using tamerpriv::blocking_rendezvous::block;
 
   private:
     tamerpriv::tamer_closure *linked_closure_;

@@ -128,7 +128,7 @@ void driver::dispatch_signals()
 	}
 
     // run closures activated by signals (plus maybe some others)
-    while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::pop_unblocked())
+    while (tamerpriv::blocking_rendezvous *r = tamerpriv::blocking_rendezvous::pop_unblocked())
 	r->run();
 
     // reset signal handlers if appropriate

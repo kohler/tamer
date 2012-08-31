@@ -312,7 +312,7 @@ void driver_tamer::loop(loop_flags flags)
     if (asap_head_ != asap_tail_
 	|| (nt_ != 0 && !timercmp(&t_[0].expiry_, &now, >))
 	|| sig_any_active
-	|| tamerpriv::abstract_rendezvous::has_unblocked()) {
+	|| tamerpriv::blocking_rendezvous::has_unblocked()) {
 	timerclear(&to);
 	toptr = &to;
     } else if (nt_ != 0) {
@@ -374,7 +374,7 @@ void driver_tamer::loop(loop_flags flags)
     }
 
     // run active closures
-    while (tamerpriv::abstract_rendezvous *r = tamerpriv::abstract_rendezvous::pop_unblocked())
+    while (tamerpriv::blocking_rendezvous *r = tamerpriv::blocking_rendezvous::pop_unblocked())
 	r->run();
 
     // check flags

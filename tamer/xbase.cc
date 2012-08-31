@@ -19,27 +19,30 @@
 namespace tamer {
 namespace tamerpriv {
 
-abstract_rendezvous *abstract_rendezvous::unblocked = 0;
-abstract_rendezvous **abstract_rendezvous::unblocked_ptail = &unblocked;
+blocking_rendezvous *blocking_rendezvous::unblocked = 0;
+blocking_rendezvous **blocking_rendezvous::unblocked_ptail = &unblocked;
 
-void abstract_rendezvous::hard_free() {
+void blocking_rendezvous::hard_free() {
     if (unblocked_next_ != unblocked_sentinel()) {
-	abstract_rendezvous **p = &unblocked;
+	blocking_rendezvous **p = &unblocked;
 	while (*p != this)
 	    p = &(*p)->unblocked_next_;
 	if (!(*p = unblocked_next_))
 	    unblocked_ptail = p;
     }
-    _blocked_closure->tamer_block_position_ = 1;
-    _blocked_closure->tamer_activator_(_blocked_closure);
+    blocked_closure_->tamer_block_position_ = 1;
+    blocked_closure_->tamer_activator_(blocked_closure_);
 }
 
 tamer_closure *abstract_rendezvous::linked_closure() const {
     if (rtype_ == rgather) {
 	const gather_rendezvous *gr = static_cast<const gather_rendezvous *>(this);
 	return gr->linked_closure_;
+    } else if (rtype_ == rexplicit) {
+	const blocking_rendezvous *br = static_cast<const blocking_rendezvous *>(this);
+	return br->blocked_closure_;
     } else
-	return _blocked_closure;
+	return 0;
 }
 
 
@@ -59,8 +62,9 @@ void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
 	    x->_r_next->_r_pprev = x->_r_pprev;
 
 	if (r->rtype_ == rgather) {
-	    if (!r->waiting_)
-		r->unblock();
+	    gather_rendezvous *gr = static_cast<gather_rendezvous *>(r);
+	    if (!gr->waiting_)
+		gr->unblock();
 	} else if (r->rtype_ == rexplicit) {
 	    explicit_rendezvous *er = static_cast<explicit_rendezvous *>(r);
 	    simple_event::use(x);

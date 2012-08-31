@@ -127,10 +127,11 @@ enum rendezvous_type {
 class abstract_rendezvous {
   public:
     abstract_rendezvous(rendezvous_flags flags, rendezvous_type rtype) TAMER_NOEXCEPT
-	: waiting_(0), _blocked_closure(0),
-	  rtype_(rtype), is_volatile_(flags == rvolatile) {
+	: waiting_(0), rtype_(rtype), is_volatile_(flags == rvolatile) {
     }
+#if TAMER_DEBUG
     inline ~abstract_rendezvous() TAMER_NOEXCEPT;
+#endif
 
     inline rendezvous_type rtype() const {
 	return rendezvous_type(rtype_);
@@ -144,35 +145,11 @@ class abstract_rendezvous {
     }
 
     tamer_closure *linked_closure() const;
-    inline tamer_closure *blocked_closure() const {
-	return _blocked_closure;
-    }
-
-    inline void block(tamer_closure &c, unsigned position,
-		      const char *file, int line);
-    inline void block(tamer_debug_closure &c, unsigned position,
-		      const char *file, int line);
-    inline void unblock();
-    inline void run();
-
-    static inline bool has_unblocked() {
-	return unblocked;
-    }
-    static inline abstract_rendezvous *pop_unblocked() {
-	abstract_rendezvous *r = unblocked;
-	if (r) {
-	    if (!(unblocked = r->unblocked_next_))
-		unblocked_ptail = &unblocked;
-	}
-	return r;
-    }
 
   protected:
     simple_event *waiting_;
-    tamer_closure *_blocked_closure;
     uint8_t rtype_;
     bool is_volatile_;
-    abstract_rendezvous *unblocked_next_;
 
     static abstract_rendezvous *unblocked;
     static abstract_rendezvous **unblocked_ptail;
@@ -185,16 +162,45 @@ class abstract_rendezvous {
   private:
     abstract_rendezvous(const abstract_rendezvous &);
     abstract_rendezvous &operator=(const abstract_rendezvous &);
-    void hard_free();
 
     friend class simple_event;
     friend class driver;
 };
 
-class explicit_rendezvous : public abstract_rendezvous {
+class blocking_rendezvous : public abstract_rendezvous {
+  public:
+    inline blocking_rendezvous(rendezvous_flags flags, rendezvous_type rtype) TAMER_NOEXCEPT;
+    inline ~blocking_rendezvous() TAMER_NOEXCEPT;
+
+    inline void block(tamer_closure &c, unsigned position,
+		      const char *file, int line);
+    inline void block(tamer_debug_closure &c, unsigned position,
+		      const char *file, int line);
+    inline void unblock();
+    inline void run();
+
+    static inline bool has_unblocked();
+    static inline blocking_rendezvous *pop_unblocked();
+
+  protected:
+    tamer_closure *blocked_closure_;
+    blocking_rendezvous *unblocked_next_;
+
+    static blocking_rendezvous *unblocked;
+    static blocking_rendezvous **unblocked_ptail;
+    static inline blocking_rendezvous *unblocked_sentinel() {
+	return reinterpret_cast<blocking_rendezvous *>(uintptr_t(1));
+    }
+
+    void hard_free();
+
+    friend class abstract_rendezvous;
+};
+
+class explicit_rendezvous : public blocking_rendezvous {
   public:
     inline explicit_rendezvous(rendezvous_flags flags) TAMER_NOEXCEPT
-	: abstract_rendezvous(flags, rexplicit),
+	: blocking_rendezvous(flags, rexplicit),
 	  ready_(), ready_ptail_(&ready_) {
     }
 #if TAMER_DEBUG
@@ -316,25 +322,33 @@ inline void abstract_rendezvous::remove_waiting() TAMER_NOEXCEPT {
     }
 }
 
-inline abstract_rendezvous::~abstract_rendezvous() TAMER_NOEXCEPT {
-    // take all events off this rendezvous and call their triggerers
 #if TAMER_DEBUG
+inline abstract_rendezvous::~abstract_rendezvous() TAMER_NOEXCEPT {
     assert(!waiting_);
+}
 #endif
-    if (_blocked_closure)
+
+
+inline blocking_rendezvous::blocking_rendezvous(rendezvous_flags flags,
+						rendezvous_type rtype) TAMER_NOEXCEPT
+    : abstract_rendezvous(flags, rtype), blocked_closure_(), unblocked_next_() {
+}
+
+inline blocking_rendezvous::~blocking_rendezvous() TAMER_NOEXCEPT {
+    if (blocked_closure_)
 	hard_free();
 }
 
-inline void abstract_rendezvous::block(tamer_closure &c,
+inline void blocking_rendezvous::block(tamer_closure &c,
 				       unsigned position,
 				       const char *, int) {
-    assert(!_blocked_closure && &c);
-    _blocked_closure = &c;
+    assert(!blocked_closure_ && &c);
+    blocked_closure_ = &c;
     unblocked_next_ = unblocked_sentinel();
     c.tamer_block_position_ = position;
 }
 
-inline void abstract_rendezvous::block(tamer_debug_closure &c,
+inline void blocking_rendezvous::block(tamer_debug_closure &c,
 				       unsigned position,
 				       const char *file, int line) {
     block(static_cast<tamer_closure &>(c), -position, file, line);
@@ -342,18 +356,31 @@ inline void abstract_rendezvous::block(tamer_debug_closure &c,
     c.tamer_blocked_line_ = line;
 }
 
-inline void abstract_rendezvous::unblock() {
-    if (_blocked_closure && unblocked_next_ == unblocked_sentinel()) {
+inline void blocking_rendezvous::unblock() {
+    if (blocked_closure_ && unblocked_next_ == unblocked_sentinel()) {
 	*unblocked_ptail = this;
 	unblocked_next_ = 0;
 	unblocked_ptail = &unblocked_next_;
     }
 }
 
-inline void abstract_rendezvous::run() {
-    tamer_closure *c = _blocked_closure;
-    _blocked_closure = 0;
+inline void blocking_rendezvous::run() {
+    tamer_closure *c = blocked_closure_;
+    blocked_closure_ = 0;
     c->tamer_activator_(c);
+}
+
+inline bool blocking_rendezvous::has_unblocked() {
+    return unblocked;
+}
+
+inline blocking_rendezvous *blocking_rendezvous::pop_unblocked() {
+    blocking_rendezvous *r = unblocked;
+    if (r) {
+	if (!(unblocked = r->unblocked_next_))
+	    unblocked_ptail = &unblocked;
+    }
+    return r;
 }
 
 
