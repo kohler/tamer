@@ -1,4 +1,4 @@
-noinst_PROGRAMS = t01 t02 t03 t04 t05
+noinst_PROGRAMS = t01 t02 t03 t04 t05 t06
 
 t01_SOURCES = t01.cc
 t01_LDADD = ../tamer/libtamer.la $(DRIVER_LIBS) $(MALLOC_LIBS)
@@ -15,7 +15,10 @@ t04_LDADD = ../tamer/libtamer.la $(DRIVER_LIBS) $(MALLOC_LIBS)
 t05_SOURCES = t05.tt
 t05_LDADD = ../tamer/libtamer.la $(DRIVER_LIBS) $(MALLOC_LIBS)
 
-TAMED_CXXFILES = t02.cc t03.cc t04.cc t05.cc
+t06_SOURCES = t06.tcc
+t06_LDADD = ../tamer/libtamer.la $(DRIVER_LIBS) $(MALLOC_LIBS)
+
+TAMED_CXXFILES = t02.cc t03.cc t04.cc t05.cc t06.cc
 
 DRIVER_LIBS = @DRIVER_LIBS@
 MALLOC_LIBS = @MALLOC_LIBS@
