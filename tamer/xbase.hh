@@ -27,8 +27,6 @@ template <typename R> class zero_argument_rendezvous_tag {};
 template <typename I0=void, typename I1=void> class rendezvous;
 template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> class event;
 class driver;
-class explicit_rendezvous;
-class gather_rendezvous;
 
 class tamer_error : public std::runtime_error { public:
     explicit tamer_error(const std::string &arg)
@@ -108,7 +106,7 @@ class simple_event { public:
     simple_event(const simple_event &);
     simple_event &operator=(const simple_event &);
 
-    void trigger_for_unuse() TAMER_NOEXCEPT;
+    void unuse_trigger() TAMER_NOEXCEPT;
     simple_event *at_trigger_event();
     static void hard_at_trigger(simple_event *x, simple_event *at_trigger);
     static void hard_at_trigger(simple_event *x, void (*f)(void *, int),
@@ -434,11 +432,8 @@ inline void simple_event::use(simple_event *e) TAMER_NOEXCEPT {
 }
 
 inline void simple_event::unuse(simple_event *e) TAMER_NOEXCEPT {
-    if (e && --e->_refcount == 0) {
-	if (e->_r)
-	    e->trigger_for_unuse();
-	delete e;
-    }
+    if (e && --e->_refcount == 0)
+	e->unuse_trigger();
 }
 
 inline void simple_event::unuse_clean(simple_event *e) TAMER_NOEXCEPT {

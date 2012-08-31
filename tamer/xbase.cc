@@ -114,14 +114,13 @@ void simple_event::trigger_list_for_remove() TAMER_NOEXCEPT {
 	}
 }
 
-void simple_event::trigger_for_unuse() TAMER_NOEXCEPT {
-#if TAMER_DEBUG
-    assert(_r && _refcount == 0);
-#endif
-    message::event_prematurely_dereferenced(this, _r);
-    _refcount = 2;		// to prevent a recursive call to unuse
-    simple_trigger(false);
-    _refcount = 0;		// restore old _refcount
+void simple_event::unuse_trigger() TAMER_NOEXCEPT {
+    if (_r) {
+	message::event_prematurely_dereferenced(this, _r);
+	++_refcount;
+	simple_trigger(false);
+    } else
+	delete this;
 }
 
 simple_event *simple_event::at_trigger_event() {
