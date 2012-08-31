@@ -41,7 +41,6 @@ class driver_libevent : public driver {
     struct eevent {
 	::event libevent;
 	tamerpriv::simple_event *se;
-	int *slot;
 	eevent *next;
 	eevent **pprev;
 	driver_libevent *driver;
@@ -101,8 +100,6 @@ void libevent_fdtrigger(int fd, short what, void *arg) {
 
 void libevent_trigger(int, short, void *arg) {
     driver_libevent::eevent *e = static_cast<driver_libevent::eevent *>(arg);
-    if (*e->se && e->slot)
-	*e->slot = 0;
     e->se->simple_trigger(true);
     *e->pprev = e->next;
     if (e->next)
@@ -227,7 +224,6 @@ void driver_libevent::at_time(const timeval &expiry, event<> e)
 	evtimer_add(&ee->libevent, &timeout);
 
 	ee->se = e.__take_simple();
-	ee->slot = 0;
 	ee->next = _etimer;
 	ee->pprev = &_etimer;
 	if (_etimer)
