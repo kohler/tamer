@@ -249,7 +249,7 @@ declarator_t::dump () const
 void
 element_list_t::passthrough(const lstr &s)
 {
-    if (_lst.empty() || !_lst.back()->append(s.str()))
+    if (_lst.empty() || !_lst.back()->append(s))
 	_lst.push_back(new tame_passthrough_t(s));
 
 }

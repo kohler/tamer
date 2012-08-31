@@ -182,7 +182,7 @@ public:
  */
 class outputter_H_t : public outputter_t {
 public:
-  outputter_H_t (const str &in, const str &out, bool ox) 
+  outputter_H_t (const str &in, const str &out, bool ox)
     : outputter_t (in, out, ox) {}
 protected:
   void output_str (const str &s);
@@ -192,7 +192,7 @@ class tame_el_t {
 public:
     tame_el_t () {}
     virtual ~tame_el_t () {}
-    virtual bool append (const str &) { return false; }
+    virtual bool append (const lstr &) { return false; }
     virtual void output(outputter_t *o) = 0;
     virtual bool goes_after_vars () const { return true; }
     virtual bool need_implicit_rendezvous() const { return false; }
