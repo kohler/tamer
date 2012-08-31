@@ -20,15 +20,12 @@
 #include <tamer/tamer.hh>
 #include <tamer/fd.hh>
 
-int n;
-
 tamed void read_sucka(tamer::fd &f) {
     tvars {
 	int ret(-1);
 	char buf[40];
 	size_t amt(0);
     }
-    n++;
     twait {
 	f.read(buf, 40, amt, tamer::add_timeout_sec(2, make_event(ret)));
     }
@@ -36,20 +33,15 @@ tamed void read_sucka(tamer::fd &f) {
 	fprintf(stderr, "got error %d (%s): %ld: %.*s\n", ret, strerror(-ret), (long) amt, (int) amt, buf);
     else
 	fprintf(stderr, "got %d: %ld: %.*s\n", ret, (long) amt, (int) amt, buf);
-    n--;
 }
 
 tamed void time_sucka() {
-    n++;
     twait { tamer::at_delay_sec(5, make_event()); }
-    n--;
 }
 
 tamed void close_sucka(tamer::fd &f) {
-    n++;
     twait { tamer::at_delay_msec(500, make_event()); }
     f.close();
-    n--;
 }
 
 
@@ -60,6 +52,6 @@ int main(int, char **) {
     read_sucka(mystdin);
     time_sucka();
     close_sucka(mystdin);
-    while (n > 0)
-	tamer::once();
+    tamer::loop();
+    tamer::cleanup();
 }
