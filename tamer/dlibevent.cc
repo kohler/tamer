@@ -108,10 +108,9 @@ void libevent_trigger(int, short, void *arg) {
     e->driver->_efree = e;
 }
 
-void libevent_sigtrigger(int, short, void *arg)
-{
-    driver_libevent::eevent *e = static_cast<driver_libevent::eevent *>(arg);
-    e->driver->dispatch_signals();
+void libevent_sigtrigger(int, short, void *arg) {
+    driver_libevent *d = static_cast<driver_libevent *>(arg);
+    d->dispatch_signals();
 }
 } // extern "C"
 
