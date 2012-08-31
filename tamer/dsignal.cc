@@ -123,8 +123,8 @@ void driver::dispatch_signals()
     // trigger those signals
     for (int signo = 0; signo < NSIG; ++signo)
 	if (sigismember(&sig_dispatching, signo) > 0) {
-	    sig_handlers[signo].trigger();
 	    sig_active[signo] = 0;
+	    sig_handlers[signo].trigger();
 	}
 
     // run closures activated by signals (plus maybe some others)
@@ -133,7 +133,8 @@ void driver::dispatch_signals()
 
     // reset signal handlers if appropriate
     for (int signo = 0; signo < NSIG; ++signo)
-	if (sigismember(&sig_dispatching, signo) > 0 && !sig_active[signo])
+	if (sigismember(&sig_dispatching, signo) > 0
+	    && !sig_handlers[signo])
 	    tamer_sigaction(signo, SIG_DFL);
 
     // now that the signal responders have potentially reinstalled signal

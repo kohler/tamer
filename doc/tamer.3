@@ -687,7 +687,7 @@ if the
 .I signal
 occurs.  The event is not triggered directly inside the signal handler.
 Rather, the signal handler marks the signal's occurrence, then blocks the
-signal from further delivery.  The signal remains blocked until
+signal from further delivery.  The signal remains blocked at least until
 .IR e
 has been triggered and any corresponding closure has run (and possibly
 registered another event to catch the signal).  Thus, programmers can
