@@ -35,16 +35,10 @@ static int tamer_sigaction(int signo, tamer_sighandler handler)
 }
 
 namespace {
-
-volatile sig_atomic_t sig_active[NSIG];
-event<> sig_handlers[NSIG];
-sigset_t sig_dispatching;
-
 class sigcancel_rendezvous : public tamerpriv::functional_rendezvous,
 			     public zero_argument_rendezvous_tag<sigcancel_rendezvous> { public:
     sigcancel_rendezvous()
 	: functional_rendezvous(hook) {
-	sigemptyset(&sig_dispatching);
     }
     inline void add(tamerpriv::simple_event *e, int sig) TAMER_NOEXCEPT {
 	assert(sig >= 0 && sig < 2*NSIG);
@@ -53,6 +47,11 @@ class sigcancel_rendezvous : public tamerpriv::functional_rendezvous,
     static void hook(tamerpriv::functional_rendezvous *fr,
 		     tamerpriv::simple_event *e, bool values) TAMER_NOEXCEPT;
 };
+
+sigcancel_rendezvous sigcancelr;
+volatile sig_atomic_t sig_active[NSIG];
+event<> sig_handlers[NSIG];
+sigset_t sig_dispatching;
 
 void sigcancel_rendezvous::hook(tamerpriv::functional_rendezvous *,
 				tamerpriv::simple_event *e, bool) TAMER_NOEXCEPT {
@@ -63,9 +62,6 @@ void sigcancel_rendezvous::hook(tamerpriv::functional_rendezvous *,
     if (rid & 1)
 	--driver::sig_nforeground;
 }
-
-sigcancel_rendezvous sigcancelr;
-
 } // namespace
 
 
@@ -92,6 +88,7 @@ void driver::at_signal(int signo, event<> trigger, signal_flags flags)
 	fcntl(sig_pipe[1], F_SETFL, O_NONBLOCK);
 	fcntl(sig_pipe[0], F_SETFD, FD_CLOEXEC);
 	fcntl(sig_pipe[1], F_SETFD, FD_CLOEXEC);
+	sigemptyset(&sig_dispatching);
     }
 
     if (!trigger)		// special case forces creation of signal pipe
@@ -101,7 +98,8 @@ void driver::at_signal(int signo, event<> trigger, signal_flags flags)
     trigger.at_trigger(event<>(sigcancelr, (signo << 1) + foreground));
     sig_nforeground += foreground;
 
-    sig_handlers[signo] = distribute(sig_handlers[signo], trigger);
+    sig_handlers[signo] = distribute(TAMER_MOVE(sig_handlers[signo]),
+				     TAMER_MOVE(trigger));
     if (sigismember(&sig_dispatching, signo) == 0)
 	tamer_sigaction(signo, tamer_signal_handler);
 }
