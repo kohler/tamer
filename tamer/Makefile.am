@@ -36,7 +36,7 @@ pkginclude_HEADERS = \
 	ref.hh \
 	rendezvous.hh \
 	tamer.hh \
-	util.hh \
+	utility.hh \
 	xadapter.hh \
 	xbase.hh \
 	xdriver.hh

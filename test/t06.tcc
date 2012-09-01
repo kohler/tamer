@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <tamer/tamer.hh>
 
 tamed void run_signals() {

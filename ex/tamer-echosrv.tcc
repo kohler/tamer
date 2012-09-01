@@ -13,6 +13,8 @@
  */
 #include <tamer/tamer.hh>
 #include <tamer/fd.hh>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 tamed void runone(tamer::fd cfd, double timeout) {

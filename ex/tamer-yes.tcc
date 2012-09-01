@@ -13,6 +13,9 @@
  */
 #include <tamer/tamer.hh>
 #include <tamer/fd.hh>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static sig_atomic_t count = 0;
 
