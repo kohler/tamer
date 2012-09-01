@@ -38,8 +38,8 @@ class driver { public:
     enum { fdread = 0, fdwrite = 1 }; // the order is important
     virtual void at_fd(int fd, int action, event<int> e) = 0;
     virtual void at_time(const timeval &expiry, event<> e) = 0;
-    virtual void at_asap(event<> e);
-    virtual void kill_fd(int fd);
+    virtual void at_asap(event<> e) = 0;
+    virtual void kill_fd(int fd) = 0;
 
     inline void at_fd(int fd, int action, event<> e);
     inline void at_fd_read(int fd, event<int> e);
@@ -78,13 +78,6 @@ inline driver::driver() {
 }
 
 inline driver::~driver() {
-}
-
-inline void driver::at_asap(event<> e) {
-    at_time(now, e);
-}
-
-inline void driver::kill_fd(int) {
 }
 
 inline void driver::at_fd(int fd, int action, event<> e) {

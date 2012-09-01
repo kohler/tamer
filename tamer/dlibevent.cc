@@ -33,6 +33,7 @@ class driver_libevent : public driver {
 
     virtual void at_fd(int fd, int action, event<int> e);
     virtual void at_time(const timeval &expiry, event<> e);
+    virtual void at_asap(event<> e);
     virtual void kill_fd(int fd);
 
     void cull();
@@ -50,8 +51,6 @@ class driver_libevent : public driver {
 	event_group *next;
 	eevent e[1];
     };
-
-    eevent *_etimer;
 
     struct fdp {
 	::event base;
@@ -75,6 +74,10 @@ class driver_libevent : public driver {
     tamerpriv::driver_fdset<fdp> fds_;
     int fdactive_;
     ::event signal_base_;
+
+    eevent *_etimer;
+
+    tamerpriv::driver_asapset asap_;
 
     event_group *_egroup;
     eevent *_efree;
@@ -116,7 +119,7 @@ void libevent_sigtrigger(int, short, void *arg) {
 
 
 driver_libevent::driver_libevent()
-    : _etimer(0), fdactive_(0), _egroup(0), _efree(0), _ecap(0)
+    : fdactive_(0), _etimer(0), _egroup(0), _efree(0), _ecap(0)
 {
     ::event_init();
     ::event_priority_init(3);
@@ -231,6 +234,11 @@ void driver_libevent::at_time(const timeval &expiry, event<> e)
     }
 }
 
+void driver_libevent::at_asap(event<> e) {
+    if (e)
+	asap_.push(e.__take_simple());
+}
+
 void driver_libevent::cull() {
     while (_etimer && !*_etimer->se) {
 	eevent *e = _etimer;
@@ -251,7 +259,8 @@ void driver_libevent::loop(loop_flags flags)
 	update_fds();
 
     int event_flags = EVLOOP_ONCE;
-    if (sig_any_active
+    if (!asap_.empty()
+	|| sig_any_active
 	|| tamerpriv::blocking_rendezvous::has_unblocked())
 	event_flags |= EVLOOP_NONBLOCK;
     else {
@@ -264,8 +273,17 @@ void driver_libevent::loop(loop_flags flags)
     ::event_loop(event_flags);
 
     set_now();
+
+    // run asaps
+    while (!asap_.empty()) {
+	tamerpriv::simple_event *se = asap_.pop();
+	se->simple_trigger(false);
+    }
+
+    // run rendezvous
     while (tamerpriv::blocking_rendezvous *r = tamerpriv::blocking_rendezvous::pop_unblocked())
 	r->run();
+
     if (flags == loop_forever)
 	goto again;
 }

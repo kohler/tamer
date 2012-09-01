@@ -32,6 +32,6 @@ int main(int, char **) {
     tamer::rendezvous<> r;
     tamer::event<> e = make_event(r);
     asap(e);
-    while (e)
-	tamer::once();
+    tamer::loop();
+    tamer::cleanup();
 }

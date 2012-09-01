@@ -249,8 +249,7 @@ void driver_tamer::at_time(const timeval &expiry, event<> e)
     }
 }
 
-void driver_tamer::at_asap(event<> e)
-{
+void driver_tamer::at_asap(event<> e) {
     if (e)
 	asap_.push(e.__take_simple());
 }
