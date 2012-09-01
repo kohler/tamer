@@ -258,6 +258,13 @@ if test "$ac_cv_cxx_template_alias" = yes; then
     AC_DEFINE([TAMER_HAVE_CXX_TEMPLATE_ALIAS], [1], [Define if the C++ compiler understands template alias.])
 fi
 
+AC_CACHE_CHECK([whether the C++ compiler understands variadic templates], [ac_cv_cxx_variadic_templates], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[template <typename... Ts> struct X; template <> struct X<> { enum { n = 0 }; }; template <typename T, typename... Ts> struct X<T, Ts...> { enum { n = X<Ts...>::n + 1 }; };]], [[switch (0) { case 0: case X<>::n == 0 && X<int>::n == 1 && X<int, int>::n == 2: break; }]])],
+	[ac_cv_cxx_variadic_templates=yes], [ac_cv_cxx_variadic_templates=no])])
+if test "$ac_cv_cxx_variadic_templates" = yes; then
+    AC_DEFINE([TAMER_HAVE_CXX_VARIADIC_TEMPLATES], [1], [Define if the C++ compiler understands variadic templates.])
+fi
+
 
 dnl
 dnl libevent support

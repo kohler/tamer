@@ -38,6 +38,11 @@
 /* Define if the C++ compiler understands template alias. */
 #undef TAMER_HAVE_CXX_TEMPLATE_ALIAS
 #endif
+
+#ifndef TAMER_HAVE_CXX_VARIADIC_TEMPLATES
+/* Define if the C++ compiler understands variadic templates. */
+#undef TAMER_HAVE_CXX_VARIADIC_TEMPLATES
+#endif
 #endif
 
 #if TAMER_HAVE_CXX_NOEXCEPT
