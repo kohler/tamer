@@ -196,7 +196,9 @@ void driver_libevent::loop(loop_flags flags)
     } else if (fdactive_ == 0 && sig_nforeground == 0)
 	return;
 
-    ::event_loop(event_flags);
+    // don't bother to run event loop if there is nothing it can do
+    if (!(event_flags & EVLOOP_NONBLOCK) || fdactive_ != 0 || sig_ntotal != 0)
+	::event_loop(event_flags);
     set_now();
 
     // run asaps

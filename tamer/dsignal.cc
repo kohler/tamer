@@ -23,6 +23,7 @@ namespace tamer {
 volatile sig_atomic_t driver::sig_any_active;
 int driver::sig_pipe[2] = { -1, -1 };
 unsigned driver::sig_nforeground = 0;
+unsigned driver::sig_ntotal = 0;
 
 extern "C" { typedef void (*tamer_sighandler)(int); }
 static int tamer_sigaction(int signo, tamer_sighandler handler)
@@ -61,6 +62,7 @@ void sigcancel_rendezvous::hook(tamerpriv::functional_rendezvous *,
 	tamer_sigaction(signo, SIG_DFL);
     if (rid & 1)
 	--driver::sig_nforeground;
+    --driver::sig_ntotal;
 }
 } // namespace
 
@@ -97,6 +99,7 @@ void driver::at_signal(int signo, event<> trigger, signal_flags flags)
     bool foreground = (flags & signal_background) == 0;
     trigger.at_trigger(event<>(sigcancelr, (signo << 1) + foreground));
     sig_nforeground += foreground;
+    sig_ntotal += 1;
 
     sig_handlers[signo] = distribute(TAMER_MOVE(sig_handlers[signo]),
 				     TAMER_MOVE(trigger));

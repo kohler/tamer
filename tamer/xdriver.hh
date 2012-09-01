@@ -70,6 +70,7 @@ class driver { public:
     static volatile sig_atomic_t sig_any_active;
     static int sig_pipe[2];
     static unsigned sig_nforeground;
+    static unsigned sig_ntotal;
     static void dispatch_signals();
 
 };
