@@ -100,7 +100,6 @@ driver_libevent::driver_libevent()
 #if HAVE_EVENT_GET_STRUCT_EVENT_SIZE
     assert(sizeof(::event) >= event_get_struct_event_size());
 #endif
-    set_now();
     at_signal(0, event<>());	// create signal_fd pipe
     ::event_set(&signal_base_, sig_pipe[0], EV_READ | EV_PERSIST,
 		libevent_sigtrigger, this);
@@ -183,7 +182,7 @@ void driver_libevent::loop(loop_flags flags)
     int event_flags = EVLOOP_ONCE;
     timers_.cull();
     if (!asap_.empty()
-	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &now, >))
+	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
 	|| sig_any_active
 	|| tamerpriv::blocking_rendezvous::has_unblocked())
 	event_flags |= EVLOOP_NONBLOCK;
@@ -192,7 +191,7 @@ void driver_libevent::loop(loop_flags flags)
 	    evtimer_set(&timerev, libevent_timertrigger, 0);
 	timer_set = true;
 	timeval timeout = timers_.expiry();
-	timersub(&timeout, &now, &timeout);
+	timersub(&timeout, &now(), &timeout);
 	evtimer_add(&timerev, &timeout);
     } else if (fdactive_ == 0 && sig_nforeground == 0)
 	return;
@@ -208,7 +207,7 @@ void driver_libevent::loop(loop_flags flags)
     if (!timers_.empty()) {
 	if (!(event_flags & EVLOOP_NONBLOCK))
 	    evtimer_del(&timerev);
-	while (!timers_.empty() && !timercmp(&timers_.expiry(), &now, >))
+	while (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
 	    timers_.pop_trigger();
     }
 

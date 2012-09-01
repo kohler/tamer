@@ -71,7 +71,6 @@ driver_tamer::driver_tamer()
 	if (i < 2)
 	    memset(_fdset[i], 0, _fdset_cap / 8);
     }
-    set_now();
 }
 
 driver_tamer::~driver_tamer() {
@@ -165,13 +164,13 @@ void driver_tamer::loop(loop_flags flags)
     struct timeval to, *toptr;
     timers_.cull();
     if (!asap_.empty()
-	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &now, >))
+	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
 	|| sig_any_active
 	|| tamerpriv::blocking_rendezvous::has_unblocked()) {
 	timerclear(&to);
 	toptr = &to;
     } else if (!timers_.empty()) {
-	timersub(&timers_.expiry(), &now, &to);
+	timersub(&timers_.expiry(), &now(), &to);
 	toptr = &to;
     } else if (fdbound_ == 0 && sig_nforeground == 0)
 	// no events scheduled!
@@ -213,7 +212,7 @@ void driver_tamer::loop(loop_flags flags)
     }
 
     // run the timers that worked
-    while (!timers_.empty() && !timercmp(&timers_.expiry(), &now, >))
+    while (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
 	timers_.pop_trigger();
 
     // run active closures

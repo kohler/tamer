@@ -21,6 +21,10 @@
 #include <stdlib.h>
 
 namespace tamer {
+namespace tamerpriv {
+timeval now;
+bool now_updated;
+} // namespace tamerpriv
 
 driver *driver::main;
 
@@ -43,7 +47,7 @@ void driver::at_delay(double delay, event<> e)
     if (delay <= 0)
 	at_asap(e);
     else {
-	timeval tv = now;
+	timeval tv = now();
 	long ldelay = (long) delay;
 	tv.tv_sec += ldelay;
 	tv.tv_usec += (long) ((delay - ldelay) * 1000000 + 0.5);

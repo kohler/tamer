@@ -38,19 +38,28 @@ void cleanup();
 /** @brief  Fetches Tamer's current time.
  *  @return  Current timestamp.
  */
-inline timeval &now() {
-    return driver::main->now;
+inline const timeval &now() {
+    if (!tamerpriv::now_updated) {
+	gettimeofday(&tamerpriv::now, 0);
+	tamerpriv::now_updated = true;
+    }
+    return tamerpriv::now;
 }
 
 /** @brief  Sets Tamer's current time to the current timestamp.
  */
 inline void set_now() {
-    driver::main->set_now();
+    tamerpriv::now_updated = false;
 }
 
 /** @brief  Translate a time to a double. */
 inline double dtime(const timeval tv) {
     return tv.tv_sec + tv.tv_usec / 1000000.;
+}
+
+/** @brief  Return Tamer's current time as a double. */
+inline double dnow() {
+    return dtime(now());
 }
 
 /** @brief  Run driver loop according to @a flags. */

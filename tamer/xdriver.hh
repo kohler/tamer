@@ -17,6 +17,10 @@
 #include <sys/time.h>
 #include <signal.h>
 namespace tamer {
+namespace tamerpriv {
+extern struct timeval now;
+extern bool now_updated;
+} // namespace tamerpriv
 
 enum loop_flags {
     loop_default = 0,
@@ -30,7 +34,6 @@ enum signal_flags {
 };
 
 class driver { public:
-
     inline driver();
     virtual inline ~driver();
 
@@ -57,9 +60,6 @@ class driver { public:
     static void at_signal(int signo, event<> e,
 			  signal_flags flags = signal_default);
 
-    timeval now;
-    inline void set_now();
-
     virtual void loop(loop_flags flag) = 0;
 
     static driver *make_tamer();
@@ -74,6 +74,8 @@ class driver { public:
 
 };
 
+inline const timeval &now();
+
 inline driver::driver() {
 }
 
@@ -82,10 +84,6 @@ inline driver::~driver() {
 
 inline void driver::at_fd(int fd, int action, event<> e) {
     at_fd(fd, action, event<int>(e, no_slot()));
-}
-
-inline void driver::set_now() {
-    gettimeofday(&now, 0);
 }
 
 inline void driver::at_fd_read(int fd, event<int> e) {
@@ -112,7 +110,7 @@ inline void driver::at_time(double expiry, event<> e) {
 }
 
 inline void driver::at_delay(timeval delay, event<> e) {
-    timeradd(&delay, &now, &delay);
+    timeradd(&delay, &now(), &delay);
     at_time(delay, e);
 }
 
@@ -120,7 +118,7 @@ inline void driver::at_delay_sec(int delay, event<> e) {
     if (delay <= 0)
 	at_asap(e);
     else {
-	timeval tv = now;
+	timeval tv = now();
 	tv.tv_sec += delay;
 	at_time(tv, e);
     }
@@ -148,5 +146,5 @@ inline void driver::at_delay_usec(int delay, event<> e) {
     }
 }
 
-}
+} // namespace tamer
 #endif /* TAMER_XDRIVER_HH */
