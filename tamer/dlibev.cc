@@ -15,7 +15,6 @@
 #include "config.h"
 #include <tamer/tamer.hh>
 #include <stdio.h>
-#include <tamer/util.hh>
 #include <string.h>
 #if HAVE_LIBEV
 #include "dinternal.hh"

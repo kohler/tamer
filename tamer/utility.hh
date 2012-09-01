@@ -1,5 +1,5 @@
-#ifndef TAMER_UTIL_HH
-#define TAMER_UTIL_HH 1
+#ifndef TAMER_UTILITY_HH
+#define TAMER_UTILITY_HH 1
 /* Copyright (c) 2007-2012, Eddie Kohler
  * Copyright (c) 2007, Regents of the University of California
  *
@@ -18,18 +18,12 @@
 #include <cstddef>
 #include <tamer/autoconf.h>
 namespace tamer {
-namespace tamerutil {
 
-/** @file <tamer/util.hh>
- *  @brief  Utility classes for the tamer implementation.
+/** @file <tamer/utility.hh>
+ *  @brief  Utility classes provided by Tamer.
  */
 
-/** @namespace tamer::tamerutil
- *  @brief  Namespace containing utility classes useful for Tamer
- *  implementation, and possibly elsewhere.
- */
-
-/** @class debuffer tamer/util.hh <tamer/util.hh>
+/** @class debuffer tamer/utility.hh <tamer/utility.hh>
  *  @brief  Utility class: A simple deque.
  *
  *  This double-ended buffer supports front(), push_back(), push_front(), and
@@ -171,72 +165,5 @@ void debuffer<T, A>::expand()
     _head = 0;
 }
 
-
-template <typename T> class dlist;
-
-class dlist_element { public:
-
-    dlist_element()
-	: _next(0), _prev(0) {
-    }
-
-    void remove() {
-	if (_next) {
-	    _next->_prev = _prev;
-	    _prev->_next = _next;
-	    _next = _prev = 0;
-	}
-    }
-
-  private:
-
-    dlist_element *_next;
-    dlist_element *_prev;
-
-    template <typename T> friend class dlist;
-
-};
-
-template <typename T> class dlist : public dlist_element { public:
-
-    dlist() {
-	_next = _prev = this;
-    }
-
-    bool empty() const {
-	return _next == this;
-    }
-
-    void push_back(T *e) {
-	assert(!e->_prev && !e->_next);
-	e->_prev = _prev;
-	e->_next = this;
-	e->_prev->_next = _prev = e;
-    }
-
-    void push_front(T *e) {
-	assert(!e->_prev && !e->_next);
-	e->_next = _next;
-	e->_prev = this;
-	e->_next->_prev = _next = e;
-    }
-
-    T *front() const {
-	return (_next != this ? static_cast<T *>(_next) : 0);
-    }
-
-    T *pop_front() {
-	if (_next != this) {
-	    dlist_element *e = _next;
-	    e->_prev->_next = e->_next;
-	    e->_next->_prev = e->_prev;
-	    e->_prev = e->_next = 0;
-	    return static_cast<T *>(e);
-	} else
-	    return 0;
-    }
-
-};
-
-}}
-#endif /* TAMER__UTIL_HH */
+} // namespace tamer
+#endif /* TAMER_UTILITY_HH */

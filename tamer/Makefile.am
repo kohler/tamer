@@ -19,7 +19,7 @@ libtamer_la_SOURCES = \
 	ref.hh \
 	rendezvous.hh \
 	tamer.hh \
-	util.hh \
+	utility.hh \
 	xadapter.hh xadapter.cc \
 	xbase.hh xbase.cc \
 	xdriver.hh \

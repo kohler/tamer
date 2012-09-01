@@ -1,7 +1,7 @@
-#include <tamer/util.hh>
+#include <tamer/utility.hh>
 #include <stdio.h>
 #include <string>
-using namespace tamer::tamerutil;
+using namespace tamer;
 
 void test_debuffer1() {
     debuffer<std::string> db;
