@@ -275,10 +275,8 @@ void driver_libevent::loop(loop_flags flags)
     set_now();
 
     // run asaps
-    while (!asap_.empty()) {
-	tamerpriv::simple_event *se = asap_.pop();
-	se->simple_trigger(false);
-    }
+    while (!asap_.empty())
+	asap_.pop_trigger();
 
     // run rendezvous
     while (tamerpriv::blocking_rendezvous *r = tamerpriv::blocking_rendezvous::pop_unblocked())

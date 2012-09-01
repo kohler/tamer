@@ -45,6 +45,14 @@ tamer_closure *abstract_rendezvous::linked_closure() const {
 	return 0;
 }
 
+tamer_debug_closure *abstract_rendezvous::linked_debug_closure() const {
+    tamer_closure *c = linked_closure();
+    if (c && int(c->tamer_block_position_) < 0)
+	return static_cast<tamer_debug_closure *>(c);
+    else
+	return 0;
+}
+
 
 void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
     if (!x)
@@ -166,14 +174,12 @@ void simple_event::hard_at_trigger(simple_event *x, void (*f)(void *, int),
 namespace message {
 
 void event_prematurely_dereferenced(simple_event *, abstract_rendezvous *r) {
-    tamer_closure *c = r->linked_closure();
     if (r->is_volatile())
 	/* no error message */;
-    else if (c && int(c->tamer_block_position_) < 0) {
-	tamer_debug_closure *dc = static_cast<tamer_debug_closure *>(c);
+    else if (tamer_debug_closure *dc = r->linked_debug_closure())
 	fprintf(stderr, "%s:%d: avoided leak of active event\n",
 		dc->tamer_blocked_file_, dc->tamer_blocked_line_);
-    } else
+    else
 	fprintf(stderr, "avoided leak of active event\n");
 }
 

@@ -1,6 +1,7 @@
 #ifndef TAMER_DINTERNAL_HH
 #define TAMER_DINTERNAL_HH 1
 #include <tamer/event.hh>
+#include <sys/types.h>
 #include <string.h>
 namespace tamer {
 namespace tamerpriv {
@@ -43,7 +44,7 @@ struct driver_asapset {
 
     inline bool empty() const;
     inline void push(simple_event *se);
-    inline simple_event *pop();
+    inline void pop_trigger();
 
   private:
     simple_event **ses_;
@@ -51,6 +52,35 @@ struct driver_asapset {
     unsigned tail_;
     unsigned capmask_;
 
+    void expand();
+};
+
+struct driver_timerset {
+    inline driver_timerset();
+    ~driver_timerset();
+
+    inline bool empty() const;
+    inline const timeval &expiry() const;
+    inline void cull();
+    void push(timeval when, simple_event *se);
+    void pop_trigger();
+
+  private:
+    struct trec {
+	timeval when;
+	unsigned order;
+	simple_event *se;
+	inline bool operator<(const trec &x) const;
+	inline void clean();
+    };
+
+    enum { arity = 4 };
+    trec *ts_;
+    mutable unsigned nts_;
+    unsigned tcap_;
+    unsigned order_;
+
+    void hard_cull(bool from_pop) const;
     void expand();
 };
 
@@ -164,11 +194,41 @@ inline void driver_asapset::push(simple_event *se) {
     ++tail_;
 }
 
-inline simple_event *driver_asapset::pop() {
+inline void driver_asapset::pop_trigger() {
     assert(head_ != tail_);
     simple_event *se = ses_[head_ & capmask_];
     ++head_;
-    return se;
+    se->simple_trigger(false);
+}
+
+inline driver_timerset::driver_timerset()
+    : ts_(0), nts_(0), tcap_(0), order_(0) {
+}
+
+inline bool driver_timerset::empty() const {
+    return nts_ == 0;
+}
+
+inline const timeval &driver_timerset::expiry() const {
+    assert(nts_ != 0);
+    return ts_[0].when;
+}
+
+inline void driver_timerset::cull() {
+    if (nts_ != 0 && ts_[0].se->empty())
+	hard_cull(false);
+}
+
+inline bool driver_timerset::trec::operator<(const trec &x) const {
+    return when.tv_sec < x.when.tv_sec
+	|| (when.tv_sec == x.when.tv_sec
+	    && (when.tv_usec < x.when.tv_usec
+		|| (when.tv_usec == x.when.tv_usec
+		    && order < x.order)));
+}
+
+inline void driver_timerset::trec::clean() {
+    simple_event::unuse_clean(se);
 }
 
 } // namespace tamerpriv

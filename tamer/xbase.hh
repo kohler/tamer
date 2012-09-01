@@ -145,6 +145,7 @@ class abstract_rendezvous {
     }
 
     tamer_closure *linked_closure() const;
+    tamer_debug_closure *linked_debug_closure() const;
 
   protected:
     simple_event *waiting_;

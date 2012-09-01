@@ -37,23 +37,6 @@ class driver_tamer : public driver { public:
 
   private:
 
-    struct ttimer {
-	timeval expiry_;
-	unsigned order_;
-	tamerpriv::simple_event *trigger_;
-	ttimer(const timeval &expiry, unsigned order,
-	       tamerpriv::simple_event *trigger)
-	    : expiry_(expiry), order_(order), trigger_(trigger) {
-	}
-	bool operator>(const ttimer &x) const {
-	    if (expiry_.tv_sec != x.expiry_.tv_sec)
-		return expiry_.tv_sec > x.expiry_.tv_sec;
-	    if (expiry_.tv_usec != x.expiry_.tv_usec)
-		return expiry_.tv_usec > x.expiry_.tv_usec;
-	    return (int) (order_ - x.order_) > 0;
-	}
-    };
-
     struct fdp {
 	inline fdp(driver_tamer *, int) {
 	}
@@ -66,32 +49,23 @@ class driver_tamer : public driver { public:
 	char s[1];
     };
 
-    ttimer *t_;
-    int nt_;
-    int tcap_;
-    unsigned torder_;
-
     tamerpriv::driver_fdset<fdp> fds_;
     int fdbound_;
     xfd_set *_fdset[4];
     int _fdset_cap;
 
+    tamerpriv::driver_timerset timers_;
+
     tamerpriv::driver_asapset asap_;
 
-    void expand_timers();
-    void check_timers() const;
-    void timer_reheapify_from(int pos);
     static void fd_disinterest(void *driver, int fd);
-    void cull_timers();
     void update_fds();
 };
 
 
 driver_tamer::driver_tamer()
-    : t_(0), nt_(0), tcap_(0), torder_(0),
-      fdbound_(0), _fdset_cap(sizeof(xfd_set) * 8) {
+    : fdbound_(0), _fdset_cap(sizeof(xfd_set) * 8) {
     assert(FD_SETSIZE <= _fdset_cap);
-    expand_timers();
     for (int i = 0; i < 4; ++i) {
 	_fdset[i] = reinterpret_cast<xfd_set *>(new char[_fdset_cap / 8]);
 	if (i < 2)
@@ -100,78 +74,11 @@ driver_tamer::driver_tamer()
     set_now();
 }
 
-driver_tamer::~driver_tamer()
-{
-    // destroy all active timers
-    for (int i = 0; i < nt_; i++)
-	tamerpriv::simple_event::unuse(t_[i].trigger_);
-    delete[] reinterpret_cast<char *>(t_);
-
+driver_tamer::~driver_tamer() {
     // free fd_sets
     for (int i = 0; i < 4; ++i)
 	delete[] reinterpret_cast<char *>(_fdset[i]);
 }
-
-void driver_tamer::expand_timers()
-{
-    int ntcap = (tcap_ ? ((tcap_ + 1) * 2 - 1) : 511);
-    ttimer *nt = reinterpret_cast<ttimer *>(new char[sizeof(ttimer) * ntcap]);
-    if (nt_ != 0)
-	// take advantage of fact that memcpy() works on event<>
-	memcpy(nt, t_, sizeof(ttimer) * nt_);
-    delete[] reinterpret_cast<char *>(t_);
-    t_ = nt;
-    tcap_ = ntcap;
-}
-
-void driver_tamer::timer_reheapify_from(int pos)
-{
-    int npos;
-    while (pos > 0
-	   && (npos = (pos - 1) >> 1, t_[npos] > t_[pos])) {
-	std::swap(t_[pos], t_[npos]);
-	pos = npos;
-    }
-
-    while (1) {
-	int smallest = pos;
-	npos = 2*pos + 1;
-	if (npos < nt_ && t_[smallest] > t_[npos])
-	    smallest = npos;
-	if (npos + 1 < nt_ && t_[smallest] > t_[npos + 1])
-	    smallest = npos + 1, ++npos;
-	if (smallest == pos)
-	    break;
-	std::swap(t_[pos], t_[smallest]);
-	pos = smallest;
-    }
-#if 0
-    if (_t + 1 < tend || !will_delete)
-	_timer_expiry = tbegin[0]->expiry;
-    else
-	_timer_expiry = Timestamp();
-#endif
-}
-
-#if 0
-void driver_tamer::check_timers() const
-{
-    fprintf(stderr, "---");
-    for (int k = 0; k < _nt; k++)
-	fprintf(stderr, " %p/%d.%06d", _t[k], _t[k]->expiry.tv_sec, _t[k]->expiry.tv_usec);
-    fprintf(stderr, "\n");
-
-    for (int i = 0; i < _nt / 2; i++)
-	for (int j = 2*i + 1; j < 2*i + 3; j++)
-	    if (j < _nt && *_t[i] > *_t[j]) {
-		fprintf(stderr, "***");
-		for (int k = 0; k < _nt; k++)
-		    fprintf(stderr, (k == i || k == j ? " **%d.%06d**" : " %d.%06d"), _t[k]->expiry.tv_sec, _t[k]->expiry.tv_usec);
-		fprintf(stderr, "\n");
-		assert(0);
-	    }
-}
-#endif
 
 void driver_tamer::fd_disinterest(void *arg, int fd) {
     driver_tamer *d = static_cast<driver_tamer *>(arg);
@@ -237,32 +144,14 @@ void driver_tamer::update_fds() {
     }
 }
 
-void driver_tamer::at_time(const timeval &expiry, event<> e)
-{
-    if (e) {
-	if (nt_ == tcap_)
-	    expand_timers();
-	(void) new(static_cast<void *>(&t_[nt_])) ttimer(expiry, ++torder_,
-							 e.__take_simple());
-	++nt_;
-	timer_reheapify_from(nt_ - 1);
-    }
+void driver_tamer::at_time(const timeval &expiry, event<> e) {
+    if (e)
+	timers_.push(expiry, e.__take_simple());
 }
 
 void driver_tamer::at_asap(event<> e) {
     if (e)
 	asap_.push(e.__take_simple());
-}
-
-void driver_tamer::cull_timers() {
-    while (nt_ != 0 && t_[0].trigger_->empty()) {
-	tamerpriv::simple_event::unuse(t_[0].trigger_);
-	--nt_;
-	if (nt_ != 0) {
-	    t_[0] = t_[nt_];
-	    timer_reheapify_from(0);
-	}
-    }
 }
 
 void driver_tamer::loop(loop_flags flags)
@@ -273,16 +162,16 @@ void driver_tamer::loop(loop_flags flags)
 	update_fds();
 
     // determine timeout
-    cull_timers();
     struct timeval to, *toptr;
+    timers_.cull();
     if (!asap_.empty()
-	|| (nt_ != 0 && !timercmp(&t_[0].expiry_, &now, >))
+	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &now, >))
 	|| sig_any_active
 	|| tamerpriv::blocking_rendezvous::has_unblocked()) {
 	timerclear(&to);
 	toptr = &to;
-    } else if (nt_ != 0) {
-	timersub(&t_[0].expiry_, &now, &to);
+    } else if (!timers_.empty()) {
+	timersub(&timers_.expiry(), &now, &to);
 	toptr = &to;
     } else if (fdbound_ == 0 && sig_nforeground == 0)
 	// no events scheduled!
@@ -309,10 +198,8 @@ void driver_tamer::loop(loop_flags flags)
 	dispatch_signals();
 
     // run asaps
-    while (!asap_.empty()) {
-	tamerpriv::simple_event *se = asap_.pop();
-	se->simple_trigger(false);
-    }
+    while (!asap_.empty())
+	asap_.pop_trigger();
 
     // run file descriptors
     if (nfds > 0) {
@@ -325,18 +212,9 @@ void driver_tamer::loop(loop_flags flags)
     }
 
     // run the timers that worked
-    if (nt_ != 0) {
-	set_now();
-	while (nt_ != 0 && !timercmp(&t_[0].expiry_, &now, >)) {
-	    tamerpriv::simple_event *trigger = t_[0].trigger_;
-	    --nt_;
-	    if (nt_ != 0) {
-		t_[0] = t_[nt_];
-		timer_reheapify_from(0);
-	    }
-	    trigger->simple_trigger(false);
-	}
-    }
+    set_now();
+    while (!timers_.empty() && !timercmp(&timers_.expiry(), &now, >))
+	timers_.pop_trigger();
 
     // run active closures
     while (tamerpriv::blocking_rendezvous *r = tamerpriv::blocking_rendezvous::pop_unblocked())
@@ -349,8 +227,7 @@ void driver_tamer::loop(loop_flags flags)
 
 } // namespace
 
-driver *driver::make_tamer()
-{
+driver *driver::make_tamer() {
     return new driver_tamer;
 }
 
