@@ -36,21 +36,7 @@ class driver_libevent : public driver {
     virtual void at_asap(event<> e);
     virtual void kill_fd(int fd);
 
-    void cull();
     virtual void loop(loop_flags flags);
-
-    struct eevent {
-	::event libevent;
-	tamerpriv::simple_event *se;
-	eevent *next;
-	eevent **pprev;
-	driver_libevent *driver;
-    };
-
-    struct event_group {
-	event_group *next;
-	eevent e[1];
-    };
 
     struct fdp {
 	::event base;
@@ -75,14 +61,9 @@ class driver_libevent : public driver {
     int fdactive_;
     ::event signal_base_;
 
-    eevent *_etimer;
+    tamerpriv::driver_timerset timers_;
 
     tamerpriv::driver_asapset asap_;
-
-    event_group *_egroup;
-    eevent *_efree;
-    size_t _ecap;
-    eevent *_esignal;
 
     void expand_events();
     static void fd_disinterest(void *driver, int fd);
@@ -101,14 +82,7 @@ void libevent_fdtrigger(int fd, short what, void *arg) {
     d->fds_.push_change(fd);
 }
 
-void libevent_trigger(int, short, void *arg) {
-    driver_libevent::eevent *e = static_cast<driver_libevent::eevent *>(arg);
-    e->se->simple_trigger(true);
-    *e->pprev = e->next;
-    if (e->next)
-	e->next->pprev = e->pprev;
-    e->next = e->driver->_efree;
-    e->driver->_efree = e;
+void libevent_timertrigger(int, short, void *) {
 }
 
 void libevent_sigtrigger(int, short, void *arg) {
@@ -119,7 +93,7 @@ void libevent_sigtrigger(int, short, void *arg) {
 
 
 driver_libevent::driver_libevent()
-    : fdactive_(0), _etimer(0), _egroup(0), _efree(0), _ecap(0)
+    : fdactive_(0)
 {
     ::event_init();
     ::event_priority_init(3);
@@ -135,33 +109,7 @@ driver_libevent::driver_libevent()
 }
 
 driver_libevent::~driver_libevent() {
-    // discard all active events
-    while (_etimer) {
-	_etimer->se->simple_trigger(false);
-	::event_del(&_etimer->libevent);
-	_etimer = _etimer->next;
-    }
     ::event_del(&signal_base_);
-
-    // free event groups
-    while (_egroup) {
-	event_group *next = _egroup->next;
-	delete[] reinterpret_cast<unsigned char *>(_egroup);
-	_egroup = next;
-    }
-}
-
-void driver_libevent::expand_events() {
-    size_t ncap = (_ecap ? _ecap * 2 : 16);
-
-    event_group *ngroup = reinterpret_cast<event_group *>(new unsigned char[sizeof(event_group) + sizeof(eevent) * (ncap - 1)]);
-    ngroup->next = _egroup;
-    _egroup = ngroup;
-    for (size_t i = 0; i < ncap; i++) {
-	ngroup->e[i].driver = this;
-	ngroup->e[i].next = _efree;
-	_efree = &ngroup->e[i];
-    }
 }
 
 void driver_libevent::fd_disinterest(void *arg, int fd) {
@@ -212,26 +160,9 @@ void driver_libevent::update_fds() {
     }
 }
 
-void driver_libevent::at_time(const timeval &expiry, event<> e)
-{
-    if (!_efree)
-	expand_events();
-    if (e) {
-	eevent *ee = _efree;
-	_efree = ee->next;
-
-	evtimer_set(&ee->libevent, libevent_trigger, ee);
-	timeval timeout = expiry;
-	timersub(&timeout, &now, &timeout);
-	evtimer_add(&ee->libevent, &timeout);
-
-	ee->se = e.__take_simple();
-	ee->next = _etimer;
-	ee->pprev = &_etimer;
-	if (_etimer)
-	    _etimer->pprev = &ee->next;
-	_etimer = ee;
-    }
+void driver_libevent::at_time(const timeval &expiry, event<> e) {
+    if (e)
+	timers_.push(expiry, e.__take_simple());
 }
 
 void driver_libevent::at_asap(event<> e) {
@@ -239,46 +170,49 @@ void driver_libevent::at_asap(event<> e) {
 	asap_.push(e.__take_simple());
 }
 
-void driver_libevent::cull() {
-    while (_etimer && !*_etimer->se) {
-	eevent *e = _etimer;
-	::event_del(&e->libevent);
-	tamerpriv::simple_event::unuse_clean(_etimer->se);
-	if ((_etimer = e->next))
-	    _etimer->pprev = &_etimer;
-	e->next = _efree;
-	_efree = e;
-    }
-}
-
 void driver_libevent::loop(loop_flags flags)
 {
+    ::event timerev;
+    bool timer_set = false;
+
  again:
     // fix file descriptors
     if (fds_.has_change())
 	update_fds();
 
     int event_flags = EVLOOP_ONCE;
+    timers_.cull();
     if (!asap_.empty()
+	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &now, >))
 	|| sig_any_active
 	|| tamerpriv::blocking_rendezvous::has_unblocked())
 	event_flags |= EVLOOP_NONBLOCK;
-    else {
-	cull();
-	if (!_etimer && fdactive_ == 0 && sig_nforeground == 0)
-	    // no events scheduled
-	    return;
-    }
+    else if (!timers_.empty()) {
+	if (!timer_set)
+	    evtimer_set(&timerev, libevent_timertrigger, 0);
+	timer_set = true;
+	timeval timeout = timers_.expiry();
+	timersub(&timeout, &now, &timeout);
+	evtimer_add(&timerev, &timeout);
+    } else if (fdactive_ == 0 && sig_nforeground == 0)
+	return;
 
     ::event_loop(event_flags);
-
     set_now();
 
     // run asaps
     while (!asap_.empty())
 	asap_.pop_trigger();
 
-    // run rendezvous
+    // run the timers that worked
+    if (!timers_.empty()) {
+	if (!(event_flags & EVLOOP_NONBLOCK))
+	    evtimer_del(&timerev);
+	while (!timers_.empty() && !timercmp(&timers_.expiry(), &now, >))
+	    timers_.pop_trigger();
+    }
+
+    // run active closures
     while (tamerpriv::blocking_rendezvous *r = tamerpriv::blocking_rendezvous::pop_unblocked())
 	r->run();
 

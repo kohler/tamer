@@ -192,6 +192,7 @@ void driver_tamer::loop(loop_flags flags)
     if (nfds > 0 || !toptr || to.tv_sec != 0 || to.tv_usec != 0)
 	nfds = select(nfds, &_fdset[fdread + 2]->fds,
 		      &_fdset[fdwrite + 2]->fds, 0, toptr);
+    set_now();
 
     // run signals
     if (sig_any_active)
@@ -212,7 +213,6 @@ void driver_tamer::loop(loop_flags flags)
     }
 
     // run the timers that worked
-    set_now();
     while (!timers_.empty() && !timercmp(&timers_.expiry(), &now, >))
 	timers_.pop_trigger();
 
