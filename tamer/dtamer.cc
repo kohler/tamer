@@ -71,15 +71,12 @@ class driver_tamer : public driver { public:
     int tcap_;
     unsigned torder_;
 
-    driver_fdset<fdp> fds_;
+    tamerpriv::driver_fdset<fdp> fds_;
     int fdbound_;
     xfd_set *_fdset[4];
     int _fdset_cap;
 
-    tamerpriv::simple_event **asap_;
-    unsigned asap_head_;
-    unsigned asap_tail_;
-    unsigned asap_capmask_;
+    tamerpriv::driver_asapset asap_;
 
     void expand_timers();
     void check_timers() const;
@@ -87,16 +84,12 @@ class driver_tamer : public driver { public:
     static void fd_disinterest(void *driver, int fd);
     void cull_timers();
     void update_fds();
-    void expand_asap();
-
 };
 
 
 driver_tamer::driver_tamer()
     : t_(0), nt_(0), tcap_(0), torder_(0),
-      fdbound_(0), _fdset_cap(sizeof(xfd_set) * 8),
-      asap_(0), asap_head_(0), asap_tail_(0), asap_capmask_(-1U)
-{
+      fdbound_(0), _fdset_cap(sizeof(xfd_set) * 8) {
     assert(FD_SETSIZE <= _fdset_cap);
     expand_timers();
     for (int i = 0; i < 4; ++i) {
@@ -114,13 +107,6 @@ driver_tamer::~driver_tamer()
 	tamerpriv::simple_event::unuse(t_[i].trigger_);
     delete[] reinterpret_cast<char *>(t_);
 
-    // destroy all active asaps
-    while (asap_head_ != asap_tail_) {
-	tamerpriv::simple_event::unuse(asap_[asap_head_ & asap_capmask_]);
-	++asap_head_;
-    }
-    delete[] asap_;
-
     // free fd_sets
     for (int i = 0; i < 4; ++i)
 	delete[] reinterpret_cast<char *>(_fdset[i]);
@@ -136,21 +122,6 @@ void driver_tamer::expand_timers()
     delete[] reinterpret_cast<char *>(t_);
     t_ = nt;
     tcap_ = ntcap;
-}
-
-void driver_tamer::expand_asap()
-{
-    unsigned ncapmask =
-	(asap_capmask_ + 1 ? ((asap_capmask_ + 1) * 4 - 1) : 31);
-    tamerpriv::simple_event **na = new tamerpriv::simple_event *[ncapmask + 1];
-    unsigned i = 0;
-    for (unsigned x = asap_head_; x != asap_tail_; ++x, ++i)
-	na[i] = asap_[x & asap_capmask_];
-    delete[] asap_;
-    asap_ = na;
-    asap_capmask_ = ncapmask;
-    asap_head_ = 0;
-    asap_tail_ = i;
 }
 
 void driver_tamer::timer_reheapify_from(int pos)
@@ -211,7 +182,7 @@ void driver_tamer::at_fd(int fd, int action, event<int> e) {
     assert(fd >= 0);
     if (e && (action == 0 || action == 1)) {
 	fds_.expand(this, fd);
-	driver_fd<fdp> &x = fds_[fd];
+	tamerpriv::driver_fd<fdp> &x = fds_[fd];
 	if (x.e[action])
 	    e = tamer::distribute(TAMER_MOVE(x.e[action]), TAMER_MOVE(e));
 	x.e[action] = e;
@@ -222,8 +193,8 @@ void driver_tamer::at_fd(int fd, int action, event<int> e) {
 }
 
 void driver_tamer::kill_fd(int fd) {
-    if (fd >= 0 && fd < fds_.nfds_) {
-	driver_fd<fdp> &x = fds_[fd];
+    if (fd >= 0 && fd < fds_.size()) {
+	tamerpriv::driver_fd<fdp> &x = fds_[fd];
 	for (int action = 0; action < 2; ++action)
 	    x.e[action].trigger(-ECANCELED);
 	fds_.push_change(fd);
@@ -233,7 +204,7 @@ void driver_tamer::kill_fd(int fd) {
 void driver_tamer::update_fds() {
     int fd;
     while ((fd = fds_.pop_change()) >= 0) {
-	driver_fd<fdp> &x = fds_[fd];
+	tamerpriv::driver_fd<fdp> &x = fds_[fd];
 	if (fd >= _fdset_cap) {
 	    int ncap = _fdset_cap * 2;
 	    while (ncap < fd)
@@ -280,12 +251,8 @@ void driver_tamer::at_time(const timeval &expiry, event<> e)
 
 void driver_tamer::at_asap(event<> e)
 {
-    if (e) {
-	if (asap_tail_ - asap_head_ == asap_capmask_ + 1)
-	    expand_asap();
-	asap_[asap_tail_ & asap_capmask_] = e.__take_simple();
-	++asap_tail_;
-    }
+    if (e)
+	asap_.push(e.__take_simple());
 }
 
 void driver_tamer::cull_timers() {
@@ -309,7 +276,7 @@ void driver_tamer::loop(loop_flags flags)
     // determine timeout
     cull_timers();
     struct timeval to, *toptr;
-    if (asap_head_ != asap_tail_
+    if (!asap_.empty()
 	|| (nt_ != 0 && !timercmp(&t_[0].expiry_, &now, >))
 	|| sig_any_active
 	|| tamerpriv::blocking_rendezvous::has_unblocked()) {
@@ -343,16 +310,15 @@ void driver_tamer::loop(loop_flags flags)
 	dispatch_signals();
 
     // run asaps
-    while (asap_head_ != asap_tail_) {
-	tamerpriv::simple_event *se = asap_[asap_head_ & asap_capmask_];
-	++asap_head_;
+    while (!asap_.empty()) {
+	tamerpriv::simple_event *se = asap_.pop();
 	se->simple_trigger(false);
     }
 
     // run file descriptors
     if (nfds > 0) {
 	for (int fd = 0; fd < fdbound_; ++fd) {
-	    driver_fd<fdp> &x = fds_[fd];
+	    tamerpriv::driver_fd<fdp> &x = fds_[fd];
 	    for (int action = 0; action < 2; ++action)
 		if (FD_ISSET(fd, &_fdset[2 + action]->fds) && x.e[action])
 		    x.e[action].trigger(0);

@@ -1,20 +1,17 @@
 #ifndef TAMER_DINTERNAL_HH
 #define TAMER_DINTERNAL_HH 1
+#include <tamer/event.hh>
 #include <string.h>
 namespace tamer {
+namespace tamerpriv {
 
 template <typename T>
 struct driver_fd : public T {
     event<int> e[2];
     int next_changedfd1;
 
-    template <typename O>
-    inline driver_fd(O owner, int fd)
-	: T(owner, fd), next_changedfd1(0) {
-    }
-    inline bool empty() const {
-	return e[0].empty() && e[1].empty();
-    }
+    template <typename O> inline driver_fd(O owner, int fd);
+    inline bool empty() const;
 };
 
 template <typename T>
@@ -27,17 +24,46 @@ struct driver_fdset {
     inline int pop_change();
     inline bool has_change() const;
 
+    inline int size() const;
     inline const driver_fd<T> &operator[](int fd) const;
     inline driver_fd<T> &operator[](int fd);
 
+  private:
     driver_fd<T> *fds_;
     int nfds_;
     int fdcap_;
     int changedfd1_;
 
-  private:
     template <typename O> void hard_expand(O owner, int need_fd);
 };
+
+struct driver_asapset {
+    inline driver_asapset();
+    ~driver_asapset();
+
+    inline bool empty() const;
+    inline void push(simple_event *se);
+    inline simple_event *pop();
+
+  private:
+    simple_event **ses_;
+    unsigned head_;
+    unsigned tail_;
+    unsigned capmask_;
+
+    void expand();
+};
+
+
+template <typename T> template <typename O>
+inline driver_fd<T>::driver_fd(O owner, int fd)
+    : T(owner, fd), next_changedfd1(0) {
+}
+
+template <typename T>
+inline bool driver_fd<T>::empty() const {
+    return e[0].empty() && e[1].empty();
+}
 
 template <typename T>
 inline driver_fdset<T>::driver_fdset()
@@ -107,6 +133,11 @@ inline int driver_fdset<T>::pop_change() {
 }
 
 template <typename T>
+inline int driver_fdset<T>::size() const {
+    return nfds_;
+}
+
+template <typename T>
 inline const driver_fd<T> &driver_fdset<T>::operator[](int fd) const {
     assert((unsigned) fd < (unsigned) nfds_);
     return fds_[fd];
@@ -118,5 +149,28 @@ inline driver_fd<T> &driver_fdset<T>::operator[](int fd) {
     return fds_[fd];
 }
 
+inline driver_asapset::driver_asapset()
+    : ses_(), head_(0), tail_(0), capmask_(~0U) {
+}
+
+inline bool driver_asapset::empty() const {
+    return head_ == tail_;
+}
+
+inline void driver_asapset::push(simple_event *se) {
+    if (tail_ - head_ == capmask_ + 1)
+	expand();
+    ses_[tail_ & capmask_] = se;
+    ++tail_;
+}
+
+inline simple_event *driver_asapset::pop() {
+    assert(head_ != tail_);
+    simple_event *se = ses_[head_ & capmask_];
+    ++head_;
+    return se;
+}
+
+} // namespace tamerpriv
 } // namespace tamer
 #endif

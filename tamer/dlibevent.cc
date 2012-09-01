@@ -72,7 +72,7 @@ class driver_libevent : public driver {
 	}
     };
 
-    driver_fdset<fdp> fds_;
+    tamerpriv::driver_fdset<fdp> fds_;
     int fdactive_;
     ::event signal_base_;
 
@@ -90,7 +90,7 @@ class driver_libevent : public driver {
 extern "C" {
 void libevent_fdtrigger(int fd, short what, void *arg) {
     driver_libevent *d = static_cast<driver_libevent *>(arg);
-    driver_fd<driver_libevent::fdp> &x = d->fds_[fd];
+    tamerpriv::driver_fd<driver_libevent::fdp> &x = d->fds_[fd];
     if (what & EV_READ)
 	x.e[0].trigger(0);
     if (what & EV_WRITE)
@@ -170,7 +170,7 @@ void driver_libevent::at_fd(int fd, int action, event<int> e) {
     assert(fd >= 0);
     if (e && (action == 0 || action == 1)) {
 	fds_.expand(this, fd);
-	driver_fd<fdp> &x = fds_[fd];
+	tamerpriv::driver_fd<fdp> &x = fds_[fd];
 	if (x.e[action])
 	    e = tamer::distribute(TAMER_MOVE(x.e[action]), TAMER_MOVE(e));
 	x.e[action] = e;
@@ -181,8 +181,8 @@ void driver_libevent::at_fd(int fd, int action, event<int> e) {
 }
 
 void driver_libevent::kill_fd(int fd) {
-    if (fd >= 0 && fd < fds_.nfds_) {
-	driver_fd<fdp> &x = fds_[fd];
+    if (fd >= 0 && fd < fds_.size()) {
+	tamerpriv::driver_fd<fdp> &x = fds_[fd];
 	for (int action = 0; action < 2; ++action)
 	    x.e[action].trigger(-ECANCELED);
 	fds_.push_change(fd);
@@ -192,7 +192,7 @@ void driver_libevent::kill_fd(int fd) {
 void driver_libevent::update_fds() {
     int fd;
     while ((fd = fds_.pop_change()) >= 0) {
-	driver_fd<fdp> &x = fds_[fd];
+	tamerpriv::driver_fd<fdp> &x = fds_[fd];
 	int want_what = (x.e[0] ? EV_READ : 0) | (x.e[1] ? EV_WRITE : 0);
 	int have_what = ::event_pending(&x.base, EV_READ | EV_WRITE, 0)
 	    & (EV_READ | EV_WRITE);
