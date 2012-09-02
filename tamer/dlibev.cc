@@ -160,8 +160,8 @@ void driver_libev::update_fds() {
     int fd;
     while ((fd = fds_.pop_change()) >= 0) {
 	tamerpriv::driver_fd<fdp> &x = fds_[fd];
-	int want_what = (x.e[0] ? (int) EV_READ : 0) | (x.e[1] ? (int) EV_WRITE : 0);
-	int have_what = (ev_is_active(&x.base_.w) ? x.base_.io.events : 0) & (EV_READ | EV_WRITE);
+	unsigned want_what = (x.e[0] ? (int) EV_READ : 0) | (x.e[1] ? (int) EV_WRITE : 0);
+	unsigned have_what = (ev_is_active(&x.base_.w) ? x.base_.io.events : 0) & (EV_READ | EV_WRITE);
 	if (want_what != have_what) {
 	    fdactive_ += (want_what != 0) - (have_what != 0);
 	    if (have_what != 0)
