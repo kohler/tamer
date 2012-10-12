@@ -1,7 +1,4 @@
-noinst_PROGRAMS = t01 t02 t03 t04 t05 t06
-
-t01_SOURCES = t01.cc
-t01_LDADD = ../tamer/libtamer.la $(DRIVER_LIBS) $(MALLOC_LIBS)
+noinst_PROGRAMS = t02 t03 t04 t05 t06
 
 t02_SOURCES = t02.tt
 t02_LDADD = ../tamer/libtamer.la $(DRIVER_LIBS) $(MALLOC_LIBS)

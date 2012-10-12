@@ -19,7 +19,6 @@ libtamer_la_SOURCES = \
 	ref.hh \
 	rendezvous.hh \
 	tamer.hh \
-	utility.hh \
 	xadapter.hh xadapter.cc \
 	xbase.hh xbase.cc \
 	xdriver.hh \
@@ -36,7 +35,6 @@ pkginclude_HEADERS = \
 	ref.hh \
 	rendezvous.hh \
 	tamer.hh \
-	utility.hh \
 	xadapter.hh \
 	xbase.hh \
 	xdriver.hh
