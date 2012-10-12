@@ -47,10 +47,7 @@ class enable_ref_ptr { public:
 
     bool release() {
 	assert(_use_count);
-	if (--_use_count == 0)
-	    return _weak_count == 0;
-	else
-	    return false;
+	return --_use_count == 0 && _weak_count == 0;
     }
 
     void weak_add_ref() {
@@ -59,10 +56,7 @@ class enable_ref_ptr { public:
 
     bool weak_release() {
 	assert(_weak_count);
-	if (--_weak_count == 0)
-	    return _use_count == 0;
-	else
-	    return false;
+	return --_weak_count == 0 && _use_count == 0;
     }
 
     uint32_t use_count() const {
@@ -87,11 +81,9 @@ template <typename T> class enable_ref_ptr_with_full_release : public enable_ref
 
     bool release() {
 	assert(_use_count);
-	if (--_use_count == 0) {
+	if (_use_count == 1)
 	    static_cast<T *>(this)->full_release();
-	    return _weak_count == 0;
-	} else
-	    return false;
+	return --_use_count == 0 && _weak_count == 0;
     }
 
 };
