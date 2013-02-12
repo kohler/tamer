@@ -13,35 +13,52 @@
  * legally binding.
  */
 
+#if __GNUC__
+# define TAMER_GCCVERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#else
+# define TAMER_GCCVERSION 0
+#endif
+#if __clang__
+# define TAMER_CLANGVERSION (__clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__)
+#else
+# define TAMER_CLANGVERSION 0
+#endif
+
 #if __cplusplus >= 201103L || __GXX_EXPERIMENTAL_CXX0X__
-#ifndef TAMER_HAVE_CXX_CONSTEXPR
+#if !defined(TAMER_HAVE_CXX_CONSTEXPR) && \
+  (TAMER_CLANGVERSION >= 30100 || TAMER_GCCVERSION >= 40600)
 /* Define if the C++ compiler understands constexpr. */
-#undef TAMER_HAVE_CXX_CONSTEXPR
+#define TAMER_HAVE_CXX_CONSTEXPR 1
 #endif
 
-#ifndef TAMER_HAVE_CXX_NOEXCEPT
+#if !defined(TAMER_HAVE_CXX_NOEXCEPT) && \
+  (TAMER_CLANGVERSION >= 30000 || TAMER_GCCVERSION >= 40600)
 /* Define if the C++ compiler understands noexcept. */
-#undef TAMER_HAVE_CXX_NOEXCEPT
+#define TAMER_HAVE_CXX_NOEXCEPT 1
 #endif
 
-#ifndef TAMER_HAVE_CXX_RVALUE_REFERENCES
+#if !defined(TAMER_HAVE_CXX_RVALUE_REFERENCES) && \
+  (TAMER_CLANGVERSION >= 20900 || TAMER_GCCVERSION >= 40300)
 /* Define if the C++ compiler understands rvalue references. */
-#undef TAMER_HAVE_CXX_RVALUE_REFERENCES
+#define TAMER_HAVE_CXX_RVALUE_REFERENCES 1
 #endif
 
-#ifndef TAMER_HAVE_CXX_STATIC_ASSERT
+#if !defined(TAMER_HAVE_CXX_STATIC_ASSERT) && \
+  (TAMER_CLANGVERSION >= 20900 || TAMER_GCCVERSION >= 40300)
 /* Define if the C++ compiler understands static_assert. */
-#undef TAMER_HAVE_CXX_STATIC_ASSERT
+#define TAMER_HAVE_CXX_STATIC_ASSERT 1
 #endif
 
-#ifndef TAMER_HAVE_CXX_TEMPLATE_ALIAS
+#if !defined(TAMER_HAVE_CXX_TEMPLATE_ALIAS) && \
+  (TAMER_CLANGVERSION >= 30000 || TAMER_GCCVERSION >= 40700)
 /* Define if the C++ compiler understands template alias. */
-#undef TAMER_HAVE_CXX_TEMPLATE_ALIAS
+#define TAMER_HAVE_CXX_TEMPLATE_ALIAS 1
 #endif
 
-#ifndef TAMER_HAVE_CXX_VARIADIC_TEMPLATES
+#if !defined(TAMER_HAVE_CXX_VARIADIC_TEMPLATES) && \
+  (TAMER_CLANGVERSION >= 20900 || TAMER_GCCVERSION >= 40300)
 /* Define if the C++ compiler understands variadic templates. */
-#undef TAMER_HAVE_CXX_VARIADIC_TEMPLATES
+#define TAMER_HAVE_CXX_VARIADIC_TEMPLATES 1
 #endif
 #endif
 
