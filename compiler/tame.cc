@@ -36,7 +36,7 @@ usage ()
 	<< "    TAME_ADD_NEWLINES     equivalent to -n\n"
 	<< "    TAME_DEBUG_SOURCE     equivalent to -Ln\n"
 	  ;
-    
+
   exit (1);
 }
 
@@ -177,7 +177,7 @@ main (int argc, char *argv[])
     // the filename variable is local to scan.ll, which will need
     // it to output message messages. It defaults to '(stdin)'
     filename = ifn;
-    
+
     yyin = ifh;
   }
 

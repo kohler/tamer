@@ -1072,7 +1072,7 @@ tame_wait_t::output (outputter_t *o)
     output_blocked (b, jgn);
     b << "  }\n"
       << "} while (0);\n";
-    
+
     o->output_str(b.str());
     o->switch_to_mode (om);
 }

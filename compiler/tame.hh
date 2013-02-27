@@ -116,9 +116,9 @@ inline strbuf &operator<<(strbuf &ostr, const lstr &l)
  */
 struct type_qualifier_t {
     type_qualifier_t () {}
-    type_qualifier_t (const type_qualifier_t &t) 
+    type_qualifier_t (const type_qualifier_t &t)
 	: _lineno (t._lineno), _v (t._v) {}
-    type_qualifier_t (const lstr &s) 
+    type_qualifier_t (const lstr &s)
 	{ if (s.length()) add_lstr (s); }
 
     void add_str(const str &s) { _v.push_back(s); }
@@ -128,7 +128,7 @@ struct type_qualifier_t {
 
     str to_str () const;
     unsigned lineno() const { return _lineno; }
-    
+
   private:
     unsigned _lineno;
     std::vector<str> _v;
@@ -142,9 +142,9 @@ typedef enum { OUTPUT_NONE = 0,
 
 class outputter_t {
 public:
-  outputter_t (const str &in, const str &out, bool ox) 
-    : _mode (OUTPUT_NONE), _infn (in), _outfn (out), _fd (-1), 
-      _lineno (1), _output_xlate (ox), _need_xlate (false), 
+  outputter_t (const str &in, const str &out, bool ox)
+    : _mode (OUTPUT_NONE), _infn (in), _outfn (out), _fd (-1),
+      _lineno (1), _output_xlate (ox), _need_xlate (false),
       _last_char_was_nl(true), _last_output_in_mode (OUTPUT_NONE),
       _cur_lineno(-1), _cur_file(""),
       _do_output_line_number(false) {}
@@ -224,7 +224,7 @@ public:
     virtual bool needs_counter () const { return false; }
 };
 
-class tame_fn_t; 
+class tame_fn_t;
 
 class tame_vars_t : public tame_el_t {
 public:
@@ -411,7 +411,7 @@ private:
 str mangle (const str &in);
 
 //
-// convert 
+// convert
 //
 //   foo_t::max<int,int>::bar  => bar
 //
@@ -504,14 +504,14 @@ class tame_fn_t : public element_list_t {
     str closure_signature() const;
     str signature() const;
 
-  void set_opts (int i) { _opts = i; }
-  int opts () const { return _opts; }
+    void set_opts (int i) { _opts = i; }
+    int opts () const { return _opts; }
 
     bool need_self () const { return (_class.length() && !(_opts & STATIC_DECL)); }
 
-  void output(outputter_t *o);
+    void output(outputter_t *o);
 
-  void add_env (tame_env_t *g) ;
+    void add_env(tame_env_t *g);
 
     const var_t &closure() const {
 	if (!_the_closure)
@@ -607,7 +607,7 @@ public:
 class parse_state_t : public element_list_t {
 public:
   parse_state_t () : _xlate_line_numbers (false),
-		     _need_line_xlate (true) 
+		     _need_line_xlate (true)
   {
     _lists.push_back (this);
   }
