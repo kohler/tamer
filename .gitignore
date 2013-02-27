@@ -60,7 +60,7 @@ ex/tamer-yes.cc
 test/Makefile
 test/Makefile.in
 test/t0[0-9]
-test/t0[2-6].cc
+test/t0[2-7].cc
 
 knot/Makefile
 knot/Makefile.in
