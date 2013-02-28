@@ -348,7 +348,7 @@ tame_fn_t::mk_closure(bool ref) const
 	b << "__";
 	_args->mangle(b);
     }
-    return var_t(b.str(), (ref ? "&" : "*"), TAME_CLOSURE_NAME, NONE, _template_args);
+    return var_t(b.str(), (ref ? "&" : "*"), TAME_CLOSURE_NAME, NONE);
 }
 
 void vartab_t::mangle(strbuf &b) const
