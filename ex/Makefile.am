@@ -39,15 +39,15 @@ TAMER = ../compiler/tamer
 .tcc.cc: $(TAMER)
 	$(TAMER) -g -o $@ -c $<  || (rm $@ && false)
 
-ex1.cc: ex1.tt $(TAMER)
-ex2.cc: ex2.tt $(TAMER)
-ex3.cc: ex3.tt $(TAMER)
-ex4.cc: ex4.tt $(TAMER)
-ex5.cc: ex5.tt $(TAMER)
-ex6.cc: ex6.tt $(TAMER)
-osptracker.cc: osptracker.tcc $(TAMER)
-tamer-yes.cc: tamer-yes.tcc $(TAMER)
-tamer-echosrv.cc: tamer-echosrv.tcc $(TAMER)
+ex1.cc: $(srcdir)/ex1.tt $(TAMER)
+ex2.cc: $(srcdir)/ex2.tt $(TAMER)
+ex3.cc: $(srcdir)/ex3.tt $(TAMER)
+ex4.cc: $(srcdir)/ex4.tt $(TAMER)
+ex5.cc: $(srcdir)/ex5.tt $(TAMER)
+ex6.cc: $(srcdir)/ex6.tt $(TAMER)
+osptracker.cc: $(srcdir)/osptracker.tcc $(TAMER)
+tamer-yes.cc: $(srcdir)/tamer-yes.tcc $(TAMER)
+tamer-echosrv.cc: $(srcdir)/tamer-echosrv.tcc $(TAMER)
 
 clean-local:
 	-rm -f ex1.cc ex2.cc ex3.cc ex4.cc ex5.cc ex6.cc \

@@ -27,10 +27,17 @@ INCLUDES = -I$(top_srcdir) -I$(top_builddir)
 DEFS = -DTAMER_DEBUG
 
 TAMER = ../compiler/tamer
-.tt.cc: $(TAMER)
+.tt.cc:
 	$(TAMER) -o $@ -c $<  || (rm $@ && false)
-.tcc.cc: $(TAMER)
+.tcc.cc:
 	$(TAMER) -o $@ -c $<  || (rm $@ && false)
+
+t02.cc: $(srcdir)/t02.tt $(TAMER)
+t03.cc: $(srcdir)/t03.tt $(TAMER)
+t04.cc: $(srcdir)/t04.tt $(TAMER)
+t05.cc: $(srcdir)/t05.tt $(TAMER)
+t06.cc: $(srcdir)/t06.tcc $(TAMER)
+t07.cc: $(srcdir)/t07.tcc $(TAMER)
 
 clean-local:
 	-rm -f $(TAMED_CXXFILES)
