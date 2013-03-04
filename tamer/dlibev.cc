@@ -1,6 +1,6 @@
 // -*- mode: c++; tab-width: 8; c-basic-offset: 4;  -*-
-/* Copyright (c) 2012, Maxwell Krohn
- * Copyright (c) 2012, Eddie Kohler
+/* Copyright (c) 2012-2013, Maxwell Krohn
+ * Copyright (c) 2012-2013, Eddie Kohler
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
