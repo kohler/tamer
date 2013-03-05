@@ -26,6 +26,9 @@ template <typename R> class zero_argument_rendezvous_tag {};
 
 template <typename I0=void, typename I1=void> class rendezvous;
 template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> class event;
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0=void> class preevent;
+#endif
 class driver;
 
 class tamer_error : public std::runtime_error { public:

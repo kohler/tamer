@@ -1,5 +1,5 @@
 #ifndef TAMER_ADAPTER_HH
-#define TAMER_ADAPTER_HH 1
+#define TAMER_ADAPTER_HH
 /* Copyright (c) 2007-2013, Eddie Kohler
  * Copyright (c) 2007, Regents of the University of California
  *
@@ -51,6 +51,23 @@ event<T0, T1, T2, T3> distribute(event<T0, T1, T2, T3> e1,
     return dr->make_event();
 }
 
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0>
+event<T0> distribute(event<T0> e1, preevent<R, T0>&& pe2) {
+    return distribute(e1, event<T0>(std::move(pe2)));
+}
+
+template <typename R, typename T0>
+event<T0> distribute(preevent<R, T0>&& pe1, event<T0> e2) {
+    return distribute(event<T0>(std::move(pe1)), e2);
+}
+
+template <typename R, typename S, typename T0>
+event<T0> distribute(preevent<R, T0>&& pe1, preevent<S, T0>&& pe2) {
+    return distribute(event<T0>(std::move(pe1)), event<T0>(std::move(pe2)));
+}
+#endif
+
 /** @brief  Create event that triggers @a e1, @a e2, and @a e3 when triggered.
  *  @param  e1  First event.
  *  @param  e2  Second event.
@@ -83,6 +100,13 @@ event<> bind(event<T0> e, const V0 &v0) {
     e.at_trigger(bound);
     return bound;
 }
+
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0, typename V0>
+event<> bind(preevent<R, T0>&& pe, const V0& v0) {
+    return bind(event<T0>(std::move(pe)), v0);
+}
+#endif
 
 /** @brief  Create bound event for @a e.
  *  @param  e  Event.
@@ -126,6 +150,18 @@ event<S0> map(event<T0> e, const F &f) {
     return mapped;
 }
 
+#if TAMER_HAVE_PREEVENT
+template <typename S0, typename R, typename T0, typename F>
+event<S0> map(preevent<R, T0>&& pe, const F &f) {
+    event<T0> e(std::move(pe));
+    tamerpriv::map_rendezvous<S0, T0, F> *r =
+	new tamerpriv::map_rendezvous<S0, T0, F>(f, e);
+    event<S0> mapped = TAMER_MAKE_FN_ANNOTATED_EVENT(*r, r->slot0());
+    e.at_trigger(mapped.unblocker());
+    return mapped;
+}
+#endif
+
 
 /** @brief  Add timeout to an event.
  *  @param  delay  Timeout duration.
@@ -164,6 +200,28 @@ inline event<T0> add_timeout_msec(int delay, event<T0> e) {
     return e;
 }
 
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0>
+inline event<T0> add_timeout(const timeval& delay, preevent<R, T0>&& pe) {
+    return add_timeout(delay, event<T0>(std::move(pe)));
+}
+
+template <typename R, typename T0>
+inline event<T0> add_timeout(double delay, preevent<R, T0>&& pe) {
+    return add_timeout(delay, event<T0>(std::move(pe)));
+}
+
+template <typename R, typename T0>
+inline event<T0> add_timeout_sec(int delay, preevent<R, T0>&& pe) {
+    return add_timeout(delay, event<T0>(std::move(pe)));
+}
+
+template <typename R, typename T0>
+inline event<T0> add_timeout_msec(int delay, preevent<R, T0>&& pe) {
+    return add_timeout(delay, event<T0>(std::move(pe)));
+}
+#endif
+
 /** @brief  Add signal interruption to an event.
  *  @param  signo  Signal number.
  *  @param  e      Event.
@@ -177,6 +235,13 @@ inline event<T0> add_signal(int signo, event<T0> e) {
     at_signal(signo, tamer::bind(e, T0(outcome::signal)));
     return e;
 }
+
+#if HAVE_TAMER_PREEVENT
+template <typename R, typename T0>
+inline event<T0> add_signal(int signo, preevent<R, T0>&& pe) {
+    return add_signal(signo, event<T0>(std::move(pe)));
+}
+#endif
 
 /** @brief  Add signal interruption to an event.
  *  @param  first  Input iterator for start of signal collection.
@@ -195,6 +260,13 @@ inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, event
 	at_signal(*first, x);
     return e;
 }
+
+#if HAVE_TAMER_PREEVENT
+template <typename R, typename T0, typename SigInputIterator>
+inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, preevent<R, T0>&& pe) {
+    return add_signal(first, last, event<T0>(std::move(pe)));
+}
+#endif
 
 
 /** @brief  Add silent timeout to an event.
@@ -235,6 +307,28 @@ inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> 
     return e;
 }
 
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0>
+inline event<T0> with_timeout(const timeval& delay, preevent<R, T0>&& pe) {
+    return with_timeout(delay, event<T0>(std::move(pe)));
+}
+
+template <typename R, typename T0>
+inline event<T0> with_timeout(double delay, preevent<R, T0>&& pe) {
+    return with_timeout(delay, event<T0>(std::move(pe)));
+}
+
+template <typename R, typename T0>
+inline event<T0> with_timeout_sec(int delay, preevent<R, T0>&& pe) {
+    return with_timeout(delay, event<T0>(std::move(pe)));
+}
+
+template <typename R, typename T0>
+inline event<T0> with_timeout_msec(int delay, preevent<R, T0>&& pe) {
+    return with_timeout(delay, event<T0>(std::move(pe)));
+}
+#endif
+
 /** @brief  Add silent signal interruption to an event.
  *  @param  signo  Signal number.
  *  @param  e      Event.
@@ -249,6 +343,13 @@ inline event<T0, T1, T2, T3> with_signal(int signo, event<T0, T1, T2, T3> e) {
     at_signal(signo, e.unblocker());
     return e;
 }
+
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0>
+inline event<T0> with_signal(int signo, preevent<R, T0>&& pe) {
+    return with_signal(signo, event<T0>(std::move(pe)));
+}
+#endif
 
 /** @brief  Add silent signal interruption to an event.
  *  @param  first  Input iterator for start of signal collection.
@@ -267,6 +368,13 @@ inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterato
 	at_signal(*first, x);
     return e;
 }
+
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0, typename SigInputIterator>
+inline event<T0> with_signal(SigInputIterator first, SigInputIterator last, preevent<R, T0>&& pe) {
+    return with_signal(first, last, event<T0>(std::move(pe)));
+}
+#endif
 
 
 /** @brief  Add timeout to an event.
@@ -309,6 +417,28 @@ inline event<T0, T1, T2, T3> with_timeout_msec(int delay, event<T0, T1, T2, T3> 
     return e;
 }
 
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0>
+inline event<T0> with_timeout(const timeval& delay, preevent<R, T0>&& pe, int& result) {
+    return with_timeout(delay, event<T0>(std::move(pe)), result);
+}
+
+template <typename R, typename T0>
+inline event<T0> with_timeout(double delay, preevent<R, T0>&& pe, int& result) {
+    return with_timeout(delay, event<T0>(std::move(pe)), result);
+}
+
+template <typename R, typename T0>
+inline event<T0> with_timeout_sec(int delay, preevent<R, T0>&& pe, int& result) {
+    return with_timeout(delay, event<T0>(std::move(pe)), result);
+}
+
+template <typename R, typename T0>
+inline event<T0> with_timeout_msec(int delay, preevent<R, T0>&& pe, int& result) {
+    return with_timeout(delay, event<T0>(std::move(pe)), result);
+}
+#endif
+
 /** @brief  Add signal interruption to an event.
  *  @param       signo   Signal number.
  *  @param       e       Event.
@@ -325,6 +455,13 @@ inline event<T0, T1, T2, T3> with_signal(int signo, event<T0, T1, T2, T3> e, int
     at_signal(signo, tamerpriv::with_helper(e, &result, outcome::signal));
     return e;
 }
+
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0>
+inline event<T0> with_signal(int signo, preevent<R, T0>&& pe, int& result) {
+    return with_signal(signo, event<T0>(std::move(pe)), result);
+}
+#endif
 
 /** @brief  Add signal interruption to an event.
  *  @param       first   Input iterator for start of signal collection.
@@ -345,6 +482,13 @@ inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterato
 	at_signal(*first, x);
     return e;
 }
+
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0, typename SigInputIterator>
+inline event<T0> with_signal(SigInputIterator first, SigInputIterator last, preevent<R, T0>&& pe, int& result) {
+    return with_signal(first, last, event<T0>(std::move(pe)), result);
+}
+#endif
 
 
 /** @brief  Create event that calls a function when triggered.

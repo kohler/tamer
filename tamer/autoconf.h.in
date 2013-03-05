@@ -68,12 +68,22 @@
 #define TAMER_NOEXCEPT
 #endif
 
+#if TAMER_HAVE_CXX_CONSTEXPR
+#define TAMER_CONSTEXPR constexpr
+#else
+#define TAMER_CONSTEXPR
+#endif
+
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
 #define TAMER_MOVEARG(t) t &&
 #define TAMER_MOVE(v) std::move(v)
 #else
 #define TAMER_MOVEARG(t) t
 #define TAMER_MOVE(v) v
+#endif
+
+#if !defined(TAMER_HAVE_PREEVENT) && TAMER_HAVE_CXX_RVALUE_REFERENCES
+#define TAMER_HAVE_PREEVENT 1
 #endif
 
 #if __GNUC__
