@@ -1727,7 +1727,7 @@ inline event<T0>::event(event<> e, const no_slot &) TAMER_NOEXCEPT
     : _e(e.__take_simple()), _s0(0) {
 }
 
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+#if TAMER_HAVE_PREEVENT
 template <typename T0> template <typename R>
 inline event<T0>::event(preevent<R, T0>&& x)
     : _e(x.r_ ? new tamerpriv::simple_event(*x.r_) : 0), _s0(x.s0_) {
