@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 #include <netinet/in.h>
 #include <vector>
 namespace tamer {
@@ -62,23 +63,31 @@ class fd {
     inline void close();
     inline void error_close(int errcode);
 
-    void read(void *buf, size_t size, size_t &nread, event<int> done);
-    inline void read(void *buf, size_t size, size_t &nread, event<> done);
-    inline void read(void *buf, size_t size, event<int> done);
-    inline void read(void *buf, size_t size, event<> done);
-    void read_once(void *buf, size_t size, size_t &nread, event<int> done);
-    inline void read_once(void *buf, size_t size, size_t &nread, event<> done);
+    void read(void* buf, size_t size, size_t& nread, event<int> done);
+    inline void read(void* buf, size_t size, size_t& nread, event<> done);
+    inline void read(void* buf, size_t size, event<int> done);
+    inline void read(void* buf, size_t size, event<> done);
+    void read(struct iovec* iov, int iov_count, size_t& nread, event<int> done);
+    inline void read(struct iovec* iov, int iov_count, size_t& nread, event<> done);
+    void read_once(void* buf, size_t size, size_t& nread, event<int> done);
+    inline void read_once(void* buf, size_t size, size_t& nread, event<> done);
+    void read_once(const struct iovec* iov, int iov_count, size_t& nread, event<int> done);
+    inline void read_once(const struct iovec* iov, int iov_count, size_t& nread, event<> done);
 
-    void write(const void *buf, size_t size, size_t &nwritten, event<int> done);
-    inline void write(const void *buf, size_t size, size_t &nwritten, event<> done);
-    inline void write(const void *buf, size_t size, event<int> done);
-    inline void write(const void *buf, size_t size, event<> done);
-    void write(std::string buf, size_t &nwritten, event<int> done);
-    inline void write(const std::string &buf, size_t &nwritten, event<> done);
-    inline void write(const std::string &buf, event<int> done);
-    inline void write(const std::string &buf, event<> done);
-    void write_once(const void *buf, size_t size, size_t &nwritten, event<int> done);
-    inline void write_once(const void *buf, size_t size, size_t &nwritten, event<> done);
+    void write(const void* buf, size_t size, size_t &nwritten, event<int> done);
+    inline void write(const void* buf, size_t size, size_t &nwritten, event<> done);
+    inline void write(const void* buf, size_t size, event<int> done);
+    inline void write(const void* buf, size_t size, event<> done);
+    void write(std::string buf, size_t& nwritten, event<int> done);
+    inline void write(const std::string& buf, size_t& nwritten, event<> done);
+    inline void write(const std::string& buf, event<int> done);
+    inline void write(const std::string& buf, event<> done);
+    void write(struct iovec* iov, int iov_count, size_t& nwritten, event<int> done);
+    inline void write(struct iovec* iov, int iov_count, size_t& nwritten, event<> done);
+    void write_once(const void* buf, size_t size, size_t& nwritten, event<int> done);
+    inline void write_once(const void* buf, size_t size, size_t& nwritten, event<> done);
+    void write_once(const struct iovec* iov, int iov_count, size_t& nwritten, event<int> done);
+    inline void write_once(const struct iovec* iov, int iov_count, size_t& nwritten, event<> done);
 
     void sendmsg(const void *buf, size_t size, int transfer_fd, event<int> done);
     inline void sendmsg(const void *buf, size_t size, event<int> done);
@@ -134,13 +143,17 @@ class fd {
 	int close(int leave_error = -EBADF);
     };
 
-    class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_ &);
-    class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_ &);
-    class closure__read__PvkRkQi_; void read(closure__read__PvkRkQi_ &);
+    class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_&);
+    class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_&);
+    class closure__read__PvkRkQi_; void read(closure__read__PvkRkQi_&);
+    class closure__read__P5ioveciRkQi_; void read(closure__read__P5ioveciRkQi_&);
     class closure__read_once__PvkRkQi_; void read_once(closure__read_once__PvkRkQi_ &);
+    class closure__read_once__PK5ioveciRkQi_; void read_once(closure__read_once__PK5ioveciRkQi_&);
     class closure__write__PKvkRkQi_; void write(closure__write__PKvkRkQi_ &);
     class closure__write__SsRkQi_; void write(closure__write__SsRkQi_ &);
+    class closure__write__P5ioveciRkQi_; void write(closure__write__P5ioveciRkQi_&);
     class closure__write_once__PKvkRkQi_; void write_once(closure__write_once__PKvkRkQi_ &);
+    class closure__write_once__PK5ioveciRkQi_; void write_once(closure__write_once__PK5ioveciRkQi_&);
     class closure__sendmsg__PKvkiQi_; void sendmsg(closure__sendmsg__PKvkiQi_ &);
     class closure__open__PKci6mode_tQ2fd_; static void open(closure__open__PKci6mode_tQ2fd_ &);
 
@@ -349,13 +362,25 @@ inline void fd::read(void *buf, size_t size, event<> done) {
     read(buf, size, unbind<int>(done));
 }
 
+inline void fd::read(struct iovec* iov, int iov_count, size_t &nread, event<> done) {
+    read(iov, iov_count, nread, unbind<int>(done));
+}
+
 inline void fd::read_once(void *buf, size_t size, size_t &nread, event<> done) {
     read_once(buf, size, nread, unbind<int>(done));
+}
+
+inline void fd::read_once(const struct iovec* iov, int iov_count, size_t &nread, event<> done) {
+    read_once(iov, iov_count, nread, unbind<int>(done));
 }
 
 
 inline void fd::write(const void *buf, size_t size, size_t &nwritten, event<> done) {
     write(buf, size, nwritten, unbind<int>(done));
+}
+
+inline void fd::write(struct iovec* iov, int iov_count, size_t& nwritten, event<> done) {
+    write(iov, iov_count, nwritten, unbind<int>(done));
 }
 
 /** @brief  Write to file descriptor.
@@ -394,6 +419,10 @@ inline void fd::write(const std::string &buf, event<> done) {
 
 inline void fd::write_once(const void *buf, size_t size, size_t &nwritten, event<> done) {
     write_once(buf, size, nwritten, unbind<int>(done));
+}
+
+inline void fd::write_once(const struct iovec* iov, int iov_count, size_t& nwritten, event<> done) {
+    write_once(iov, iov_count, nwritten, unbind<int>(done));
 }
 
 
