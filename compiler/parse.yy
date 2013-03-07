@@ -68,10 +68,10 @@ int vars_lineno;
 %type <str> template_instantiation_opt typedef_name_single
 %type <str> template_instantiation_list_opt identifier
 %type <str> typedef_name arrays_opt
-%type <str> type_specifier 
 %type <str> passthrough passthroughs
-%type <typ_mod> type_modifier type_modifier_list declaration_specifiers 
-%type <typ_mod> type_qualifier_list_opt type_qualifier_list type_qualifier 
+%type <typ_mod> declaration_specifiers
+%type <typ_mod> type_qualifier type_qualifier_list
+%type <typ_mod> type_specifier basic_type_specifier basic_type_specifier_list
 %type <initializer> cpp_initializer_opt
 
 %type <decl> init_declarator declarator direct_declarator 
@@ -453,27 +453,8 @@ direct_declarator: typedef_name
  *
  * Returns: <str> element, with the type of the variable (unparsed)
  */
-declaration_specifiers: type_modifier_list type_specifier
-	{
-	   $1.add_lstr ($2);
-	   $$ = $1;
-	}
-	;
-
-/*
- * new rule to eliminate s/r conflicts
- */
-type_modifier:  type_qualifier
-	| T_SIGNED		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "signed")); }
-	| T_UNSIGNED		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "unsigned")); }
-	| T_SHORT		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "short")); }
-	| T_LONG		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "long")); }
-	;
-
-type_modifier_list: /* empty */ { $$ = type_qualifier_t(lstr("")); }
-	| type_modifier_list type_modifier
-	{
-	  $$ = $1.concat ($2);
+declaration_specifiers: type_qualifier_list type_specifier {
+	   $$ = $1.concat($2);
 	}
 	;
 	
@@ -482,14 +463,28 @@ type_modifier_list: /* empty */ { $$ = type_qualifier_t(lstr("")); }
  *	| struct_or_union_specifier
  *	| enum_specifier
  */
-type_specifier: T_VOID		{ $$ = lstr(get_yy_lineno(), "void"); }
-	| T_CHAR 		{ $$ = lstr(get_yy_lineno(), "char");  }
-	| T_INT			{ $$ = lstr(get_yy_lineno(), "int"); }
-	| T_FLOAT		{ $$ = lstr(get_yy_lineno(), "float"); }
-	| T_DOUBLE		{ $$ = lstr(get_yy_lineno(), "double"); }
-	| typedef_name
+type_specifier: T_VOID		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "void")); }
+        | basic_type_specifier basic_type_specifier_list {
+          $$ = $1.concat($2);
+        }
+	| typedef_name		{ $$ = type_qualifier_t($1); }
 	;
 
+basic_type_specifier:
+	  T_CHAR 		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "char"));  }
+	| T_INT			{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "int")); }
+	| T_FLOAT		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "float")); }
+	| T_DOUBLE		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "double")); }
+	| T_SHORT		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "short")); }
+	| T_LONG		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "long")); }
+	| T_SIGNED		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "signed")); }
+	| T_UNSIGNED		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "unsigned")); }
+	;
+
+basic_type_specifier_list:	{ $$ = type_qualifier_t(lstr()); }
+	| basic_type_specifier_list type_qualifier { $$ = $1.concat($2); }
+	| basic_type_specifier_list basic_type_specifier { $$ = $1.concat($2); }
+	;
 /*
  * hack for now -- not real C syntax
  */
@@ -499,15 +494,8 @@ type_qualifier:	T_CONST	{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "const"));
 	| T_TYPENAME	{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "typename")); }
 	;
 
-type_qualifier_list: type_qualifier
-	| type_qualifier_list type_qualifier
-	{
-	  $$ = $1.concat ($2);
-	}
-	;
-
-type_qualifier_list_opt: /* empty */ { $$ = type_qualifier_t(lstr()); }
-	| type_qualifier_list        { $$ = $1; }
+type_qualifier_list: /* empty */             { $$ = type_qualifier_t(lstr()); }
+	| type_qualifier_list type_qualifier { $$ = $1.concat($2); }
 	;
 
 /*
@@ -563,7 +551,7 @@ pointer_or_ref:	'*'		{ $$ = lstr(get_yy_lineno(), "*"); }
 	;
 
 pointer: pointer_or_ref		{ $$ = $1; }
-	| pointer_or_ref type_qualifier_list_opt pointer
+	| pointer_or_ref type_qualifier_list pointer
 	{
 	  CONCAT($2.lineno(), " " << $1.str() << " " << $2.to_str() << $3.str(), $$);
 	}
