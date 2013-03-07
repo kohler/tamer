@@ -880,6 +880,8 @@ tamed void fd::connect(const struct sockaddr *addr, socklen_t addrlen,
  */
 int fd::fdimp::close(int leave_error) {
     int my_fd = _fd;
+    if (leave_error >= 0)
+        leave_error = -EBADF;
     if (my_fd >= 0 || leave_error != -EBADF)
 	_fd = leave_error;
     if (my_fd >= 0) {
@@ -923,7 +925,7 @@ fd tcp_listen(int port, int backlog)
 	if (ret >= 0)
 	    ret = f.listen(backlog);
 	if (ret < 0 && f)
-	    f.error_close(ret);
+	    f.close(ret);
     }
     return f;
 }
@@ -954,7 +956,7 @@ tamed void tcp_connect(struct in_addr addr, int port, event<fd> result)
 	    f.connect((struct sockaddr *) &saddr, sizeof(saddr), make_event(ret));
 	}
     if (ret < 0 && f)
-	f.error_close(ret);
+	f.close(ret);
     result.trigger(f);
 }
 
@@ -973,7 +975,7 @@ tamed void udp_connect(struct in_addr addr, int port, event<fd> result) {
 	    f.connect((struct sockaddr *) &saddr, sizeof(saddr), make_event(ret));
 	}
     if (ret < 0 && f)
-	f.error_close(ret);
+	f.close(ret);
     result.trigger(f);
 }
 

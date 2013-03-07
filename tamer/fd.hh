@@ -61,6 +61,7 @@ class fd {
     event<> closer();
     inline void close(event<int> done);
     inline void close();
+    inline void close(int errcode);
     inline void error_close(int errcode);
 
     void read(void* buf, size_t size, size_t& nread, event<int> done);
@@ -432,18 +433,23 @@ inline void fd::sendmsg(const void *buf, size_t size, event<int> done) {
 }
 
 /** @brief  Close file descriptor, marking it with an error.
- *  @param  errcode  Negative error code.
+ *  @param  errcode  Optional negative error code.
  *
- *  After error_close(@a errcode), the valid() function will return false,
- *  and error() will return @a errcode.
+ *  After close(@a errcode), the valid() function will return false. If @a
+ *  errcode < 0, then error() will return @a errcode.
  */
-inline void fd::error_close(int errcode) {
-    assert(errcode < 0);
+inline void fd::close(int errcode) {
     if (_p)
 	_p->close(errcode);
-    else if (errcode != -EBADF)
+    else if (errcode < 0 && errcode != -EBADF)
 	_p = ref_ptr<fdimp>(new fdimp(errcode));
 }
+
+/** @cond never */
+inline void fd::error_close(int errcode) {
+    close(errcode);
+}
+/** @endcond never */
 
 /** @brief  Make this file descriptor use nonblocking I/O.
  */
