@@ -90,7 +90,6 @@ void		return T_VOID;
 char		return T_CHAR;
 short		return T_SHORT;
 int		return T_INT;
-long{WSPACE}+long	return T_LONG_LONG;
 long		return T_LONG;
 float		return T_FLOAT;
 double		return T_DOUBLE;

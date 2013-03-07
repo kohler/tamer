@@ -42,7 +42,6 @@ int vars_lineno;
 %token T_SHORT
 %token T_INT
 %token T_LONG
-%token T_LONG_LONG
 %token T_FLOAT
 %token T_DOUBLE
 %token T_SIGNED
@@ -467,6 +466,8 @@ declaration_specifiers: type_modifier_list type_specifier
 type_modifier:  type_qualifier
 	| T_SIGNED		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "signed")); }
 	| T_UNSIGNED		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "unsigned")); }
+	| T_SHORT		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "short")); }
+	| T_LONG		{ $$ = type_qualifier_t(lstr(get_yy_lineno(), "long")); }
 	;
 
 type_modifier_list: /* empty */ { $$ = type_qualifier_t(lstr("")); }
@@ -483,10 +484,7 @@ type_modifier_list: /* empty */ { $$ = type_qualifier_t(lstr("")); }
  */
 type_specifier: T_VOID		{ $$ = lstr(get_yy_lineno(), "void"); }
 	| T_CHAR 		{ $$ = lstr(get_yy_lineno(), "char");  }
-	| T_SHORT		{ $$ = lstr(get_yy_lineno(), "short"); }
 	| T_INT			{ $$ = lstr(get_yy_lineno(), "int"); }
-	| T_LONG		{ $$ = lstr(get_yy_lineno(), "long"); }
-	| T_LONG_LONG		{ $$ = lstr(get_yy_lineno(), "long long"); }
 	| T_FLOAT		{ $$ = lstr(get_yy_lineno(), "float"); }
 	| T_DOUBLE		{ $$ = lstr(get_yy_lineno(), "double"); }
 	| typedef_name
