@@ -45,7 +45,7 @@ int filename_return ();
 %option stack
 
 ID	[a-zA-Z_][a-zA-Z_0-9]*
-WSPACE	[ \t\r\v\f\n]
+WSPACE	[ \t\v\f]
 SYM	[{}<>;,():*\[\]]
 DNUM 	[+-]?[0-9]+
 XNUM 	[+-]?0x[0-9a-fA-F]
