@@ -158,6 +158,9 @@ public:
     output_mode_t switch_to_mode (output_mode_t m, int ln = -1);
     output_mode_t mode () const { return _mode; }
     virtual void output_str(const str &s);
+
+    void fail_exit();
+
   protected:
     void output_line_number ();
     void _output_str (const str &s, const str &sep_str = str());
@@ -176,6 +179,8 @@ public:
     str _cur_file;
     bool _do_output_line_number;
 };
+
+extern outputter_t* outputter;
 
 /**
  * Horizontal outputter -- doesn't output newlines when in treadmill mode

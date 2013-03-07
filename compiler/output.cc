@@ -27,6 +27,12 @@ outputter_t::init ()
     return true;
 }
 
+void outputter_t::fail_exit() {
+    if (_fd >= 0 && _outfn.length() && _outfn != "-")
+        unlink(_outfn.c_str());
+    exit(1);
+}
+
 void
 outputter_t::start_output ()
 {

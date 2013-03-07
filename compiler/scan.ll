@@ -400,7 +400,10 @@ int
 yyerror (str msg)
 {
   warn << filename << ":" << lineno << ": " << msg << "\n";
-  exit (1);
+  if (outputter)
+    outputter->fail_exit();
+  else
+    exit(1);
 }
 
 int

@@ -6,6 +6,7 @@
 
 parse_state_t *state;
 bool tamer_debug = false;
+outputter_t *outputter;
 
 std::ostream &warn = std::cerr;
 
@@ -88,7 +89,6 @@ main (int argc, char *argv[])
   bool no_line_numbers = false;
   bool horiz_mode = true;
   str ifn;
-  outputter_t *o;
   bool c_mode (false), b_mode (false);
 
   while ((ch = getopt (argc, argv, "bghnLvdo:c:O:")) != -1)
@@ -186,11 +186,11 @@ main (int argc, char *argv[])
   state->set_infile_name (ifn);
   bool fl = (ifn.length() && ifn != "-" && !no_line_numbers);
   if (horiz_mode) {
-    o = new outputter_H_t (ifn, outfile, fl);
+    outputter = new outputter_H_t (ifn, outfile, fl);
   } else {
-    o = new outputter_t (ifn, outfile, fl);
+    outputter = new outputter_t (ifn, outfile, fl);
   }
-  if (!o->init ())
+  if (!outputter->init ())
     exit (1);
 
   // only on if YYDEBUG is on :(
@@ -202,8 +202,8 @@ main (int argc, char *argv[])
     fclose (ifh);
   }
 
-  state->output (o);
+  state->output (outputter);
 
   // calls close on the outputter fd
-  delete o;
+  delete outputter;
 }
