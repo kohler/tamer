@@ -45,7 +45,7 @@ int filename_return ();
 %option stack
 
 ID	[a-zA-Z_][a-zA-Z_0-9]*
-WSPACE	[ \t]
+WSPACE	[ \t\r\v\f\n]
 SYM	[{}<>;,():*\[\]]
 DNUM 	[+-]?[0-9]+
 XNUM 	[+-]?0x[0-9a-fA-F]
@@ -64,7 +64,7 @@ XNUM 	[+-]?0x[0-9a-fA-F]
 %%
 
 <FN_ENTER,FULL_PARSE,SIG_PARSE,VARS_ENTER,ID_LIST,ID_OR_NUM,NUM_ONLY,HALF_PARSE,TWAIT_ENTER,JOIN_LIST,JOIN_LIST_BASE,EXPR_LIST,EXPR_LIST_BASE,DEFRET_ENTER>{
-\n		++lineno;
+\n|\r\n|\r	++lineno;
 {WSPACE}+	/*discard*/;
 }
 
@@ -123,7 +123,7 @@ template	{ yy_push_state (TEMPLATE_ENTER); return T_TEMPLATE; }
 }
 
 <TEMPLATE_ENTER>{
-\n		++lineno;
+\n|\r\n|\r	++lineno;
 {WSPACE}+	/* discard */ ;
 "<"		{ switch_to_state (TEMPLATE_BASE); return yytext[0]; }
 .		{ return yyerror ("unexpected token after 'template'"); }
