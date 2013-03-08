@@ -158,6 +158,7 @@ public:
     output_mode_t switch_to_mode (output_mode_t m, int ln = -1);
     output_mode_t mode () const { return _mode; }
     virtual void output_str(const str &s);
+    void line_number_line(strbuf& b, unsigned lineno) const;
 
     void fail_exit();
 
@@ -289,6 +290,7 @@ class initializer_t {
     initializer_t() : _value(0, "") {}
     initializer_t(const lstr &v) : _value(v) {}
     virtual ~initializer_t() {}
+    unsigned constructor_lineno() const { return _value.lineno(); }
     virtual str output_in_constructor() const { return ""; }
     virtual str output_in_declaration() const { return ""; }
     virtual bool do_constructor_output() const { return false; }
@@ -372,7 +374,7 @@ public:
     bool add(const var_t &v);
     void declarations(strbuf &b, const str &padding) const;
     void paramlist(strbuf &b, list_mode_t m, bool move) const;
-    void initialize(strbuf &b, bool self) const;
+    void initialize(strbuf &b, bool self, outputter_t* o) const;
     bool exists(const str &n) const { return _tab.find(n) != _tab.end(); }
     const var_t *lookup(const str &n) const;
     void mangle(strbuf &b) const;

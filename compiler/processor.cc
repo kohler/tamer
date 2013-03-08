@@ -594,22 +594,23 @@ vartab_t::declarations (strbuf &b, const str &padding) const
 }
 
 void
-vartab_t::initialize (strbuf &b, bool self) const
+vartab_t::initialize(strbuf &b, bool self, outputter_t* o) const
 {
-  bool first = true;
   initializer_t *init = 0;
+  unsigned lineno;
   for (unsigned i = 0; i < size (); i++) {
-    if (self ||
-	((init = _vars[i].initializer ()) &&
-	 init->do_constructor_output ())) {
-
-      if (!first) b << ", ";
-      first = false;
-      b << _vars[i].name () << " ";
-
-      if (self)  b << "(" <<  _vars[i].name(true) << ")";
-      else       b << init->output_in_constructor ();
-
+    if (self || ((init = _vars[i].initializer()) &&
+                 init->do_constructor_output())) {
+        if (!self && (lineno = init->constructor_lineno())) {
+            b << ",\n";
+            o->line_number_line(b, lineno);
+        } else
+            b << ", ";
+        b << _vars[i].name();
+        if (self)
+            b << "(" << _vars[i].name(true) << ")";
+        else
+            b << init->output_in_constructor();
     }
   }
 }
@@ -741,19 +742,12 @@ tame_fn_t::output_closure(outputter_t *o)
   }
 
   // output arguments declaration
-  if (_args && _args->size ()) {
-      b << ", ";
-      _args->initialize(b, true);
-  }
+  if (_args && _args->size())
+      _args->initialize(b, true, o);
 
   // output stack declaration
-  if (_stack_vars.size ()) {
-      strbuf i;
-      _stack_vars.initialize (i, false);
-      str s (i.str());
-      if (s.length() > 0)
-	  b << ", " << s << " ";
-  }
+  if (_stack_vars.size())
+      _stack_vars.initialize(b, false, o);
 
   if (need_implicit_rendezvous())
       b << ", " << TWAIT_BLOCK_RENDEZVOUS "(this) ";

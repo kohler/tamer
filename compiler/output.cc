@@ -43,6 +43,10 @@ outputter_t::start_output ()
   switch_to_mode (OUTPUT_PASSTHROUGH);
 }
 
+void outputter_t::line_number_line(strbuf& b, unsigned lineno) const {
+    b << "# " << lineno << " \"" << _infn << "\"\n";
+}
+
 void
 outputter_t::output_line_number()
 {
@@ -50,7 +54,7 @@ outputter_t::output_line_number()
 	strbuf b;
 	if (!_last_char_was_nl)
 	    b << "\n";
-	b << "# " << _lineno << " \"" << _infn << "\"\n";
+        line_number_line(b, _lineno);
 	_output_str(b.str(), "");
 	_cur_lineno = _lineno;
 	_cur_file = _infn;
@@ -63,11 +67,16 @@ outputter_H_t::output_str(const str &s)
     if (_mode == OUTPUT_TREADMILL) {
 	output_line_number();
 	str::size_type p = 0;
+        bool last_was_line = false;
 	do {
 	    str::size_type q = s.find('\n', p);
 	    if (q == str::npos)
 		q = s.length();
-	    _output_str(s.substr(p, q - p), (q >= s.length() - 1 ? "\n" : " "));
+            const char* sep = " ";
+            if (q >= s.length() - 1 || s[q + 1] == '#' || last_was_line)
+                sep = "\n";
+            last_was_line = q < s.length() - 1 && s[q + 1] == '#';
+	    _output_str(s.substr(p, q - p), sep);
 	    p = q + 1;
 	} while (p < s.length());
     } else
