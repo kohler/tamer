@@ -285,16 +285,16 @@ private:
 };
 
 class initializer_t {
-public:
-  initializer_t () : _value (0, "") {}
-  initializer_t (const lstr &v) : _value (v) {}
-  virtual ~initializer_t () {}
-  virtual str output_in_constructor () const { return ""; }
-  virtual str output_in_declaration () const { return ""; }
-  virtual bool do_constructor_output () const { return false; }
-  virtual str ref_prefix () const;
-protected:
-  lstr _value;
+  public:
+    initializer_t() : _value(0, "") {}
+    initializer_t(const lstr &v) : _value(v) {}
+    virtual ~initializer_t() {}
+    virtual str output_in_constructor() const { return ""; }
+    virtual str output_in_declaration() const { return ""; }
+    virtual bool do_constructor_output() const { return false; }
+    virtual str ref_prefix() const;
+  protected:
+    lstr _value;
 };
 
 class cpp_initializer_t : public initializer_t {
@@ -305,10 +305,10 @@ public:
 };
 
 class array_initializer_t : public initializer_t {
-public:
-  array_initializer_t (const lstr &v) : initializer_t (v) {}
-  str output_in_declaration () const;
-  str ref_prefix () const;
+  public:
+    array_initializer_t(const lstr &v) : initializer_t(v) {}
+    str output_in_declaration() const;
+    str ref_prefix() const;
 };
 
 class declarator_t;

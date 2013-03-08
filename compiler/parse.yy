@@ -56,7 +56,7 @@ int vars_lineno;
 
 /* Keywords for our new filter */
 %token T_TAMED
-%token T_VARS
+%token T_TVARS
 %token T_JOIN
 %token T_TWAIT
 %token T_DEFAULT_RETURN
@@ -200,22 +200,19 @@ default_return: T_DEFAULT_RETURN '{' passthroughs '}'
 	}
 	;
 
-vars:	T_VARS 
+vars:	T_TVARS '{' { vars_lineno = get_yy_lineno (); }
+	declaration_list_opt '}'
 	{
-	  vars_lineno = get_yy_lineno ();
-	}
-	'{' declaration_list_opt '}'
-	{
-	  tame_vars_t *v = new tame_vars_t (state->function (), vars_lineno);
-	  if (state->function ()->get_vars ()) {
+	  tame_vars_t *v = new tame_vars_t(state->function(), vars_lineno);
+	  if (state->function()->get_vars()) {
 	    strbuf b;
-	    b << "VARS{} section specified twice (before on line " 
-	      << state->function ()->get_vars ()->lineno () << ")\n";
-	    yyerror (b.str());
+	    b << "tvars{} section specified twice (before on line " 
+	      << state->function()->get_vars()->lineno () << ")\n";
+	    yyerror(b.str());
 	  }
-	  if (!state->function ()->set_vars (v)) {
-	    yyerror ("The tvars{} section must come before any twait "
-	             " statement or environment");
+	  if (!state->function()->set_vars(v)) {
+	    yyerror("The tvars{} section must come before any twait "
+	            " statement or environment");
 	  }
 	  $$ = v;
 	}
@@ -359,11 +356,8 @@ parameter_declaration: declaration_specifiers declarator arrays_opt
 	}
 	;
 
-declaration: declaration_specifiers 
-	{
-	  state->set_decl_specifier ($1);
-	}
-	init_declarator_list_opt ';'
+declaration: declaration_specifiers { state->set_decl_specifier($1); }
+	       init_declarator_list_opt ';'
 	| T_COMMENT
 	;
 
@@ -379,8 +373,8 @@ init_declarator_list:  init_declarator			{}
  */
 init_declarator: declarator_cpp cpp_initializer_opt
 	{
-	  assert ($2);
-	  $1->set_initializer ($2);
+	  assert($2);
+	  $1->set_initializer($2);
 
 	  vartab_t *t = state->stack_vars ();
 

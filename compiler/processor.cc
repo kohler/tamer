@@ -736,7 +736,7 @@ tame_fn_t::output_closure(outputter_t *o)
   b << ") : " << base_type << "(tamer_activator_)";
 
   if (need_self ()) {
-      str s = _self.name ();
+      str s = _self.name();
       b << ", " << s << " (" << s << ")";
   }
 
@@ -760,14 +760,14 @@ tame_fn_t::output_closure(outputter_t *o)
 
   b << " {}\n\n";
 
-  output_reenter (b);
+  output_reenter(b);
 
   if (_class.length() && !(_opts & STATIC_DECL))
       b << "  " << _self.decl() << ";\n";
 
   if (_args)
-      _args->declarations (b, "    ");
-  _stack_vars.declarations (b, "    ");
+      _args->declarations(b, "    ");
+  _stack_vars.declarations(b, "    ");
 
   if (need_implicit_rendezvous())
       b << "  tamer::gather_rendezvous " TWAIT_BLOCK_RENDEZVOUS ";\n";
@@ -775,7 +775,7 @@ tame_fn_t::output_closure(outputter_t *o)
   b << "};\n\n";
 
   o->output_str(b.str());
-  o->switch_to_mode (om);
+  o->switch_to_mode(om);
 }
 
 void
