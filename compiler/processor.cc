@@ -285,8 +285,8 @@ tame_fn_t::add_env (tame_env_t *e)
 	_any_volatile_envs = true;
 }
 
-cpp_initializer_t::cpp_initializer_t(const lstr &v)
-    : initializer_t(v)
+cpp_initializer_t::cpp_initializer_t(const lstr &v, bool braces)
+    : initializer_t(v), braces_(braces)
 {
     // rewrite "this" to "__tamer_self".  Do it the right way.
     strbuf b;
@@ -319,15 +319,15 @@ cpp_initializer_t::cpp_initializer_t(const lstr &v)
 }
 
 str
-cpp_initializer_t::output_in_constructor () const
+cpp_initializer_t::output_in_constructor() const
 {
   strbuf b;
-  b << "(" << _value.str() << ")";
+  b << (braces_ ? '{' : '(') << _value.str() << (braces_ ? '}' : ')');
   return b.str();
 }
 
 str
-array_initializer_t::output_in_declaration () const
+array_initializer_t::output_in_declaration() const
 {
   strbuf b;
   b << "[" << _value.str() << "]";

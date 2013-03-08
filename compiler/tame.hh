@@ -298,10 +298,12 @@ class initializer_t {
 };
 
 class cpp_initializer_t : public initializer_t {
-public:
-    cpp_initializer_t(const lstr &v);
+  public:
+    cpp_initializer_t(const lstr &v, bool braces);
     str output_in_constructor() const;
     bool do_constructor_output() const { return true; }
+  private:
+    bool braces_;
 };
 
 class array_initializer_t : public initializer_t {

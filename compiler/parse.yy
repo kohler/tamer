@@ -415,10 +415,11 @@ declarator_cpp: pointer_opt direct_declarator_cpp
 	}
 	;
 
-cpp_initializer_opt: /* empty */	{ $$ = new initializer_t(); }
-	| '(' passthroughs ')'		{ $$ = new cpp_initializer_t($2); }
-	| '[' passthroughs ']'		{ $$ = new array_initializer_t($2); }
-	| '=' passthroughs		{ $$ = new cpp_initializer_t($2); }
+cpp_initializer_opt: /* empty */  { $$ = new initializer_t(); }
+	| '(' passthroughs ')'	  { $$ = new cpp_initializer_t($2, false); }
+	| '[' passthroughs ']'	  { $$ = new array_initializer_t($2); }
+        | '{' passthroughs '}'	  { $$ = new cpp_initializer_t($2, true); }
+	| '=' passthroughs	  { $$ = new cpp_initializer_t($2, false); }
 	;
 
 direct_declarator_cpp: identifier	{ $$ = new declarator_t($1.str()); }
