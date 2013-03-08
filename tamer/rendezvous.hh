@@ -325,7 +325,9 @@ class rendezvous<> : private tamerpriv::explicit_rendezvous,
 class gather_rendezvous : public tamerpriv::blocking_rendezvous,
 			  public zero_argument_rendezvous_tag<gather_rendezvous> {
   public:
-
+    inline gather_rendezvous()
+        : blocking_rendezvous(rnormal, tamerpriv::rgather), linked_closure_() {
+    }
     inline gather_rendezvous(tamerpriv::tamer_closure *c)
 	: blocking_rendezvous(rnormal, tamerpriv::rgather), linked_closure_(c) {
     }
