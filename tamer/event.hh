@@ -470,11 +470,15 @@ class event<T0, void, void, void>
     inline void trigger(T0&& v0);
 #endif
     inline void trigger(const value_pack<T0>& v);
+    template <typename V0>
+    inline void trigger(V0 v0);
     inline void operator()(const T0& v0);
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
     inline void operator()(T0&& v0);
 #endif
     inline void operator()(const value_pack<T0>& v);
+    template <typename V0>
+    inline void operator()(V0 v0);
     inline void unblock() TAMER_NOEXCEPT;
 
     inline void at_trigger(const event<>& e);
@@ -725,6 +729,13 @@ class preevent : public std::unary_function<const T0&, void> { public:
     inline void trigger(const value_pack<T0>& v) {
         trigger(v.v0);
     }
+    template <typename V0>
+    inline void trigger(V0 v0) {
+        if (r_) {
+            *s0_ = v0;
+            r_ = 0;
+        }
+    }
     inline void operator()(const T0& v0) {
         trigger(v0);
     }
@@ -733,6 +744,10 @@ class preevent : public std::unary_function<const T0&, void> { public:
     }
     inline void operator()(const value_pack<T0>& v) {
         trigger(v.v0);
+    }
+    template <typename V0>
+    inline void operator()(V0 v0) {
+        trigger(v0);
     }
     inline void unblock() TAMER_NOEXCEPT {
         r_ = 0;
@@ -1280,6 +1295,15 @@ inline void event<T0>::trigger(const value_pack<T0>& v) {
     trigger(v.v0);
 }
 
+template <typename T0> template <typename V0>
+inline void event<T0>::trigger(V0 v0) {
+    if (_e && *_e) {
+	if (_s0) *_s0 = v0;
+	_e->simple_trigger(true);
+	_e = 0;
+    }
+}
+
 template <typename T0>
 inline void event<T0>::operator()(const T0& v0) {
     trigger(v0);
@@ -1295,6 +1319,11 @@ inline void event<T0>::operator()(T0&& v0) {
 template <typename T0>
 inline void event<T0>::operator()(const value_pack<T0>& v) {
     trigger(v);
+}
+
+template <typename T0> template <typename V0>
+inline void event<T0>::operator()(V0 v0) {
+    trigger(v0);
 }
 
 template <typename T0>
