@@ -482,6 +482,9 @@ class event<T0, void, void, void>
     inline void operator()(V0 v0);
     inline void unblock() TAMER_NOEXCEPT;
 
+    inline bool has_result() const TAMER_NOEXCEPT;
+    inline T0& result() const TAMER_NOEXCEPT;
+
     inline void at_trigger(const event<>& e);
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
     inline void at_trigger(event<>&& e);
@@ -522,10 +525,6 @@ class event<T0, void, void, void>
 	tamerpriv::simple_event *se = _e;
 	_e = 0;
 	return se;
-    }
-
-    T0 *__get_slot0() const {
-	return _s0;
     }
 
     static inline event<T0> __make(tamerpriv::simple_event *se, T0 *s0) {
@@ -752,6 +751,14 @@ class preevent : public std::unary_function<const T0&, void> { public:
     }
     inline void unblock() TAMER_NOEXCEPT {
         r_ = 0;
+    }
+
+    inline bool has_result() const TAMER_NOEXCEPT {
+        return r_;
+    }
+    inline T0& result() const TAMER_NOEXCEPT {
+        assert(r_);
+        return *s0_;
     }
 
   private:
@@ -1390,6 +1397,24 @@ inline void event<>::unblock() TAMER_NOEXCEPT {
 }
 
 /** @endcond */
+
+/** @brief  Test if this event has a valid result.
+ *
+ *  Returns true iff this event is nonempty and has a result.
+ */
+template <typename T0>
+inline bool event<T0>::has_result() const TAMER_NOEXCEPT {
+    return _e && *_e && _s0;
+}
+
+/** @brief  Return event's result.
+ *  @pre    has_result()
+ */
+template <typename T0>
+inline T0& event<T0>::result() const TAMER_NOEXCEPT {
+    assert(has_result());
+    return *_s0;
+}
 
 
 /** @defgroup make_event Helper functions for making events
