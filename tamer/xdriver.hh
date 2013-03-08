@@ -85,7 +85,7 @@ inline driver::~driver() {
 }
 
 inline void driver::at_fd(int fd, int action, event<> e) {
-    at_fd(fd, action, event<int>(e, no_slot()));
+    at_fd(fd, action, event<int>(e, no_result()));
 }
 
 inline void driver::at_fd_read(int fd, event<int> e) {

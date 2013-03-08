@@ -76,13 +76,13 @@ template <typename S0, typename T0, typename F>
 class map_rendezvous : public functional_rendezvous,
 		       public zero_argument_rendezvous_tag<map_rendezvous<S0, T0, F> > {
   public:
-    map_rendezvous(const F &f, const event<T0> &e)
+    map_rendezvous(const F& f, const event<T0>& e)
 	: functional_rendezvous(hook), f_(f), e_(e) {
     }
-    S0 &slot0() {
+    S0& result0() {
 	return s0_;
     }
-    void add(simple_event *e) {
+    void add(simple_event* e) {
 	e->initialize(this, 0);
     }
   private:

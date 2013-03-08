@@ -145,7 +145,7 @@ When triggered,
 trigger value is stored in
 .IR i ,
 the
-.I trigger slot
+.I result
 passed earlier to
 .BR make_event .
 The type of
@@ -251,7 +251,7 @@ of type(s)
 .BR I*
 with events.  The
 .B make_event
-function specifies event IDs as well as trigger slots.  A 
+function specifies event IDs as well as results.  A 
 .B twait(\fIr\fB, \fIi*\fB)
 statement sets the variable(s)
 .I i*
@@ -362,9 +362,9 @@ returns true.
 .sp
 .nf
 .B template <typename R, [typename I0, typename I1]>
-.B event<T0, T1, T2, T3>::event(R &\fIr\fB, [const I0 &\fIi0\fB, const I1 &\fIi1\fB,]
-.B "                             T0 &\fIs0\fB, T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB)"
-.B ... event<>::event(R &\fIr\fB, [const I0 &\fIi0\fB, const I1 &\fIi1\fB])
+.B event<T0, T1, T2, T3>::event(R& \fIr\fB, [const I0& \fIi0\fB, const I1& \fIi1\fB,]
+.B "                             T0& \fIx0\fB, T1& \fIx1\fB, T2& \fIx2\fB, T3& \fIx3\fB)"
+.B ... event<>::event(R& \fIr\fB, [const I0& \fIi0\fB, const I1& \fIi1\fB])
 .fi
 .RS 5
 Creates an event on
@@ -372,12 +372,12 @@ Creates an event on
 .IR r
 with optional event IDs
 .IR i0 " and " i1
-and trigger slots
-.IR s0 ... s3 .
+and results
+.IR x0 ... x3 .
 Each 
 .B event
-type has similar constructors whose slot arguments
-.I s*
+type has similar constructors whose result arguments
+.I x*
 match the template arguments.
 .RE
 .sp
@@ -410,13 +410,13 @@ already been triggered.  \*(lq\fIe\fB.empty()\fR\*(rq is equivalent to
 .RE
 .sp
 .nf
-.B void event<T0, T1, T2, T3>::trigger(const T0 &\fIv0\fB, const T1 &\fIv1\fB,
-.B "                                    const T2 &\fIv2\fB, const T3 &\fIv3\fB)"
+.B void event<T0, T1, T2, T3>::trigger(const T0& \fIv0\fB, const T1& \fIv1\fB,
+.B "                                    const T2& \fIv2\fB, const T3& \fIv3\fB)"
 .B ... void event<>::trigger()
 .fi
 .RS 5
 Triggers the event.  If the event is empty, this does nothing; otherwise,
-it sets the event's trigger slots (defined at creation time) to the
+it sets the event's results (defined at creation time) to the
 trigger values
 .IR v0 ... v3
 and wakes any blocked closure.  Events become empty after
@@ -446,11 +446,11 @@ is triggered when this event is triggered.
 .B event<> event<T*>::unblocker() const
 .fi
 .RS 5
-Returns a version of this event that has no trigger slots.  The returned
+Returns a version of this event that has no results.  The returned
 event refers to the same occurrence as this event, so triggering either
 event makes both events appear empty.  However,
 .B unblocker().trigger()
-will leave this event's slots unchanged.
+will leave this event's results unchanged.
 .RE
 '
 .SH "RENDEZVOUS CLASS"

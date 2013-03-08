@@ -37,8 +37,9 @@ class tamer_error : public std::runtime_error { public:
     }
 };
 
-struct no_slot {
+struct no_result {
 };
+typedef no_result no_slot TAMER_DEPRECATEDATTR;
 
 enum rendezvous_flags {
     rnormal,
