@@ -38,11 +38,23 @@ class rendezvous : private tamerpriv::explicit_rendezvous,
     inline rendezvous(rendezvous_flags flags = rnormal);
     inline ~rendezvous();
 
+    template <typename T0, typename T1, typename T2, typename T3>
+    inline event<T0, T1, T2, T3> make_event(const I0& i0, const I1& i1,
+                                            T0& x0, T1& x1, T2& x2, T3& x3);
+    template <typename T0, typename T1, typename T2>
+    inline event<T0, T1, T2> make_event(const I0& i0, const I1& i1,
+                                        T0& x0, T1& x1, T2& x2);
+    template <typename T0, typename T1>
+    inline event<T0, T1> make_event(const I0& i0, const I1& i1, T0& x0, T1& x1);
+    template <typename T0>
+    inline event<T0> make_event(const I0& i0, const I1& i1, T0& x0);
+    inline event<> make_event(const I0& i0, const I1& i1);
+
     inline bool has_ready() const;
     inline bool has_waiting() const;
     inline bool has_events() const;
 
-    inline bool join(I0 &i0, I1 &i1);
+    inline bool join(I0& i0, I1& i1);
     void clear();
 
     inline void add(tamerpriv::simple_event *e, const I0 &i0, const I1 &i1);
@@ -156,6 +168,17 @@ class rendezvous<I0> : public tamerpriv::explicit_rendezvous,
     inline rendezvous(rendezvous_flags flags = rnormal);
     inline ~rendezvous();
 
+    template <typename T0, typename T1, typename T2, typename T3>
+    inline event<T0, T1, T2, T3> make_event(const I0& i0,
+                                            T0& x0, T1& x1, T2& x2, T3& x3);
+    template <typename T0, typename T1, typename T2>
+    inline event<T0, T1, T2> make_event(const I0& i0, T0& x0, T1& x1, T2& x2);
+    template <typename T0, typename T1>
+    inline event<T0, T1> make_event(const I0& i0, T0& x0, T1& x1);
+    template <typename T0>
+    inline event<T0> make_event(const I0& i0, T0& x0);
+    inline event<> make_event(const I0& i0);
+
     inline bool has_ready() const	{ return ready_; }
     inline bool has_waiting() const	{ return waiting_; }
     inline bool has_events() const	{ return ready_ || waiting_; }
@@ -206,21 +229,32 @@ inline void rendezvous<I0>::add(tamerpriv::simple_event *e, const I0 &i0) {
 }
 
 
-template <typename T>
+template <typename I0>
 class simple_rendezvous : public tamerpriv::explicit_rendezvous,
-			  public one_argument_rendezvous_tag<simple_rendezvous<T> > {
+			  public one_argument_rendezvous_tag<simple_rendezvous<I0> > {
   public:
     inline simple_rendezvous(rendezvous_flags flags = rnormal);
     inline ~simple_rendezvous();
+
+    template <typename T0, typename T1, typename T2, typename T3>
+    inline event<T0, T1, T2, T3> make_event(I0 i0,
+                                            T0& x0, T1& x1, T2& x2, T3& x3);
+    template <typename T0, typename T1, typename T2>
+    inline event<T0, T1, T2> make_event(I0 i0, T0& x0, T1& x1, T2& x2);
+    template <typename T0, typename T1>
+    inline event<T0, T1> make_event(I0 i0, T0& x0, T1& x1);
+    template <typename T0>
+    inline event<T0> make_event(I0 i0, T0& x0);
+    inline event<> make_event(I0 i0);
 
     inline bool has_ready() const	{ return ready_; }
     inline bool has_waiting() const	{ return waiting_; }
     inline bool has_events() const	{ return ready_ || waiting_; }
 
-    inline bool join(T &);
+    inline bool join(I0&);
     void clear();
 
-    inline void add(tamerpriv::simple_event *e, T i0) TAMER_NOEXCEPT;
+    inline void add(tamerpriv::simple_event *e, I0 i0) TAMER_NOEXCEPT;
     using tamerpriv::blocking_rendezvous::block;
 };
 
@@ -302,6 +336,22 @@ class rendezvous<> : private tamerpriv::explicit_rendezvous,
 	    clear();
     }
 
+    template <typename T0, typename T1, typename T2, typename T3>
+    inline event<T0, T1, T2, T3> make_event(T0& x0, T1& x1, T2& x2, T3& x3);
+    template <typename T0, typename T1, typename T2>
+    inline event<T0, T1, T2> make_event(T0& x0, T1& x1, T2& x2);
+    template <typename T0, typename T1>
+    inline event<T0, T1> make_event(T0& x0, T1& x1);
+#if TAMER_HAVE_PREEVENT
+    template <typename T0>
+    inline preevent<rendezvous<>, T0> make_event(T0& x0);
+    inline preevent<rendezvous<> > make_event();
+#else
+    template <typename T0>
+    inline event<T0> make_event(T0& x0);
+    inline event<> make_event();
+#endif
+
     inline bool has_ready() const	{ return ready_; }
     inline bool has_waiting() const	{ return waiting_; }
     inline bool has_events() const	{ return ready_ || waiting_; }
@@ -336,11 +386,27 @@ class gather_rendezvous : public tamerpriv::blocking_rendezvous,
 	    clear();
     }
 
-    void clear();
+    template <typename T0, typename T1, typename T2, typename T3>
+    inline event<T0, T1, T2, T3> make_event(T0& x0, T1& x1, T2& x2, T3& x3);
+    template <typename T0, typename T1, typename T2>
+    inline event<T0, T1, T2> make_event(T0& x0, T1& x1, T2& x2);
+    template <typename T0, typename T1>
+    inline event<T0, T1> make_event(T0& x0, T1& x1);
+#if TAMER_HAVE_PREEVENT
+    template <typename T0>
+    inline preevent<gather_rendezvous, T0> make_event(T0& x0);
+    inline preevent<gather_rendezvous> make_event();
+#else
+    template <typename T0>
+    inline event<T0> make_event(T0& x0);
+    inline event<> make_event();
+#endif
 
     inline bool has_waiting() const {
 	return waiting_;
     }
+
+    void clear();
 
     inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
 	e->initialize(this, 1);

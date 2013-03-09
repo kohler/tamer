@@ -1568,22 +1568,184 @@ inline event<> make_event(zero_argument_rendezvous_tag<R>& r)
 
 /** @} */
 
-/** @brief  Construct a two-ID, four-result event on rendezvous @a r.
- *  @param  r   Rendezvous.
- *  @param  i0  First event ID.
- *  @param  i1  Second event ID.
- *  @param  x0  First result.
- *  @param  x1  Second result.
- *  @param  x2  Third result.
- *  @param  x3  Fourth result.
- *
- *  @note Versions of this function exist for any combination of two, one,
- *  or zero event IDs and four, three, two, one, or zero results. For
- *  example, <code>make_event(r)</code> creates a zero-ID, zero-result event
- *  on <code>rendezvous<> r</code>, while <code>make_event(r, 1, i,
- *  j)</code> might create a one-ID, two-result event on
- *  <code>rendezvous<int> r</code>.
- */
+
+/** @cond never */
+template <typename I0, typename I1> template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> rendezvous<I0, I1>::make_event(const I0& i0, const I1& i1, T0& x0, T1& x1, T2& x2, T3& x3)
+{
+    return event<T0, T1, T2, T3>(*this, i0, i1, x0, x1, x2, x3);
+}
+
+template <typename I0> template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> rendezvous<I0>::make_event(const I0& i0, T0& x0, T1& x1, T2& x2, T3& x3)
+{
+    return event<T0, T1, T2, T3>(*this, i0, x0, x1, x2, x3);
+}
+
+template <typename I0> template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> simple_rendezvous<I0>::make_event(I0 i0, T0& x0, T1& x1, T2& x2, T3& x3)
+{
+    return event<T0, T1, T2, T3>(*this, i0, x0, x1, x2, x3);
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> rendezvous<>::make_event(T0& x0, T1& x1, T2& x2, T3& x3)
+{
+    return event<T0, T1, T2, T3>(*this, x0, x1, x2, x3);
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> gather_rendezvous::make_event(T0& x0, T1& x1, T2& x2, T3& x3)
+{
+    return event<T0, T1, T2, T3>(*this, x0, x1, x2, x3);
+}
+
+template <typename I0, typename I1> template <typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> rendezvous<I0, I1>::make_event(const I0& i0, const I1& i1, T0& x0, T1& x1, T2& x2)
+{
+    return event<T0, T1, T2>(*this, i0, i1, x0, x1, x2);
+}
+
+template <typename I0> template <typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> rendezvous<I0>::make_event(const I0& i0, T0& x0, T1& x1, T2& x2)
+{
+    return event<T0, T1, T2>(*this, i0, x0, x1, x2);
+}
+
+template <typename I0> template <typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> simple_rendezvous<I0>::make_event(I0 i0, T0& x0, T1& x1, T2& x2)
+{
+    return event<T0, T1, T2>(*this, i0, x0, x1, x2);
+}
+
+template <typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> rendezvous<>::make_event(T0& x0, T1& x1, T2& x2)
+{
+    return event<T0, T1, T2>(*this, x0, x1, x2);
+}
+
+template <typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> gather_rendezvous::make_event(T0& x0, T1& x1, T2& x2)
+{
+    return event<T0, T1, T2>(*this, x0, x1, x2);
+}
+
+template <typename I0, typename I1> template <typename T0, typename T1>
+inline event<T0, T1> rendezvous<I0, I1>::make_event(const I0& i0, const I1& i1, T0& x0, T1& x1)
+{
+    return event<T0, T1>(*this, i0, i1, x0, x1);
+}
+
+template <typename I0> template <typename T0, typename T1>
+inline event<T0, T1> rendezvous<I0>::make_event(const I0& i0, T0& x0, T1& x1)
+{
+    return event<T0, T1>(*this, i0, x0, x1);
+}
+
+template <typename I0> template <typename T0, typename T1>
+inline event<T0, T1> simple_rendezvous<I0>::make_event(I0 i0, T0& x0, T1& x1)
+{
+    return event<T0, T1>(*this, i0, x0, x1);
+}
+
+template <typename T0, typename T1>
+inline event<T0, T1> rendezvous<>::make_event(T0& x0, T1& x1)
+{
+    return event<T0, T1>(*this, x0, x1);
+}
+
+template <typename T0, typename T1>
+inline event<T0, T1> gather_rendezvous::make_event(T0& x0, T1& x1)
+{
+    return event<T0, T1>(*this, x0, x1);
+}
+
+template <typename I0, typename I1> template <typename T0>
+inline event<T0> rendezvous<I0, I1>::make_event(const I0& i0, const I1& i1, T0& x0)
+{
+    return event<T0>(*this, i0, i1, x0);
+}
+
+template <typename I0> template <typename T0>
+inline event<T0> rendezvous<I0>::make_event(const I0& i0, T0& x0)
+{
+    return event<T0>(*this, i0, x0);
+}
+
+template <typename I0> template <typename T0>
+inline event<T0> simple_rendezvous<I0>::make_event(I0 i0, T0& x0)
+{
+    return event<T0>(*this, i0, x0);
+}
+
+#if TAMER_HAVE_PREEVENT
+template <typename T0>
+inline preevent<rendezvous<>, T0> rendezvous<>::make_event(T0& x0)
+{
+    return preevent<rendezvous<>, T0>(*this, x0);
+}
+
+template <typename T0>
+inline preevent<gather_rendezvous, T0> gather_rendezvous::make_event(T0& x0)
+{
+    return preevent<gather_rendezvous, T0>(*this, x0);
+}
+#else
+template <typename T0>
+inline event<T0> rendezvous<>::make_event(T0& x0)
+{
+    return event<T0>(*this, x0);
+}
+
+template <typename T0>
+inline event<T0> gather_rendezvous::make_event(T0& x0)
+{
+    return event<T0>(*this, x0);
+}
+#endif
+
+template <typename I0, typename I1>
+inline event<> rendezvous<I0, I1>::make_event(const I0& i0, const I1& i1)
+{
+    return event<>(*this, i0, i1);
+}
+
+template <typename I0>
+inline event<> rendezvous<I0>::make_event(const I0& i0)
+{
+    return event<>(*this, i0);
+}
+
+template <typename I0>
+inline event<> simple_rendezvous<I0>::make_event(I0 i0)
+{
+    return event<>(*this, i0);
+}
+
+#if TAMER_HAVE_PREEVENT
+inline preevent<rendezvous<> > rendezvous<>::make_event()
+{
+    return preevent<rendezvous<> >(*this);
+}
+
+inline preevent<gather_rendezvous> gather_rendezvous::make_event()
+{
+    return preevent<gather_rendezvous>(*this);
+}
+#else
+inline event<> rendezvous<>::make_event()
+{
+    return event<>(*this);
+}
+
+inline event<> gather_rendezvous::make_event()
+{
+    return event<>(*this);
+}
+#endif
+/** @endcond never */
+
+
 template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, T0& x0, T1& x1, T2& x2, T3& x3)
 {
