@@ -236,7 +236,7 @@ inline event<T0> add_signal(int signo, event<T0> e) {
     return e;
 }
 
-#if HAVE_TAMER_PREEVENT
+#if TAMER_HAVE_PREEVENT
 template <typename R, typename T0>
 inline event<T0> add_signal(int signo, preevent<R, T0>&& pe) {
     return add_signal(signo, event<T0>(std::move(pe)));
@@ -261,7 +261,7 @@ inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, event
     return e;
 }
 
-#if HAVE_TAMER_PREEVENT
+#if TAMER_HAVE_PREEVENT
 template <typename R, typename T0, typename SigInputIterator>
 inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, preevent<R, T0>&& pe) {
     return add_signal(first, last, event<T0>(std::move(pe)));
