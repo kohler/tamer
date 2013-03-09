@@ -406,6 +406,9 @@ class gather_rendezvous : public tamerpriv::blocking_rendezvous,
 	return waiting_;
     }
 
+    inline bool join() {
+        return !waiting_;
+    }
     void clear();
 
     inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
