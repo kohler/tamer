@@ -484,6 +484,7 @@ class event<T0, void, void, void>
 
     inline bool has_result() const TAMER_NOEXCEPT;
     inline T0& result() const TAMER_NOEXCEPT;
+    inline T0* result_pointer() const TAMER_NOEXCEPT;
 
     inline void at_trigger(const event<>& e);
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
@@ -759,6 +760,9 @@ class preevent : public std::unary_function<const T0&, void> { public:
     inline T0& result() const TAMER_NOEXCEPT {
         assert(r_);
         return *s0_;
+    }
+    inline T0* result_pointer() const TAMER_NOEXCEPT {
+        return r_ ? s0_ : 0;
     }
 
   private:
@@ -1414,6 +1418,12 @@ template <typename T0>
 inline T0& event<T0>::result() const TAMER_NOEXCEPT {
     assert(has_result());
     return *_s0;
+}
+
+/** @brief  Return a pointer to event's result, if any. */
+template <typename T0>
+inline T0* event<T0>::result_pointer() const TAMER_NOEXCEPT {
+    return _e && *_e ? _s0 : 0;
 }
 
 
