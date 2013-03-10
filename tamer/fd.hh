@@ -23,6 +23,7 @@
 #include <sys/uio.h>
 #include <netinet/in.h>
 #include <vector>
+#include <string>
 namespace tamer {
 
 /** @file <tamer/fd.hh>
