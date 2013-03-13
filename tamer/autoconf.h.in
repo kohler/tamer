@@ -75,10 +75,10 @@
 #endif
 
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
-#define TAMER_MOVEARG(t) t &&
+#define TAMER_MOVEARG(t, ...) t, ## __VA_ARGS__ &&
 #define TAMER_MOVE(v) std::move(v)
 #else
-#define TAMER_MOVEARG(t) t
+#define TAMER_MOVEARG(t, ...) t, ## __VA_ARGS__
 #define TAMER_MOVE(v) v
 #endif
 
