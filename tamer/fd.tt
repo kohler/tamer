@@ -865,7 +865,7 @@ tamed void fd::connect(const struct sockaddr *addr, socklen_t addrlen,
 	    ret = -ECANCELED;
 	else if (getsockopt(fi->_fd, SOL_SOCKET, SO_ERROR, (void *) &x, &socklen) == -1)
 	    ret = -errno;
-	else if (ret > 0)
+	else if (x != 0)
 	    ret = -x;
     }
 
