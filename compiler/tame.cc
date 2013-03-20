@@ -88,10 +88,11 @@ main (int argc, char *argv[])
   str outfile;
   bool no_line_numbers = false;
   bool horiz_mode = true;
-  str ifn;
+  bool deps = false;
+  str ifn, depfile;
   bool c_mode (false), b_mode (false);
 
-  while ((ch = getopt (argc, argv, "bghnLvdo:c:O:")) != -1)
+  while ((ch = getopt (argc, argv, "bghnDLvdo:c:O:F:")) != -1)
     switch (ch) {
       case 'g':
 	tamer_debug = true;
@@ -117,6 +118,13 @@ main (int argc, char *argv[])
       break;
     case 'L':
       no_line_numbers = true;
+      break;
+    case 'D':
+      deps = true;
+      break;
+    case 'F':
+      deps = true;
+      depfile = optarg;
       break;
     case 'o':
       outfile = optarg;
@@ -179,6 +187,21 @@ main (int argc, char *argv[])
     filename = ifn;
 
     yyin = ifh;
+  }
+
+  if (deps) {
+      if (outfile.empty() || ifn.empty() || ifn == "-") {
+          warn << "-D requires -c or -o\n";
+          usage();
+      } else if (depfile.empty())
+          depfile = outfile + ".d";
+      FILE* f = fopen(depfile.c_str(), "w");
+      if (!f) {
+          warn << depfile << ": " << strerror(errno);
+          exit(1);
+      }
+      fprintf(f, "%s: %s\n\n%s:\n", outfile.c_str(), ifn.c_str(), ifn.c_str());
+      fclose(f);
   }
 
   state = new parse_state_t ();
