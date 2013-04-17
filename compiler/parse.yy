@@ -527,14 +527,14 @@ template_instantiation_list_opt: /* empty */   { $$ = lstr(""); }
 template_instantiation_list: template_instantiation_arg
 	| template_instantiation_list ',' template_instantiation_arg
 	{
-	  CONCAT($1.lineno(), $1 << " , " << $3.str(), $$);
+	  CONCAT($1.lineno(), $1 << ", " << $3.str(), $$);
 	}
 	;
 
-template_instantiation_arg: declaration_specifiers pointer_opt
-	{
+template_instantiation_arg: declaration_specifiers pointer_opt {
 	  CONCAT($1.lineno(), $1.to_str() << " " << $2.str(), $$);
 	}
+        | T_NUM			{ $$ = $1; }
 	;
 
 pointer_opt: /* empty */	{ $$ = lstr(get_yy_lineno(), ""); }
