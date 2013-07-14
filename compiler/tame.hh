@@ -94,6 +94,7 @@ public:
     const_iterator begin() const { return _s.begin(); }
     const_iterator end() const { return _s.end(); }
     std::string::size_type length() const { return _s.length(); }
+    bool empty() const { return _s.empty(); }
     void set_lineno (unsigned l) { _lineno = l; }
     unsigned lineno () const { return _lineno; }
   private:
@@ -101,10 +102,13 @@ public:
     unsigned _lineno;
 };
 
-inline strbuf &operator<<(strbuf &ostr, const lstr &l)
-{
+inline strbuf &operator<<(strbuf &ostr, const lstr &l) {
     ostr << l.str();
     return ostr;
+}
+
+inline std::ostream& operator<<(std::ostream& s, const lstr& l) {
+    return s << l.str();
 }
 
 
@@ -207,7 +211,7 @@ public:
 class element_list_t : public tame_el_t {
   public:
     virtual void output(outputter_t *o);
-    void passthrough (const lstr &l) ;
+    void passthrough(const lstr& l);
     void push(tame_el_t *e) {
 	if (_lst.empty() || _lst.back() != e) {
 	    push_hook(e);
@@ -246,15 +250,16 @@ private:
 class tame_passthrough_t : public tame_el_t {
   public:
     tame_passthrough_t(const lstr &s) { append (s); }
-    bool append(const lstr &s) {
-	_strs.push_back(s);
-	_buf << s;
+    bool append(const lstr& s) {
+	if (buf_.tellp() == 0)
+	    lineno_ = s.lineno();
+	buf_ << s;
 	return true;
     }
     void output(outputter_t *o);
   private:
-    strbuf _buf;
-    std::vector<lstr> _strs;
+    strbuf buf_;
+    int lineno_;
 };
 
 class type_t {

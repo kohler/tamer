@@ -672,10 +672,9 @@ element_list_t::need_implicit_rendezvous() const
 void
 tame_passthrough_t::output(outputter_t *o)
 {
-    if (_strs.size()) {
-	int ln = _strs[0].lineno();
-	output_mode_t old = o->switch_to_mode (OUTPUT_PASSTHROUGH, ln);
-	o->output_str(_buf.str());
+    if (buf_.tellp() != 0) {
+	output_mode_t old = o->switch_to_mode (OUTPUT_PASSTHROUGH, lineno_);
+	o->output_str(buf_.str());
 	o->switch_to_mode(old);
     }
 }
