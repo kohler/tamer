@@ -50,7 +50,7 @@ SYM	[{}<>;,():*\[\]]
 DNUM 	[+-]?[0-9]+
 XNUM 	[+-]?0x[0-9a-fA-F]
 
-%x FULL_PARSE FN_ENTER VARS_ENTER 
+%x FULL_PARSE FN_ENTER VARS_ENTER
 %x TAME_BASE C_COMMENT CXX_COMMENT TAME
 %x ID_OR_NUM NUM_ONLY HALF_PARSE PP PP_BASE PP_EQUALS BB
 %x JOIN_LIST JOIN_LIST_BASE
@@ -169,7 +169,7 @@ template	{ yy_push_state (TEMPLATE_ENTER); return T_TEMPLATE; }
 }
 
 <PP_BASE>{
-[)\]]		{ yy_pop_state(); return yytext[0]; } 
+[)\]]		{ yy_pop_state(); return yytext[0]; }
 [;]		{ yy_pop_state(); return yytext[0]; }
 }
 
@@ -263,7 +263,7 @@ volatile	{ return T_VOLATILE; }
 }
 
 <EXPR_LIST_BR_BASE,EXPR_LIST_BR>{
-\[		   { yy_push_state (EXPR_LIST_BR); 
+\[		   { yy_push_state (EXPR_LIST_BR);
 	             return std_ret (T_PASSTHROUGH); }
 [^,\[\]/\n]+|"/"   { return std_ret (T_PASSTHROUGH); }
 \n		   { ++lineno; return std_ret (T_PASSTHROUGH); }
@@ -293,7 +293,7 @@ volatile	{ return T_VOLATILE; }
 <TWAIT_BODY_BASE,TWAIT_BODY>{
 \n			{ ++lineno; return std_ret (T_PASSTHROUGH); }
 [^ "gr\t{}\n/]+|[ \tgr/]	{ return std_ret (T_PASSTHROUGH); }
-[{]			{ yy_push_state (TWAIT_BODY); 
+[{]			{ yy_push_state (TWAIT_BODY);
 			  return std_ret (T_PASSTHROUGH); }
 goto/[ \t\n]		{ return yyerror ("cannot goto within twait{..}"); }
 return/[ \t\n(;]	{ return yyerror ("cannot return withint twait{..}"); }
@@ -314,7 +314,7 @@ return/[ \t\n(;]	{ return yyerror ("cannot return withint twait{..}"); }
 
 [^ \t{}"\n/trD_]+|[ \t/trD_] { yylval.str = lstr(lineno, yytext); return T_PASSTHROUGH; }
 
-[{]		{ yylval.str = lstr(lineno, yytext); yy_push_state (TAME); 
+[{]		{ yylval.str = lstr(lineno, yytext); yy_push_state (TAME);
 		  return T_PASSTHROUGH; }
 
 tvars/[ \t\n{/]	    { return tame_ret(VARS_ENTER, T_TVARS); }
@@ -448,8 +448,8 @@ get_yy_loc ()
 int
 lineno_return ()
 {
-   strbuf b; 
-   b << lineno; 
+   strbuf b;
+   b << lineno;
    yylval.str = lstr (lineno, b.str());
    return T_PASSTHROUGH;
 }
@@ -457,10 +457,10 @@ lineno_return ()
 int
 filename_return ()
 {
-  strbuf b; 
+  strbuf b;
   b << "\"" << filename << "\"";
   yylval.str = lstr (lineno, b.str());
-  return T_PASSTHROUGH; 
+  return T_PASSTHROUGH;
 }
 
 int
@@ -469,5 +469,5 @@ loc_return ()
    strbuf b;
    b << "\"" << filename << ":" << lineno << "\"";
    yylval.str = lstr (lineno, b.str());
-   return T_PASSTHROUGH; 
+   return T_PASSTHROUGH;
 }

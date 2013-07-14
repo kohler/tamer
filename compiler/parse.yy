@@ -74,19 +74,19 @@ int vars_lineno;
 %type <typ_mod> type_specifier basic_type_specifier basic_type_specifier_list
 %type <initializer> cpp_initializer_opt
 
-%type <decl> init_declarator declarator direct_declarator 
+%type <decl> init_declarator declarator direct_declarator
 %type <decl> declarator_cpp direct_declarator_cpp
 
 
 %type <vars> parameter_type_list_opt parameter_type_list parameter_list
-%type <exprs> join_list id_list_opt id_list 
+%type <exprs> join_list id_list_opt id_list
 
 %type <opt>  const_opt volatile_opt
 %type <fn>   fn_declaration tame_decl
 
 %type <var>  parameter_declaration
 
-%type <el>   fn_tame vars return_statement twait 
+%type <el>   fn_tame vars return_statement twait
 %type <el>   block_body twait_body wait_body
 %type <el>   default_return
 
@@ -100,7 +100,7 @@ file:   /* empty */
 	| file fn_or_twait
 	;
 
-fn_or_twait: fn	
+fn_or_twait: fn
 	| twait				{ state->new_el ($1); }
 	;
 
@@ -109,7 +109,7 @@ passthrough: T_PASSTHROUGH		{ $$ = $1; }
 	;
 
 passthroughs: /* empty */	    { $$ = lstr(get_yy_lineno(), ""); }
-	| passthroughs passthrough 
+	| passthroughs passthrough
 	{
 	   strbuf b;
 	   b << $1 << $2;
@@ -132,7 +132,7 @@ fn:	tame_decl '{'
 	    yyerror ("Function has non-void return type but no "
 	    	     "DEFAULT_RETURN specified");
  	  }
-	  state->push (new tame_fn_return_t (get_yy_lineno (), 
+	  state->push (new tame_fn_return_t (get_yy_lineno (),
 				            state->function ()));
 	  state->passthrough (lstr (get_yy_lineno (), "}"));
 	  state->pop_list ();
@@ -158,7 +158,7 @@ fn_specifiers: /* empty */		{ $$ = fn_specifier_t(); }
 /* declaration_specifiers is no longer optional ?! */
 fn_declaration: fn_specifiers declaration_specifiers declarator const_opt
 	{
-	   $$ = new tame_fn_t($1, $2.to_str(), $3, $4, get_yy_lineno(), 
+	   $$ = new tame_fn_t($1, $2.to_str(), $3, $4, get_yy_lineno(),
 			      get_yy_loc());
 	}
 	;
@@ -171,7 +171,7 @@ volatile_opt: /* empty */	{ $$ = false; }
 	| T_VOLATILE		{ $$ = true; }
 	;
 
-fn_statements: passthroughs			
+fn_statements: passthroughs
 	{
 	  state->passthrough ($1);
 	}
@@ -191,7 +191,7 @@ fn_tame: vars
 default_return: T_DEFAULT_RETURN '{' passthroughs '}'
 	{
 	  // this thing will not be output anywhere near where
-	  // it's being input, so don't associate it in the 
+	  // it's being input, so don't associate it in the
 	  // element list as usual.
 	  if (!state->function ()->set_default_return($3.str())) {
 	    yyerror ("DEFAULT_RETURN specified more than once");
@@ -206,7 +206,7 @@ vars:	T_TVARS '{' { vars_lineno = get_yy_lineno (); }
 	  tame_vars_t *v = new tame_vars_t(state->function(), vars_lineno);
 	  if (state->function()->get_vars()) {
 	    strbuf b;
-	    b << "tvars{} section specified twice (before on line " 
+	    b << "tvars{} section specified twice (before on line "
 	      << state->function()->get_vars()->lineno () << ")\n";
 	    yyerror(b.str());
 	  }
@@ -220,8 +220,8 @@ vars:	T_TVARS '{' { vars_lineno = get_yy_lineno (); }
 
 return_statement: T_RETURN passthroughs ';'
 	{
-	   tame_ret_t *r = new tame_ret_t (get_yy_lineno (), 
-			  	    state->function ());	
+	   tame_ret_t *r = new tame_ret_t (get_yy_lineno (),
+                                    state->function ());
 	   if ($2.length())
 	     r->add_params ($2);
  	   r->passthrough (lstr (get_yy_lineno (), ";"));
@@ -229,7 +229,7 @@ return_statement: T_RETURN passthroughs ';'
 	}
 	;
 
-block_body: volatile_opt '{' 
+block_body: volatile_opt '{'
 	{
 	  tame_fn_t *fn = state->function ();
 	  tame_block_t *bb;
@@ -330,7 +330,7 @@ parameter_type_list_opt: /* empty */ { $$ = NULL; }
 parameter_type_list: parameter_list
 	;
 
-parameter_list: parameter_declaration 
+parameter_list: parameter_declaration
 	{
 	  $$ = new vartab_t ($1);
 	}
@@ -395,7 +395,7 @@ init_declarator: declarator_cpp cpp_initializer_opt
 
 declarator: pointer_opt direct_declarator
 	{
-	  if ($1.length() > 0) 
+	  if ($1.length() > 0)
 	    $2->set_pointer($1.str());
   	  $$ = $2;
 	}
@@ -409,7 +409,7 @@ arrays_opt: /* empty */			{ $$ = lstr(get_yy_lineno(), ""); }
 
 declarator_cpp: pointer_opt direct_declarator_cpp
 	{
-	  if ($1.length() > 0) 
+	  if ($1.length() > 0)
 	    $2->set_pointer($1.str());
   	  $$ = $2;
 	}
@@ -425,7 +425,7 @@ cpp_initializer_opt: /* empty */  { $$ = new initializer_t(); }
 direct_declarator_cpp: identifier	{ $$ = new declarator_t($1.str()); }
 	;
 
-/* 
+/*
  * use "typedef_name" instead of identifier for C++-style names
  *
  * simplified to not be recursive...
@@ -452,7 +452,7 @@ declaration_specifiers: type_qualifier_list type_specifier {
 	   $$ = $1.concat($2);
 	}
 	;
-	
+
 
 /* missing: struct and enum rules:
  *	| struct_or_union_specifier
@@ -494,7 +494,7 @@ type_qualifier_list: /* empty */             { $$ = type_qualifier_t(lstr()); }
 	;
 
 /*
- * foo<int, char *>::bar_t::my_class<int> -> 
+ * foo<int, char *>::bar_t::my_class<int> ->
  *   foo<> bar_t my_class<>
  */
 typedef_name:  typedef_name_single
@@ -511,7 +511,7 @@ typedef_name_single: identifier template_instantiation_opt
 	;
 
 template_instantiation_opt: /* empty */ 	{ $$ = lstr(""); }
-	| template_instantiation	
+	| template_instantiation
 	;
 
 template_instantiation: '<' template_instantiation_list_opt '>'
