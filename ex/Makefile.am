@@ -31,7 +31,7 @@ tamer_echosrv_LDADD = ../tamer/libtamer.la $(DRIVER_LIBS) $(MALLOC_LIBS)
 DRIVER_LIBS = @DRIVER_LIBS@
 MALLOC_LIBS = @MALLOC_LIBS@
 
-INCLUDES = -I$(top_srcdir) -I$(top_builddir)
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_builddir)
 
 TAMER = ../compiler/tamer
 .tt.cc: $(TAMER)

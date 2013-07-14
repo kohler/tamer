@@ -12,6 +12,7 @@
 #endif
 #include <sys/stat.h>
 #include <signal.h>
+#include "fdhmsg.cc"
 
 void terminate(int);
 int query_count = 0;

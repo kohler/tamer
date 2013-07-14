@@ -26,7 +26,7 @@ TAMED_CXXFILES = t02.cc t03.cc t04.cc t05.cc t06.cc t07.cc t08.cc
 DRIVER_LIBS = @DRIVER_LIBS@
 MALLOC_LIBS = @MALLOC_LIBS@
 
-INCLUDES = -I$(top_srcdir) -I$(top_builddir)
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_builddir)
 DEFS = -DTAMER_DEBUG
 
 TAMER = ../compiler/tamer

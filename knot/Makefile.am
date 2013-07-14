@@ -13,7 +13,7 @@ http.cc: $(srcdir)/http.tt $(TAMER)
 input.cc: $(srcdir)/input.tt $(TAMER)
 knot.cc: $(srcdir)/knot.tt $(TAMER)
 
-INCLUDES = -I$(top_srcdir) -I$(top_builddir)
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_builddir)
 
 clean-local:
 	-rm -f cache2.cc http.cc input.cc knot.cc

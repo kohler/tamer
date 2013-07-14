@@ -48,5 +48,3 @@ int fdh_recv(int fd, int * fd_to_recv, char * buf, size_t len) {
   
   return r;
 }
-
-

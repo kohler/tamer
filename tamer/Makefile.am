@@ -47,13 +47,12 @@ libtamer_la_LIBADD = \
 bin_PROGRAMS = $(TAMER_FDHELPER_PROGRAM)
 EXTRA_PROGRAMS = tamerfdh
 
-tamerfdh_SOURCES = fdhelp.cc fdhmsg.hh fdhmsg.cc
-tamerfdh_CPPFLAGS = $(AM_CPPFLAGS)
+tamerfdh_SOURCES = fdhelp.cc
 
 EXTRA_DIST = autoconf.h.in \
 	tamer.pc.in
 
-INCLUDES = -I$(top_srcdir) -I$(top_builddir)
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_builddir)
 TAMER = ../compiler/tamer
 
 .tt.cc:
