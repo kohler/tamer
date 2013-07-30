@@ -47,12 +47,17 @@ class driver_tamer : public driver { public:
     union xfd_set {
 	fd_set fds;
 	char s[1];
+        uint32_t u[1];
+    };
+
+    enum {
+        fdreadnow = fdread + 2, fdwritenow = fdwrite + 2
     };
 
     tamerpriv::driver_fdset<fdp> fds_;
     int fdbound_;
     xfd_set *_fdset[4];
-    int _fdset_cap;
+    int fdset_fdcap_;
 
     tamerpriv::driver_timerset timers_;
 
@@ -60,16 +65,19 @@ class driver_tamer : public driver { public:
 
     static void fd_disinterest(void *driver, int fd);
     void update_fds();
+    int find_bad_fds();
 };
 
 
 driver_tamer::driver_tamer()
-    : fdbound_(0), _fdset_cap(sizeof(xfd_set) * 8) {
-    assert(FD_SETSIZE <= _fdset_cap);
+    : fdbound_(0), fdset_fdcap_(sizeof(xfd_set) * 8) {
+    fdset_fdcap_ = (fdset_fdcap_ + 31) & ~31; // make multiple of 4 bytes
+    assert(FD_SETSIZE <= fdset_fdcap_);
+    assert((fdset_fdcap_ % 32) == 0);
     for (int i = 0; i < 4; ++i) {
-	_fdset[i] = reinterpret_cast<xfd_set *>(new char[_fdset_cap / 8]);
-	if (i < 2)
-	    memset(_fdset[i], 0, _fdset_cap / 8);
+	_fdset[i] = reinterpret_cast<xfd_set *>(new char[fdset_fdcap_ / 8]);
+	if (i < fdreadnow)
+	    memset(_fdset[i], 0, fdset_fdcap_ / 8);
     }
 }
 
@@ -111,20 +119,20 @@ void driver_tamer::update_fds() {
     int fd;
     while ((fd = fds_.pop_change()) >= 0) {
 	tamerpriv::driver_fd<fdp> &x = fds_[fd];
-	if (fd >= _fdset_cap) {
-	    int ncap = _fdset_cap * 2;
+	if (fd >= fdset_fdcap_) {
+	    int ncap = fdset_fdcap_ * 2;
 	    while (ncap < fd)
 		ncap *= 2;
 	    for (int acti = 0; acti < 4; ++acti) {
 		xfd_set *x = reinterpret_cast<xfd_set *>(new char[ncap / 8]);
 		if (acti < 2) {
-		    memcpy(x, _fdset[acti], _fdset_cap / 8);
-		    memset(x->s + _fdset_cap / 8, 0, (ncap - _fdset_cap) / 8);
+		    memcpy(x, _fdset[acti], fdset_fdcap_ / 8);
+		    memset(&x->s[fdset_fdcap_ / 8], 0, (ncap - fdset_fdcap_) / 8);
 		}
 		delete[] reinterpret_cast<char *>(_fdset[acti]);
 		_fdset[acti] = x;
 	    }
-	    _fdset_cap = ncap;
+	    fdset_fdcap_ = ncap;
 	}
 	for (int action = 0; action < 2; ++action)
 	    if (x.e[action])
@@ -183,14 +191,17 @@ void driver_tamer::loop(loop_flags flags)
     if (sig_pipe[0] > nfds)
 	nfds = sig_pipe[0] + 1;
     if (nfds > 0) {
-	memcpy(_fdset[fdread + 2], _fdset[fdread], ((nfds + 63) & ~63) >> 3);
-	memcpy(_fdset[fdwrite + 2], _fdset[fdwrite], ((nfds + 63) & ~63) >> 3);
+	memcpy(_fdset[fdreadnow], _fdset[fdread], ((nfds + 63) & ~63) >> 3);
+	memcpy(_fdset[fdwritenow], _fdset[fdwrite], ((nfds + 63) & ~63) >> 3);
 	if (sig_pipe[0] >= 0)
-	    FD_SET(sig_pipe[0], &_fdset[fdread + 2]->fds);
+	    FD_SET(sig_pipe[0], &_fdset[fdreadnow]->fds);
     }
-    if (nfds > 0 || !toptr || to.tv_sec != 0 || to.tv_usec != 0)
-	nfds = select(nfds, &_fdset[fdread + 2]->fds,
-		      &_fdset[fdwrite + 2]->fds, 0, toptr);
+    if (nfds > 0 || !toptr || to.tv_sec != 0 || to.tv_usec != 0) {
+	nfds = select(nfds, &_fdset[fdreadnow]->fds,
+		      &_fdset[fdwritenow]->fds, 0, toptr);
+         if (nfds == -1 && errno == EBADF)
+             nfds = find_bad_fds();
+    }
     set_now();
 
     // run signals
@@ -206,7 +217,7 @@ void driver_tamer::loop(loop_flags flags)
 	for (int fd = 0; fd < fdbound_; ++fd) {
 	    tamerpriv::driver_fd<fdp> &x = fds_[fd];
 	    for (int action = 0; action < 2; ++action)
-		if (FD_ISSET(fd, &_fdset[2 + action]->fds) && x.e[action])
+		if (FD_ISSET(fd, &_fdset[action + 2]->fds) && x.e[action])
 		    x.e[action].trigger(0);
 	}
     }
@@ -222,6 +233,44 @@ void driver_tamer::loop(loop_flags flags)
     // check flags
     if (flags == loop_forever)
 	goto again;
+}
+
+int driver_tamer::find_bad_fds() {
+    // first, combine all file descriptors from read & write
+    memcpy(_fdset[fdreadnow], _fdset[fdread], (fdbound_ + 31) & ~31);
+    for (int i = 0; i < fdbound_ / 32; ++i)
+        _fdset[fdreadnow]->u[i] |= _fdset[fdwrite]->u[i];
+    // use binary search to find a bad file descriptor
+    int l = 0, r = (fdbound_ + 7) & ~7;
+    while (r - l > 1) {
+        int m = l + ((r - l) >> 1);
+        memset(_fdset[fdwritenow], 0, l);
+        memcpy(&_fdset[fdwritenow]->s[l], &_fdset[fdreadnow]->s[l], m - l);
+        struct timeval tv = {0, 0};
+        int nfds = select(m << 3, &_fdset[fdwritenow]->fds, 0, 0, &tv);
+        if (nfds == -1 && errno == EBADF)
+            r = m;
+        else if (nfds != -1)
+            l = m;
+    }
+    // down to <= 8 file descriptors; test them one by one
+    // clear result sets
+    memset(_fdset[fdreadnow], 0, ((fdbound_ + 63) & ~63) >> 3);
+    memset(_fdset[fdwritenow], 0, ((fdbound_ + 63) & ~63) >> 3);
+    // set up result sets
+    int nfds = 0;
+    for (int f = l * 8; f != r * 8; ++f) {
+        int fr = FD_ISSET(f, &_fdset[fdread]->fds);
+        int fw = FD_ISSET(f, &_fdset[fdwrite]->fds);
+        if ((fr || fw) && fcntl(f, F_GETFL) == -1 && errno == EBADF) {
+            if (fr)
+                FD_SET(f, &_fdset[fdreadnow]->fds);
+            if (fw)
+                FD_SET(f, &_fdset[fdwritenow]->fds);
+            ++nfds;
+        }
+    }
+    return nfds;
 }
 
 } // namespace
