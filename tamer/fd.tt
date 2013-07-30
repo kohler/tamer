@@ -889,13 +889,12 @@ int fd::fdimp::close(int leave_error) {
 	if (x == -1) {
 	    x = -errno;
 	    if (_fd == -EBADF)
-		_fd = -errno;
+		_fd = x;
 	}
 	driver::main->kill_fd(my_fd);
 	_at_close.trigger();
-	return x;
-    } else
-	return -EBADF;
+    }
+    return _fd;
 }
 
 
