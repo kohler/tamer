@@ -33,6 +33,7 @@ str filename = "(stdin)";
 int lineno = 1;
 static void switch_to_state (int i);
 static int std_ret (int i);
+static int passthrough_newline();
 static int tame_ret (int s, int t);
 int get_yy_lineno () { return lineno ;}
 str get_yy_loc ();
@@ -133,7 +134,7 @@ template	{ yy_push_state (TEMPLATE_ENTER); return T_TEMPLATE; }
 }
 
 <TEMPLATE_BASE,TEMPLATE>{
-\n		{ ++lineno; return std_ret (T_PASSTHROUGH); }
+\n		{ return passthrough_newline(); }
 [<]		{ yy_push_state (TEMPLATE); return std_ret (T_PASSTHROUGH); }
 [^<>\n]+	{ return std_ret (T_PASSTHROUGH); }
 }
@@ -248,7 +249,7 @@ volatile	{ return T_VOLATILE; }
 }
 
 <DEFRET_BASE,DEFRET>{
-\n		{ ++lineno; return std_ret (T_PASSTHROUGH); }
+\n		{ return passthrough_newline(); }
 [^{}\n]+	{ return std_ret (T_PASSTHROUGH); }
 }
 
@@ -266,7 +267,7 @@ volatile	{ return T_VOLATILE; }
 \[		   { yy_push_state (EXPR_LIST_BR);
 	             return std_ret (T_PASSTHROUGH); }
 [^,\[\]/\n]+|"/"   { return std_ret (T_PASSTHROUGH); }
-\n		   { ++lineno; return std_ret (T_PASSTHROUGH); }
+\n		   { return passthrough_newline(); }
 }
 
 <ID_LIST>{
@@ -291,7 +292,7 @@ volatile	{ return T_VOLATILE; }
 }
 
 <TWAIT_BODY_BASE,TWAIT_BODY>{
-\n			{ ++lineno; return std_ret (T_PASSTHROUGH); }
+\n			{ return passthrough_newline(); }
 [^ "gr\t{}\n/]+|[ \tgr/]	{ return std_ret (T_PASSTHROUGH); }
 [{]			{ yy_push_state (TWAIT_BODY);
 			  return std_ret (T_PASSTHROUGH); }
@@ -310,7 +311,7 @@ return/[ \t\n(;]	{ return yyerror ("cannot return withint twait{..}"); }
 }
 
 <TAME,TAME_BASE>{
-\n		{ yylval.str = lstr(lineno, yytext); ++lineno; return T_PASSTHROUGH; }
+\n		{ return passthrough_newline(); }
 
 [^ \t{}"\n/trD_]+|[ \t/trD_] { yylval.str = lstr(lineno, yytext); return T_PASSTHROUGH; }
 
@@ -353,7 +354,7 @@ twait/[ \t\n({/]           { return tame_ret (TWAIT_ENTER, T_TWAIT); }
 <INITIAL>{
 tamed/[ \t\n/]   { return tame_ret(SIG_PARSE, T_TAMED); }
 [^t\n"/]+|[t/]   { yylval.str = lstr(lineno, yytext); return T_PASSTHROUGH ; }
-\n		 { ++lineno; yylval.str = lstr(lineno, yytext); return T_PASSTHROUGH; }
+\n		 { return passthrough_newline(); }
 \"		 { yy_push_state (QUOTE); return std_ret (T_PASSTHROUGH); }
 }
 
@@ -365,7 +366,7 @@ TAME_ON		{ tame_on = 1; return std_ret(T_COMMENT); }
 }
 
 <RETURN_PARAMS>{
-\n			{ ++lineno; return std_ret (T_PASSTHROUGH); }
+\n			{ return passthrough_newline(); }
 ;			{ yy_pop_state (); return yytext[0]; }
 [^\n;/]+|[/]		{ return std_ret (T_PASSTHROUGH); }
 }
@@ -403,6 +404,7 @@ yyerror (str msg)
     outputter->fail_exit();
   else
     exit(1);
+  return 0;
 }
 
 int
@@ -417,6 +419,14 @@ std_ret (int i)
 {
   yylval.str = lstr(lineno, yytext);
   return i;
+}
+
+int
+passthrough_newline()
+{
+  yylval.str = lstr(lineno, yytext);
+  ++lineno;
+  return T_PASSTHROUGH;
 }
 
 void

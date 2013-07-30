@@ -886,7 +886,6 @@ tame_fn_t::output_fn(outputter_t *o)
 
     element_list_t::output(o);
 
-    o->output_str("\n");
     o->switch_to_mode (om);
 }
 
