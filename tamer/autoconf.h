@@ -105,4 +105,10 @@
 #define TAMER_MAKE_FN_ANNOTATED_EVENT make_event
 #endif
 
+#if TAMER_DEBUG
+#define TAMER_DEBUG_ASSERT(x) assert(x)
+#else
+#define TAMER_DEBUG_ASSERT(x)
+#endif
+
 #endif

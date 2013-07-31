@@ -152,20 +152,8 @@ class event {
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     inline event() TAMER_NOEXCEPT;
-    template <typename R, typename I0, typename I1>
-    inline event(R& r, const I0& i0, const I1& i1,
-		 T0& x0, T1& x1, T2& x2, T3& x3);
-    template <typename R, typename I0, typename I1>
-    inline event(R& r, const I0& i0, const I1& i1,
-		 value_pack<T0, T1, T2, T3>& x);
-    template <typename R, typename I0>
-    inline event(R& r, const I0& i0, T0& x0, T1& x1, T2& x2, T3& x3);
-    template <typename R, typename I0>
-    inline event(R& r, const I0& i0, value_pack<T0, T1, T2, T3>& x);
-    template <typename R>
-    inline event(R& r, T0& x0, T1& x1, T2& x2, T3& x3);
-    template <typename R>
-    inline event(R& r, value_pack<T0, T1, T2, T3>& x);
+    inline event(T0& x0, T1& x1, T2& x2, T3& x3) TAMER_NOEXCEPT;
+    inline event(value_pack<T0, T1, T2, T3>& x) TAMER_NOEXCEPT;
     inline event(const event<T0, T1, T2, T3>& x) TAMER_NOEXCEPT;
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
     inline event(event<T0, T1, T2, T3>&& x) TAMER_NOEXCEPT;
@@ -195,6 +183,7 @@ class event {
     inline event<T0, T1, T2, T3>& operator=(event<T0, T1, T2, T3>&& x) TAMER_NOEXCEPT;
 #endif
 
+    inline event<T0, T1, T2, T3>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid);
     inline tamerpriv::simple_event* __get_simple() const;
 
   private:
@@ -226,18 +215,8 @@ class event<T0, T1, T2, void> { public:
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     inline event() TAMER_NOEXCEPT;
-    template <typename R, typename I0, typename I1>
-    inline event(R& r, const I0& i0, const I1& i1, T0& x0, T1& x1, T2& x2);
-    template <typename R, typename I0, typename I1>
-    inline event(R& r, const I0& i0, const I1& i1, value_pack<T0, T1, T2>& x);
-    template <typename R, typename I0>
-    inline event(R& r, const I0& i0, T0& x0, T1& x1, T2& x2);
-    template <typename R, typename I0>
-    inline event(R& r, const I0& i0, value_pack<T0, T1, T2>& x);
-    template <typename R>
-    inline event(R& r, T0& x0, T1& x1, T2& x2);
-    template <typename R>
-    inline event(R& r, value_pack<T0, T1, T2>& x);
+    inline event(T0& x0, T1& x1, T2& x2) TAMER_NOEXCEPT;
+    inline event(value_pack<T0, T1, T2>& x) TAMER_NOEXCEPT;
 
     event(const event<T0, T1, T2>& x) TAMER_NOEXCEPT
 	: se_(x.se_), _s0(x._s0), _s1(x._s1), _s2(x._s2) {
@@ -303,6 +282,11 @@ class event<T0, T1, T2, void> { public:
     }
 #endif
 
+    event<T0, T1, T2>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid) {
+        TAMER_DEBUG_ASSERT(!se_);
+        se_ = new tamerpriv::simple_event(r, rid);
+        return *this;
+    }
     tamerpriv::simple_event* __get_simple() const {
 	return se_;
     }
@@ -324,18 +308,8 @@ class event<T0, T1, void, void>
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     inline event() TAMER_NOEXCEPT;
-    template <typename R, typename I0, typename I1>
-    inline event(R& r, const I0& i0, const I1& i1, T0& x0, T1& x1);
-    template <typename R, typename I0, typename I1>
-    inline event(R& r, const I0& i0, const I1& i1, value_pack<T0, T1>& x);
-    template <typename R, typename I0>
-    inline event(R& r, const I0& i0, T0& x0, T1& x1);
-    template <typename R, typename I0>
-    inline event(R& r, const I0& i0, value_pack<T0, T1>& x);
-    template <typename R>
-    inline event(R& r, T0& x0, T1& x1);
-    template <typename R>
-    inline event(R& r, value_pack<T0, T1>& x);
+    inline event(T0& x0, T1& x1) TAMER_NOEXCEPT;
+    inline event(value_pack<T0, T1>& x) TAMER_NOEXCEPT;
 
     event(const event<T0, T1>& x) TAMER_NOEXCEPT
 	: se_(x.se_), _s0(x._s0), _s1(x._s1) {
@@ -399,6 +373,11 @@ class event<T0, T1, void, void>
     }
 #endif
 
+    event<T0, T1>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid) {
+        TAMER_DEBUG_ASSERT(!se_);
+        se_ = new tamerpriv::simple_event(r, rid);
+        return *this;
+    }
     tamerpriv::simple_event* __get_simple() const {
 	return se_;
     }
@@ -419,18 +398,8 @@ class event<T0, void, void, void>
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     inline event() TAMER_NOEXCEPT;
-    template <typename R, typename I0, typename I1>
-    inline event(R& r, const I0& i0, const I1& i1, T0& x0);
-    template <typename R, typename I0, typename I1>
-    inline event(R& r, const I0& i0, const I1& i1, value_pack<T0>& x);
-    template <typename R, typename I0>
-    inline event(R& r, const I0& i0, T0& x0);
-    template <typename R, typename I0>
-    inline event(R& r, const I0& i0, value_pack<T0>& x);
-    template <typename R>
-    inline event(R& r, T0& x0);
-    template <typename R>
-    inline event(R& r, value_pack<T0>& x);
+    inline event(T0& x0) TAMER_NOEXCEPT;
+    inline event(value_pack<T0>& x) TAMER_NOEXCEPT;
 
     inline event(event<> e, const no_result& marker) TAMER_NOEXCEPT;
 
@@ -518,6 +487,11 @@ class event<T0, void, void, void>
     }
 #endif
 
+    event<T0>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid) {
+        TAMER_DEBUG_ASSERT(!se_);
+        se_ = new tamerpriv::simple_event(r, rid);
+        return *this;
+    }
     tamerpriv::simple_event* __get_simple() const {
 	return se_;
     }
@@ -553,18 +527,7 @@ class event<void, void, void, void> { public:
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     inline event() TAMER_NOEXCEPT;
-    template <typename R, typename I0, typename I1>
-    inline event(R& r, const I0& i0, const I1& i1);
-    template <typename R, typename I0, typename I1>
-    inline event(R& r, const I0& i0, const I1& i1, value_pack<>& x);
-    template <typename R, typename I0>
-    inline event(R& r, const I0& i0);
-    template <typename R, typename I0>
-    inline event(R& r, const I0& i0, value_pack<>& x);
-    template <typename R>
-    inline event(R& r);
-    template <typename R>
-    inline event(R& r, value_pack<>& x);
+    inline event(value_pack<>& x) TAMER_NOEXCEPT;
 
     event(const event<>& x) TAMER_NOEXCEPT
         : se_(x.se_) {
@@ -652,6 +615,11 @@ class event<void, void, void, void> { public:
     }
 #endif
 
+    event<>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid) {
+        TAMER_DEBUG_ASSERT(!se_);
+        se_ = new tamerpriv::simple_event(r, rid);
+        return *this;
+    }
     tamerpriv::simple_event* __get_simple() const {
 	return se_;
     }
@@ -842,51 +810,26 @@ inline event<T0, T1, T2, T3>::event() TAMER_NOEXCEPT
     : se_(0), _s0(0), _s1(0), _s2(0), _s3(0) {
 }
 
-/** @brief  Construct a two-ID, four-result event on rendezvous @a r.
- *  @param  r   Rendezvous.
- *  @param  i0  First event ID.
- *  @param  i1  Second event ID.
+/** @brief  Construct an empty four-result event on rendezvous @a r.
  *  @param  x0  First result.
  *  @param  x1  Second result.
  *  @param  x2  Third result.
  *  @param  x3  Fourth result.
  */
 template <typename T0, typename T1, typename T2, typename T3>
-template <typename R, typename I0, typename I1>
-inline event<T0, T1, T2, T3>::event(R& r, const I0& i0, const I1& i1,
-				    T0& x0, T1& x1, T2& x2, T3& x3)
-    : se_(new tamerpriv::simple_event(r, i0, i1)),
-      _s0(&x0), _s1(&x1), _s2(&x2), _s3(&x3) {
+inline event<T0, T1, T2, T3>::event(T0& x0, T1& x1, T2& x2, T3& x3) TAMER_NOEXCEPT
+    : se_(0), _s0(&x0), _s1(&x1), _s2(&x2), _s3(&x3) {
 }
 
-/** @brief  Construct a one-ID, four-result event on rendezvous @a r.
- *  @param  r   Rendezvous.
- *  @param  i0  First event ID.
+/** @brief  Construct an empty four-result event on rendezvous @a r.
  *  @param  x0  First result.
  *  @param  x1  Second result.
  *  @param  x2  Third result.
  *  @param  x3  Fourth result.
  */
 template <typename T0, typename T1, typename T2, typename T3>
-template <typename R, typename I0>
-inline event<T0, T1, T2, T3>::event(R& r, const I0& i0,
-				    T0& x0, T1& x1, T2& x2, T3& x3)
-    : se_(new tamerpriv::simple_event(r, i0)),
-      _s0(&x0), _s1(&x1), _s2(&x2), _s3(&x3) {
-}
-
-/** @brief  Construct a no-ID, four-result event on rendezvous @a r.
- *  @param  r   Rendezvous.
- *  @param  x0  First result.
- *  @param  x1  Second result.
- *  @param  x2  Third result.
- *  @param  x3  Fourth result.
- */
-template <typename T0, typename T1, typename T2, typename T3>
-template <typename R>
-inline event<T0, T1, T2, T3>::event(R& r, T0& x0, T1& x1, T2& x2, T3& x3)
-    : se_(new tamerpriv::simple_event(r)),
-      _s0(&x0), _s1(&x1), _s2(&x2), _s3(&x3) {
+inline event<T0, T1, T2, T3>::event(value_pack<T0, T1, T2, T3>& s) TAMER_NOEXCEPT
+    : se_(0), _s0(&s.v0), _s1(&s.v1), _s2(&s.v2), _s3(&s.v3) {
 }
 
 /** @brief  Copy-construct event from @a x.
@@ -1082,6 +1025,17 @@ inline event<T0, T1, T2, T3>& event<T0, T1, T2, T3>::operator=(event<T0, T1, T2,
 #endif
 
 /** @internal
+ *  @brief  Set underlying occurrence.
+ *  @return  *this
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+event<T0, T1, T2, T3>& event<T0, T1, T2, T3>::__instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid) {
+    TAMER_DEBUG_ASSERT(!se_);
+    se_ = new tamerpriv::simple_event(r, rid);
+    return *this;
+}
+
+/** @internal
  *  @brief  Fetch underlying occurrence.
  *  @return  Underlying occurrence.
  */
@@ -1099,45 +1053,13 @@ inline event<T0, T1, T2>::event() TAMER_NOEXCEPT
 }
 
 template <typename T0, typename T1, typename T2>
-template <typename R, typename I0, typename I1>
-inline event<T0, T1, T2>::event(R& r, const I0& i0, const I1& i1,
-				T0& x0, T1& x1, T2& x2)
-    : se_(new tamerpriv::simple_event(r, i0, i1)),
-      _s0(&x0), _s1(&x1), _s2(&x2) {
+inline event<T0, T1, T2>::event(T0& x0, T1& x1, T2& x2) TAMER_NOEXCEPT
+    : se_(0), _s0(&x0), _s1(&x1), _s2(&x2) {
 }
 
 template <typename T0, typename T1, typename T2>
-template <typename R, typename I0, typename I1>
-inline event<T0, T1, T2>::event(R& r, const I0& i0, const I1& i1,
-				value_pack<T0, T1, T2>& s)
-    : se_(new tamerpriv::simple_event(r, i0, i1)),
-      _s0(&s.v0), _s1(&s.v1), _s2(&s.v2) {
-}
-
-template <typename T0, typename T1, typename T2>
-template <typename R, typename I0>
-inline event<T0, T1, T2>::event(R& r, const I0& i0, T0& x0, T1& x1, T2& x2)
-    : se_(new tamerpriv::simple_event(r, i0)),
-      _s0(&x0), _s1(&x1), _s2(&x2) {
-}
-
-template <typename T0, typename T1, typename T2>
-template <typename R, typename I0>
-inline event<T0, T1, T2>::event(R& r, const I0& i0, value_pack<T0, T1, T2>& s)
-    : se_(new tamerpriv::simple_event(r, i0)),
-      _s0(&s.v0), _s1(&s.v1), _s2(&s.v2) {
-}
-
-template <typename T0, typename T1, typename T2>
-template <typename R>
-inline event<T0, T1, T2>::event(R& r, T0& x0, T1& x1, T2& x2)
-    : se_(new tamerpriv::simple_event(r)), _s0(&x0), _s1(&x1), _s2(&x2) {
-}
-
-template <typename T0, typename T1, typename T2>
-template <typename R>
-inline event<T0, T1, T2>::event(R& r, value_pack<T0, T1, T2>& s)
-    : se_(new tamerpriv::simple_event(r)), _s0(&s.v0), _s1(&s.v1), _s2(&s.v2) {
+inline event<T0, T1, T2>::event(value_pack<T0, T1, T2>& s) TAMER_NOEXCEPT
+    : se_(0), _s0(&s.v0), _s1(&s.v1), _s2(&s.v2) {
 }
 
 template <typename T0, typename T1, typename T2>
@@ -1179,40 +1101,13 @@ inline event<T0, T1>::event() TAMER_NOEXCEPT
 }
 
 template <typename T0, typename T1>
-template <typename R, typename I0, typename I1>
-inline event<T0, T1>::event(R& r, const I0& i0, const I1& i1, T0& x0, T1& x1)
-    : se_(new tamerpriv::simple_event(r, i0, i1)), _s0(&x0), _s1(&x1) {
+inline event<T0, T1>::event(T0& x0, T1& x1) TAMER_NOEXCEPT
+    : se_(0), _s0(&x0), _s1(&x1) {
 }
 
 template <typename T0, typename T1>
-template <typename R, typename I0, typename I1>
-inline event<T0, T1>::event(R& r, const I0& i0, const I1& i1,
-			    value_pack<T0, T1>& s)
-    : se_(new tamerpriv::simple_event(r, i0, i1)), _s0(&s.v0), _s1(&s.v1) {
-}
-
-template <typename T0, typename T1>
-template <typename R, typename I0>
-inline event<T0, T1>::event(R& r, const I0& i0, T0& x0, T1& x1)
-    : se_(new tamerpriv::simple_event(r, i0)), _s0(&x0), _s1(&x1) {
-}
-
-template <typename T0, typename T1>
-template <typename R, typename I0>
-inline event<T0, T1>::event(R& r, const I0& i0, value_pack<T0, T1>& s)
-    : se_(new tamerpriv::simple_event(r, i0)), _s0(&s.v0), _s1(&s.v1) {
-}
-
-template <typename T0, typename T1>
-template <typename R>
-inline event<T0, T1>::event(R& r, T0& x0, T1& x1)
-    : se_(new tamerpriv::simple_event(r)), _s0(&x0), _s1(&x1) {
-}
-
-template <typename T0, typename T1>
-template <typename R>
-inline event<T0, T1>::event(R& r, value_pack<T0, T1>& s)
-    : se_(new tamerpriv::simple_event(r)), _s0(&s.v0), _s1(&s.v1) {
+inline event<T0, T1>::event(value_pack<T0, T1>& s) TAMER_NOEXCEPT
+    : se_(0), _s0(&s.v0), _s1(&s.v1) {
 }
 
 template <typename T0, typename T1>
@@ -1252,34 +1147,14 @@ inline event<T0>::event() TAMER_NOEXCEPT
     : se_(0), _s0(0) {
 }
 
-template <typename T0> template <typename R, typename I0, typename I1>
-inline event<T0>::event(R& r, const I0& i0, const I1& i1, T0& x0)
-    : se_(new tamerpriv::simple_event(r, i0, i1)), _s0(&x0) {
+template <typename T0>
+inline event<T0>::event(T0& x0) TAMER_NOEXCEPT
+    : se_(0), _s0(&x0) {
 }
 
-template <typename T0> template <typename R, typename I0, typename I1>
-inline event<T0>::event(R& r, const I0& i0, const I1& i1, value_pack<T0>& s)
-    : se_(new tamerpriv::simple_event(r, i0, i1)), _s0(&s.v0) {
-}
-
-template <typename T0> template <typename R, typename I0>
-inline event<T0>::event(R& r, const I0& i0, T0& x0)
-    : se_(new tamerpriv::simple_event(r, i0)), _s0(&x0) {
-}
-
-template <typename T0> template <typename R, typename I0>
-inline event<T0>::event(R& r, const I0& i0, value_pack<T0>& s)
-    : se_(new tamerpriv::simple_event(r, i0)), _s0(&s.v0) {
-}
-
-template <typename T0> template <typename R>
-inline event<T0>::event(R& r, T0& x0)
-    : se_(new tamerpriv::simple_event(r)), _s0(&x0) {
-}
-
-template <typename T0> template <typename R>
-inline event<T0>::event(R& r, value_pack<T0>& s)
-    : se_(new tamerpriv::simple_event(r)), _s0(&s.v0) {
+template <typename T0>
+inline event<T0>::event(value_pack<T0>& s) TAMER_NOEXCEPT
+    : se_(0), _s0(&s.v0) {
 }
 
 template <typename T0>
@@ -1349,34 +1224,8 @@ inline event<>::event() TAMER_NOEXCEPT
     : se_(0) {
 }
 
-template <typename R, typename I0, typename I1>
-inline event<>::event(R& r, const I0& i0, const I1& i1)
-    : se_(new tamerpriv::simple_event(r, i0, i1)) {
-}
-
-template <typename R, typename I0, typename I1>
-inline event<>::event(R& r, const I0& i0, const I1& i1, value_pack<>&)
-    : se_(new tamerpriv::simple_event(r, i0, i1)) {
-}
-
-template <typename R, typename I0>
-inline event<>::event(R& r, const I0& i0)
-    : se_(new tamerpriv::simple_event(r, i0)) {
-}
-
-template <typename R, typename I0>
-inline event<>::event(R& r, const I0& i0, value_pack<>&)
-    : se_(new tamerpriv::simple_event(r, i0)) {
-}
-
-template <typename R>
-inline event<>::event(R& r)
-    : se_(new tamerpriv::simple_event(r)) {
-}
-
-template <typename R>
-inline event<>::event(R& r, value_pack<>&)
-    : se_(new tamerpriv::simple_event(r)) {
+inline event<>::event(value_pack<>&) TAMER_NOEXCEPT
+    : se_(0) {
 }
 
 inline void event<>::trigger() TAMER_NOEXCEPT {
@@ -1455,85 +1304,85 @@ inline T0* event<T0>::result_pointer() const TAMER_NOEXCEPT {
 template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_event(two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, T0& x0, T1& x1, T2& x2, T3& x3)
 {
-    return event<T0, T1, T2, T3>(static_cast<R&>(r), i0, i1, x0, x1, x2, x3);
+    return event<T0, T1, T2, T3>(x0, x1, x2, x3).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1));
 }
 
 template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_event(two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, value_pack<T0, T1, T2, T3>& sp)
 {
-    return event<T0, T1, T2, T3>(static_cast<R&>(r), i0, i1, sp);
+    return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1));
 }
 
 template <typename R, typename J0, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_event(one_argument_rendezvous_tag<R>& r, const J0& i0, T0& x0, T1& x1, T2& x2, T3& x3)
 {
-    return event<T0, T1, T2, T3>(static_cast<R&>(r), i0, x0, x1, x2, x3);
+    return event<T0, T1, T2, T3>(x0, x1, x2, x3).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0));
 }
 
 template <typename R, typename J0, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_event(one_argument_rendezvous_tag<R>& r, const J0& i0, value_pack<T0, T1, T2, T3>& sp)
 {
-    return event<T0, T1, T2, T3>(static_cast<R&>(r), i0, sp);
+    return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0));
 }
 
 template <typename R, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_event(zero_argument_rendezvous_tag<R>& r, T0& x0, T1& x1, T2& x2, T3& x3)
 {
-    return event<T0, T1, T2, T3>(static_cast<R&>(r), x0, x1, x2, x3);
+    return event<T0, T1, T2, T3>(x0, x1, x2, x3).__instantiate(static_cast<R&>(r), x0, x1, x2, x3);
 }
 
 template <typename R, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_event(zero_argument_rendezvous_tag<R>& r, value_pack<T0, T1, T2, T3>& sp)
 {
-    return event<T0, T1, T2, T3>(static_cast<R&>(r), sp);
+    return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), 0);
 }
 
 template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2>
 inline event<T0, T1, T2> make_event(two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, T0& x0, T1& x1, T2& x2)
 {
-    return event<T0, T1, T2>(static_cast<R&>(r), i0, i1, x0, x1, x2);
+    return event<T0, T1, T2>(x0, x1, x2).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1));
 }
 
 template <typename R, typename J0, typename T0, typename T1, typename T2>
 inline event<T0, T1, T2> make_event(one_argument_rendezvous_tag<R>& r, const J0& i0, T0& x0, T1& x1, T2& x2)
 {
-    return event<T0, T1, T2>(static_cast<R&>(r), i0, x0, x1, x2);
+    return event<T0, T1, T2>(x0, x1, x2).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0));
 }
 
 template <typename R, typename T0, typename T1, typename T2>
 inline event<T0, T1, T2> make_event(zero_argument_rendezvous_tag<R>& r, T0& x0, T1& x1, T2& x2)
 {
-    return event<T0, T1, T2>(static_cast<R&>(r), x0, x1, x2);
+    return event<T0, T1, T2>(x0, x1, x2).__instantiate(static_cast<R&>(r), 0);
 }
 
 template <typename R, typename J0, typename J1, typename T0, typename T1>
 inline event<T0, T1> make_event(two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, T0& x0, T1& x1)
 {
-    return event<T0, T1>(static_cast<R&>(r), i0, i1, x0, x1);
+    return event<T0, T1>(x0, x1).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1));
 }
 
 template <typename R, typename J0, typename T0, typename T1>
 inline event<T0, T1> make_event(one_argument_rendezvous_tag<R>& r, const J0& i0, T0& x0, T1& x1)
 {
-    return event<T0, T1>(static_cast<R&>(r), i0, x0, x1);
+    return event<T0, T1>(x0, x1).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0));
 }
 
 template <typename R, typename T0, typename T1>
 inline event<T0, T1> make_event(zero_argument_rendezvous_tag<R>& r, T0& x0, T1& x1)
 {
-    return event<T0, T1>(static_cast<R&>(r), x0, x1);
+    return event<T0, T1>(x0, x1).__instantiate(static_cast<R&>(r), 0);
 }
 
 template <typename R, typename J0, typename J1, typename T0>
 inline event<T0> make_event(two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, T0& x0)
 {
-    return event<T0>(static_cast<R&>(r), i0, i1, x0);
+    return event<T0>(x0).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1));
 }
 
 template <typename R, typename J0, typename T0>
 inline event<T0> make_event(one_argument_rendezvous_tag<R>& r, const J0& i0, T0& x0)
 {
-    return event<T0>(static_cast<R&>(r), i0, x0);
+    return event<T0>(x0).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0));
 }
 
 #if TAMER_HAVE_PREEVENT
@@ -1546,20 +1395,20 @@ inline preevent<R, T0> make_event(zero_argument_rendezvous_tag<R>& r, T0& x0)
 template <typename R, typename T0>
 inline event<T0> make_event(zero_argument_rendezvous_tag<R>& r, T0& x0)
 {
-    return event<T0>(static_cast<R&>(r), x0);
+    return event<T0>(x0).__instantiate(static_cast<R&>(r), 0);
 }
 #endif
 
 template <typename R, typename J0, typename J1>
 inline event<> make_event(two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1)
 {
-    return event<>(static_cast<R&>(r), i0, i1);
+    return event<>().__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1));
 }
 
 template <typename R, typename J0>
 inline event<> make_event(one_argument_rendezvous_tag<R>& r, const J0& i0)
 {
-    return event<>(static_cast<R&>(r), i0);
+    return event<>().__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0));
 }
 
 #if TAMER_HAVE_PREEVENT
@@ -1572,7 +1421,7 @@ inline preevent<R> make_event(zero_argument_rendezvous_tag<R>& r)
 template <typename R>
 inline event<> make_event(zero_argument_rendezvous_tag<R>& r)
 {
-    return event<>(static_cast<R&>(r));
+    return event<>().__instantiate(static_cast<R&>(r), 0);
 }
 #endif
 
@@ -1985,13 +1834,13 @@ inline event<T0>::event(event<> e, const no_result&) TAMER_NOEXCEPT
 #if TAMER_HAVE_PREEVENT
 template <typename T0> template <typename R>
 inline event<T0>::event(preevent<R, T0>&& x)
-    : se_(x.r_ ? new tamerpriv::simple_event(*x.r_) : 0), _s0(x.s0_) {
+    : se_(x.r_ ? new tamerpriv::simple_event(*x.r_, 0) : 0), _s0(x.s0_) {
     x.r_ = 0;
 }
 
 template <typename R>
 inline event<>::event(preevent<R>&& x)
-    : se_(x.r_ ? new tamerpriv::simple_event(*x.r_) : 0) {
+    : se_(x.r_ ? new tamerpriv::simple_event(*x.r_, 0) : 0) {
     x.r_ = 0;
 }
 #endif

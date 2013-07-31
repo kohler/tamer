@@ -32,7 +32,7 @@ namespace tamer {
  *  full @c rendezvous.
  */
 template <typename I0, typename I1>
-class rendezvous : private tamerpriv::explicit_rendezvous,
+class rendezvous : public tamerpriv::explicit_rendezvous,
 		   public two_argument_rendezvous_tag<rendezvous<I0, I1> > {
   public:
     inline rendezvous(rendezvous_flags flags = rnormal);
@@ -57,7 +57,7 @@ class rendezvous : private tamerpriv::explicit_rendezvous,
     inline bool join(I0& i0, I1& i1);
     void clear();
 
-    inline void add(tamerpriv::simple_event *e, const I0 &i0, const I1 &i1);
+    inline uintptr_t make_rid(const I0& i0, const I1& i1);
     using tamerpriv::blocking_rendezvous::block;
 
   private:
@@ -147,15 +147,12 @@ void rendezvous<I0, I1>::clear() {
 
 /** @internal
  *  @brief  Add an occurrence to this rendezvous.
- *  @param  e   The occurrence.
  *  @param  i0  The occurrence's first event ID.
  *  @param  i1  The occurrence's first event ID.
  */
 template <typename I0, typename I1>
-inline void rendezvous<I0, I1>::add(tamerpriv::simple_event *e,
-				    const I0 &i0, const I1 &i1) {
-    eventid *eid = new eventid(i0, i1);
-    e->initialize(this, reinterpret_cast<uintptr_t>(eid));
+inline uintptr_t rendezvous<I0, I1>::make_rid(const I0& i0, const I1& i1) {
+    return reinterpret_cast<uintptr_t>(new eventid(i0, i1));
 }
 
 
@@ -186,7 +183,7 @@ class rendezvous<I0> : public tamerpriv::explicit_rendezvous,
     inline bool join(I0 &);
     void clear();
 
-    inline void add(tamerpriv::simple_event *e, const I0 &i0);
+    inline uintptr_t make_rid(const I0& i0);
     using tamerpriv::blocking_rendezvous::block;
 };
 
@@ -223,9 +220,8 @@ void rendezvous<I0>::clear() {
 }
 
 template <typename I0>
-inline void rendezvous<I0>::add(tamerpriv::simple_event *e, const I0 &i0) {
-    I0 *eid = new I0(i0);
-    e->initialize(this, reinterpret_cast<uintptr_t>(eid));
+inline uintptr_t rendezvous<I0>::make_rid(const I0& i0) {
+    return reinterpret_cast<uintptr_t>(new I0(i0));
 }
 
 
@@ -254,7 +250,7 @@ class simple_rendezvous : public tamerpriv::explicit_rendezvous,
     inline bool join(I0&);
     void clear();
 
-    inline void add(tamerpriv::simple_event *e, I0 i0) TAMER_NOEXCEPT;
+    inline uintptr_t make_rid(I0 i0) TAMER_NOEXCEPT;
     using tamerpriv::blocking_rendezvous::block;
 };
 
@@ -285,9 +281,8 @@ void simple_rendezvous<T>::clear() {
 }
 
 template <typename T>
-inline void simple_rendezvous<T>::add(tamerpriv::simple_event *e,
-				      T i0) TAMER_NOEXCEPT {
-    e->initialize(this, tamerpriv::rid_cast<T>::in(i0));
+inline uintptr_t simple_rendezvous<T>::make_rid(T i0) TAMER_NOEXCEPT {
+    return tamerpriv::rid_cast<T>::in(i0);
 }
 
 
@@ -325,7 +320,7 @@ class rendezvous<bool> : public simple_rendezvous<bool> {
 
 
 template <>
-class rendezvous<> : private tamerpriv::explicit_rendezvous,
+class rendezvous<> : public tamerpriv::explicit_rendezvous,
 		     public zero_argument_rendezvous_tag<rendezvous<> > {
   public:
     inline rendezvous(rendezvous_flags flags = rnormal)
@@ -365,9 +360,6 @@ class rendezvous<> : private tamerpriv::explicit_rendezvous,
     }
     void clear();
 
-    inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
-	e->initialize(this, 1);
-    }
     using tamerpriv::blocking_rendezvous::block;
 };
 
@@ -411,9 +403,6 @@ class gather_rendezvous : public tamerpriv::blocking_rendezvous,
     }
     void clear();
 
-    inline void add(tamerpriv::simple_event *e) TAMER_NOEXCEPT {
-	e->initialize(this, 1);
-    }
     using tamerpriv::blocking_rendezvous::block;
 
   private:

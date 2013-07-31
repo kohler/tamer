@@ -41,9 +41,9 @@ class sigcancel_rendezvous : public tamerpriv::functional_rendezvous,
     sigcancel_rendezvous()
 	: functional_rendezvous(hook) {
     }
-    inline void add(tamerpriv::simple_event *e, int sig) TAMER_NOEXCEPT {
+    inline uintptr_t make_rid(int sig) TAMER_NOEXCEPT {
 	assert(sig >= 0 && sig < 2*NSIG);
-	e->initialize(this, sig);
+	return sig;
     }
     static void hook(tamerpriv::functional_rendezvous *fr,
 		     tamerpriv::simple_event *e, bool values) TAMER_NOEXCEPT;

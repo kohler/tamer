@@ -25,9 +25,6 @@ class with_helper_rendezvous : public functional_rendezvous,
     with_helper_rendezvous(simple_event *e, int *s0, int v0)
 	: functional_rendezvous(hook), e_(e), s0_(s0), v0_(v0) {
     }
-    void add(simple_event *e) {
-	e->initialize(this, 0);
-    }
   private:
     simple_event *e_;		// An e_->at_trigger() holds a reference
     int *s0_;			// to this rendezvous, so this rendezvous
@@ -50,9 +47,6 @@ class bind_rendezvous : public functional_rendezvous,
   public:
     bind_rendezvous(const event<T0> &e, const V0 &v0)
 	: functional_rendezvous(hook), e_(e), v0_(v0) {
-    }
-    void add(simple_event *e) {
-	e->initialize(this, 0);
     }
   private:
     event<T0> e_;
@@ -81,9 +75,6 @@ class map_rendezvous : public functional_rendezvous,
     }
     S0& result0() {
 	return s0_;
-    }
-    void add(simple_event* e) {
-	e->initialize(this, 0);
     }
   private:
     S0 s0_;
@@ -115,9 +106,6 @@ class function_rendezvous : public functional_rendezvous,
 	: functional_rendezvous(hook), f_(TAMER_MOVE(f)),
 	  arg1_(TAMER_MOVE(arg1)), arg2_(TAMER_MOVE(arg2)) {
     }
-    void add(simple_event *e) {
-	e->initialize(this, 0);
-    }
   private:
     F f_;
     A1 arg1_;
@@ -145,9 +133,6 @@ class function_rendezvous<F, A> : public functional_rendezvous,
 	: functional_rendezvous(hook), f_(TAMER_MOVE(f)),
 	  arg_(TAMER_MOVE(arg)) {
     }
-    void add(simple_event *e) {
-	e->initialize(this, 0);
-    }
   private:
     F f_;
     A arg_;
@@ -172,9 +157,6 @@ class function_rendezvous<F> : public functional_rendezvous,
   public:
     function_rendezvous(F f)
 	: functional_rendezvous(hook), f_(TAMER_MOVE(f)) {
-    }
-    void add(simple_event *e) {
-	e->initialize(this, 0);
     }
   private:
     F f_;
@@ -204,8 +186,8 @@ class distribute_rendezvous : public functional_rendezvous,
 	tamerpriv::simple_event::at_trigger(e1_.__get_simple(), clear_hook, this, 0);
 	tamerpriv::simple_event::at_trigger(e2_.__get_simple(), clear_hook, this, 0);
     }
-    void add(tamer::tamerpriv::simple_event *se, uintptr_t rid) {
-	se->initialize(this, rid);
+    uintptr_t make_rid(uintptr_t rid) {
+	return rid;
     }
     event<T0, T1, T2, T3> make_event() {
 	return tamer::TAMER_MAKE_FN_ANNOTATED_EVENT(*this, 0, vs_);

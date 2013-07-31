@@ -24,10 +24,11 @@ template <typename R> class two_argument_rendezvous_tag {};
 template <typename R> class one_argument_rendezvous_tag {};
 template <typename R> class zero_argument_rendezvous_tag {};
 
-template <typename I0=void, typename I1=void> class rendezvous;
-template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> class event;
+template <typename I0 = void, typename I1 = void> class rendezvous;
+template <typename T0 = void, typename T1 = void, typename T2 = void,
+          typename T3 = void> class event;
 #if TAMER_HAVE_PREEVENT
-template <typename R, typename T0=void> class preevent;
+template <typename R, typename T0 = void> class preevent;
 #endif
 class driver;
 
@@ -61,17 +62,11 @@ class simple_event { public:
     typedef bool (simple_event::*unspecified_bool_type)() const;
 
     inline simple_event() TAMER_NOEXCEPT;
-    template <typename R, typename I0, typename I1>
-    inline simple_event(R &r, const I0 &i0, const I1 &i1) TAMER_NOEXCEPT;
-    template <typename R, typename I0>
-    inline simple_event(R &r, const I0 &i0) TAMER_NOEXCEPT;
-    template <typename R>
-    inline simple_event(R &r) TAMER_NOEXCEPT;
+    inline simple_event(abstract_rendezvous& r, uintptr_t rid) TAMER_NOEXCEPT;
 #if TAMER_DEBUG
     inline ~simple_event() TAMER_NOEXCEPT;
 #endif
 
-    inline void initialize(abstract_rendezvous *r, uintptr_t rid);
     inline void annotate(const char *file, int line);
 
     static inline void use(simple_event *e) TAMER_NOEXCEPT;
@@ -210,7 +205,7 @@ class explicit_rendezvous : public blocking_rendezvous {
     }
 #if TAMER_DEBUG
     inline ~explicit_rendezvous() {
-	assert(!ready_);
+	TAMER_DEBUG_ASSERT(!ready_);
     }
 #endif
 
@@ -329,7 +324,7 @@ inline void abstract_rendezvous::remove_waiting() TAMER_NOEXCEPT {
 
 #if TAMER_DEBUG
 inline abstract_rendezvous::~abstract_rendezvous() TAMER_NOEXCEPT {
-    assert(!waiting_);
+    TAMER_DEBUG_ASSERT(!waiting_);
 }
 #endif
 
@@ -397,37 +392,16 @@ inline simple_event::simple_event() TAMER_NOEXCEPT
 #endif
 }
 
-template <typename R, typename I0, typename I1>
-inline simple_event::simple_event(R &r, const I0 &i0, const I1 &i1) TAMER_NOEXCEPT
-    : _refcount(1) {
+inline simple_event::simple_event(abstract_rendezvous& r, uintptr_t rid) TAMER_NOEXCEPT
+    : _r(&r), _rid(rid), _r_next(r.waiting_), _r_pprev(&r.waiting_),
+      at_trigger_(0), at_trigger_f_(0), _refcount(1) {
+    if (r.waiting_)
+	r.waiting_->_r_pprev = &_r_next;
+    r.waiting_ = this;
 #if TAMER_DEBUG
-    _r = 0;
     annotate_file_ = 0;
     annotate_line_ = 0;
 #endif
-    r.add(this, i0, i1);
-}
-
-template <typename R, typename I0>
-inline simple_event::simple_event(R &r, const I0 &i0) TAMER_NOEXCEPT
-    : _refcount(1) {
-#if TAMER_DEBUG
-    _r = 0;
-    annotate_file_ = 0;
-    annotate_line_ = 0;
-#endif
-    r.add(this, i0);
-}
-
-template <typename R>
-inline simple_event::simple_event(R &r) TAMER_NOEXCEPT
-    : _refcount(1) {
-#if TAMER_DEBUG
-    _r = 0;
-    annotate_file_ = 0;
-    annotate_line_ = 0;
-#endif
-    r.add(this);
 }
 
 #if TAMER_DEBUG
@@ -441,22 +415,6 @@ inline simple_event::~simple_event() TAMER_NOEXCEPT {
 # endif
 }
 #endif
-
-inline void simple_event::initialize(abstract_rendezvous *r, uintptr_t rid) {
-#if TAMER_DEBUG
-    assert(_r == 0 && r != 0);
-#endif
-    // NB this can be called before e has been fully initialized.
-    _r = r;
-    _rid = rid;
-    _r_pprev = &r->waiting_;
-    if (r->waiting_)
-	r->waiting_->_r_pprev = &_r_next;
-    _r_next = r->waiting_;
-    at_trigger_ = 0;
-    at_trigger_f_ = 0;
-    r->waiting_ = this;
-}
 
 inline void simple_event::use(simple_event *e) TAMER_NOEXCEPT {
     if (e)
@@ -521,9 +479,7 @@ inline void simple_event::at_trigger(simple_event *x, simple_event *at_e) {
 
 inline void simple_event::at_trigger(simple_event *x, void (*f)(void *, int),
 				     void *arg1, int arg2) {
-#if TAMER_DEBUG
-    assert(arg1);
-#endif
+    TAMER_DEBUG_ASSERT(arg1);
     if (x && *x && !x->at_trigger_) {
 	x->at_trigger_ = arg1;
 	x->at_trigger_f_ = f;
