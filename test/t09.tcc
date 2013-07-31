@@ -27,7 +27,7 @@ tamed void readit(tamer::fd fd) {
     std::cerr << ret << " returned, " << x << " bytes read\n";
 }
 
-int main(int argc, char** argv) {
+int main(int, char**) {
     tamer::initialize();
     tamer::fd fr, fw;
     tamer::fd::pipe(fr, fw);
