@@ -503,7 +503,7 @@ template <typename F>
 inline event<> fun_event(F f) {
     tamerpriv::function_rendezvous<F> *innerr =
 	new tamerpriv::function_rendezvous<F>(TAMER_MOVE(f));
-    return event<>(*innerr);
+    return tamer::make_event(*innerr);
 }
 
 /** @brief  Create event that calls a function when triggered.

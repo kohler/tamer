@@ -37,7 +37,7 @@ static int tamer_sigaction(int signo, tamer_sighandler handler)
 
 namespace {
 class sigcancel_rendezvous : public tamerpriv::functional_rendezvous,
-			     public zero_argument_rendezvous_tag<sigcancel_rendezvous> { public:
+			     public one_argument_rendezvous_tag<sigcancel_rendezvous> { public:
     sigcancel_rendezvous()
 	: functional_rendezvous(hook) {
     }
@@ -97,7 +97,7 @@ void driver::at_signal(int signo, event<> trigger, signal_flags flags)
 	return;
 
     bool foreground = (flags & signal_background) == 0;
-    trigger.at_trigger(event<>(sigcancelr, (signo << 1) + foreground));
+    trigger.at_trigger(make_event(sigcancelr, (signo << 1) + foreground));
     sig_nforeground += foreground;
     sig_ntotal += 1;
 

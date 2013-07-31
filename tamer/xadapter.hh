@@ -38,7 +38,7 @@ class with_helper_rendezvous : public functional_rendezvous,
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<> with_helper(event<T0, T1, T2, T3> e, int *result, int value) {
     with_helper_rendezvous *r = new with_helper_rendezvous(e.__get_simple(), result, value);
-    event<> with(*r);
+    event<> with = tamer::make_event(*r);
     e.at_trigger(with);
     return with;
 }
