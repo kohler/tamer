@@ -891,7 +891,8 @@ int fd::fdimp::close(int leave_error) {
 	    if (_fd == -EBADF)
 		_fd = x;
 	}
-	driver::main->kill_fd(my_fd);
+        if (driver::main)
+            driver::main->kill_fd(my_fd);
 	_at_close.trigger();
     }
     return _fd;
