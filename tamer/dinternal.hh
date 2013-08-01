@@ -26,15 +26,21 @@ struct driver_fdset {
     inline bool has_change() const;
 
     inline int size() const;
-    inline const driver_fd<T> &operator[](int fd) const;
-    inline driver_fd<T> &operator[](int fd);
+    inline const driver_fd<T>& operator[](int fd) const;
+    inline driver_fd<T>& operator[](int fd);
 
   private:
-    driver_fd<T> *fds_;
-    int nfds_;
-    int fdcap_;
-    int changedfd1_;
+    enum { fdblksiz = 256 };
+    driver_fd<T>** fdblk_;
+    driver_fd<T>* fdblk0_;
+    unsigned nfds_;
+    unsigned fdcap_;
+    unsigned changedfd1_;
+    driver_fd<T> fdalign_[0];
+    char fdspace_[sizeof(driver_fd<T>) * fdblksiz];
 
+    inline driver_fd<T>& at(unsigned fd);
+    inline const driver_fd<T>& at(unsigned fd) const;
     template <typename O> void hard_expand(O owner, int need_fd);
 };
 
@@ -96,44 +102,55 @@ inline bool driver_fd<T>::empty() const {
 }
 
 template <typename T>
+inline driver_fd<T>& driver_fdset<T>::at(unsigned fd) {
+    return fdblk_[fd / fdblksiz][fd % fdblksiz];
+}
+
+template <typename T>
+inline const driver_fd<T>& driver_fdset<T>::at(unsigned fd) const {
+    return fdblk_[fd / fdblksiz][fd % fdblksiz];
+}
+
+template <typename T>
 inline driver_fdset<T>::driver_fdset()
-    : fds_(), nfds_(0), fdcap_(0), changedfd1_(0) {
+    : fdblk_(&fdblk0_), fdblk0_(reinterpret_cast<driver_fd<T>*>(fdspace_)),
+      nfds_(0), fdcap_(fdblksiz), changedfd1_(0) {
 }
 
 template <typename T>
 inline driver_fdset<T>::~driver_fdset() {
-    for (int i = 0; i < nfds_; ++i)
-	fds_[i].~driver_fd<T>();
-    delete[] reinterpret_cast<char *>(fds_);
+    for (unsigned i = 0; i < nfds_; ++i)
+	at(i).~driver_fd<T>();
+    for (unsigned i = 1; i < fdcap_ / fdblksiz; ++i)
+        delete[] reinterpret_cast<char*>(fdblk_[i]);
+    if (fdcap_ > fdblksiz)
+        delete[] fdblk_;
 }
 
 template <typename T> template <typename O>
 void driver_fdset<T>::expand(O owner, int need_fd) {
-    if (need_fd >= nfds_)
+    if (need_fd >= (int) nfds_)
 	hard_expand(owner, need_fd);
 }
 
 template <typename T> template <typename O>
 void driver_fdset<T>::hard_expand(O owner, int need_fd) {
-    if (need_fd >= fdcap_) {
-	int newcap = (fdcap_ ? (fdcap_ + 2) * 2 - 2 : 30);
-	while (newcap <= need_fd)
-	    newcap = (newcap + 2) * 2 - 2;
-
-	driver_fd<T> *newfds =
-	    reinterpret_cast<driver_fd<T> *>(new char[sizeof(driver_fd<T>) * newcap]);
-	memcpy(newfds, fds_, sizeof(driver_fd<T>) * nfds_);
-	for (int i = 0; i < nfds_; ++i)
-	    newfds[i].move(owner, i, fds_[i]);
-	// XXX Relies on being able to memcpy() event<int>.
-
-	delete[] reinterpret_cast<char *>(fds_);
-	fds_ = newfds;
-	fdcap_ = newcap;
+    if (need_fd >= (int) fdcap_) {
+        unsigned newfdcap = (need_fd | (fdblksiz - 1)) + 1;
+        driver_fd<T>** newfdblk = new driver_fd<T>*[newfdcap / fdblksiz];
+        for (unsigned i = 0; i < newfdcap / fdblksiz; ++i)
+            if (i < fdcap_ / fdblksiz)
+                newfdblk[i] = fdblk_[i];
+            else
+                newfdblk[i] = reinterpret_cast<driver_fd<T>*>(new char[sizeof(driver_fd<T>) * fdblksiz]);
+        if (fdcap_ > fdblksiz)
+            delete[] fdblk_;
+        fdblk_ = newfdblk;
+        fdcap_ = newfdcap;
     }
 
-    while (need_fd >= nfds_) {
-	new((void *) &fds_[nfds_]) driver_fd<T>(owner, nfds_);
+    while (need_fd >= (int) nfds_) {
+	new((void *) &at(nfds_)) driver_fd<T>(owner, nfds_);
 	++nfds_;
     }
 }
@@ -145,9 +162,9 @@ inline bool driver_fdset<T>::has_change() const {
 
 template <typename T>
 inline void driver_fdset<T>::push_change(int fd) {
-    assert(fd >= 0 && fd < nfds_);
-    if (fds_[fd].next_changedfd1 == 0) {
-	fds_[fd].next_changedfd1 = changedfd1_;
+    assert(fd >= 0 && (unsigned) fd < nfds_);
+    if (at(fd).next_changedfd1 == 0) {
+	at(fd).next_changedfd1 = changedfd1_;
 	changedfd1_ = fd + 1;
     }
 }
@@ -156,8 +173,8 @@ template <typename T>
 inline int driver_fdset<T>::pop_change() {
     int fd = changedfd1_ - 1;
     if (fd >= 0) {
-	changedfd1_ = fds_[fd].next_changedfd1;
-	fds_[fd].next_changedfd1 = 0;
+	changedfd1_ = at(fd).next_changedfd1;
+	at(fd).next_changedfd1 = 0;
     }
     return fd;
 }
@@ -168,15 +185,15 @@ inline int driver_fdset<T>::size() const {
 }
 
 template <typename T>
-inline const driver_fd<T> &driver_fdset<T>::operator[](int fd) const {
-    assert((unsigned) fd < (unsigned) nfds_);
-    return fds_[fd];
+inline const driver_fd<T>& driver_fdset<T>::operator[](int fd) const {
+    assert((unsigned) fd < nfds_);
+    return at(fd);
 }
 
 template <typename T>
-inline driver_fd<T> &driver_fdset<T>::operator[](int fd) {
-    assert((unsigned) fd < (unsigned) nfds_);
-    return fds_[fd];
+inline driver_fd<T>& driver_fdset<T>::operator[](int fd) {
+    assert((unsigned) fd < nfds_);
+    return at(fd);
 }
 
 inline driver_asapset::driver_asapset()

@@ -38,9 +38,7 @@ class driver_tamer : public driver { public:
   private:
 
     struct fdp {
-	inline fdp(driver_tamer *, int) {
-	}
-	inline void move(driver_tamer *, int, fdp &) {
+	inline fdp(driver_tamer*, int) {
 	}
     };
 

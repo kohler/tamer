@@ -197,5 +197,5 @@ inline void at_asap(event<> e) {
     driver::main->at_asap(e);
 }
 
-}
+} // namespace tamer
 #endif /* TAMER_DRIVER_HH */

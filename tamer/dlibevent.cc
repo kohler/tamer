@@ -47,14 +47,6 @@ class driver_libevent : public driver {
 	inline ~fdp() {
 	    ::event_del(&base);
 	}
-	inline void move(driver_libevent *d, int fd, fdp &other) {
-	    int x = ::event_pending(&other.base, EV_READ | EV_WRITE, 0)
-		& (EV_READ | EV_WRITE);
-	    ::event_del(&other.base);
-	    ::event_set(&base, fd, x | EV_PERSIST, libevent_fdtrigger, d);
-	    if (x)
-		::event_add(&base, 0);
-	}
     };
 
     tamerpriv::driver_fdset<fdp> fds_;

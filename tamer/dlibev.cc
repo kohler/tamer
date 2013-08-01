@@ -32,7 +32,6 @@ void libev_io_trigger(struct ev_loop *, ev_io *ev, int revents);
 
 class driver_libev: public driver {
 public:
-
     driver_libev();
     ~driver_libev();
 
@@ -53,16 +52,6 @@ public:
 	    ev_init(&base_.w, (ev_watcher_type) libev_io_trigger);
 	    ev_io_set(&base_.io, fd, 0);
 	    base_.io.data = d;
-	}
-	inline void move(driver_libev *d, int fd, fdp &other) {
-	    int x = other.base_.io.events & (EV_READ | EV_WRITE);
-	    ev_init(&base_.w, (ev_watcher_type) libev_io_trigger);
-	    ev_io_set(&base_.io, fd, x);
-	    base_.io.data = d;
-	    if (ev_is_active(&other.base_.w)) {
-		ev_io_stop(d->eloop_, &other.base_.io);
-		ev_io_start(d->eloop_, &base_.io);
-	    }
 	}
     };
 
