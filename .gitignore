@@ -59,8 +59,8 @@ ex/tamer-yes.cc
 
 test/Makefile
 test/Makefile.in
-test/t0[0-9]
-test/t0[2-9].cc
+test/t[01][0-9]
+test/t[01][0-9].cc
 
 knot/Makefile
 knot/Makefile.in
