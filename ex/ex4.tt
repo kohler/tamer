@@ -19,9 +19,12 @@
 #include <tamer/tamer.hh>
 using namespace tamer;
 
+void f(event<> e) {
+}
+
 tamed void test_error()
 {
-    twait { (void) make_event(); }
+    twait { f(make_event()); }
 }
 
 int main(int, char **) {
