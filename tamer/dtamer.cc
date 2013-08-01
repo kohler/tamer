@@ -22,9 +22,12 @@
 
 namespace tamer {
 namespace {
+using tamerpriv::make_fd_callback;
+using tamerpriv::fd_callback_driver;
+using tamerpriv::fd_callback_fd;
 
-class driver_tamer : public driver { public:
-
+class driver_tamer : public driver {
+  public:
     driver_tamer();
     ~driver_tamer();
 
@@ -61,7 +64,7 @@ class driver_tamer : public driver { public:
 
     tamerpriv::driver_asapset asap_;
 
-    static void fd_disinterest(void *driver, int fd);
+    static void fd_disinterest(void* arg);
     void update_fds();
     int find_bad_fds();
 };
@@ -85,9 +88,9 @@ driver_tamer::~driver_tamer() {
 	delete[] reinterpret_cast<char *>(_fdset[i]);
 }
 
-void driver_tamer::fd_disinterest(void *arg, int fd) {
-    driver_tamer *d = static_cast<driver_tamer *>(arg);
-    d->fds_.push_change(fd);
+void driver_tamer::fd_disinterest(void* arg) {
+    driver_tamer* d = static_cast<driver_tamer*>(fd_callback_driver(arg));
+    d->fds_.push_change(fd_callback_fd(arg));
 }
 
 void driver_tamer::at_fd(int fd, int action, event<int> e) {
@@ -98,8 +101,8 @@ void driver_tamer::at_fd(int fd, int action, event<int> e) {
 	if (x.e[action])
 	    e = tamer::distribute(TAMER_MOVE(x.e[action]), TAMER_MOVE(e));
 	x.e[action] = e;
-	tamerpriv::simple_event::at_trigger(e.__get_simple(),
-					    fd_disinterest, this, fd);
+	tamerpriv::simple_event::at_trigger(e.__get_simple(), fd_disinterest,
+                                            make_fd_callback(this, fd));
 	fds_.push_change(fd);
     }
 }

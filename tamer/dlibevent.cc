@@ -21,6 +21,9 @@
 namespace tamer {
 #if HAVE_LIBEVENT
 namespace {
+using tamerpriv::make_fd_callback;
+using tamerpriv::fd_callback_driver;
+using tamerpriv::fd_callback_fd;
 
 extern "C" {
 void libevent_fdtrigger(int fd, short, void *arg);
@@ -58,7 +61,7 @@ class driver_libevent : public driver {
     tamerpriv::driver_asapset asap_;
 
     void expand_events();
-    static void fd_disinterest(void *driver, int fd);
+    static void fd_disinterest(void* arg);
     void update_fds();
 };
 
@@ -103,21 +106,21 @@ driver_libevent::~driver_libevent() {
     ::event_del(&signal_base_);
 }
 
-void driver_libevent::fd_disinterest(void *arg, int fd) {
-    driver_libevent *d = static_cast<driver_libevent *>(arg);
-    d->fds_.push_change(fd);
+void driver_libevent::fd_disinterest(void* arg) {
+    driver_libevent* d = static_cast<driver_libevent*>(fd_callback_driver(arg));
+    d->fds_.push_change(fd_callback_fd(arg));
 }
 
 void driver_libevent::at_fd(int fd, int action, event<int> e) {
     assert(fd >= 0);
     if (e && (action == 0 || action == 1)) {
 	fds_.expand(this, fd);
-	tamerpriv::driver_fd<fdp> &x = fds_[fd];
+	tamerpriv::driver_fd<fdp>& x = fds_[fd];
 	if (x.e[action])
 	    e = tamer::distribute(TAMER_MOVE(x.e[action]), TAMER_MOVE(e));
 	x.e[action] = e;
-	tamerpriv::simple_event::at_trigger(e.__get_simple(),
-					    fd_disinterest, this, fd);
+	tamerpriv::simple_event::at_trigger(e.__get_simple(), fd_disinterest,
+                                            make_fd_callback(this, fd));
 	fds_.push_change(fd);
     }
 }

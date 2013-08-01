@@ -1,6 +1,7 @@
 #ifndef TAMER_DINTERNAL_HH
 #define TAMER_DINTERNAL_HH 1
 #include <tamer/event.hh>
+#include <tamer/driver.hh>
 #include <sys/types.h>
 #include <string.h>
 namespace tamer {
@@ -194,6 +195,21 @@ template <typename T>
 inline driver_fd<T>& driver_fdset<T>::operator[](int fd) {
     assert((unsigned) fd < nfds_);
     return at(fd);
+}
+
+inline void* make_fd_callback(const driver* d, int fd) {
+    uintptr_t x = d->index() + fd * driver::capacity;
+    return reinterpret_cast<void*>(x);
+}
+
+inline driver* fd_callback_driver(void* callback) {
+    uintptr_t x = reinterpret_cast<uintptr_t>(callback);
+    return driver::by_index(x % driver::capacity);
+}
+
+inline int fd_callback_fd(void* callback) {
+    uintptr_t x = reinterpret_cast<uintptr_t>(callback);
+    return x / driver::capacity;
 }
 
 inline driver_asapset::driver_asapset()

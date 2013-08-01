@@ -24,13 +24,16 @@
 namespace tamer {
 #if HAVE_LIBEV
 namespace {
+using tamerpriv::make_fd_callback;
+using tamerpriv::fd_callback_driver;
+using tamerpriv::fd_callback_fd;
 
 extern "C" {
 typedef void (*ev_watcher_type)(struct ev_loop *, ev_watcher *, int);
 void libev_io_trigger(struct ev_loop *, ev_io *ev, int revents);
 }
 
-class driver_libev: public driver {
+class driver_libev : public driver {
 public:
     driver_libev();
     ~driver_libev();
@@ -70,7 +73,7 @@ public:
     } sigwatcher_;
 
     void update_fds();
-    static void fd_disinterest(void *arg, int fd);
+    static void fd_disinterest(void* arg);
 
     friend class tfd;
 
@@ -117,21 +120,21 @@ driver_libev::~driver_libev() {
 	ev_io_stop(eloop_, &fds_[fd].base_.io);
 }
 
-void driver_libev::fd_disinterest(void *arg, int fd) {
-    driver_libev *d = static_cast<driver_libev *>(arg);
-    d->fds_.push_change(fd);
+void driver_libev::fd_disinterest(void* arg) {
+    driver_libev* d = static_cast<driver_libev*>(fd_callback_driver(arg));
+    d->fds_.push_change(fd_callback_fd(arg));
 }
 
 void driver_libev::at_fd(int fd, int action, event<int> e) {
     assert(fd >= 0);
     if (e && (action == 0 || action == 1)) {
 	fds_.expand(this, fd);
-	tamerpriv::driver_fd<fdp> &x = fds_[fd];
+	tamerpriv::driver_fd<fdp>& x = fds_[fd];
 	if (x.e[action])
 	    e = tamer::distribute(TAMER_MOVE(x.e[action]), TAMER_MOVE(e));
 	x.e[action] = e;
-	tamerpriv::simple_event::at_trigger(e.__get_simple(),
-					    fd_disinterest, this, fd);
+	tamerpriv::simple_event::at_trigger(e.__get_simple(), fd_disinterest,
+                                            make_fd_callback(this, fd));
 	fds_.push_change(fd);
     }
 }

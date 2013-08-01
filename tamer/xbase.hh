@@ -83,9 +83,8 @@ class simple_event { public:
     static void simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT;
     void trigger_list_for_remove() TAMER_NOEXCEPT;
 
-    static inline void at_trigger(simple_event *x, simple_event *at_trigger);
-    static inline void at_trigger(simple_event *x, void (*f)(void *, int),
-				  void *arg1, int arg2);
+    static inline void at_trigger(simple_event* x, simple_event* at_trigger);
+    static inline void at_trigger(simple_event* x, void (*f)(void*), void* arg);
 
   protected:
 
@@ -93,9 +92,8 @@ class simple_event { public:
     uintptr_t _rid;
     simple_event *_r_next;
     simple_event **_r_pprev;
-    void *at_trigger_;
-    void (*at_trigger_f_)(void *, int);
-    int at_trigger_arg2_;
+    void (*at_trigger_f_)(void*);
+    void* at_trigger_arg_;
     unsigned _refcount;
 #if TAMER_DEBUG
     const char *annotate_file_;
@@ -106,10 +104,9 @@ class simple_event { public:
     simple_event &operator=(const simple_event &);
 
     void unuse_trigger() TAMER_NOEXCEPT;
-    simple_event *at_trigger_event();
-    static void hard_at_trigger(simple_event *x, simple_event *at_trigger);
-    static void hard_at_trigger(simple_event *x, void (*f)(void *, int),
-				void *arg1, int arg2);
+    static inline event<> at_trigger_event(void (*f)(void*), void* arg);
+    static void trigger_hook(void* arg);
+    static void hard_at_trigger(simple_event* x, void (*f)(void*), void* arg);
 
     friend class explicit_rendezvous;
 
@@ -394,7 +391,7 @@ inline simple_event::simple_event() TAMER_NOEXCEPT
 
 inline simple_event::simple_event(abstract_rendezvous& r, uintptr_t rid) TAMER_NOEXCEPT
     : _r(&r), _rid(rid), _r_next(r.waiting_), _r_pprev(&r.waiting_),
-      at_trigger_(0), at_trigger_f_(0), _refcount(1) {
+      at_trigger_f_(0), at_trigger_arg_(0), _refcount(1) {
     if (r.waiting_)
 	r.waiting_->_r_pprev = &_r_next;
     r.waiting_ = this;
@@ -470,22 +467,18 @@ inline void simple_event::simple_trigger(bool values) {
     simple_trigger(this, values);
 }
 
-inline void simple_event::at_trigger(simple_event *x, simple_event *at_e) {
-    if (x && *x && !x->at_trigger_ && at_e)
-	x->at_trigger_ = at_e;
-    else
-	hard_at_trigger(x, at_e);
+inline void simple_event::at_trigger(simple_event* x, simple_event* at_e) {
+    if (at_e)
+        at_trigger(x, trigger_hook, at_e);
 }
 
-inline void simple_event::at_trigger(simple_event *x, void (*f)(void *, int),
-				     void *arg1, int arg2) {
-    TAMER_DEBUG_ASSERT(arg1);
-    if (x && *x && !x->at_trigger_) {
-	x->at_trigger_ = arg1;
+inline void simple_event::at_trigger(simple_event* x, void (*f)(void*),
+                                     void* arg) {
+    if (x && *x && !x->at_trigger_f_) {
 	x->at_trigger_f_ = f;
-	x->at_trigger_arg2_ = arg2;
+	x->at_trigger_arg_ = arg;
     } else
-	hard_at_trigger(x, f, arg1, arg2);
+	hard_at_trigger(x, f, arg);
 }
 
 template <typename T> struct rid_cast {

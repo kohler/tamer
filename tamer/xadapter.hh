@@ -183,8 +183,8 @@ class distribute_rendezvous : public functional_rendezvous,
 			  event<T0, T1, T2, T3> e2)
 	: functional_rendezvous(tamerpriv::rdistribute, hook),
 	  e1_(TAMER_MOVE(e1)), e2_(TAMER_MOVE(e2)), outstanding_(2) {
-	tamerpriv::simple_event::at_trigger(e1_.__get_simple(), clear_hook, this, 0);
-	tamerpriv::simple_event::at_trigger(e2_.__get_simple(), clear_hook, this, 0);
+	tamerpriv::simple_event::at_trigger(e1_.__get_simple(), clear_hook, this);
+	tamerpriv::simple_event::at_trigger(e2_.__get_simple(), clear_hook, this);
     }
     uintptr_t make_rid(uintptr_t rid) {
 	return rid;
@@ -198,7 +198,7 @@ class distribute_rendezvous : public functional_rendezvous,
     tamer::value_pack<T0, T1, T2, T3> vs_;
     int outstanding_;
     static void hook(functional_rendezvous *, simple_event *, bool) TAMER_NOEXCEPT;
-    static void clear_hook(void *, int);
+    static void clear_hook(void*);
 };
 
 template <typename T0, typename T1, typename T2, typename T3>
@@ -220,7 +220,7 @@ void distribute_rendezvous<T0, T1, T2, T3>::hook(functional_rendezvous *fr,
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
-void distribute_rendezvous<T0, T1, T2, T3>::clear_hook(void *arg, int) {
+void distribute_rendezvous<T0, T1, T2, T3>::clear_hook(void* arg) {
     distribute_rendezvous<T0, T1, T2, T3> *dr =
 	static_cast<distribute_rendezvous<T0, T1, T2, T3> *>(arg);
     if (--dr->outstanding_ == 0) {
