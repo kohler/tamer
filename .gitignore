@@ -34,6 +34,7 @@ compiler/tamer
 
 tamer/Makefile
 tamer/Makefile.in
+tamer/autoconf.h
 tamer/bufferedio.cc
 tamer/dns.cc
 tamer/fd.cc
