@@ -33,9 +33,14 @@ enum signal_flags {
     signal_background = 1
 };
 
-class driver { public:
-    inline driver();
-    virtual inline ~driver();
+class driver {
+  public:
+    driver();
+    virtual ~driver();
+
+    enum { capacity = (unsigned) 256 };
+    static inline driver* by_index(unsigned index);
+    inline unsigned index() const;
 
     // basic functions
     enum { fdread = 0, fdwrite = 1 }; // the order is important
@@ -62,9 +67,9 @@ class driver { public:
 
     virtual void loop(loop_flags flag) = 0;
 
-    static driver *make_tamer();
-    static driver *make_libevent();
-    static driver *make_libev();
+    static driver* make_tamer();
+    static driver* make_libevent();
+    static driver* make_libev();
 
     static driver *main;
 
@@ -74,14 +79,21 @@ class driver { public:
     static unsigned sig_ntotal;
     static void dispatch_signals();
 
+  private:
+    unsigned index_;
+
+    static driver* indexed[capacity];
+    static int next_index;
 };
 
 inline const timeval &now();
 
-inline driver::driver() {
+inline driver* driver::by_index(unsigned index) {
+    return index < capacity ? indexed[index] : 0;
 }
 
-inline driver::~driver() {
+inline unsigned driver::index() const {
+    return index_;
 }
 
 inline void driver::at_fd(int fd, int action, event<> e) {

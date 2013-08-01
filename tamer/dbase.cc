@@ -26,7 +26,26 @@ timeval now;
 bool now_updated;
 } // namespace tamerpriv
 
-driver *driver::main;
+driver* driver::main;
+driver* driver::indexed[capacity];
+int driver::next_index;
+
+driver::driver() {
+    if (next_index < capacity) {
+        index_ = next_index;
+        ++next_index;
+    } else
+        for (index_ = 0; index_ != capacity && indexed[index_]; ++index_)
+            /* do nothing */;
+    assert(index_ < capacity);
+    indexed[index_] = this;
+}
+
+driver::~driver() {
+    indexed[index_] = 0;
+    if (main == this)
+        main = 0;
+}
 
 void initialize()
 {
@@ -61,4 +80,4 @@ void driver::at_delay(double delay, event<> e)
     }
 }
 
-}
+} // namespace tamer
