@@ -53,7 +53,6 @@ class simple_event;
 class abstract_rendezvous;
 class explicit_rendezvous;
 struct tamer_closure;
-struct tamer_debug_closure;
 
 class simple_event { public:
 
@@ -77,6 +76,9 @@ class simple_event { public:
     inline abstract_rendezvous *rendezvous() const;
     inline uintptr_t rid() const;
     inline simple_event *next() const;
+
+    inline const char* file_annotation() const;
+    inline int line_annotation() const;
 
     inline void simple_trigger(bool values);
     static void simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT;
@@ -138,7 +140,6 @@ class abstract_rendezvous {
     }
 
     tamer_closure *linked_closure() const;
-    tamer_debug_closure *linked_debug_closure() const;
 
   protected:
     simple_event *waiting_;
@@ -167,8 +168,6 @@ class blocking_rendezvous : public abstract_rendezvous {
     inline ~blocking_rendezvous() TAMER_NOEXCEPT;
 
     inline void block(tamer_closure &c, unsigned position,
-		      const char *file, int line);
-    inline void block(tamer_debug_closure &c, unsigned position,
 		      const char *file, int line);
     inline void unblock();
     inline void run();
@@ -295,15 +294,6 @@ class rendezvous_owner {
 };
 
 
-struct tamer_debug_closure : public tamer_closure {
-    tamer_debug_closure(tamer_closure_activator activator)
-	: tamer_closure(activator) {
-    }
-    const char *tamer_blocked_file_;
-    int tamer_blocked_line_;
-};
-
-
 namespace message {
 void event_prematurely_dereferenced(simple_event *e, abstract_rendezvous *r);
 }
@@ -340,14 +330,6 @@ inline void blocking_rendezvous::block(tamer_closure &c,
     blocked_closure_ = &c;
     unblocked_next_ = unblocked_sentinel();
     c.tamer_block_position_ = position;
-}
-
-inline void blocking_rendezvous::block(tamer_debug_closure &c,
-				       unsigned position,
-				       const char *file, int line) {
-    block(static_cast<tamer_closure &>(c), -position, file, line);
-    c.tamer_blocked_file_ = file;
-    c.tamer_blocked_line_ = line;
 }
 
 inline void blocking_rendezvous::unblock() {
@@ -443,6 +425,14 @@ inline uintptr_t simple_event::rid() const {
 
 inline simple_event *simple_event::next() const {
     return _r_next;
+}
+
+inline const char* simple_event::file_annotation() const {
+    return annotate_file_;
+}
+
+inline int simple_event::line_annotation() const {
+    return annotate_line_;
 }
 
 inline void simple_event::simple_trigger(bool values) {
