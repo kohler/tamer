@@ -650,22 +650,13 @@ class event<void, void, void, void> { public:
 
 #if TAMER_HAVE_PREEVENT
 template <typename R, typename T0>
-class preevent : public std::unary_function<const T0&, void> { public:
-
+class preevent : public std::unary_function<const T0&, void> {
+  public:
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
-    inline TAMER_CONSTEXPR preevent(R& r, T0& x0) TAMER_NOEXCEPT
-        : r_(&r), s0_(&x0) {
-    }
-
-    inline TAMER_CONSTEXPR preevent(const preevent<R, T0>& x) TAMER_NOEXCEPT
-        : r_(x.r_), s0_(x.s0_) {
-    }
-
-    inline preevent(preevent<R, T0>&& x) TAMER_NOEXCEPT
-	: r_(x.r_), s0_(x.s0_) {
-	x.r_ = 0;
-    }
+    inline TAMER_CONSTEXPR preevent(R& r, T0& x0, const char* file = 0, int line = 0) TAMER_NOEXCEPT;
+    inline TAMER_CONSTEXPR preevent(const preevent<R, T0>& x) TAMER_NOEXCEPT;
+    inline preevent(preevent<R, T0>&& x) TAMER_NOEXCEPT;
 
     inline operator event<T0>() {
         return event<T0>(std::move(*this));
@@ -674,11 +665,9 @@ class preevent : public std::unary_function<const T0&, void> { public:
     operator unspecified_bool_type() const {
 	return r_ ? (unspecified_bool_type) &tamerpriv::simple_event::empty : 0;
     }
-
     bool operator!() const {
 	return !r_;
     }
-
     bool empty() const {
 	return !r_;
     }
@@ -736,30 +725,24 @@ class preevent : public std::unary_function<const T0&, void> { public:
   private:
     R* r_;
     T0* s0_;
+# if !TAMER_NOTRACE
+    const char* file_annotation_;
+    int line_annotation_;
+# endif
 
     template <typename TT0, typename TT1, typename TT2, typename TT3>
     friend class event;
 };
 
 template <typename R>
-class preevent<R, void> { public:
-
+class preevent<R, void> {
+  public:
     typedef void result_type;
-
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
-    inline TAMER_CONSTEXPR preevent(R& r) TAMER_NOEXCEPT
-        : r_(&r) {
-    }
-
-    inline TAMER_CONSTEXPR preevent(const preevent<R>& x) TAMER_NOEXCEPT
-        : r_(x.r_) {
-    }
-
-    inline preevent(preevent<R>&& x) TAMER_NOEXCEPT
-	: r_(x.r_) {
-	x.r_ = 0;
-    }
+    inline TAMER_CONSTEXPR preevent(R& r, const char* file = 0, int line = 0) TAMER_NOEXCEPT;
+    inline TAMER_CONSTEXPR preevent(const preevent<R>& x) TAMER_NOEXCEPT;
+    inline preevent(preevent<R>&& x) TAMER_NOEXCEPT;
 
     inline operator event<>() {
         return event<>(std::move(*this));
@@ -768,11 +751,9 @@ class preevent<R, void> { public:
     operator unspecified_bool_type() const {
 	return r_ ? (unspecified_bool_type) &tamerpriv::simple_event::empty : 0;
     }
-
     bool operator!() const {
 	return !r_;
     }
-
     bool empty() const {
 	return !r_;
     }
@@ -795,6 +776,10 @@ class preevent<R, void> { public:
 
   private:
     R* r_;
+# if !TAMER_NOTRACE
+    const char* file_annotation_;
+    int line_annotation_;
+# endif
 
     template <typename TT0, typename TT1, typename TT2, typename TT3>
     friend class event;
@@ -1276,6 +1261,43 @@ inline T0* event<T0>::result_pointer() const TAMER_NOEXCEPT {
 }
 
 
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0>
+inline TAMER_CONSTEXPR preevent<R, T0>::preevent(R& r, T0& x0, const char* file, int line) TAMER_NOEXCEPT
+    : r_(&((void) file, (void) line, r)), s0_(&x0) TAMER_IFTRACE(, file_annotation_(file), line_annotation_(line)) {
+}
+
+template <typename R, typename T0>
+inline TAMER_CONSTEXPR preevent<R, T0>::preevent(const preevent<R, T0>& x) TAMER_NOEXCEPT
+    : r_(x.r_), s0_(x.s0_) TAMER_IFTRACE(, file_annotation_(x.file_annotation_), line_annotation_(x.line_annotation_)) {
+}
+
+template <typename R, typename T0>
+inline preevent<R, T0>::preevent(preevent<R, T0>&& x) TAMER_NOEXCEPT
+    : r_(x.r_), s0_(x.s0_) TAMER_IFTRACE(, file_annotation_(x.file_annotation_), line_annotation_(x.line_annotation_)) {
+    x.r_ = 0;
+}
+
+template <typename R>
+inline TAMER_CONSTEXPR preevent<R>::preevent(R& r, const char* file, int line) TAMER_NOEXCEPT
+    : r_(&((void) file, (void) line, r)) TAMER_IFTRACE(, file_annotation_(file), line_annotation_(line)) {
+}
+
+template <typename R>
+inline TAMER_CONSTEXPR preevent<R>::preevent(const preevent<R>& x) TAMER_NOEXCEPT
+    : r_(x.r_) TAMER_IFTRACE(, file_annotation_(x.file_annotation_), line_annotation_(x.line_annotation_)) {
+}
+
+template <typename R>
+inline preevent<R>::preevent(preevent<R>&& x) TAMER_NOEXCEPT
+    : r_(x.r_) TAMER_IFTRACE(, file_annotation_(x.file_annotation_), line_annotation_(x.line_annotation_)) {
+    x.r_ = 0;
+}
+
+# undef TAMER_PREEVENT_CTOR
+#endif
+
+
 /** @defgroup make_event Helper functions for making events
  *
  *  The @c make_event() helper function simplifies event creation.  @c
@@ -1737,11 +1759,19 @@ inline event<T0> make_annotated_event(const char *file, int line, one_argument_r
     return event<T0>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0), file, line);
 }
 
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0>
+inline preevent<R, T0> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, T0& x0)
+{
+    return preevent<R, T0>(static_cast<R&>(r), x0, file, line);
+}
+#else
 template <typename R, typename T0>
 inline event<T0> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, T0& x0)
 {
     return event<T0>(x0).__instantiate(static_cast<R&>(r), 0, file, line);
 }
+#endif
 
 template <typename R, typename T0>
 inline event<T0> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<T0>& sp)
@@ -1773,6 +1803,19 @@ inline event<> make_annotated_event(const char *file, int line, one_argument_ren
     return event<>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0), file, line);
 }
 
+#if TAMER_HAVE_PREEVENT
+template <typename R>
+inline preevent<R> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r)
+{
+    return preevent<R>(static_cast<R&>(r), file, line);
+}
+
+template <typename R>
+inline event<> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<>& sp)
+{
+    return preevent<R>(static_cast<R&>(r), file, line);
+}
+#else
 template <typename R>
 inline event<> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r)
 {
@@ -1784,6 +1827,7 @@ inline event<> make_annotated_event(const char *file, int line, zero_argument_re
 {
     return event<>(sp).__instantiate(static_cast<R&>(r), 0, file, line);
 }
+#endif
 
 
 template <typename T0, typename T1, typename T2>
@@ -1870,13 +1914,13 @@ inline event<T0>::event(event<> e, const no_result&) TAMER_NOEXCEPT
 #if TAMER_HAVE_PREEVENT
 template <typename T0> template <typename R>
 inline event<T0>::event(preevent<R, T0>&& x)
-    : se_(x.r_ ? new tamerpriv::simple_event(*x.r_, 0, 0, 0) : 0), _s0(x.s0_) {
+    : se_(x.r_ ? new tamerpriv::simple_event(*x.r_, 0, TAMER_IFTRACE_ELSE(x.file_annotation_, 0), TAMER_IFTRACE_ELSE(x.line_annotation_, 0)) : 0), _s0(x.s0_) {
     x.r_ = 0;
 }
 
 template <typename R>
 inline event<>::event(preevent<R>&& x)
-    : se_(x.r_ ? new tamerpriv::simple_event(*x.r_, 0, 0, 0) : 0) {
+    : se_(x.r_ ? new tamerpriv::simple_event(*x.r_, 0, TAMER_IFTRACE_ELSE(x.file_annotation_, 0), TAMER_IFTRACE_ELSE(x.line_annotation_, 0)) : 0) {
     x.r_ = 0;
 }
 #endif

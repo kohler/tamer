@@ -13,6 +13,16 @@
  * legally binding.
  */
 
+#ifndef TAMER_DEBUG
+/* Define to include more debugging assertions. */
+#undef TAMER_DEBUG
+#endif
+
+#ifndef TAMER_NOTRACE
+/* Define to disable event tracing. */
+#undef TAMER_NOTRACE
+#endif
+
 #if __GNUC__
 # define TAMER_GCCVERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #else
@@ -94,10 +104,10 @@
 #define TAMER_DEPRECATEDATTR
 #endif
 
-#if __GNUC__ && TAMER_DEBUG
+#if __GNUC__ && !TAMER_NOTRACE
 #define TAMER_MAKE_ANNOTATED_EVENT(r, ...) make_annotated_event(__FILE__, __LINE__, r, ## __VA_ARGS__)
 #define TAMER_MAKE_FN_ANNOTATED_EVENT(r, ...) make_annotated_event(__PRETTY_FUNCTION__, 0, r, ## __VA_ARGS__)
-#elif TAMER_DEBUG
+#elif !TAMER_NOTRACE
 #define TAMER_MAKE_ANNOTATED_EVENT(r, ...) make_annotated_event(__FILE__, __LINE__, r, ## __VA_ARGS__)
 #define TAMER_MAKE_FN_ANNOTATED_EVENT(r, ...) make_annotated_event(__FILE__, __LINE__, r, ## __VA_ARGS__)
 #else
@@ -109,6 +119,16 @@
 #define TAMER_DEBUG_ASSERT(x) assert(x)
 #else
 #define TAMER_DEBUG_ASSERT(x)
+#endif
+
+#if !TAMER_NOTRACE
+#define TAMER_IFTRACE(...) __VA_ARGS__
+#define TAMER_IFNOTRACE(...)
+#define TAMER_IFTRACE_ELSE(x, y) x
+#else
+#define TAMER_IFTRACE(...)
+#define TAMER_IFNOTRACE(...) __VA_ARGS__
+#define TAMER_IFTRACE_ELSE(x, y) y
 #endif
 
 #endif

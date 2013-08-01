@@ -96,8 +96,10 @@ class simple_event { public:
     void (*at_trigger_f_)(void*);
     void* at_trigger_arg_;
     unsigned _refcount;
-    int annotate_line_;
-    const char* annotate_file_;
+#if !TAMER_NOTRACE
+    int line_annotation_;
+    const char* file_annotation_;
+#endif
 
     simple_event(const simple_event &);
     simple_event &operator=(const simple_event &);
@@ -361,17 +363,18 @@ inline blocking_rendezvous *blocking_rendezvous::pop_unblocked() {
 
 
 inline simple_event::simple_event() TAMER_NOEXCEPT
-    : _r(0), _refcount(1), annotate_file_(0) {
+    : _r(0), _refcount(1) TAMER_IFTRACE(, file_annotation_(0)) {
 }
 
 inline simple_event::simple_event(abstract_rendezvous& r, uintptr_t rid,
                                   const char* file, int line) TAMER_NOEXCEPT
     : _r(&r), _rid(rid), _r_next(r.waiting_), _r_pprev(&r.waiting_),
-      at_trigger_f_(0), at_trigger_arg_(0), _refcount(1),
-      annotate_line_(line), annotate_file_(file) {
+      at_trigger_f_(0), at_trigger_arg_(0), _refcount(1)
+      TAMER_IFTRACE(, line_annotation_(line), file_annotation_(file)) {
     if (r.waiting_)
 	r.waiting_->_r_pprev = &_r_next;
     r.waiting_ = this;
+    TAMER_IFNOTRACE((void) file, (void) line);
 #if TAMER_DEBUG > 1
     if (file && line)
 	fprintf(stderr, "annotate simple_event(%p) %s:%d\n", this, file, line);
@@ -384,10 +387,10 @@ inline simple_event::simple_event(abstract_rendezvous& r, uintptr_t rid,
 inline simple_event::~simple_event() TAMER_NOEXCEPT {
     assert(!_r);
 # if TAMER_DEBUG > 1
-    if (annotate_file_ && annotate_line_)
-	fprintf(stderr, "destroy simple_event(%p) %s:%d\n", this, annotate_file_, annotate_line_);
-    else if (annotate_file_)
-	fprintf(stderr, "destroy simple_event(%p) %s\n", this, annotate_file_);
+    if (file_annotation() && line_annotation())
+	fprintf(stderr, "destroy simple_event(%p) %s:%d\n", this, file_annotation(), line_annotation());
+    else if (file_annotation())
+	fprintf(stderr, "destroy simple_event(%p) %s\n", this, file_annotation());
 # endif
 }
 #endif
@@ -428,11 +431,19 @@ inline simple_event *simple_event::next() const {
 }
 
 inline const char* simple_event::file_annotation() const {
-    return annotate_file_;
+#if !TAMER_NOTRACE
+    return file_annotation_;
+#else
+    return 0;
+#endif
 }
 
 inline int simple_event::line_annotation() const {
-    return annotate_line_;
+#if !TAMER_NOTRACE
+    return line_annotation_;
+#else
+    return 0;
+#endif
 }
 
 inline void simple_event::simple_trigger(bool values) {

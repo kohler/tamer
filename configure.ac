@@ -368,8 +368,13 @@ fi
 
 
 dnl
-dnl debugging
+dnl debugging and event tracing
 dnl
+
+AC_ARG_ENABLE([tracing], [AS_HELP_STRING([--disable-tracing], [do not trace events])], [], [enable_tracing=yes])
+if test "$enable_tracing" = no; then
+    AC_DEFINE([TAMER_NOTRACE], [1], [Define to disable event tracing.])
+fi
 
 AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug], [include more debugging assertions])])
 if test "$enable_debug" = yes; then
