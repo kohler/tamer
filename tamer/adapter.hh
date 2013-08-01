@@ -213,12 +213,12 @@ inline event<T0> add_timeout(double delay, preevent<R, T0>&& pe) {
 
 template <typename R, typename T0>
 inline event<T0> add_timeout_sec(int delay, preevent<R, T0>&& pe) {
-    return add_timeout(delay, event<T0>(std::move(pe)));
+    return add_timeout_sec(delay, event<T0>(std::move(pe)));
 }
 
 template <typename R, typename T0>
 inline event<T0> add_timeout_msec(int delay, preevent<R, T0>&& pe) {
-    return add_timeout(delay, event<T0>(std::move(pe)));
+    return add_timeout_msec(delay, event<T0>(std::move(pe)));
 }
 #endif
 
@@ -320,12 +320,12 @@ inline event<T0> with_timeout(double delay, preevent<R, T0>&& pe) {
 
 template <typename R, typename T0>
 inline event<T0> with_timeout_sec(int delay, preevent<R, T0>&& pe) {
-    return with_timeout(delay, event<T0>(std::move(pe)));
+    return with_timeout_sec(delay, event<T0>(std::move(pe)));
 }
 
 template <typename R, typename T0>
 inline event<T0> with_timeout_msec(int delay, preevent<R, T0>&& pe) {
-    return with_timeout(delay, event<T0>(std::move(pe)));
+    return with_timeout_msec(delay, event<T0>(std::move(pe)));
 }
 #endif
 
@@ -430,12 +430,12 @@ inline event<T0> with_timeout(double delay, preevent<R, T0>&& pe, int& result) {
 
 template <typename R, typename T0>
 inline event<T0> with_timeout_sec(int delay, preevent<R, T0>&& pe, int& result) {
-    return with_timeout(delay, event<T0>(std::move(pe)), result);
+    return with_timeout_sec(delay, event<T0>(std::move(pe)), result);
 }
 
 template <typename R, typename T0>
 inline event<T0> with_timeout_msec(int delay, preevent<R, T0>&& pe, int& result) {
-    return with_timeout(delay, event<T0>(std::move(pe)), result);
+    return with_timeout_msec(delay, event<T0>(std::move(pe)), result);
 }
 #endif
 
