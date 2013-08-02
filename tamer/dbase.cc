@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <string.h>
 
 namespace tamer {
 namespace tamerpriv {
@@ -47,18 +48,17 @@ driver::~driver() {
         main = 0;
 }
 
-void initialize()
-{
-    if (!driver::main && getenv("TAMER_LIBEV"))
+void initialize() {
+    const char* driver = getenv("TAMER_DRIVER");
+    if (!driver::main && (driver ? strcmp(driver, "libev") == 0 : !!getenv("TAMER_LIBEV")))
 	driver::main = driver::make_libev();
-    if (!driver::main && !getenv("TAMER_NOLIBEVENT"))
+    if (!driver::main && (driver ? strcmp(driver, "libevent") == 0 : !getenv("TAMER_NOLIBEVENT")))
 	driver::main = driver::make_libevent();
     if (!driver::main)
 	driver::main = driver::make_tamer();
 }
 
-void cleanup()
-{
+void cleanup() {
     delete driver::main;
     driver::main = 0;
 }
