@@ -22,6 +22,11 @@
 
 int n;
 
+uint32_t xseed = 23941792;
+uint32_t xrandom() {
+    return (xseed = xseed * 1664525 + 1013904223);
+}
+
 tamed void test() {
     tvars {
 	int j = 0;
@@ -31,12 +36,12 @@ tamed void test() {
     for (int i = 0; i < 5000; ++i) {
 	char buf[30];
 	sprintf(buf, "%d", i);
-	tamer::at_delay_usec(random() % 100000,
+	tamer::at_delay_usec(xrandom() % 100000,
 			     tamer::make_event(r, std::string(buf)));
     }
     while (j < 10) {
 	twait(r, s);
-	fprintf(stderr, "%s\n", s.c_str());
+	fprintf(stdout, "%s\n", s.c_str());
 	++j;
     }
 }

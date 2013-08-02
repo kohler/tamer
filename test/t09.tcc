@@ -24,7 +24,7 @@
 tamed void readit(tamer::fd fd) {
     tvars { char buf[1024]; size_t x; int ret; }
     twait { fd.read(buf, sizeof(buf), x, make_event(ret)); }
-    std::cerr << ret << " returned, " << x << " bytes read\n";
+    std::cout << ret << " returned, " << x << " bytes read\n";
 }
 
 int main(int, char**) {

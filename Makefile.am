@@ -10,4 +10,7 @@ compiler tamer ex knot doc test:
 tamer: compiler
 ex knot test: compiler tamer
 
-.PHONY: compiler tamer ex knot doc test
+check: ex test
+	$(srcdir)/test/testie $(srcdir)/test
+
+.PHONY: check compiler tamer ex knot doc test

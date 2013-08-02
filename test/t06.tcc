@@ -34,8 +34,8 @@ tamed void run_signals() {
 	} else
 	    break;
     }
-    fprintf(stderr, "received %d SIGINT\n", n);
-    fflush(stderr);
+    fprintf(stdout, "received %d SIGINT\n", n);
+    fflush(stdout);
 }
 
 int main(int, char **) {

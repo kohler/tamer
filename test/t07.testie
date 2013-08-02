@@ -1,0 +1,8 @@
+%info
+Test templated tamed functions.
+
+%script
+$rundir/test/t07
+
+%stdout
+It happened

@@ -21,7 +21,7 @@
 #include <string.h>
 #include <tamer/tamer.hh>
 
-#if TAMER_HAVE_PREEVENT && !TAMER_DEBUG
+#if TAMER_HAVE_PREEVENT
 template <typename R>
 void immediate_preevent(int i, tamer::preevent<R> e) {
     if (i % 1024 == 0)
@@ -57,8 +57,8 @@ tamed void function_event() {
 int main(int argc, char** argv) {
     tamer::initialize();
     if (argc == 1 || (argc > 1 && strcmp(argv[1], "preevent") == 0)) {
-#if !TAMER_HAVE_PREEVENT || TAMER_DEBUG
-        std::cerr << "preevent<> not supported (need C++11 && !TAMER_DEBUG)\n";
+#if !TAMER_HAVE_PREEVENT
+        std::cerr << "preevent<> not supported (need C++11)\n";
 #else
         function_preevent();
 #endif

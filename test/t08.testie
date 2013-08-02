@@ -1,0 +1,14 @@
+%info
+Test that preevents behave like events. This is also a benchmarking program.
+
+%script
+$rundir/test/t08 preevent
+$rundir/test/t08 event
+
+%stdout -a
+It happened
+preevent<> not supported (need C++11)
+
+%stdout -a
+It happened
+It happened

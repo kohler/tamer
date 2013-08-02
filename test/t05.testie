@@ -1,0 +1,17 @@
+%info
+Test string rendezvous values.
+
+%script
+$rundir/test/t05
+
+%stdout
+3967
+2259
+2899
+1831
+1002
+3624
+2055
+3099
+3837
+1118

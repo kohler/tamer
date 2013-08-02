@@ -1,0 +1,8 @@
+%info
+Check large numbers of file descriptors
+
+%script
+$rundir/test/t10
+
+%stdout
+Got character A after 499 passes

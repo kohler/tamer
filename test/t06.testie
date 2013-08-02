@@ -1,0 +1,8 @@
+%info
+Test signal handling, in particular signal blocking.
+
+%script
+$rundir/test/t06
+
+%stdout
+received {{10000|9...}} SIGINT

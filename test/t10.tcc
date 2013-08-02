@@ -41,8 +41,8 @@ tamed void writeit(tamer::fd& w) {
 tamed void readandexit(tamer::fd& r) {
     tvars { char c; size_t x; int ret; }
     twait { r.read(&c, 1, x, make_event(ret)); }
-    std::cerr << "Got character " << c << " after " << npass << " passes\n";
-    exit(1);
+    std::cout << "Got character " << c << " after " << npass << " passes\n";
+    exit(0);
 }
 
 int main(int, char**) {
