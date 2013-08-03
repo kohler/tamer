@@ -56,7 +56,7 @@ AM_CPPFLAGS = -I$(top_srcdir) -I$(top_builddir)
 TAMER = ../compiler/tamer
 
 .tt.cc:
-	$(TAMER) -o $@ -c $< || (rm $@ && false)
+	$(TAMER) -g -o $@ -c $< || (rm $@ && false)
 
 fd.cc: $(TAMER) fd.tt
 fdh.cc: $(TAMER) fdh.tt
