@@ -77,6 +77,11 @@ inline void once() {
     driver::main->loop(loop_once);
 }
 
+/** @brief  Exit the current driver loop. */
+inline void break_loop() {
+    driver::main->break_loop();
+}
+
 /** @brief  Register event for file descriptor readability.
  *  @param  fd  File descriptor.
  *  @param  e   Event.

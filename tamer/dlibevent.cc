@@ -40,6 +40,7 @@ class driver_libevent : public driver {
     virtual void kill_fd(int fd);
 
     virtual void loop(loop_flags flags);
+    virtual void break_loop();
 
     struct fdp {
 	::event base;
@@ -214,6 +215,10 @@ void driver_libevent::loop(loop_flags flags)
 
     if (flags == loop_forever)
 	goto again;
+}
+
+void driver_libevent::break_loop() {
+    event_loopbreak();
 }
 
 } // namespace

@@ -44,6 +44,7 @@ public:
     virtual void kill_fd(int fd);
 
     virtual void loop(loop_flags flags);
+    virtual void break_loop();
 
     struct fdp {
 	union {
@@ -230,6 +231,10 @@ void driver_libev::loop(loop_flags flags) {
 
     if (flags == loop_forever)
 	goto again;
+}
+
+void driver_libev::break_loop() {
+    ev_break(eloop_);
 }
 
 } // namespace

@@ -66,6 +66,7 @@ class driver {
 			  signal_flags flags = signal_default);
 
     virtual void loop(loop_flags flag) = 0;
+    virtual void break_loop() = 0;
 
     static driver* make_tamer();
     static driver* make_libevent();

@@ -37,6 +37,7 @@ class driver_tamer : public driver {
     virtual void kill_fd(int fd);
 
     virtual void loop(loop_flags flags);
+    virtual void break_loop();
 
   private:
 
@@ -64,6 +65,8 @@ class driver_tamer : public driver {
 
     tamerpriv::driver_asapset asap_;
 
+    bool loop_state_;
+
     static void fd_disinterest(void* arg);
     void update_fds();
     int find_bad_fds();
@@ -71,7 +74,7 @@ class driver_tamer : public driver {
 
 
 driver_tamer::driver_tamer()
-    : fdbound_(0), fdset_fdcap_(sizeof(xfd_set) * 8) {
+    : fdbound_(0), fdset_fdcap_(sizeof(xfd_set) * 8), loop_state_(false) {
     fdset_fdcap_ = (fdset_fdcap_ + 31) & ~31; // make multiple of 4 bytes
     assert(FD_SETSIZE <= fdset_fdcap_);
     assert((fdset_fdcap_ % 32) == 0);
@@ -164,6 +167,9 @@ void driver_tamer::at_asap(event<> e) {
 
 void driver_tamer::loop(loop_flags flags)
 {
+    if (flags == loop_forever)
+        loop_state_ = true;
+
  again:
     // fix file descriptors
     if (fds_.has_change())
@@ -232,7 +238,7 @@ void driver_tamer::loop(loop_flags flags)
 	r->run();
 
     // check flags
-    if (flags == loop_forever)
+    if (flags == loop_forever && loop_state_)
 	goto again;
 }
 
@@ -272,6 +278,10 @@ int driver_tamer::find_bad_fds() {
         }
     }
     return nfds;
+}
+
+void driver_tamer::break_loop() {
+    loop_state_ = false;
 }
 
 } // namespace
