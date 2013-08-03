@@ -440,4 +440,4 @@ dnl
 dnl Output
 dnl
 
-AC_OUTPUT(Makefile compiler/Makefile tamer/Makefile ex/Makefile knot/Makefile doc/Makefile test/Makefile tamer/tamer.pc)
+AC_OUTPUT(Makefile compiler/Makefile tamer/Makefile ex/Makefile knot/Makefile doc/Makefile test/Makefile bench/Makefile tamer/tamer.pc)

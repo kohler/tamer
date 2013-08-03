@@ -25,12 +25,12 @@ tamer::mutex m;
 tamed void exclusive(int which) {
     tvars { int ret = 0; }
     if (which == 4 && 0)
-	twait { m.acquire(with_timeout_msec(1200, make_event(), ret)); }
+	twait { m.acquire(with_timeout_msec(120, make_event(), ret)); }
     else
 	twait { m.acquire(make_event()); }
     if (ret >= 0) {
 	printf("%d: acquired\n", which);
-	twait { tamer::at_delay_sec(1, make_event()); }
+	twait { tamer::at_delay_msec(100, make_event()); }
 	m.release();
 	printf("%d: released\n", which);
     } else
@@ -40,7 +40,7 @@ tamed void exclusive(int which) {
 tamed void shared(int which) {
     twait { m.acquire_shared(make_event()); }
     printf("%d: acquired shared\n", which);
-    twait { tamer::at_delay_sec(1, make_event()); }
+    twait { tamer::at_delay_msec(100, make_event()); }
     m.release_shared();
     printf("%d: released shared\n", which);
 }

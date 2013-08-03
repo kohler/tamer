@@ -63,6 +63,11 @@ test/Makefile.in
 test/t[01][0-9]
 test/t[01][0-9].cc
 
+bench/Makefile
+bench/Makefile.in
+bench/b01-asapwto
+bench/b01-asapwto.cc
+
 knot/Makefile
 knot/Makefile.in
 knot/cache2.cc

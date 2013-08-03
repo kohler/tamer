@@ -1,0 +1,13 @@
+%info
+Check the Tamer lock subsystem
+
+%script
+$rundir/test/t11
+
+%stdout
+A
+BX
+A'
+B
+E
+F

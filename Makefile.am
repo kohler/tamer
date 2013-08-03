@@ -3,14 +3,14 @@ AUTOMAKE_OPTIONS = foreign check-news
 
 EXTRA_DIST = LICENSE
 
-SUBDIRS = compiler tamer ex knot doc test
+SUBDIRS = compiler tamer test bench ex doc knot
 
-compiler tamer ex knot doc test:
+compiler tamer test bench ex doc knot:
 	cd $@ && $(MAKE) $(AM_MAKEFLAGS)
 tamer: compiler
-ex knot test: compiler tamer
+test bench ex knot: compiler tamer
 
 check: ex test
 	$(srcdir)/test/testie $(srcdir)/test
 
-.PHONY: check compiler tamer ex knot doc test
+.PHONY: check compiler tamer test bench ex doc knot

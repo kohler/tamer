@@ -1,0 +1,17 @@
+%info
+Check the Tamer lock subsystem
+
+%script
+$rundir/test/t13
+
+%stdout
+1: acquired
+1: released
+2: acquired shared
+3: acquired shared
+2: released shared
+3: released shared
+4: acquired
+4: released
+5: acquired shared
+5: released shared
