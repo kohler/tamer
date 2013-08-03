@@ -1,0 +1,45 @@
+%info
+Bag o' tests, including of some adapters.
+
+%script
+echo Wacky | $rundir/test/t01
+
+%stderr
+====waitr 0
+@0: triggered 1
+@0: triggered 100
+@0: triggered 101
+@0: triggered 102
+@0: triggered 1 1
+@0: triggered 2 2
+@0: triggered 3 3
+@0: done cancellina2
+@0: before bindery 1
+@0: before mappery 1
+====stdin result 0
+@100: {{[\d.]+}}
+@250: {{[\d.]+}}
+@400: {{[\d.]+}}
+@500: distributed 1
+@500: distributed 2
+@500: distributed 3
+@502: distributed 0
+tamer: dropping last reference to active event
+{{tamer:   .*: event was created here|}}
+@502: distributed 1
+@502: distributed 2
+@502: distributed 3
+@502: distributed 0
+@600: after bindery 2
+@600: got bindery
+@600: after bindery 2 2
+@600: got bindery
+@600: after bindery 3 4
+@700: after mappery 3
+@700: before mappery 3
+@700: after mappery 3
+@700+: after mappery 11
+@1000: {{[\d.]+}}
+====waitr 10
+tamer: dropping last reference to active event
+{{tamer:   t01.tcc:193: event was created here|}}

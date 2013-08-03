@@ -21,16 +21,16 @@
 
 tamed void delay1(int x, tamer::event<> e) {
     twait { tamer::at_delay_msec(x, make_event()); }
-    fprintf(stderr, "%ld.%06d: %d!\n", (long int) tamer::now().tv_sec, (int) tamer::now().tv_usec, x);
+    fprintf(stderr, "@%d: %ld.%06d\n", x, (long int) tamer::now().tv_sec, (int) tamer::now().tv_usec);
     e.trigger();
 }
 
 tamed void stdiny() {
     tvars { int fail = -1; }
     twait {
-	//tamer::at_fd_read(0, with_timeout(t, make_event(), fail));
+	tamer::at_fd_read(0, with_timeout(400, make_event(), fail));
 	//tamer::at_fd_read(0, with_signal(SIGINT, make_event(), fail));
-	tamer::at_fd_read(0, make_event());
+	//tamer::at_fd_read(0, make_event());
     }
     fprintf(stderr, "====stdin result %d\n", fail);
 }
@@ -63,7 +63,7 @@ tamed void scatter() {
     j = 0;
     while (r.has_events()) {
 	twait(r, i);
-	fprintf(stderr, "=== distributed %d\n", i);
+	fprintf(stderr, "@%d: distributed %d\n", i ? 500 : 502, i);
 	assert(i == "1230"[j] - '0');
 	++j;
     }
@@ -78,7 +78,7 @@ tamed void scatter() {
     j = 0;
     while (r.has_events()) {
 	twait(r, i);
-	fprintf(stderr, "=== distributed %d\n", i);
+	fprintf(stderr, "@%d: distributed %d\n", 502, i);
 	assert(i == "1230"[j] - '0');
 	++j;
     }
@@ -94,7 +94,7 @@ tamed void cancellina() {
     j = 0;
     while (r.has_events()) {
 	twait(r, i);
-	fprintf(stderr, "=== triggered %d\n", i);
+	fprintf(stderr, "@0: triggered %d\n", i);
 	assert(i == "\001\144\145\146"[j]);
 	++j;
     }
@@ -112,17 +112,17 @@ tamed void cancellina2() {
     e2.trigger();
     e3.trigger();
     if (e4)
-	fprintf(stderr, "=== SHOULD NOT HAVE e4\n");
+	fprintf(stderr, "@0: SHOULD NOT HAVE e4\n");
     assert(!e4);
     k = 0;
     while (r.has_events()) {
 	twait(r, i, j);
-	fprintf(stderr, "=== triggered %d %d\n", i, j);
+	fprintf(stderr, "@0: triggered %d %d\n", i, j);
 	assert(i == j);
 	assert(i == "123"[k] - '0');
 	++k;
     }
-    fprintf(stderr, "=== done cancellina2\n");
+    fprintf(stderr, "@0: done cancellina2\n");
 }
 
 tamed void bindery() {
@@ -130,16 +130,16 @@ tamed void bindery() {
 	tamer::event<> ee; }
     twait {
 	tamer::at_delay_msec(600, tamer::bind(make_event(i), 2));
-	fprintf(stderr, "=== before bindery %d\n", i);
+	fprintf(stderr, "@0: before bindery %d\n", i);
     }
-    fprintf(stderr, "=== after bindery %d\n", i);
+    fprintf(stderr, "@600: after bindery %d\n", i);
     tamer::at_delay_msec(600, tamer::bind(e = TAMER_MAKE_ANNOTATED_EVENT(r, i), 3));
     e.unblocker().trigger();
     while (r.has_events()) {
 	twait(r);
-	fprintf(stderr, "=== got bindery\n");
+	fprintf(stderr, "@600: got bindery\n");
     }
-    fprintf(stderr, "=== after bindery 2 %d\n", i);
+    fprintf(stderr, "@600: after bindery 2 %d\n", i);
     // should print "after bindery 2 2", b/c e.unblocker() was triggered,
     // avoiding the bind
     assert(i == 2);
@@ -147,9 +147,9 @@ tamed void bindery() {
     ee.unblocker().trigger();
     while (r.has_events()) {
 	twait(r);
-	fprintf(stderr, "=== got bindery\n");
+	fprintf(stderr, "@600: got bindery\n");
     }
-    fprintf(stderr, "=== after bindery 3 %d\n", i);
+    fprintf(stderr, "@600: after bindery 3 %d\n", i);
     // should print "after bindery 3 4", b/c ee.unblocker() == ee was
     // triggered, affecting the bind
     assert(i == 4);
@@ -164,21 +164,21 @@ tamed void mappery() {
 	tamer::event<> ee; }
     twait {
 	tamer::at_delay_msec(700, tamer::bind(tamer::map<int>(make_event(i), add1), 2));
-	fprintf(stderr, "=== before mappery %d\n", i);
+	fprintf(stderr, "@0: before mappery %d\n", i);
     }
-    fprintf(stderr, "=== after mappery %d\n", i); // should be 3
+    fprintf(stderr, "@700: after mappery %d\n", i); // should be 3
     assert(i == 3);
     twait {
 	tamer::at_delay_msec(700, tamer::bind(tamer::map<int>(e = make_event(i), add1), 4));
 	e.unblocker().trigger();
-	fprintf(stderr, "=== before mappery %d\n", i);
+	fprintf(stderr, "@700: before mappery %d\n", i);
     }
-    fprintf(stderr, "=== after mappery %d\n", i); // should be 3, since the unblocker executed
+    fprintf(stderr, "@700: after mappery %d\n", i); // should be 3, since the unblocker executed
     assert(i == 3);
     twait {
 	tamer::at_asap(tamer::bind(tamer::map<int>(e = make_event(i), add1), 10));
     }
-    fprintf(stderr, "=== after mappery %d\n", i); // should be 11
+    fprintf(stderr, "@700+: after mappery %d\n", i); // should be 11
     assert(i == 11);
 }
 
@@ -225,7 +225,6 @@ tamed void test_distribute() {
 
 int main(int, char **) {
     tamer::rendezvous<int> r;
-    fprintf(stderr, "???????? *** %d\n\n", getpid());
     tamer::initialize();
     waitr(r);
     delay1(100, tamer::event<>());
@@ -233,15 +232,21 @@ int main(int, char **) {
     delay1(250, tamer::event<>());
     delay1(400, tamer::event<>());
     scatter();
+
+    // The cancellina() tests trigger events and then immediately wait for
+    // them, so they should not block.
     cancellina();
     cancellina2();
+
     bindery();
     mappery();
-    //fcntl(0, F_SETFD, O_NONBLOCK);
-    //stdiny();
+
+    fcntl(0, F_SETFD, O_NONBLOCK);
+    stdiny();
     //waitsig();
+
     tamer::loop();
-    fprintf(stderr, "!\n");
+
     test_debug1();
     test_distribute();
     tamer::loop();
