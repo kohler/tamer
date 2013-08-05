@@ -1,0 +1,18 @@
+%info
+Reading and cancellation.
+
+%script
+$rundir/test/t03
+echo Foo | $rundir/test/t03
+(sleep 1; echo Bar) | $rundir/test/t03
+(echo Baz; sleep 1; echo Quux) | $rundir/test/t03
+echo 0123456789a123456789b123456789c123456789d123456789e123456789 | $rundir/test/t03
+
+%stdout
+got 0: 0: 
+got 0: 4: Foo
+
+got error -{{\d+}} (Operation canceled): 0: 
+got error -{{\d+}} (Operation canceled): 4: Baz
+
+got 0: 40: 0123456789a123456789b123456789c123456789

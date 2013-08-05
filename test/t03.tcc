@@ -30,13 +30,13 @@ tamed void read_sucka(tamer::fd &f) {
 	f.read(buf, 40, amt, tamer::add_timeout_sec(2, make_event(ret)));
     }
     if (ret < 0)
-	fprintf(stderr, "got error %d (%s): %ld: %.*s\n", ret, strerror(-ret), (long) amt, (int) amt, buf);
+	printf("got error %d (%s): %ld: %.*s\n", ret, strerror(-ret), (long) amt, (int) amt, buf);
     else
-	fprintf(stderr, "got %d: %ld: %.*s\n", ret, (long) amt, (int) amt, buf);
+	printf("got %d: %ld: %.*s\n", ret, (long) amt, (int) amt, buf);
 }
 
 tamed void time_sucka() {
-    twait { tamer::at_delay_sec(5, make_event()); }
+    twait { tamer::at_delay_msec(1000, make_event()); }
 }
 
 tamed void close_sucka(tamer::fd &f) {
