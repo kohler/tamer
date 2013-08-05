@@ -194,7 +194,7 @@ void driver_libev::loop(loop_flags flags) {
     if (!asap_.empty()
 	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
 	|| sig_any_active
-	|| tamerpriv::blocking_rendezvous::has_unblocked())
+	|| has_unblocked())
 	event_flags |= EVRUN_NOWAIT;
     else if (!timers_.empty()) {
 	if (!timer_set) {
@@ -226,7 +226,7 @@ void driver_libev::loop(loop_flags flags) {
 	timers_.pop_trigger();
 
     // run active closures
-    while (tamerpriv::blocking_rendezvous *r = tamerpriv::blocking_rendezvous::pop_unblocked())
+    while (tamerpriv::blocking_rendezvous *r = pop_unblocked())
 	r->run();
 
     if (flags == loop_forever)

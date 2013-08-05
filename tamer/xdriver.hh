@@ -33,7 +33,7 @@ enum signal_flags {
     signal_background = 1
 };
 
-class driver {
+class driver : public tamerpriv::simple_driver {
   public:
     driver();
     virtual ~driver();
@@ -78,7 +78,7 @@ class driver {
     static int sig_pipe[2];
     static unsigned sig_nforeground;
     static unsigned sig_ntotal;
-    static void dispatch_signals();
+    void dispatch_signals();
 
   private:
     unsigned index_;
@@ -161,5 +161,11 @@ inline void driver::at_delay_usec(int delay, event<> e) {
     }
 }
 
+namespace tamerpriv {
+inline void blocking_rendezvous::block(tamer_closure& c, unsigned position,
+                                       const char* file, int line) {
+    block(tamer::driver::main, c, position, file, line);
+}
+} // namespace tamerpriv
 } // namespace tamer
 #endif /* TAMER_XDRIVER_HH */

@@ -50,6 +50,7 @@ namespace tamerpriv {
 
 class simple_event;
 class abstract_rendezvous;
+class blocking_rendezvous;
 class explicit_rendezvous;
 struct tamer_closure;
 
@@ -157,32 +158,45 @@ class abstract_rendezvous {
     friend class driver;
 };
 
+class simple_driver {
+  protected:
+    inline simple_driver();
+
+    inline bool has_unblocked() const;
+    inline blocking_rendezvous* pop_unblocked();
+
+    blocking_rendezvous* unblocked_;
+    blocking_rendezvous** unblocked_ptail_;
+
+    friend class blocking_rendezvous;
+};
+
 class blocking_rendezvous : public abstract_rendezvous {
   public:
     inline blocking_rendezvous(rendezvous_flags flags, rendezvous_type rtype) TAMER_NOEXCEPT;
     inline ~blocking_rendezvous() TAMER_NOEXCEPT;
 
-    inline void block(tamer_closure &c, unsigned position,
-		      const char *file, int line);
+    inline void block(simple_driver* driver,
+                      tamer_closure& c, unsigned position,
+		      const char* file, int line);
+    inline void block(tamer_closure& c, unsigned position,
+		      const char* file, int line);
     inline void unblock();
     inline void run();
 
-    static inline bool has_unblocked();
-    static inline blocking_rendezvous *pop_unblocked();
-
   protected:
-    tamer_closure *blocked_closure_;
-    blocking_rendezvous *unblocked_next_;
+    simple_driver* driver_;
+    tamer_closure* blocked_closure_;
+    blocking_rendezvous* unblocked_next_;
 
-    static blocking_rendezvous *unblocked;
-    static blocking_rendezvous **unblocked_ptail;
     static inline blocking_rendezvous *unblocked_sentinel() {
-	return reinterpret_cast<blocking_rendezvous *>(uintptr_t(1));
+	return reinterpret_cast<blocking_rendezvous*>(uintptr_t(1));
     }
 
     void hard_free();
 
     friend class abstract_rendezvous;
+    friend class simple_driver;
 };
 
 class explicit_rendezvous : public blocking_rendezvous {
@@ -308,9 +322,28 @@ inline abstract_rendezvous::~abstract_rendezvous() TAMER_NOEXCEPT {
 #endif
 
 
+inline simple_driver::simple_driver()
+    : unblocked_(), unblocked_ptail_(&unblocked_) {
+}
+
+inline bool simple_driver::has_unblocked() const {
+    return unblocked_;
+}
+
+inline blocking_rendezvous* simple_driver::pop_unblocked() {
+    blocking_rendezvous* r = unblocked_;
+    if (r) {
+        if (!(unblocked_ = r->unblocked_next_))
+            unblocked_ptail_ = &unblocked_;
+    }
+    return r;
+}
+
+
 inline blocking_rendezvous::blocking_rendezvous(rendezvous_flags flags,
 						rendezvous_type rtype) TAMER_NOEXCEPT
-    : abstract_rendezvous(flags, rtype), blocked_closure_(), unblocked_next_() {
+    : abstract_rendezvous(flags, rtype), driver_(), blocked_closure_(),
+      unblocked_next_() {
 }
 
 inline blocking_rendezvous::~blocking_rendezvous() TAMER_NOEXCEPT {
@@ -318,20 +351,21 @@ inline blocking_rendezvous::~blocking_rendezvous() TAMER_NOEXCEPT {
 	hard_free();
 }
 
-inline void blocking_rendezvous::block(tamer_closure &c,
+inline void blocking_rendezvous::block(simple_driver* driver, tamer_closure& c,
 				       unsigned position,
-				       const char *, int) {
+				       const char*, int) {
     assert(!blocked_closure_ && &c);
     blocked_closure_ = &c;
-    unblocked_next_ = unblocked_sentinel();
+    driver_ = driver;
     c.tamer_block_position_ = position;
 }
 
 inline void blocking_rendezvous::unblock() {
-    if (blocked_closure_ && unblocked_next_ == unblocked_sentinel()) {
-	*unblocked_ptail = this;
+    if (blocked_closure_ && driver_) {
 	unblocked_next_ = 0;
-	unblocked_ptail = &unblocked_next_;
+	*driver_->unblocked_ptail_ = this;
+	driver_->unblocked_ptail_ = &unblocked_next_;
+        driver_ = 0;
     }
 }
 
@@ -339,19 +373,6 @@ inline void blocking_rendezvous::run() {
     tamer_closure *c = blocked_closure_;
     blocked_closure_ = 0;
     c->tamer_activator_(c);
-}
-
-inline bool blocking_rendezvous::has_unblocked() {
-    return unblocked;
-}
-
-inline blocking_rendezvous *blocking_rendezvous::pop_unblocked() {
-    blocking_rendezvous *r = unblocked;
-    if (r) {
-	if (!(unblocked = r->unblocked_next_))
-	    unblocked_ptail = &unblocked;
-    }
-    return r;
 }
 
 

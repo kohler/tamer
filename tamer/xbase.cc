@@ -19,16 +19,13 @@
 namespace tamer {
 namespace tamerpriv {
 
-blocking_rendezvous *blocking_rendezvous::unblocked = 0;
-blocking_rendezvous **blocking_rendezvous::unblocked_ptail = &unblocked;
-
 void blocking_rendezvous::hard_free() {
-    if (unblocked_next_ != unblocked_sentinel()) {
-	blocking_rendezvous **p = &unblocked;
+    if (driver_) {
+	blocking_rendezvous **p = &driver_->unblocked_;
 	while (*p != this)
 	    p = &(*p)->unblocked_next_;
 	if (!(*p = unblocked_next_))
-	    unblocked_ptail = p;
+	    driver_->unblocked_ptail_ = p;
     }
     blocked_closure_->tamer_block_position_ = 1;
     blocked_closure_->tamer_activator_(blocked_closure_);
