@@ -25,49 +25,39 @@ namespace tamer {
  *  @brief  A set of watched events.
  *
  *  Rendezvous may also be declared with one or zero template arguments, as in
- *  <tt>rendezvous<T0></tt> or <tt>rendezvous<></tt>.  Each specialized
+ *  <tt>rendezvous<T></tt> or <tt>rendezvous<></tt>.  Each specialized
  *  rendezvous class has functions similar to the full-featured rendezvous,
  *  but with parameters to @c join appropriate to the template arguments.
  *  Specialized rendezvous implementations are often more efficient than the
  *  full @c rendezvous.
  */
-template <typename I0, typename I1>
+template <typename I>
 class rendezvous : public tamerpriv::explicit_rendezvous,
-		   public two_argument_rendezvous_tag<rendezvous<I0, I1> > {
+                   public one_argument_rendezvous_tag<rendezvous<I> > {
   public:
     inline rendezvous(rendezvous_flags flags = rnormal);
     inline ~rendezvous();
 
     template <typename T0, typename T1, typename T2, typename T3>
-    inline event<T0, T1, T2, T3> make_event(const I0& i0, const I1& i1,
+    inline event<T0, T1, T2, T3> make_event(const I& eid,
                                             T0& x0, T1& x1, T2& x2, T3& x3);
     template <typename T0, typename T1, typename T2>
-    inline event<T0, T1, T2> make_event(const I0& i0, const I1& i1,
-                                        T0& x0, T1& x1, T2& x2);
+    inline event<T0, T1, T2> make_event(const I& eid, T0& x0, T1& x1, T2& x2);
     template <typename T0, typename T1>
-    inline event<T0, T1> make_event(const I0& i0, const I1& i1, T0& x0, T1& x1);
+    inline event<T0, T1> make_event(const I& eid, T0& x0, T1& x1);
     template <typename T0>
-    inline event<T0> make_event(const I0& i0, const I1& i1, T0& x0);
-    inline event<> make_event(const I0& i0, const I1& i1);
+    inline event<T0> make_event(const I& eid, T0& x0);
+    inline event<> make_event(const I& eid);
 
     inline bool has_ready() const;
     inline bool has_waiting() const;
     inline bool has_events() const;
 
-    inline bool join(I0& i0, I1& i1);
+    inline bool join(I& eid);
     void clear();
 
-    inline uintptr_t make_rid(const I0& i0, const I1& i1);
+    inline uintptr_t make_rid(const I& eid);
     using tamerpriv::blocking_rendezvous::block;
-
-  private:
-    struct eventid {
-	I0 i0;
-	I1 i1;
-	eventid(I0 i0_, I1 i1_)
-	    : i0(TAMER_MOVE(i0_)), i1(TAMER_MOVE(i1_)) {
-	}
-    };
 };
 
 
@@ -77,14 +67,14 @@ class rendezvous : public tamerpriv::explicit_rendezvous,
  *  Pass tamer::rvolatile as the @a flags parameter to create a volatile
  *  rendezvous.  Volatile rendezvous do not generate error messages when
  *  their events are dereferenced before trigger. */
-template <typename I0, typename I1>
-inline rendezvous<I0, I1>::rendezvous(rendezvous_flags flags)
+template <typename I>
+inline rendezvous<I>::rendezvous(rendezvous_flags flags)
     : explicit_rendezvous(flags) {
 }
 
 /** @brief  Destroy rendezvous. */
-template <typename I0, typename I1>
-inline rendezvous<I0, I1>::~rendezvous() {
+template <typename I>
+inline rendezvous<I>::~rendezvous() {
     if (waiting_ || ready_)
 	clear();
 }
@@ -93,39 +83,37 @@ inline rendezvous<I0, I1>::~rendezvous() {
  *
  *  An event is ready if it has triggered, but no @a join or @c twait
  *  has reported it yet. */
-template <typename I0, typename I1>
-inline bool rendezvous<I0, I1>::has_ready() const {
+template <typename I>
+inline bool rendezvous<I>::has_ready() const {
     return ready_;
 }
 
 /** @brief  Test if any events are waiting.
  *
  *  An event is waiting until it is either triggered or canceled. */
-template <typename I0, typename I1>
-inline bool rendezvous<I0, I1>::has_waiting() const {
+template <typename I>
+inline bool rendezvous<I>::has_waiting() const {
     return waiting_;
 }
 
 /** @brief  Test if any events are ready or waiting. */
-template <typename I0, typename I1>
-inline bool rendezvous<I0, I1>::has_events() const {
+template <typename I>
+inline bool rendezvous<I>::has_events() const {
     return ready_ || waiting_;
 }
 
 /** @brief  Report the next ready event.
- *  @param[out]  i0  Set to the first event ID of the ready event.
- *  @param[out]  i1  Set to the second event ID of the ready event.
+ *  @param[out]  eid  Set to the event ID of the ready event.
  *  @return  True if there was a ready event, false otherwise.
  *
- *  @a i0 and @a i1 were modified if and only if @a join returns true.
+ *  @a eid was modified if and only if @a join returns true.
  */
-template <typename I0, typename I1>
-inline bool rendezvous<I0, I1>::join(I0 &i0, I1 &i1) {
+template <typename I>
+inline bool rendezvous<I>::join(I& eid) {
     if (ready_) {
-	eventid *eid = reinterpret_cast<eventid *>(pop_ready());
-	i0 = TAMER_MOVE(eid->i0);
-	i1 = TAMER_MOVE(eid->i1);
-	delete eid;
+	I* eidp = reinterpret_cast<I*>(pop_ready());
+	eid = TAMER_MOVE(*eidp);
+	delete eidp;
 	return true;
     } else
 	return false;
@@ -135,122 +123,54 @@ inline bool rendezvous<I0, I1>::join(I0 &i0, I1 &i1) {
  *
  *  Every event waiting on this rendezvous is made empty.  After clear(),
  *  has_events() will return false. */
-template <typename I0, typename I1>
-void rendezvous<I0, I1>::clear() {
+template <typename I>
+void rendezvous<I>::clear() {
     for (tamerpriv::simple_event *e = waiting_; e; e = e->next())
-	delete reinterpret_cast<eventid *>(e->rid());
+	delete reinterpret_cast<I*>(e->rid());
     abstract_rendezvous::remove_waiting();
     for (tamerpriv::simple_event *e = ready_; e; e = e->next())
-	delete reinterpret_cast<eventid *>(e->rid());
+	delete reinterpret_cast<I*>(e->rid());
     explicit_rendezvous::remove_ready();
 }
 
 /** @internal
  *  @brief  Add an occurrence to this rendezvous.
- *  @param  i0  The occurrence's first event ID.
- *  @param  i1  The occurrence's first event ID.
+ *  @param  eid  The occurrence's event ID.
  */
-template <typename I0, typename I1>
-inline uintptr_t rendezvous<I0, I1>::make_rid(const I0& i0, const I1& i1) {
-    return reinterpret_cast<uintptr_t>(new eventid(i0, i1));
+template <typename I>
+inline uintptr_t rendezvous<I>::make_rid(const I& eid) {
+    return reinterpret_cast<uintptr_t>(new I(eid));
 }
 
 
 /** @cond specialized_rendezvous */
 
-template <typename I0>
-class rendezvous<I0> : public tamerpriv::explicit_rendezvous,
-		       public one_argument_rendezvous_tag<rendezvous<I0> > {
-  public:
-    inline rendezvous(rendezvous_flags flags = rnormal);
-    inline ~rendezvous();
-
-    template <typename T0, typename T1, typename T2, typename T3>
-    inline event<T0, T1, T2, T3> make_event(const I0& i0,
-                                            T0& x0, T1& x1, T2& x2, T3& x3);
-    template <typename T0, typename T1, typename T2>
-    inline event<T0, T1, T2> make_event(const I0& i0, T0& x0, T1& x1, T2& x2);
-    template <typename T0, typename T1>
-    inline event<T0, T1> make_event(const I0& i0, T0& x0, T1& x1);
-    template <typename T0>
-    inline event<T0> make_event(const I0& i0, T0& x0);
-    inline event<> make_event(const I0& i0);
-
-    inline bool has_ready() const	{ return ready_; }
-    inline bool has_waiting() const	{ return waiting_; }
-    inline bool has_events() const	{ return ready_ || waiting_; }
-
-    inline bool join(I0 &);
-    void clear();
-
-    inline uintptr_t make_rid(const I0& i0);
-    using tamerpriv::blocking_rendezvous::block;
-};
-
-template <typename I0>
-inline rendezvous<I0>::rendezvous(rendezvous_flags flags)
-    : explicit_rendezvous(flags) {
-}
-
-template <typename I0>
-inline rendezvous<I0>::~rendezvous() {
-    if (waiting_ || ready_)
-	clear();
-}
-
-template <typename I0>
-inline bool rendezvous<I0>::join(I0 &i0) {
-    if (ready_) {
-	I0 *eid = reinterpret_cast<I0 *>(pop_ready());
-	i0 = TAMER_MOVE(*eid);
-	delete eid;
-	return true;
-    } else
-	return false;
-}
-
-template <typename I0>
-void rendezvous<I0>::clear() {
-    for (tamerpriv::simple_event *e = waiting_; e; e = e->next())
-	delete reinterpret_cast<I0 *>(e->rid());
-    abstract_rendezvous::remove_waiting();
-    for (tamerpriv::simple_event *e = ready_; e; e = e->next())
-	delete reinterpret_cast<I0 *>(e->rid());
-    explicit_rendezvous::remove_ready();
-}
-
-template <typename I0>
-inline uintptr_t rendezvous<I0>::make_rid(const I0& i0) {
-    return reinterpret_cast<uintptr_t>(new I0(i0));
-}
-
-
-template <typename I0>
+template <typename I>
 class simple_rendezvous : public tamerpriv::explicit_rendezvous,
-			  public one_argument_rendezvous_tag<simple_rendezvous<I0> > {
+			  public one_argument_rendezvous_tag<simple_rendezvous<I> > {
   public:
     inline simple_rendezvous(rendezvous_flags flags = rnormal);
     inline ~simple_rendezvous();
 
     template <typename T0, typename T1, typename T2, typename T3>
-    inline event<T0, T1, T2, T3> make_event(I0 i0,
+    inline event<T0, T1, T2, T3> make_event(I eid,
                                             T0& x0, T1& x1, T2& x2, T3& x3);
     template <typename T0, typename T1, typename T2>
-    inline event<T0, T1, T2> make_event(I0 i0, T0& x0, T1& x1, T2& x2);
+    inline event<T0, T1, T2> make_event(I eid, T0& x0, T1& x1, T2& x2);
     template <typename T0, typename T1>
-    inline event<T0, T1> make_event(I0 i0, T0& x0, T1& x1);
+    inline event<T0, T1> make_event(I eid, T0& x0, T1& x1);
     template <typename T0>
-    inline event<T0> make_event(I0 i0, T0& x0);
-    inline event<> make_event(I0 i0);
+    inline event<T0> make_event(I eid, T0& x0);
+    inline event<> make_event(I eid);
 
     inline bool has_ready() const	{ return ready_; }
     inline bool has_waiting() const	{ return waiting_; }
     inline bool has_events() const	{ return ready_ || waiting_; }
 
-    inline bool join(I0&);
+    inline bool join(I& eid);
     void clear();
 
-    inline uintptr_t make_rid(I0 i0) TAMER_NOEXCEPT;
+    inline uintptr_t make_rid(I eid) TAMER_NOEXCEPT;
     using tamerpriv::blocking_rendezvous::block;
 };
 
@@ -266,9 +186,9 @@ inline simple_rendezvous<T>::~simple_rendezvous() {
 }
 
 template <typename T>
-inline bool simple_rendezvous<T>::join(T &i0) {
+inline bool simple_rendezvous<T>::join(T& eid) {
     if (ready_) {
-	i0 = tamerpriv::rid_cast<T>::out(pop_ready());
+	eid = tamerpriv::rid_cast<T>::out(pop_ready());
 	return true;
     } else
 	return false;
@@ -281,8 +201,8 @@ void simple_rendezvous<T>::clear() {
 }
 
 template <typename T>
-inline uintptr_t simple_rendezvous<T>::make_rid(T i0) TAMER_NOEXCEPT {
-    return tamerpriv::rid_cast<T>::in(i0);
+inline uintptr_t simple_rendezvous<T>::make_rid(T eid) TAMER_NOEXCEPT {
+    return tamerpriv::rid_cast<T>::in(eid);
 }
 
 
@@ -295,10 +215,10 @@ class rendezvous<uintptr_t> : public simple_rendezvous<uintptr_t> {
 };
 
 template <typename T>
-class rendezvous<T *> : public simple_rendezvous<T *> {
+class rendezvous<T*> : public simple_rendezvous<T*> {
   public:
     inline rendezvous(rendezvous_flags flags = rnormal)
-	: simple_rendezvous<T *>(flags) {
+	: simple_rendezvous<T*>(flags) {
     }
 };
 

@@ -20,27 +20,22 @@ tamer \- C++ extensions for event-driven programming
     void at_trigger(const event<> &\fItrigger_evt\fB);
 }
 .sp
-class rendezvous<I0, I1> { public:
+class rendezvous<I> { public:
     rendezvous(rendezvous_flags \fIflags\fB = rnormal);
     bool has_events() const;
     bool has_ready() const;
     bool has_waiting() const;
-    bool join(I0 &\fIi0\fB, I1 &\fIi1\fB);
+    bool join(I& \fIeid\fB);
 }
 .sp
-event<T0, T1, T2, T3> make_event(rendezvous<I0, I1> &\fIrendezvous\fB,
-                                 const I0 &\fIi0\fB, const I1 &\fIi1\fB,
+event<T0, T1, T2, T3> make_event(rendezvous<I>& \fIrendezvous\fB,
+                                 const I& \fIeid\fB,
                                  T0 &\fIs0\fB, T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB);
-event<T0, T1, T2, T3> make_event(rendezvous<I0> &\fIrendezvous\fB,
-                                 const I0 &\fIi0\fB,
-                                 T0 &\fIs0\fB, T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB);
-event<T0, T1, T2, T3> make_event(rendezvous<> &\fIrendezvous\fB,
+event<T0, T1, T2, T3> make_event(rendezvous<>& \fIrendezvous\fB,
                                  T0 &\fIs0\fB, T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB);
 \&...
-event<> make_event(rendezvous<I0, I1> &\fIrendezvous\fB, 
-                   const I0 &\fIi0\fB, const I1 &\fIi1\fB);
-event<> make_event(rendezvous<I0> &\fIrendezvous\fB, const I0 &\fIi0\fB);
-event<> make_event(rendezvous<> &\fIrendezvous\fB);
+event<> make_event(rendezvous<I>& \fIrendezvous\fB,  const I& \fIeid\fB);
+event<> make_event(rendezvous<>& \fIrendezvous\fB);
 .sp
 tamed void user_function(...) {
     tvars { ... };
@@ -49,9 +44,8 @@ tamed void user_function(...) {
 twait { ... }
 twait volatile { ... }
 .sp
-twait(rendezvous<I0, I1> &\fIrendezvous\fB, I0 &\fIi0\fB, I1 &\fIi1\fB);
-twait(rendezvous<I0> &\fIrendezvous\fB, I0 &\fIi0\fB);
-twait(rendezvous<> &\fIrendezvous\fB);
+twait(rendezvous<I>& \fIrendezvous\fB, I& \fIeid\fB);
+twait(rendezvous<>& \fIrendezvous\fB);
 .fi
 .SH DESCRIPTION
 .B Tamer
@@ -212,8 +206,8 @@ triggers its event argument after the given number of seconds has passed, simply
 .LP
 The second, more flexible form of wait point explicitly names a
 .B rendezvous
-object, which specifies the set of expected events relevant to the wait
-point.  Every 
+object. This object defines the set of expected events relevant to the wait
+point. Every
 .B event
 object associates with one 
 .BR rendezvous .  
@@ -242,22 +236,20 @@ The
 form can also return information about
 .I which
 event occurred.  A rendezvous of type
-.BR rendezvous<I*> , 
-where 
-.B I*
-is zero to two types, associates
-.I event IDs
-of type(s)
-.BR I*
-with events.  The
+.BR rendezvous<I>
+associates an
+.I event ID
+of type
+.BR I
+with each event.  The
 .B make_event
-function specifies event IDs as well as results.  A 
-.B twait(\fIr\fB, \fIi*\fB)
-statement sets the variable(s)
-.I i*
-to the ID(s) of the unblocking event.  The type(s) of
-.I i*
-must match the type(s) of the
+function specifies the event ID as well as results.  A 
+.B twait(\fIr\fB, \fIi\fB)
+statement sets the variable
+.I i
+to the ID of the unblocking event.  The type of
+.I i
+must match the type of the
 .BR rendezvous .
 .LP
 .B rendezvous
@@ -361,17 +353,17 @@ returns true.
 .RE
 .sp
 .nf
-.B template <typename R, [typename I0, typename I1]>
-.B event<T0, T1, T2, T3>::event(R& \fIr\fB, [const I0& \fIi0\fB, const I1& \fIi1\fB,]
+.B template <typename R, [typename I]>
+.B event<T0, T1, T2, T3>::event(R& \fIr\fB, [const I& \fIeid\fB,]
 .B "                             T0& \fIx0\fB, T1& \fIx1\fB, T2& \fIx2\fB, T3& \fIx3\fB)"
-.B ... event<>::event(R& \fIr\fB, [const I0& \fIi0\fB, const I1& \fIi1\fB])
+.B ... event<>::event(R& \fIr\fB, [const I& \fIeid\fB])
 .fi
 .RS 5
 Creates an event on
 .B rendezvous
 .IR r
-with optional event IDs
-.IR i0 " and " i1
+with optional event ID
+.IR eid
 and results
 .IR x0 ... x3 .
 Each 
@@ -456,32 +448,32 @@ will leave this event's results unchanged.
 .SH "RENDEZVOUS CLASS"
 The
 .B rendezvous
-template class groups related events.  The template takes zero to
-two type arguments, which represent the types of the
+template class groups related events.  The template takes an optional
+type argument, which is the type of the
 .BR rendezvous 's
 event IDs.  In the following,
-.BR I0 " and " I1
-are the template arguments of the
+.BR I
+is the template argument of the
 .B rendezvous
 type.  If given, these type arguments must be copy-constructible and
 assignable.
 .sp
 .nf
-.B rendezvous<I*>::rendezvous()
+.B rendezvous<I>::rendezvous()
 .fi
 .RS 5
 Creates a new rendezvous with no outstanding events.
 .RE
 .sp
 .nf
-.B rendezvous<I*>::rendezvous(tamer::rvolatile)
+.B rendezvous<I>::rendezvous(tamer::rvolatile)
 .fi
 .RS 5
 Creates a new volatile rendezvous with no outstanding events.
 .RE
 .sp
 .nf
-.B bool rendezvous<I*>::has_events() const
+.B bool rendezvous<I>::has_events() const
 .fi
 .RS 5
 Tests if there are any outstanding events.  This includes events that have
@@ -490,18 +482,18 @@ notification has not been collected yet.
 .RE
 .sp
 .nf
-.B bool rendezvous<I*>::has_ready() const
+.B bool rendezvous<I>::has_ready() const
 .fi
 .RS 5
 Tests if there are any ready events.  An event is ready if it has been
 triggered, but the trigger notification has not been collected yet.  The
-.B rendezvous<I*>::join
+.B rendezvous<I>::join
 method will return true only if
 .B has_ready()
 is true.
 .RE
 .sp
-.B bool rendezvous<I*>::has_waiting() const
+.B bool rendezvous<I>::has_waiting() const
 .fi
 .RS 5
 Tests if there are any waiting events.  An event is waiting if it has not yet
@@ -509,24 +501,23 @@ triggered.
 .RE
 .sp
 .nf
-.B bool rendezvous<I0, I1>::join(I0 &\fIi0\fB, I1 &\fIi1\fB)
-.B bool rendezvous<I0>::join(I0 &\fIi0\fB)
+.B bool rendezvous<I>::join(I& \fIeid\fB)
 .B bool rendezvous<>::join()
 .fi
 .RS 5
 Collects a trigger notification, if any events have triggered but have not
 yet been collected.  If a trigger notification is available, sets the event
-ID argument(s)
-.IR i0 " and " i1 ,
-if any, to the collected event's ID(s) and returns true.  Otherwise,
+ID argument
+.IR eid ,
+if any, to the collected event's ID and returns true.  Otherwise,
 returns false.  The
 .B twait
 special forms are built around calls to
-.BR rendezvous<I*>::join .
+.BR rendezvous<I>::join .
 .RE
 .sp
 .nf
-.B void rendezvous<I*>::clear()
+.B void rendezvous<I>::clear()
 .fi
 .RS 5
 Removes all pending events from this rendezvous.  Any active events on this
@@ -942,7 +933,7 @@ which is distributed as part of
 .BR sfslite .
 '
 .SH AUTHOR
-Eddie Kohler <kohler@cs.ucla.edu>
+Eddie Kohler <kohler@seas.harvard.edu>
 .br
 Based on joint work on Tame with Maxwell Krohn <krohn@mit.edu> and Frans
 Kaashoek <kaashoek@mit.edu>
@@ -955,7 +946,7 @@ Kaashoek <kaashoek@mit.edu>
 Kaashoek.  In
 .I Proc. USENIX 2007 Annual Technical Conference.
 Also available at
-http://www.cs.ucla.edu/~kohler/pubs/krohn07events.pdf
+http://read.seas.harvard.edu/~kohler/pubs/krohn07events.pdf
 .LP
 The SFSlite libraries for writing asynchronous programs include the
 original

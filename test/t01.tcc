@@ -101,11 +101,13 @@ tamed void cancellina() {
 }
 
 tamed void cancellina2() {
-    tvars { int i(1), j(1), k; tamer::rendezvous<int, int> r; tamer::event<> e1;
+    tvars { std::pair<int, int> ij = std::make_pair(1, 1);
+        int k;
+        tamer::rendezvous<std::pair<int, int> > r; tamer::event<> e1;
 	tamer::event<> e2; tamer::event<> e3; tamer::event<> e4; }
-    e1 = TAMER_MAKE_ANNOTATED_EVENT(r, 1, 1);
-    e2 = TAMER_MAKE_ANNOTATED_EVENT(r, 2, 2);
-    e3 = TAMER_MAKE_ANNOTATED_EVENT(r, 3, 3);
+    e1 = TAMER_MAKE_ANNOTATED_EVENT(r, std::make_pair(1, 1));
+    e2 = TAMER_MAKE_ANNOTATED_EVENT(r, std::make_pair(2, 2));
+    e3 = TAMER_MAKE_ANNOTATED_EVENT(r, std::make_pair(3, 3));
     e4 = tamer::distribute(e1, e2, e3);
     tamer::at_delay_msec(500, e4);
     e1.trigger();
@@ -116,10 +118,10 @@ tamed void cancellina2() {
     assert(!e4);
     k = 0;
     while (r.has_events()) {
-	twait(r, i, j);
-	fprintf(stderr, "@0: triggered %d %d\n", i, j);
-	assert(i == j);
-	assert(i == "123"[k] - '0');
+	twait(r, ij);
+	fprintf(stderr, "@0: triggered %d %d\n", ij.first, ij.second);
+	assert(ij.first == ij.second);
+	assert(ij.first == "123"[k] - '0');
 	++k;
     }
     fprintf(stderr, "@0: done cancellina2\n");

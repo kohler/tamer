@@ -1307,44 +1307,31 @@ inline preevent<R>::preevent(preevent<R>&& x) TAMER_NOEXCEPT
  *
  *  @{ */
 
-/** @brief  Construct a two-ID, four-result event on rendezvous @a r.
+/** @brief  Construct a four-result event on rendezvous @a r with ID @a eid.
  *  @param  r   Rendezvous.
- *  @param  i0  First event ID.
- *  @param  i1  Second event ID.
+ *  @param  eid Event ID.
  *  @param  x0  First result.
  *  @param  x1  Second result.
  *  @param  x2  Third result.
  *  @param  x3  Fourth result.
  *
- *  @note Versions of this function exist for any combination of two, one,
+ *  @note Versions of this function exist for any combination of one
  *  or zero event IDs and four, three, two, one, or zero results. For
  *  example, <code>make_event(r)</code> creates a zero-ID, zero-result event
  *  on <code>rendezvous<> r</code>, while <code>make_event(r, 1, i,
  *  j)</code> might create a one-ID, two-result event on
  *  <code>rendezvous<int> r</code>.
  */
-template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_event(two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, T0& x0, T1& x1, T2& x2, T3& x3)
+template <typename R, typename I, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_event(one_argument_rendezvous_tag<R>& r, const I& eid, T0& x0, T1& x1, T2& x2, T3& x3)
 {
-    return event<T0, T1, T2, T3>(x0, x1, x2, x3).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1));
+    return event<T0, T1, T2, T3>(x0, x1, x2, x3).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid));
 }
 
-template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_event(two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, value_pack<T0, T1, T2, T3>& sp)
+template <typename R, typename I, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_event(one_argument_rendezvous_tag<R>& r, const I& eid, value_pack<T0, T1, T2, T3>& sp)
 {
-    return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1));
-}
-
-template <typename R, typename J0, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_event(one_argument_rendezvous_tag<R>& r, const J0& i0, T0& x0, T1& x1, T2& x2, T3& x3)
-{
-    return event<T0, T1, T2, T3>(x0, x1, x2, x3).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0));
-}
-
-template <typename R, typename J0, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_event(one_argument_rendezvous_tag<R>& r, const J0& i0, value_pack<T0, T1, T2, T3>& sp)
-{
-    return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0));
+    return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid));
 }
 
 template <typename R, typename T0, typename T1, typename T2, typename T3>
@@ -1359,16 +1346,10 @@ inline event<T0, T1, T2, T3> make_event(zero_argument_rendezvous_tag<R>& r, valu
     return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), 0);
 }
 
-template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2>
-inline event<T0, T1, T2> make_event(two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, T0& x0, T1& x1, T2& x2)
+template <typename R, typename I, typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> make_event(one_argument_rendezvous_tag<R>& r, const I& eid, T0& x0, T1& x1, T2& x2)
 {
-    return event<T0, T1, T2>(x0, x1, x2).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1));
-}
-
-template <typename R, typename J0, typename T0, typename T1, typename T2>
-inline event<T0, T1, T2> make_event(one_argument_rendezvous_tag<R>& r, const J0& i0, T0& x0, T1& x1, T2& x2)
-{
-    return event<T0, T1, T2>(x0, x1, x2).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0));
+    return event<T0, T1, T2>(x0, x1, x2).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid));
 }
 
 template <typename R, typename T0, typename T1, typename T2>
@@ -1377,16 +1358,10 @@ inline event<T0, T1, T2> make_event(zero_argument_rendezvous_tag<R>& r, T0& x0, 
     return event<T0, T1, T2>(x0, x1, x2).__instantiate(static_cast<R&>(r), 0);
 }
 
-template <typename R, typename J0, typename J1, typename T0, typename T1>
-inline event<T0, T1> make_event(two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, T0& x0, T1& x1)
+template <typename R, typename I, typename T0, typename T1>
+inline event<T0, T1> make_event(one_argument_rendezvous_tag<R>& r, const I& eid, T0& x0, T1& x1)
 {
-    return event<T0, T1>(x0, x1).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1));
-}
-
-template <typename R, typename J0, typename T0, typename T1>
-inline event<T0, T1> make_event(one_argument_rendezvous_tag<R>& r, const J0& i0, T0& x0, T1& x1)
-{
-    return event<T0, T1>(x0, x1).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0));
+    return event<T0, T1>(x0, x1).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid));
 }
 
 template <typename R, typename T0, typename T1>
@@ -1395,16 +1370,10 @@ inline event<T0, T1> make_event(zero_argument_rendezvous_tag<R>& r, T0& x0, T1& 
     return event<T0, T1>(x0, x1).__instantiate(static_cast<R&>(r), 0);
 }
 
-template <typename R, typename J0, typename J1, typename T0>
-inline event<T0> make_event(two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, T0& x0)
+template <typename R, typename I, typename T0>
+inline event<T0> make_event(one_argument_rendezvous_tag<R>& r, const I& eid, T0& x0)
 {
-    return event<T0>(x0).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1));
-}
-
-template <typename R, typename J0, typename T0>
-inline event<T0> make_event(one_argument_rendezvous_tag<R>& r, const J0& i0, T0& x0)
-{
-    return event<T0>(x0).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0));
+    return event<T0>(x0).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid));
 }
 
 #if TAMER_HAVE_PREEVENT
@@ -1421,16 +1390,10 @@ inline event<T0> make_event(zero_argument_rendezvous_tag<R>& r, T0& x0)
 }
 #endif
 
-template <typename R, typename J0, typename J1>
-inline event<> make_event(two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1)
+template <typename R, typename I>
+inline event<> make_event(one_argument_rendezvous_tag<R>& r, const I& eid)
 {
-    return event<>().__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1));
-}
-
-template <typename R, typename J0>
-inline event<> make_event(one_argument_rendezvous_tag<R>& r, const J0& i0)
-{
-    return event<>().__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0));
+    return event<>().__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid));
 }
 
 #if TAMER_HAVE_PREEVENT
@@ -1451,22 +1414,16 @@ inline event<> make_event(zero_argument_rendezvous_tag<R>& r)
 
 
 /** @cond never */
-template <typename I0, typename I1> template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> rendezvous<I0, I1>::make_event(const I0& i0, const I1& i1, T0& x0, T1& x1, T2& x2, T3& x3)
+template <typename I> template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> rendezvous<I>::make_event(const I& eid, T0& x0, T1& x1, T2& x2, T3& x3)
 {
-    return tamer::make_event(*this, i0, i1, x0, x1, x2, x3);
+    return tamer::make_event(*this, eid, x0, x1, x2, x3);
 }
 
-template <typename I0> template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> rendezvous<I0>::make_event(const I0& i0, T0& x0, T1& x1, T2& x2, T3& x3)
+template <typename I> template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> simple_rendezvous<I>::make_event(I eid, T0& x0, T1& x1, T2& x2, T3& x3)
 {
-    return tamer::make_event(*this, i0, x0, x1, x2, x3);
-}
-
-template <typename I0> template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> simple_rendezvous<I0>::make_event(I0 i0, T0& x0, T1& x1, T2& x2, T3& x3)
-{
-    return tamer::make_event(*this, i0, x0, x1, x2, x3);
+    return tamer::make_event(*this, eid, x0, x1, x2, x3);
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
@@ -1481,22 +1438,16 @@ inline event<T0, T1, T2, T3> gather_rendezvous::make_event(T0& x0, T1& x1, T2& x
     return tamer::make_event(*this, x0, x1, x2, x3);
 }
 
-template <typename I0, typename I1> template <typename T0, typename T1, typename T2>
-inline event<T0, T1, T2> rendezvous<I0, I1>::make_event(const I0& i0, const I1& i1, T0& x0, T1& x1, T2& x2)
+template <typename I> template <typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> rendezvous<I>::make_event(const I& eid, T0& x0, T1& x1, T2& x2)
 {
-    return tamer::make_event(*this, i0, i1, x0, x1, x2);
+    return tamer::make_event(*this, eid, x0, x1, x2);
 }
 
-template <typename I0> template <typename T0, typename T1, typename T2>
-inline event<T0, T1, T2> rendezvous<I0>::make_event(const I0& i0, T0& x0, T1& x1, T2& x2)
+template <typename I> template <typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> simple_rendezvous<I>::make_event(I eid, T0& x0, T1& x1, T2& x2)
 {
-    return tamer::make_event(*this, i0, x0, x1, x2);
-}
-
-template <typename I0> template <typename T0, typename T1, typename T2>
-inline event<T0, T1, T2> simple_rendezvous<I0>::make_event(I0 i0, T0& x0, T1& x1, T2& x2)
-{
-    return tamer::make_event(*this, i0, x0, x1, x2);
+    return tamer::make_event(*this, eid, x0, x1, x2);
 }
 
 template <typename T0, typename T1, typename T2>
@@ -1511,22 +1462,16 @@ inline event<T0, T1, T2> gather_rendezvous::make_event(T0& x0, T1& x1, T2& x2)
     return tamer::make_event(*this, x0, x1, x2);
 }
 
-template <typename I0, typename I1> template <typename T0, typename T1>
-inline event<T0, T1> rendezvous<I0, I1>::make_event(const I0& i0, const I1& i1, T0& x0, T1& x1)
+template <typename I> template <typename T0, typename T1>
+inline event<T0, T1> rendezvous<I>::make_event(const I& eid, T0& x0, T1& x1)
 {
-    return tamer::make_event(*this, i0, i1, x0, x1);
+    return tamer::make_event(*this, eid, x0, x1);
 }
 
-template <typename I0> template <typename T0, typename T1>
-inline event<T0, T1> rendezvous<I0>::make_event(const I0& i0, T0& x0, T1& x1)
+template <typename I> template <typename T0, typename T1>
+inline event<T0, T1> simple_rendezvous<I>::make_event(I eid, T0& x0, T1& x1)
 {
-    return tamer::make_event(*this, i0, x0, x1);
-}
-
-template <typename I0> template <typename T0, typename T1>
-inline event<T0, T1> simple_rendezvous<I0>::make_event(I0 i0, T0& x0, T1& x1)
-{
-    return tamer::make_event(*this, i0, x0, x1);
+    return tamer::make_event(*this, eid, x0, x1);
 }
 
 template <typename T0, typename T1>
@@ -1541,22 +1486,16 @@ inline event<T0, T1> gather_rendezvous::make_event(T0& x0, T1& x1)
     return tamer::make_event(*this, x0, x1);
 }
 
-template <typename I0, typename I1> template <typename T0>
-inline event<T0> rendezvous<I0, I1>::make_event(const I0& i0, const I1& i1, T0& x0)
+template <typename I> template <typename T0>
+inline event<T0> rendezvous<I>::make_event(const I& eid, T0& x0)
 {
-    return tamer::make_event(*this, i0, i1, x0);
+    return tamer::make_event(*this, eid, x0);
 }
 
-template <typename I0> template <typename T0>
-inline event<T0> rendezvous<I0>::make_event(const I0& i0, T0& x0)
+template <typename I> template <typename T0>
+inline event<T0> simple_rendezvous<I>::make_event(I eid, T0& x0)
 {
-    return tamer::make_event(*this, i0, x0);
-}
-
-template <typename I0> template <typename T0>
-inline event<T0> simple_rendezvous<I0>::make_event(I0 i0, T0& x0)
-{
-    return tamer::make_event(*this, i0, x0);
+    return tamer::make_event(*this, eid, x0);
 }
 
 #if TAMER_HAVE_PREEVENT
@@ -1585,22 +1524,16 @@ inline event<T0> gather_rendezvous::make_event(T0& x0)
 }
 #endif
 
-template <typename I0, typename I1>
-inline event<> rendezvous<I0, I1>::make_event(const I0& i0, const I1& i1)
+template <typename I>
+inline event<> rendezvous<I>::make_event(const I& eid)
 {
-    return tamer::make_event(*this, i0, i1);
+    return tamer::make_event(*this, eid);
 }
 
-template <typename I0>
-inline event<> rendezvous<I0>::make_event(const I0& i0)
+template <typename I>
+inline event<> simple_rendezvous<I>::make_event(I eid)
 {
-    return tamer::make_event(*this, i0);
-}
-
-template <typename I0>
-inline event<> simple_rendezvous<I0>::make_event(I0 i0)
-{
-    return tamer::make_event(*this, i0);
+    return tamer::make_event(*this, eid);
 }
 
 #if TAMER_HAVE_PREEVENT
@@ -1627,28 +1560,16 @@ inline event<> gather_rendezvous::make_event()
 /** @endcond never */
 
 
-template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, T0& x0, T1& x1, T2& x2, T3& x3)
+template <typename R, typename I, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, T0& x0, T1& x1, T2& x2, T3& x3)
 {
-    return event<T0, T1, T2, T3>(x0, x1, x2, x3).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1), file, line);
+    return event<T0, T1, T2, T3>(x0, x1, x2, x3).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
-template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, value_pack<T0, T1, T2, T3>& sp)
+template <typename R, typename I, typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, value_pack<T0, T1, T2, T3>& sp)
 {
-    return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1), file, line);
-}
-
-template <typename R, typename J0, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const J0& i0, T0& x0, T1& x1, T2& x2, T3& x3)
-{
-    return event<T0, T1, T2, T3>(x0, x1, x2, x3).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0), file, line);
-}
-
-template <typename R, typename J0, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const J0& i0, value_pack<T0, T1, T2, T3>& sp)
-{
-    return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0), file, line);
+    return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
 template <typename R, typename T0, typename T1, typename T2, typename T3>
@@ -1663,28 +1584,16 @@ inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, ze
     return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), 0, file, line);
 }
 
-template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2>
-inline event<T0, T1, T2> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, T0& x0, T1& x1, T2& x2)
+template <typename R, typename I, typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, T0& x0, T1& x1, T2& x2)
 {
-    return event<T0, T1, T2>(x0, x1, x2).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1), file, line);
+    return event<T0, T1, T2>(x0, x1, x2).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
-template <typename R, typename J0, typename J1, typename T0, typename T1, typename T2>
-inline event<T0, T1, T2> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, value_pack<T0, T1, T2>& sp)
+template <typename R, typename I, typename T0, typename T1, typename T2>
+inline event<T0, T1, T2> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, value_pack<T0, T1, T2>& sp)
 {
-    return event<T0, T1, T2>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1), file, line);
-}
-
-template <typename R, typename J0, typename T0, typename T1, typename T2>
-inline event<T0, T1, T2> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const J0& i0, T0& x0, T1& x1, T2& x2)
-{
-    return event<T0, T1, T2>(x0, x1, x2).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0), file, line);
-}
-
-template <typename R, typename J0, typename T0, typename T1, typename T2>
-inline event<T0, T1, T2> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const J0& i0, value_pack<T0, T1, T2>& sp)
-{
-    return event<T0, T1, T2>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0), file, line);
+    return event<T0, T1, T2>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
 template <typename R, typename T0, typename T1, typename T2>
@@ -1699,28 +1608,16 @@ inline event<T0, T1, T2> make_annotated_event(const char *file, int line, zero_a
     return event<T0, T1, T2>(sp).__instantiate(static_cast<R&>(r), 0, file, line);
 }
 
-template <typename R, typename J0, typename J1, typename T0, typename T1>
-inline event<T0, T1> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, T0& x0, T1& x1)
+template <typename R, typename I, typename T0, typename T1>
+inline event<T0, T1> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, T0& x0, T1& x1)
 {
-    return event<T0, T1>(x0, x1).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1), file, line);
+    return event<T0, T1>(x0, x1).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
-template <typename R, typename J0, typename J1, typename T0, typename T1>
-inline event<T0, T1> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, value_pack<T0, T1>& sp)
+template <typename R, typename I, typename T0, typename T1>
+inline event<T0, T1> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, value_pack<T0, T1>& sp)
 {
-    return event<T0, T1>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1), file, line);
-}
-
-template <typename R, typename J0, typename T0, typename T1>
-inline event<T0, T1> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const J0& i0, T0& x0, T1& x1)
-{
-    return event<T0, T1>(x0, x1).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0), file, line);
-}
-
-template <typename R, typename J0, typename T0, typename T1>
-inline event<T0, T1> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const J0& i0, value_pack<T0, T1>& sp)
-{
-    return event<T0, T1>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0), file, line);
+    return event<T0, T1>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
 template <typename R, typename T0, typename T1>
@@ -1735,28 +1632,16 @@ inline event<T0, T1> make_annotated_event(const char *file, int line, zero_argum
     return event<T0, T1>(sp).__instantiate(static_cast<R&>(r), 0, file, line);
 }
 
-template <typename R, typename J0, typename J1, typename T0>
-inline event<T0> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, T0& x0)
+template <typename R, typename I, typename T0>
+inline event<T0> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, T0& x0)
 {
-    return event<T0>(x0).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1), file, line);
+    return event<T0>(x0).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
-template <typename R, typename J0, typename J1, typename T0>
-inline event<T0> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, value_pack<T0>& sp)
+template <typename R, typename I, typename T0>
+inline event<T0> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, value_pack<T0>& sp)
 {
-    return event<T0>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1), file, line);
-}
-
-template <typename R, typename J0, typename T0>
-inline event<T0> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const J0& i0, T0& x0)
-{
-    return event<T0>(x0).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0), file, line);
-}
-
-template <typename R, typename J0, typename T0>
-inline event<T0> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const J0& i0, value_pack<T0>& sp)
-{
-    return event<T0>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0), file, line);
+    return event<T0>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
 #if TAMER_HAVE_PREEVENT
@@ -1779,28 +1664,16 @@ inline event<T0> make_annotated_event(const char *file, int line, zero_argument_
     return event<T0>(sp).__instantiate(static_cast<R&>(r), 0, file, line);
 }
 
-template <typename R, typename J0, typename J1>
-inline event<> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1)
+template <typename R, typename I>
+inline event<> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid)
 {
-    return event<>().__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1), file, line);
+    return event<>().__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
-template <typename R, typename J0, typename J1>
-inline event<> make_annotated_event(const char *file, int line, two_argument_rendezvous_tag<R>& r, const J0& i0, const J1& i1, value_pack<>& sp)
+template <typename R, typename I>
+inline event<> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, value_pack<>& sp)
 {
-    return event<>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0, i1), file, line);
-}
-
-template <typename R, typename J0>
-inline event<> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const J0& i0)
-{
-    return event<>().__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0), file, line);
-}
-
-template <typename R, typename J0>
-inline event<> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const J0& i0, value_pack<>& sp)
-{
-    return event<>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(i0), file, line);
+    return event<>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
 #if TAMER_HAVE_PREEVENT

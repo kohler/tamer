@@ -20,11 +20,10 @@
 namespace tamer {
 
 // Improve error messages from overloaded functions.
-template <typename R> class two_argument_rendezvous_tag {};
 template <typename R> class one_argument_rendezvous_tag {};
 template <typename R> class zero_argument_rendezvous_tag {};
 
-template <typename I0 = void, typename I1 = void> class rendezvous;
+template <typename I = void> class rendezvous;
 template <typename T0 = void, typename T1 = void, typename T2 = void,
           typename T3 = void> class event;
 #if TAMER_HAVE_PREEVENT
