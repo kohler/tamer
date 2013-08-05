@@ -147,12 +147,6 @@ class abstract_rendezvous {
     uint8_t rtype_;
     bool is_volatile_;
 
-    static abstract_rendezvous *unblocked;
-    static abstract_rendezvous **unblocked_ptail;
-    static inline abstract_rendezvous *unblocked_sentinel() {
-	return reinterpret_cast<abstract_rendezvous *>(uintptr_t(1));
-    }
-
     inline void remove_waiting() TAMER_NOEXCEPT;
 
   private:
