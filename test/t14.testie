@@ -1,0 +1,34 @@
+%info
+Check shutdown() and close() in client/server
+
+%script
+$rundir/test/t14
+
+%stdout
+W 0: Hello
+R 0: Ret Hello
+W 0: Hello
+R 0: Ret Hello
+W 0: Hello
+R 0: Ret Hello
+W 0: Hello
+R 0: Ret Hello
+W 0: Hello
+R 0: Ret Hello
+W 0: Hello
+R 0: Ret Hello
+W 0: Hello
+R 0: Heh
+W 0: Hello
+R 0: Heh
+W 0: Hello
+R 0: Heh
+W 0: Hello
+R 0: Heh
+W 0: Hello
+R 0: Heh
+W 0: Hello
+R 0: Heh
+W 0: Hello
+W error Broken pipe
+Done
