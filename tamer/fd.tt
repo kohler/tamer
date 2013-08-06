@@ -75,8 +75,6 @@ namespace tamer {
 static fdhelper _fdhm;
 #endif
 
-size_t fd::garbage_size;
-
 /** @brief  Make a file descriptor use nonblocking I/O.
  *  @param  f  File descriptor value.
  *  @note   This function's argument is a file descriptor value, not an
@@ -220,20 +218,7 @@ void fd::fstat(struct stat &stat_out, event<int> done)
 	done.trigger(-EBADF);
 }
 
-/** @brief  Read from file descriptor.
- *  @param[out]  buf     Buffer.
- *  @param       size    Buffer size.
- *  @param[out]  nread   Number of characters read.
- *  @param       done    Event triggered on completion.
- *
- *  Reads @a size bytes from the file descriptor, blocking until @a size
- *  bytes are available (or end-of-file or an error condition).  @a done
- *  is triggered with 0 on success or end-of-file, or a negative error
- *  code.  @a nread is kept up to date as the read progresses.
- *
- *  @sa read_once(void *, size_t, size_t &, event<int>)
- */
-tamed void fd::read(void *buf, size_t size, size_t &nread, event<int> done)
+tamed void fd::read(void *buf, size_t size, size_t* nread_ptr, event<int> done)
 {
     tvars {
 	size_t pos = 0;
@@ -241,7 +226,8 @@ tamed void fd::read(void *buf, size_t size, size_t &nread, event<int> done)
 	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
     }
 
-    nread = 0;
+    if (nread_ptr)
+        *nread_ptr = 0;
 
     if (!fi || fi->_fd < 0) {
 	done.trigger(-EBADF);
@@ -261,7 +247,8 @@ tamed void fd::read(void *buf, size_t size, size_t &nread, event<int> done)
 	amt = ::read(fi->_fd, static_cast<char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
-	    nread = pos;
+            if (nread_ptr)
+                *nread_ptr = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -276,21 +263,7 @@ tamed void fd::read(void *buf, size_t size, size_t &nread, event<int> done)
     done.trigger(pos == size || fi->_fd >= 0 ? 0 : -ECANCELED);
 }
 
-/** @brief  Read from file descriptor.
- *  @param[in,out]  iov         I/O vector.
- *  @param          iov_count   Number of elements in I/O vector.
- *  @param[out]     nread       Number of characters read.
- *  @param          done        Event triggered on completion.
- *
- *  Reads @a size bytes from the file descriptor, blocking until @a size
- *  bytes are available (or end-of-file or an error condition). @a done
- *  is triggered with 0 on success or end-of-file, or a negative error
- *  code. @a nread is kept up to date as the read progresses. @a iov may
- *  be modified as a side effect.
- *
- *  @sa read_once(const struct iovec*, int, size_t&, event<int>)
- */
-tamed void fd::read(struct iovec* iov, int iov_count, size_t& nread, event<int> done)
+tamed void fd::read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<int> done)
 {
     tvars {
 	size_t pos = 0;
@@ -299,7 +272,8 @@ tamed void fd::read(struct iovec* iov, int iov_count, size_t& nread, event<int> 
 	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
     }
 
-    nread = 0;
+    if (nread_ptr)
+        *nread_ptr = 0;
 
     if (!fi || fi->_fd < 0) {
 	done.trigger(-EBADF);
@@ -322,7 +296,8 @@ tamed void fd::read(struct iovec* iov, int iov_count, size_t& nread, event<int> 
 	amt = ::readv(fi->_fd, iov, iov_count);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
-	    nread = pos;
+	    if (nread_ptr)
+                *nread_ptr = pos;
             if (pos != size) {
                 while (amt != 0 && (size_t) amt >= iov[0].iov_len) {
                     amt -= iov[0].iov_len;
@@ -347,22 +322,7 @@ tamed void fd::read(struct iovec* iov, int iov_count, size_t& nread, event<int> 
     done.trigger(pos == size || fi->_fd >= 0 ? 0 : -ECANCELED);
 }
 
-/** @brief  Read once from file descriptor.
- *  @param[out]  buf     Buffer.
- *  @param       size    Buffer size.
- *  @param[out]  nread   Number of characters read.
- *  @param       done    Event triggered on completion.
- *
- *  Reads at most @a size bytes from the file descriptor. Blocks until at
- *  least one byte is read (or end-of-file or an error condition), but unlike
- *  read(), @a done is triggered after the @em first successful read, even if
- *  less than @a size bytes are read. @a done is triggered with 0 on success,
- *  or a negative error code. @a nread is kept up to date as the read
- *  progresses.
- *
- *  @sa read(void *, size_t, size_t &, event<int>)
- */
-tamed void fd::read_once(void *buf, size_t size, size_t &nread, event<int> done)
+tamed void fd::read_once(void* buf, size_t size, size_t& nread, event<int> done)
 {
     tvars {
 	ssize_t amt;
@@ -381,7 +341,7 @@ tamed void fd::read_once(void *buf, size_t size, size_t &nread, event<int> done)
     while (done && fi->_fd >= 0) {
 	amt = ::read(fi->_fd, static_cast<char *>(buf), size);
 	if (amt != (ssize_t) -1) {
-	    nread = amt;
+            nread = amt;
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
 	    twait { tamer::at_fd_read(fi->_fd, make_event()); }
@@ -395,21 +355,6 @@ tamed void fd::read_once(void *buf, size_t size, size_t &nread, event<int> done)
     done.trigger(0);
 }
 
-/** @brief  Read once from file descriptor.
- *  @param       iov         I/O vector.
- *  @param       iov_count   Number of elements in I/O vector.
- *  @param[out]  nread       Number of characters read.
- *  @param       done        Event triggered on completion.
- *
- *  Reads at most @a size bytes from the file descriptor. Blocks until at
- *  least one byte is read (or end-of-file or an error condition), but unlike
- *  read(), @a done is triggered after the @em first successful read, even if
- *  less than @a size bytes are read. @a done is triggered with 0 on success,
- *  or a negative error code. @a nread is kept up to date as the read
- *  progresses. Unlike read(), @a iov is never modified.
- *
- *  @sa read(void *, size_t, size_t &, event<int>)
- */
 tamed void fd::read_once(const struct iovec* iov, int iov_count, size_t& nread, event<int> done)
 {
     tvars {
@@ -429,7 +374,7 @@ tamed void fd::read_once(const struct iovec* iov, int iov_count, size_t& nread, 
     while (done && fi->_fd >= 0) {
 	amt = ::readv(fi->_fd, iov, iov_count);
 	if (amt != (ssize_t) -1) {
-	    nread = amt;
+            nread = amt;
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
 	    twait { tamer::at_fd_read(fi->_fd, make_event()); }
@@ -443,18 +388,7 @@ tamed void fd::read_once(const struct iovec* iov, int iov_count, size_t& nread, 
     done.trigger(0);
 }
 
-/** @brief  Write to file descriptor.
- *  @param       buf       Buffer.
- *  @param       size      Buffer size.
- *  @param[out]  nwritten  Number of characters written.
- *  @param       done      Event triggered on completion.
- *
- *  @a done is triggered with 0 on success or end-of-file, or a negative
- *  error code.  @a nwritten is kept up to date as the write progresses.
- *
- *  @sa write(std::string, size_t, event<int>)
- */
-tamed void fd::write(const void *buf, size_t size, size_t &nwritten,
+tamed void fd::write(const void* buf, size_t size, size_t* nwritten_ptr,
 		     event<int> done)
 {
     tvars {
@@ -463,7 +397,8 @@ tamed void fd::write(const void *buf, size_t size, size_t &nwritten,
 	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
     }
 
-    nwritten = 0;
+    if (nwritten_ptr)
+        *nwritten_ptr = 0;
 
     if (!fi || fi->_fd < 0) {
 	done.trigger(-EBADF);
@@ -483,7 +418,8 @@ tamed void fd::write(const void *buf, size_t size, size_t &nwritten,
 	amt = ::write(fi->_fd, static_cast<const char *>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
-	    nwritten = pos;
+	    if (nwritten_ptr)
+                *nwritten_ptr = pos;
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -498,34 +434,15 @@ tamed void fd::write(const void *buf, size_t size, size_t &nwritten,
     done.trigger(pos == size || fi->_fd >= 0 ? 0 : -ECANCELED);
 }
 
-/** @brief  Write string to file descriptor.
- *  @param       buf       Buffer.
- *  @param[out]  nwritten  Number of characters written.
- *  @param       done      Event triggered on completion.
- *
- *  Equivalent to write(buf.data(), buf.length(), nwritten, done).
- */
-tamed void fd::write(std::string s, size_t &nwritten, event<int> done)
+tamed void fd::write(std::string s, size_t* nwritten_ptr, event<int> done)
 {
     twait { // This twait block prevents s from being destroyed.
 	done.at_trigger(make_event());
-	write(s.data(), s.length(), nwritten, done);
+	write(s.data(), s.length(), nwritten_ptr, done);
     }
 }
 
-/** @brief  Write to file descriptor.
- *  @param[in,out]  iov         I/O vector.
- *  @param          iov_count   Number of elements in I/O vector.
- *  @param[out]     nwritten    Number of characters written.
- *  @param          done        Event triggered on completion.
- *
- *  @a done is triggered with 0 on success or end-of-file, or a negative
- *  error code. @a nwritten is kept up to date as the write progresses.
- *  The @a iov array might be modified during the write.
- *
- *  @sa write(std::string, size_t, event<int>)
- */
-tamed void fd::write(struct iovec* iov, int iov_count, size_t& nwritten,
+tamed void fd::write(struct iovec* iov, int iov_count, size_t* nwritten_ptr,
 		     event<int> done)
 {
     tvars {
@@ -535,7 +452,8 @@ tamed void fd::write(struct iovec* iov, int iov_count, size_t& nwritten,
 	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
     }
 
-    nwritten = 0;
+    if (nwritten_ptr)
+        *nwritten_ptr = 0;
 
     if (!fi || fi->_fd < 0) {
 	done.trigger(-EBADF);
@@ -558,7 +476,8 @@ tamed void fd::write(struct iovec* iov, int iov_count, size_t& nwritten,
 	amt = ::writev(fi->_fd, iov, iov_count);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
-	    nwritten = pos;
+	    if (nwritten_ptr)
+                *nwritten_ptr = pos;
             if (pos != size) {
                 while (amt != 0 && (size_t) amt >= iov[0].iov_len) {
                     amt -= iov[0].iov_len;
