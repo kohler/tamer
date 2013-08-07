@@ -51,6 +51,7 @@ class fd {
 
     static fd socket(int domain, int type, int protocol);
     static int pipe(fd &rfd, fd &wfd);
+    static inline int pipe(fd pfd[2]);
 
     inline bool valid() const;
     inline operator unspecified_bool_type() const;
@@ -261,6 +262,16 @@ inline fd &fd::operator=(const fd &other) {
  */
 inline void fd::open(const char *filename, int flags, event<fd> f) {
     open(filename, flags, 0777, f);
+}
+
+/** @brief  Create a pipe
+ *  @param  pfd  pfd[0] is the read end, pfd[1] is the write end.
+ *  @return  0 on success or a negative error code.
+ *
+ *  The returned file descriptors are nonblocking.
+ */
+inline int fd::pipe(fd pfd[2]) {
+    return pipe(pfd[0], pfd[1]);
 }
 
 /** @brief  Test if file descriptor is valid.
