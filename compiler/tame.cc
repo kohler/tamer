@@ -15,8 +15,7 @@ std::ostream &warn = std::cerr;
 static void
 usage ()
 {
-  warn  << "usage: tamer [-Lchnv] "
-	<< "[-o <outfile>] [<infile>]\n"
+  warn  << "usage: tamer [-Lchnv] [-o <outfile>] [<infile>]\n"
 	<< "\n"
 	<< "  Flags:\n"
 	<< "    -g  turn on debugging support\n"
@@ -94,17 +93,21 @@ main (int argc, char *argv[])
   str ifn, depfile;
   bool c_mode (false), b_mode (false);
 
-  while ((ch = getopt (argc, argv, "bghnDLvdo:c:O:F:")) != -1)
+  while ((ch = getopt (argc, argv, "bghlnDLvdo:c:O:F:")) != -1)
     switch (ch) {
-      case 'g':
-	tamer_debug = true;
+    case 'g':
+        tamer_debug = true;
 	break;
     case 'h':
-      usage ();
-      break;
+        usage();
+        break;
+    case 'l':
+        std::cout << TAMER_LIBS << "\n";
+        exit(0);
+        break;
     case 'n':
-      horiz_mode = false;
-      break;
+        horiz_mode = false;
+        break;
     case 'c':
       ifn = optarg;
       if (!outfile.length())
@@ -137,7 +140,7 @@ main (int argc, char *argv[])
       exit (0);
       break;
       case 'O':
-	break;
+          break;
     default:
       usage ();
       break;
@@ -158,7 +161,7 @@ main (int argc, char *argv[])
 
   if (getenv ("TAME_DEBUG_SOURCE")) {
     no_line_numbers = true;
-	horiz_mode = false;
+    horiz_mode = false;
   }
 
   if (getenv ("TAME_NO_LINE_NUMBERS"))
