@@ -113,7 +113,7 @@ event<> bind(preevent<R, T0>&& pe, const V0& v0) {
  *  @return  Adapter event.
  *
  *  The result is bound to @a e: triggering either event automatically
- *  triggers the otehr. Triggering the result instantly triggers @a e. (The
+ *  triggers the other. Triggering the result instantly triggers @a e. (The
  *  result's @c T0 trigger value is ignored.) Triggering @a e instantly
  *  triggers the result's unblocker.
  */
