@@ -48,14 +48,32 @@ driver::~driver() {
         main = 0;
 }
 
-void initialize() {
-    const char* driver = getenv("TAMER_DRIVER");
-    if (!driver::main && (driver ? strcmp(driver, "libev") == 0 : !!getenv("TAMER_LIBEV")))
-	driver::main = driver::make_libev();
-    if (!driver::main && (driver ? strcmp(driver, "libevent") == 0 : !getenv("TAMER_NOLIBEVENT")))
-	driver::main = driver::make_libevent();
+bool initialize(int flags) {
+    if (driver::main)
+        return true;
+
+    if (!(flags & (use_tamer | use_libevent | use_libev))) {
+        const char* dname = getenv("TAMER_DRIVER");
+        if (dname && strcmp(dname, "libev") == 0)
+            flags |= use_libev;
+        else if (dname && strcmp(dname, "libevent") == 0)
+            flags |= use_libevent;
+        else
+            flags |= use_tamer;
+    }
+
+    if (!driver::main && (flags & use_libev))
+        driver::main = driver::make_libev();
+    if (!driver::main && (flags & use_libevent))
+        driver::main = driver::make_libevent();
+    if (!driver::main && !(flags & use_tamer) && (flags & no_fallback))
+        return false;
     if (!driver::main)
-	driver::main = driver::make_tamer();
+        driver::main = driver::make_tamer();
+
+    if (!(flags & keep_sigpipe))
+        signal(SIGPIPE, SIG_IGN);
+    return true;
 }
 
 void cleanup() {

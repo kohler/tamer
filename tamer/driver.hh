@@ -21,12 +21,27 @@ namespace tamer {
  *  loop.
  */
 
+enum initialize_flags {
+    use_tamer = 1,
+    use_libevent = 2,
+    use_libev = 4,
+    keep_sigpipe = 0x1000,
+    no_fallback = 0x2000
+};
+
 /** @brief  Initialize the Tamer event loop.
+ *  @param  flags  Initialization flags, taken from initialize_flags.
  *
- *  Must be called at least once before any primitive Tamer events are
- *  registered.
+ *  Call tamer::initialize at least once before registering any primitive
+ *  Tamer events. The @a flags argument may contain one or more use_
+ *  constants to request a specific driver (use_tamer, use_libevent, or
+ *  use_libev).
+ *
+ *  Tamer normally ignores the SIGPIPE signal, which is generally
+ *  appropriate for event-driven programs. Add keep_sigpipe to @a flags if
+ *  you plan to handle SIGPIPE yourself.
  */
-void initialize();
+bool initialize(int flags = 0);
 
 /** @brief  Clean up the Tamer event loop.
  *
