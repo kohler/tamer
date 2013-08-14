@@ -50,7 +50,7 @@ tamed void parent(tamer::fd& listenfd) {
         str = "Ret " + str;
         twait { cfd.write(str, make_event()); }
     }
-    shutdown(cfd.value(), SHUT_RD);
+    cfd.shutdown(SHUT_RD);
     while (cfd && n < 12) {
         ++n;
         twait { cfd.write("Heh\n", 4, make_event()); }

@@ -108,6 +108,7 @@ class fd {
     inline void accept(event<fd> result);
     void connect(const struct sockaddr *addr, socklen_t addrlen,
 		 event<int> done);
+    inline int shutdown(int how);
 
     static int open_limit();
     static int open_limit(int n);
@@ -356,6 +357,15 @@ inline void fd::close()
  */
 inline void fd::accept(event<fd> result) {
     accept(0, 0, result);
+}
+
+/** @brief  Shut down a socket file descriptor for reading and/or writing.
+    @param  how  SHUT_RD, SHUT_WR, or SHUT_RDWR */
+inline int fd::shutdown(int how) {
+    if (_p && _p->_fd >= 0)
+        return ::shutdown(_p->_fd, how);
+    else
+        return -EBADF;
 }
 
 /** @brief  Read from file descriptor.
