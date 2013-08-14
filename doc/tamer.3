@@ -15,9 +15,9 @@ tamer \- C++ extensions for event-driven programming
     event();
     operator bool() const;
     bool empty() const;
-    void trigger(const T0 &\fIv0\fB, const T1 &\fIv1\fB,
-                 const T2 &\fIv2\fB, const T3 &\fIv3\fB);
-    void at_trigger(const event<> &\fItrigger_evt\fB);
+    void trigger(const T0& \fIv0\fB, const T1& \fIv1\fB,
+                 const T2& \fIv2\fB, const T3& \fIv3\fB);
+    void at_trigger(const event<>& \fItrigger_evt\fB);
 }
 .sp
 class rendezvous<I> { public:
@@ -30,11 +30,11 @@ class rendezvous<I> { public:
 .sp
 event<T0, T1, T2, T3> make_event(rendezvous<I>& \fIrendezvous\fB,
                                  const I& \fIeid\fB,
-                                 T0 &\fIs0\fB, T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB);
+                                 T0& \fIs0\fB, T1& \fIs1\fB, T2& \fIs2\fB, T3& \fIs3\fB);
 event<T0, T1, T2, T3> make_event(rendezvous<>& \fIrendezvous\fB,
-                                 T0 &\fIs0\fB, T1 &\fIs1\fB, T2 &\fIs2\fB, T3 &\fIs3\fB);
+                                 T0& \fIs0\fB, T1& \fIs1\fB, T2& \fIs2\fB, T3& \fIs3\fB);
 \&...
-event<> make_event(rendezvous<I>& \fIrendezvous\fB,  const I& \fIeid\fB);
+event<> make_event(rendezvous<I>& \fIrendezvous\fB, const I& \fIeid\fB);
 event<> make_event(rendezvous<>& \fIrendezvous\fB);
 .sp
 tamed void user_function(...) {
@@ -49,7 +49,7 @@ twait(rendezvous<>& \fIrendezvous\fB);
 .fi
 .SH DESCRIPTION
 .B Tamer
-is a set of libraries and C++ language extensions designed to simplify the
+is a set of C++ language extensions and libraries that simplify the
 practice of event-driven programming.
 .LP
 This manual page gives an overview of the
@@ -75,7 +75,7 @@ introduces four related abstractions for handling concurrency:
 Each 
 .B event 
 object represents a future occurrence, such as the completion of a network
-read.  When the expected occurrence actually happens\*Efor instance, a
+read.  When the occurrence actually happens\*Efor instance, a
 packet arrives\*Ethe event is 
 .I triggered
 via its
@@ -102,29 +102,37 @@ processing.
 .SS "Events"
 .LP
 The
-.B make_event
-function allocates an event of type
-.BR event<T*> , 
-where
-.B T*
-is a sequence of zero to four types determined by
-.BR make_event 's
-arguments.  This event's 
+.BI make_event
+function creates and returns an event of type
+.BR event<*> .
+The event represents a future occurrence and is associated with some
+rendezvous.
+.nf
+.sp
+\fB  rendezvous<> \fIr\fB;
+  event<> \fIe\fB = make_event(\fIr\fB);\fR
+.sp
+.fi
+The event's
 .B trigger
-method has the signature
-.B void trigger(T*).
-Calling
-.B trigger(\fIv*\fB)
-marks the event as having occurred, and
-passes zero to four results
-.IR v* ,
-which are called
-.IR "trigger values" ,
-to whomever is expecting the event.  The types of
-.I v*
-must match the event's types
-.BR T* .
-For example:
+method is called to indicate that the occurrence has happened.
+Triggering an event can unblock other functions that were waiting for
+the occurrence.
+.nf
+.sp
+\fB  e.trigger();\fR
+.sp
+.fi
+Events are associated with between zero and four
+.IR results ,
+which pass information from trigger points back to blocked functions.
+For example, a result could indicate whether a network connection
+attempt succeeded or timed out. The
+.B make_event
+function takes references to results; the
+.B trigger
+method takes values to which the results are set. The types of an
+event's results are given by its template arguments. For example:
 .nf
 .sp
 \fB  rendezvous<> \fIr\fB;  int \fIi\fB = 0;
@@ -133,15 +141,10 @@ For example:
   assert(\fIi\fB == 100);               // \fRassertion will succeed
 .sp
 .fi
-When triggered, 
-.IR e 's
-.B int
-trigger value is stored in
-.IR i ,
-the
-.I result
-passed earlier to
-.BR make_event .
+Here, we see that the trigger value
+.B 100
+is passed through to the result
+.BR i .
 The type of
 .I i
 is echoed in
@@ -150,9 +153,8 @@ type
 .BR event<int> .
 .LP
 .B event
-objects may be freely assigned, passed as arguments, and copied via copy
-constructors\*Eessentially, treated as primitive values.  They are
-automatically reference counted.  Each
+objects may be freely assigned, passed as arguments, and copied. They
+are automatically reference counted. Each
 .B event
 may be triggered at most once.  An event that hasn't triggered yet is called
 .IR active .
@@ -162,7 +164,7 @@ triggering an empty event has no effect.
 .LP
 Tamer automatically triggers an active event when its last reference goes
 out of scope.  This case is considered a programming error, however, and an
-\*(lqavoided leak\*(rq message is printed to indicate the abnormal trigger.
+\*(lqdropping last reference\*(rq message is printed to standard error.
 Explicitly calling
 .B rendezvous::clear
 on the event's rendezvous will avoid the message, as will using a volatile
@@ -174,24 +176,25 @@ The
 .B wait point
 language extension, written
 .BR twait ,
-blocks the calling function until one or more events are triggered.
-Blocking causes a function to return to its caller, but its execution point
-and safe local variables are preserved in memory.  When an expected event
-occurs, the function \*(lqunblocks\*(rq and resumes processing at the wait
-point.  By that time, of course, the function's original caller may have
-returned.  Any function containing a wait point is marked with the
+.I blocks
+the calling function until one or more events are triggered. A blocked
+function returns to its caller, but does not actually complete. The
+function's safe local variables and blocking point are preserved in a
+closure. Later, the function can \*(lqunblock\*(rq and resume
+execution. By that time, of course, the function's original caller may
+have returned. Any function containing a wait point is marked with the
 .B tamed
 keyword, which informs the caller that the function can block.
 .LP
 The first, and more common, form of wait point is written
 \*(lq\fBtwait\~{ \fIstatements\fB; }\fR\*(rq.
-This executes the
+This executes
 .IR statements ,
-then blocks until all events created by
-.B make_event 
-calls in the
+then blocks until
+.I all
+events created in
 .I statements
-have triggered.  (Within the
+have triggered.  (Within
 .IR statements ,
 .B make_event
 is redefined to a macro that automatically supplies a
@@ -204,17 +207,12 @@ since
 .B tamer::at_delay_sec
 triggers its event argument after the given number of seconds has passed, simply as \*(lqblock for 10 seconds\*(rq.
 .LP
-The second, more flexible form of wait point explicitly names a
+The second form of wait point explicitly names a
 .B rendezvous
-object. This object defines the set of expected events relevant to the wait
-point. Every
-.B event
-object associates with one 
-.BR rendezvous .  
-A wait point
+object. A wait point
 .B twait(\fIr\fB)
-unblocks when 
-.I any one
+unblocks when
+.I any
 of
 .B rendezvous<>
 .IR r 's
@@ -244,11 +242,11 @@ of type
 with each event.  The
 .B make_event
 function specifies the event ID as well as results.  A 
-.B twait(\fIr\fB, \fIi\fB)
+.B twait(\fIr\fB, \fIeid\fB)
 statement sets the variable
-.I i
+.I eid
 to the ID of the unblocking event.  The type of
-.I i
+.I eid
 must match the type of the
 .BR rendezvous .
 .LP
@@ -265,7 +263,7 @@ A
 function will often accept an
 .B event
 argument, which it triggers when it completes its processing.
-This lets the caller block until the function truly returns.
+This lets the caller block until the function completes.
 Here is a
 .B tamed
 function that blocks, then returns an integer:
@@ -311,7 +309,7 @@ triggers a corresponding event.  The top-level event loop cycles through
 unblocked functions, calling them in some order.
 .LP
 .I Volatile
-rendezvous do not generate \*(lqavoided leak of active event\*(rq messages.
+rendezvous do not generate \*(lqdropping last reference to active event\*(rq messages.
 Create a volatile rendezvous either by passing
 .B tamer::rvolatile
 to the rendezvous constructor, or with a \*(lq\fBtwait volatile {}\fR\*(rq
@@ -336,15 +334,15 @@ The
 template class represents future occurrences.  The template takes zero to
 four type arguments, which represent the types of the
 .BR event 's
-trigger values.  In the following,
-.B T0-T3
+results.  In the following,
+.Br T0-T3 " or " Ts
 are the template arguments of the
 .B event
-type.  If given, these type arguments must be copy-constructible and
+type.  These type arguments must be copy-constructible and
 assignable.
 .sp
 .nf
-.B event<T*>::event()
+.B event<Ts>::event()
 .fi
 .RS 5
 Creates an empty event.  Trigger attempts on the event are ignored;
@@ -353,47 +351,26 @@ returns true.
 .RE
 .sp
 .nf
-.B template <typename R, [typename I]>
-.B event<T0, T1, T2, T3>::event(R& \fIr\fB, [const I& \fIeid\fB,]
-.B "                             T0& \fIx0\fB, T1& \fIx1\fB, T2& \fIx2\fB, T3& \fIx3\fB)"
-.B ... event<>::event(R& \fIr\fB, [const I& \fIeid\fB])
-.fi
-.RS 5
-Creates an event on
-.B rendezvous
-.IR r
-with optional event ID
-.IR eid
-and results
-.IR x0 ... x3 .
-Each 
-.B event
-type has similar constructors whose result arguments
-.I x*
-match the template arguments.
-.RE
-.sp
-.nf
-.B event<T*>::event(const event<T*> &\fIe\fR)
-.B event<T*> &event<T*>::operator=(const event<T*> &\fIe\fR)
+.B event<Ts>::event(const event<Ts>& \fIe\fR)
+.B event<Ts>& event<Ts>::operator=(const event<Ts>& \fIe\fR)
 .fi
 .RS 5
 Events may be safely copied and assigned.  After an assignment
 \fIe1\fB\~=\~\fIe2\fR, the event objects
 .IR e1 " and " e2
-refer to the same underlying occurrence; for example, triggering either
+refer to the same underlying occurrence. Triggering either
 causes both to become empty.
 .RE
 .sp
 .nf
-.B event<T*>::operator bool() const
+.B event<Ts>::operator bool() const
 .fi
 .RS 5
 Returns true if the event is active.  Empty events return false.
 .RE
 .sp
 .nf
-.B bool event<T*>::empty() const
+.B bool event<Ts>::empty() const
 .fi
 .RS 5
 Returns true if the event is empty, meaning it was created empty or has
@@ -412,17 +389,11 @@ it sets the event's results (defined at creation time) to the
 trigger values
 .IR v0 ... v3
 and wakes any blocked closure.  Events become empty after
-they are triggered.  Each
-.B event
-type has a
-.B trigger
-method whose value arguments
-.I v*
-have types that match the template arguments.
+they are triggered.
 .RE
 .sp
 .nf
-.B void event<T*>::at_trigger(const event<> &\fItrigger_evt\fB)
+.B void event<Ts>::at_trigger(const event<>& \fItrigger_evt\fB)
 .fi
 .RS 5
 Registers
@@ -435,7 +406,7 @@ is triggered when this event is triggered.
 .RE
 .sp
 .nf
-.B event<> event<T*>::unblocker() const
+.B event<> event<Ts>::unblocker() const
 .fi
 .RS 5
 Returns a version of this event that has no results.  The returned
@@ -455,8 +426,9 @@ event IDs.  In the following,
 .BR I
 is the template argument of the
 .B rendezvous
-type.  If given, these type arguments must be copy-constructible and
-assignable.
+type.  If it is given,
+.B I
+objects must be copy-constructible and assignable.
 .sp
 .nf
 .B rendezvous<I>::rendezvous()
@@ -535,20 +507,20 @@ These functions manipulate events generically, for example by returning
 one event that triggers two others.
 .sp
 .nf
-.B event<> distribute(const event<> &\fIe1\fB, const event<> &\fIe2\fB)
+.B event<> distribute(const event<>& \fIe1\fB, const event<>& \fIe2\fB)
 .fi
 .RS 5
 Returns an event that distributes trigger operations over
 .IR e1 " and " e2 .
 Triggering the returned event will trigger both
-.IR e1 " and " e2
-automatically.  The returned event is empty if and only if both
+.IR e1 " and " e2 .
+The returned event is empty if and only if both
 .IR e1 " and " e2
 are empty.
 .RE
 .sp
 .nf
-.B event<> bind(const event<T0> &\fIe\fB, const T0 &\fIv0\fB)
+.B event<> bind(const event<T0>& \fIe\fB, const T0& \fIv0\fB)
 .fi
 .RS 5
 Returns an event that, when triggered, will call
@@ -556,7 +528,7 @@ Returns an event that, when triggered, will call
 .RE
 .sp
 .nf
-.B event<T0> unbind(const event<> &\fIe\fB)
+.B event<T0> unbind(const event<>& \fIe\fB)
 .fi
 .RS 5
 Returns an event that, when triggered, will call
@@ -568,18 +540,18 @@ The returned event's trigger value is ignored.
 The
 .B driver
 class handles
-.BR Tamer 's 
+.BR Tamer 's
 fundamental events: timers, signals, and file descriptors.  Most programs
 will use the single
 .B driver::main
 object, which is accessed through top-level functions as follows.
 .sp
 .nf
-.B void at_fd_read(int \fIfd\fB, const event<int> &\fIe\fB)
-.B void at_fd_read(int \fIfd\fB, const event<> &\fIe\fB)
+.B void at_fd_read(int \fIfd\fB, event<int> \fIe\fB)
+.B void at_fd_read(int \fIfd\fB, event<> \fIe\fB)
 .fi
 .RS 5
-Triggers event
+Triggers
 .I e
 when
 .I fd
@@ -597,8 +569,8 @@ becomes readable, and a negative error code otherwise.
 .RE
 .sp
 .nf
-.B void at_fd_write(int \fIfd\fB, const event<int> &\fIe\fB)
-.B void at_fd_write(int \fIfd\fB, const event<> &\fIe\fB)
+.B void at_fd_write(int \fIfd\fB, event<int> \fIe\fB)
+.B void at_fd_write(int \fIfd\fB, event<> \fIe\fB)
 .fi
 .RS 5
 Triggers event
@@ -614,17 +586,17 @@ The trigger value is as for
 .RE
 .sp
 .nf
-.B void at_time(const timeval &\fIexpiry\fB, const event<> &\fIe\fB)
+.B void at_time(const timeval &\fIexpiry\fB, event<> \fIe\fB)
 .fi
 .RS 5
 Triggers event
 .I e
-on, or very soon after, time
+on, or soon after, time
 .IR expiry .
 .RE
 .sp
 .nf
-.B void at_delay(const timeval &\fIdelay\fB, const event<> &\fIe\fB)
+.B void at_delay(const timeval& \fIdelay\fB, event<> \fIe\fB)
 .fi
 .RS 5
 Triggers event
@@ -636,7 +608,7 @@ time has passed.  All delays are measured relative to the timestamp
 .RE
 .sp
 .nf
-.B void at_delay(double \fIdelay\fB, const event<> &\fIe\fB)
+.B void at_delay(double \fIdelay\fB, event<> \fIe\fB)
 .fi
 .RS 5
 Triggers event
@@ -647,7 +619,7 @@ seconds have passed.
 .RE
 .sp
 .nf
-.B void at_delay_sec(int \fIdelay\fB, const event<> &\fIe\fB)
+.B void at_delay_sec(int \fIdelay\fB, event<> \fIe\fB)
 .fi
 .RS 5
 Triggers event
@@ -658,7 +630,7 @@ seconds have passed.
 .RE
 .sp
 .nf
-.B void at_delay_msec(int \fIdelay\fB, const event<> &\fIe\fB)
+.B void at_delay_msec(int \fIdelay\fB, event<> \fIe\fB)
 .fi
 .RS 5
 Triggers event
@@ -669,7 +641,7 @@ milliseconds have passed.
 .RE
 .sp
 .nf
-.B void at_signal(int \fIsignal\fB, const event<> &\fIe\fB)
+.B void at_signal(int \fIsignal\fB, event<> \fIe\fB)
 .fi
 .RS 5
 Triggers event
@@ -686,7 +658,7 @@ safely catch signals without race conditions.
 .RE
 .sp
 .nf
-.B void at_asap(const event<> &\fIe\fB)
+.B void at_asap(event<> \fIe\fB)
 .fi
 .RS 5
 Triggers event
@@ -697,7 +669,7 @@ main loop.
 .RE
 .sp
 .nf
-.B const timeval &now()
+.B const timeval& now()
 .fi
 .RS 5
 Returns the current cached timestamp.
@@ -723,9 +695,17 @@ to the correct current value.
 .RS 5
 Equivalent to \*(lq\fBwhile (1) once();\fR\*(rq.
 .RE
+.sp
+.nf
+.B void break_loop()
+.fi
+.RS 5
+Causes any active call to
+.B loop()
+to return.
 '
 .SH "CANCEL ADAPTERS"
-These functions integrate timeouts, signals, and other forms of canceling
+These functions integrate timeouts, signals, and other forms of cancellation
 into existing events.  For example:
 .sp
 .nf
@@ -755,7 +735,7 @@ is set to
 Cancel adapters are available for timeouts and signals.
 .sp
 .nf
-.B event<int> add_timeout(const timeval &\fIdelay\fB, event<int> \fIe\fB)
+.B event<int> add_timeout(const timeval& \fIdelay\fB, event<int> \fIe\fB)
 .B event<int> add_timeout_sec(int \fIdelay\fB, event<int> \fIe\fB)
 .B event<int> add_timeout_msec(int \fIdelay\fB, event<int> \fIe\fB)
 .fi
@@ -775,7 +755,7 @@ is triggered with value
 .sp
 .nf
 .B event<int> add_signal(int \fIsignal\fB, event<int> \fIe\fB)
-.B event<int> add_signal(const std::vector<int> &\fIsignals\fB, event<int> \fIe\fB)
+.B event<int> add_signal(ITER \fIfirst\fB, ITER \fIlast\fB, event<int> \fIe\fB)
 .fi
 .RS 5
 Returns a signal-adapted version of
@@ -785,8 +765,8 @@ When the returned event is triggered,
 is triggered with the same trigger value.
 If, however, the
 .I signal
-(or one of the
-.IR signals )
+(or one of the signals in the iterator range
+.RI [ first ", " last ))
 happens first, then
 .I e
 is triggered with value
@@ -804,7 +784,7 @@ trigger value.  For example:
 .sp
 The event on
 .I r
-is triggered on the first of the following events.
+is triggered on the first of the following occurrences:
 .IP \(bu 3
 .I e
 is triggered.
@@ -822,11 +802,11 @@ This style of cancel adapter can handle any event type, not just
 .BR event<int> .
 .sp
 .nf
-.B event<T*> with_timeout(const timeval &\fIdelay\fB, event<T*> \fIe\fB)
+.B event<T*> with_timeout(const timeval& \fIdelay\fB, event<T*> \fIe\fB)
 .B event<T*> with_timeout_sec(int \fIdelay\fB, event<T*> \fIe\fB)
 .B event<T*> with_timeout_msec(int \fIdelay\fB, event<T*> \fIe\fB)
 .B event<T*> with_signal(int \fIsignal\fB, event<T*> \fIe\fB)
-.B event<T*> with_signal(const std::vector<int> &\fIsignals\fB, event<T*> \fIe\fB)
+.B event<T*> with_signal(ITER \fIfirst\fB, ITER \fIlast\fB, event<T*> \fIe\fB)
 .fi
 .RS 5
 Return cancel-adapted versions of
@@ -838,12 +818,12 @@ event triggered successfully.
 .RE
 .sp
 .nf
-.B event<T*> with_timeout(const timeval &\fIdelay\fB, event<T*> \fIe\fB, int &\fIresult\fB)
-.B event<T*> with_timeout_sec(int \fIdelay\fB, event<T*> \fIe\fB, int &\fIresult\fB)
-.B event<T*> with_timeout_msec(int \fIdelay\fB, event<T*> \fIe\fB, int &\fIresult\fB)
-.B event<T*> with_signal(int \fIsignal\fB, event<T*> \fIe\fB, int &\fIresult\fB)
-.B event<T*> with_signal(const std::vector<int> &\fIsignals\fB, event<T*> \fIe\fB,
-.B "                      int &\fIresult\fB)"
+.B event<T*> with_timeout(const timeval &\fIdelay\fB, event<T*> \fIe\fB, int& \fIresult\fB)
+.B event<T*> with_timeout_sec(int \fIdelay\fB, event<T*> \fIe\fB, int& \fIresult\fB)
+.B event<T*> with_timeout_msec(int \fIdelay\fB, event<T*> \fIe\fB, int& \fIresult\fB)
+.B event<T*> with_signal(int \fIsignal\fB, event<T*> \fIe\fB, int& \fIresult\fB)
+.B event<T*> with_signal(ITER \fIfirst\fB, ITER \fIlast\fB, event<T*> \fIe\fB,
+.B "                      int& \fIresult\fB)"
 .fi
 .RS 5
 Return cancel-adapted versions of

@@ -62,7 +62,7 @@ template <> struct value_pack<void, void, void, void> {
  *  results are stored. The <code>event<int, char*, bool>::trigger</code>
  *  method takes value arguments of types <code>int</code>,
  *  <code>char*</code>, and <code>bool</code>. Calling <code>e.trigger(1,
- *  "Hi", false)</code> will set the results to the corresponding values.
+ *  "Hi", false)</code> will set each result to the corresponding value.
  *  This can be used to pass information back to the function waiting for
  *  the event.
  *

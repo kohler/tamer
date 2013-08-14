@@ -4,14 +4,16 @@ Tamer
    Tamer is a C++ language extension and library that simplifies
 event-driven programming. Functions in Tamer can block to wait for an
 event, then resume computation later. Other functions can continue
-while a function is blocked. This is as easy as threaded programming,
-but avoids most synchronization and locking issues and generally
-requires less memory.
+while a function is blocked. This is normally hard to code without
+closures, and even somewhat annoying in languages that have closures;
+Tamer makes it relatively easy. Compared with threaded programs, tamed
+programs aren’t much harder to understand, but they avoid most
+synchronization and locking issues and generally require less memory.
 
-   Tamer contains a preprocessor that compiles Tamer abstractions into
-conventional C++ code, the Tamer libraries for event-driven
-programming, and several examples, including a working port of the
-Knot web server distributed with the Capriccio threading package.
+   Tamer contains a preprocessor that translates Tamer code into
+conventional C++ code; libraries for event-driven programming; and
+several examples, including a working port of the Knot web server
+distributed with the Capriccio threading package.
 
    If you are building from a source repository (git), you will need
 to generate configure scripts. (This is not necessary if you
@@ -26,8 +28,8 @@ in "tamer/". After `make install`, try `man 3 tamer`. (Before
 installation, try `nroff -man doc/tamer.3 | less`.)
 
 
-Why Tamer?
-----------
+Tamer and SFSlite
+-----------------
 
    Tamer is a lightweight version of the Tame event-driven programming
 package distributed as part of SFSlite.  For historical reasons, Tame
@@ -37,7 +39,7 @@ vectors, hash tables, linked lists, and reference counts.  Better, or at
 least more standard, versions of many of these classes are available as
 part of the C++ standard library and the Boost libraries.  Additionally,
 the Tame abstractions are layered on top of SFSlite's existing "wrap"
-callbacks, adding complexity and minor overhead.
+callbacks, adding complexity and some overhead.
 
    Tamer is a freestanding port of the basic Tame abstractions to a
 standard C++ environment.  Although currently less powerful than Tame and
