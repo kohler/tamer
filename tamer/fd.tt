@@ -84,14 +84,15 @@ static fdhelper _fdhm;
 int fd::make_nonblocking(int f)
 {
     if (f < 0)
-	return f;
+        return -EBADF;
     int flags = 1;
     if (::ioctl(f, FIONBIO, &flags) == 0)
-	return 0;
+        return 0;
     flags = ::fcntl(f, F_GETFL);
-    if (flags < 0)
-	return flags;
-    return ::fcntl(f, F_SETFL, flags | O_NONBLOCK);
+    if (flags != -1
+        && ::fcntl(f, F_SETFL, flags | O_NONBLOCK) != -1)
+        return 0;
+    return -errno;
 }
 
 /** @brief  Make a file descriptor use blocking I/O.
@@ -99,15 +100,17 @@ int fd::make_nonblocking(int f)
  *  @note   This function's argument is a file descriptor value, not an
  *          fd wrapper object.
  */
-int fd::make_blocking(int f)
-{
+int fd::make_blocking(int f) {
+    if (f < 0)
+        return -EBADF;
     int flags = 0;
     if (::ioctl(f, FIONBIO, &flags) == 0)
-	return 0;
+        return 0;
     flags = ::fcntl(f, F_GETFL);
-    if (flags < 0)
-	return flags;
-    return ::fcntl(f, F_SETFL, flags & ~O_NONBLOCK);
+    if (flags != -1
+        && ::fcntl(f, F_SETFL, flags & ~O_NONBLOCK) != -1)
+        return 0;
+    return -errno;
 }
 
 /** @brief  Return a closer event.
@@ -183,7 +186,7 @@ void fd::open(const char *filename, int flags, mode_t mode, event<fd> done)
  *
  *  The returned file descriptors are nonblocking.
  */
-int fd::pipe(fd &rfd, fd &wfd)
+int fd::pipe(fd& rfd, fd& wfd)
 {
     int pfd[2], r = ::pipe(pfd);
     if (r < 0) {
