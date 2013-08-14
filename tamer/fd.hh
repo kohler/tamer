@@ -109,6 +109,9 @@ class fd {
     void connect(const struct sockaddr *addr, socklen_t addrlen,
 		 event<int> done);
 
+    static int open_limit();
+    static int open_limit(int n);
+
     static int make_nonblocking(int f);
     static int make_blocking(int f);
     inline int make_nonblocking();

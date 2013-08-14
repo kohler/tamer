@@ -818,6 +818,38 @@ int fd::fdimp::close(int leave_error) {
 }
 
 
+/** @brief Return the current limit on the number of open files for this
+    process.
+    @return The limit, or a negative error code. */
+int fd::open_limit() {
+    struct rlimit rl;
+    int r = getrlimit(RLIMIT_NOFILE, &rl);
+    return r == 0 ? rl.rlim_cur : -errno;
+}
+
+
+/** @brief Set the limit on the number of open files for this process.
+    @return The new limit, or a negative error code.
+
+    The returned value might be less than @a n. */
+int fd::open_limit(int n) {
+    struct rlimit rl;
+    int r = getrlimit(RLIMIT_NOFILE, &rl);
+    if (r == 0) {
+	if (rl.rlim_max < (rlim_t) n && geteuid() == 0)
+	    rl.rlim_max = n;
+	if (rl.rlim_max < (rlim_t) n)
+	    rl.rlim_cur = rl.rlim_max;
+	else
+	    rl.rlim_cur = n;
+	r = setrlimit(RLIMIT_NOFILE, &rl);
+	if (r == 0)
+	    r = getrlimit(RLIMIT_NOFILE, &rl);
+    }
+    return r == 0 ? rl.rlim_cur : -errno;
+}
+
+
 /** @brief  Open a nonblocking TCP connection on port @a port.
  *  @param  port     Listening port (in host byte order).
  *  @param  backlog  Maximum connection backlog.
