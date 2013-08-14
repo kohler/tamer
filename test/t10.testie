@@ -5,4 +5,4 @@ Check large numbers of file descriptors
 $rundir/test/t10
 
 %stdout
-Got character A after 499 passes
+GOOD: Got character A after {{\d+}} passes

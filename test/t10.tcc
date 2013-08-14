@@ -22,8 +22,12 @@
 #include <tamer/fd.hh>
 size_t npass = 0;
 
-tamed void passoff(tamer::fd& r, tamer::fd& w) {
+tamed void passoff(tamer::fd& r, tamer::fd& w, int n) {
     tvars { char c; size_t x; int ret; }
+    if (!(r && w)) {
+	std::cerr << "Error: pipe " << n << " or thereabouts failed\n";
+	assert(r && w);
+    }
     while (1) {
         twait { r.read(&c, 1, x, make_event(ret)); }
         if (x) {
@@ -38,22 +42,27 @@ tamed void writeit(tamer::fd& w) {
     twait { w.write(&c, 1, x, make_event(ret)); }
 }
 
-tamed void readandexit(tamer::fd& r) {
+tamed void readandexit(tamer::fd& r, size_t expected_npass) {
     tvars { char c; size_t x; int ret; }
     twait { r.read(&c, 1, x, make_event(ret)); }
-    std::cout << "Got character " << c << " after " << npass << " passes\n";
+    if (npass == expected_npass)
+	std::cout << "GOOD: Got character " << c << " after " << npass << " passes\n";
+    else
+	std::cout << "BAD: Got character " << c << " after " << npass << "!="
+		  << expected_npass << " passes\n";
     exit(0);
 }
 
 int main(int, char**) {
     tamer::initialize();
-    tamer::fd* fds = new tamer::fd[1000];
-    for (int i = 0; i < 1000; i += 2)
+    int n = (tamer::fd::open_limit(510) - 10) & ~1;
+    tamer::fd* fds = new tamer::fd[n];
+    for (int i = 0; i < n; i += 2)
         tamer::fd::pipe(fds[i], fds[i+1]);
-    for (int i = 0; i < 998; i += 2)
-        passoff(fds[i], fds[i+3]);
+    for (int i = 0; i < n - 2; i += 2)
+        passoff(fds[i], fds[i+3], i);
     writeit(fds[1]);
-    readandexit(fds[998]);
+    readandexit(fds[n - 2], n / 2 - 1);
     tamer::loop();
     tamer::cleanup();
 }
