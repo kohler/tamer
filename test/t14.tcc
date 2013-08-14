@@ -23,21 +23,26 @@ using namespace tamer;
 
 tamed void child(struct sockaddr_in* saddr, socklen_t saddr_len) {
     tvars { tamer::fd cfd; int ret; tamer::buffer buf; size_t nwritten;
-        std::string str; }
+        int write_rounds = 0; int wret = 0; std::string str; }
     cfd = tamer::fd::socket(AF_INET, SOCK_STREAM, 0);
     twait { cfd.connect((struct sockaddr*) saddr, saddr_len, make_event(ret)); }
     while (cfd) {
-        twait { cfd.write("Hello\n", 6, nwritten, make_event(ret)); }
-        if (ret < 0) {
-            printf("W error %s\n", strerror(-ret));
-            cfd.close();
-        } else {
-            printf("W %d: %.*s\n", ret, nwritten == 6 ? 5 : (int) nwritten, "Hello");
-            twait { buf.take_until(cfd, '\n', 1024, str, make_event(ret)); }
-            if (str.length())
-                printf("R %d: %s", ret, str.c_str());
+        if (wret == 0) {
+            twait { cfd.write("Hello\n", 6, nwritten, make_event(wret)); }
+            if (wret == 0 && nwritten == 6) {
+                ++write_rounds;
+                if (write_rounds <= 6)
+                    printf("W %d: %.*s\n", ret, nwritten == 6 ? 5 : (int) nwritten, "Hello");
+            }
         }
+        twait { buf.take_until(cfd, '\n', 1024, str, make_event(ret)); }
+        if (ret != 0) {
+            printf("W error %s after %d\n", strerror(-wret), write_rounds);
+            break;
+        } else if (str.length())
+            printf("R %d: %s", ret, str.c_str());
     }
+    cfd.close();
 }
 
 tamed void parent(tamer::fd& listenfd) {

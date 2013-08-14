@@ -4,7 +4,7 @@ Check shutdown() and close() in client/server
 %script
 $rundir/test/t14
 
-%stdout
+%stdout -a
 W 0: Hello
 R 0: Ret Hello
 W 0: Hello
@@ -17,18 +17,11 @@ W 0: Hello
 R 0: Ret Hello
 W 0: Hello
 R 0: Ret Hello
-W 0: Hello
 R 0: Heh
-W 0: Hello
 R 0: Heh
-W 0: Hello
 R 0: Heh
-W 0: Hello
 R 0: Heh
-W 0: Hello
 R 0: Heh
-W 0: Hello
 R 0: Heh
-W 0: Hello
-W error Broken pipe
+W error {{Broken pipe|Connection reset by peer}} after {{[789]|1[012]}}
 Done
