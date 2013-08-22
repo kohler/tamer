@@ -9,6 +9,7 @@ gmon.out
 /Makefile.in
 /aclocal.m4
 /autom4te*
+/compile
 /config.guess
 /config.h
 /config.h.in
