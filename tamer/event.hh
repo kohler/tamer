@@ -1686,6 +1686,7 @@ inline preevent<R> make_annotated_event(const char *file, int line, zero_argumen
 template <typename R>
 inline event<> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<>& sp)
 {
+    (void) sp;
     return preevent<R>(static_cast<R&>(r), file, line);
 }
 #else

@@ -1056,8 +1056,9 @@ tame_wait_t::output (outputter_t *o)
     output_mode_t om = o->switch_to_mode(OUTPUT_TREADMILL);
     strbuf b;
     b << _fn->label(_id) << ":\n";
-    b << "do {\n"
-      << "  if (!" << jgn << ".join (";
+    b << "do {\n";
+    o->line_number_line(b, _lineno);
+    b << "  if (!" << jgn << ".join (";
     for (size_t i = 0; i < n_args (); i++) {
 	if (i > 0) b << ", ";
 	b << "" << arg (i).name () << "";

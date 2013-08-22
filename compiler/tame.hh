@@ -148,7 +148,7 @@ class outputter_t {
 public:
   outputter_t (const str &in, const str &out, bool ox)
     : _mode (OUTPUT_NONE), _infn (in), _outfn (out), _fd (-1),
-      _lineno (1), _output_xlate (ox), _need_xlate (false),
+      _lineno (1), _output_xlate (ox),
       _last_char_was_nl(true), _last_output_in_mode (OUTPUT_NONE),
       _cur_lineno(-1), _cur_file(""),
       _do_output_line_number(false) {}
@@ -175,10 +175,9 @@ public:
     int _fd;
     int _lineno;
     bool _output_xlate;
+    bool _last_char_was_nl;
 
     strbuf _buf;
-    bool _need_xlate;
-    bool _last_char_was_nl;
     output_mode_t _last_output_in_mode;
     int _cur_lineno;
     str _cur_file;
