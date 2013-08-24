@@ -16,6 +16,7 @@
 #include <tamer/fd.hh>
 #include <sys/select.h>
 #include <sys/ioctl.h>
+#include <sys/resource.h>
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
