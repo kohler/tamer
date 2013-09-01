@@ -225,6 +225,22 @@ tamed void test_distribute() {
     }
 }
 
+tamed void test_distribute_opt() {
+    tvars { int i, j, k, l; };
+    twait {
+	tamer::event<> e1;
+        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
+        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
+        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
+        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
+        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
+        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
+        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
+        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
+        e1();
+    }
+}
+
 int main(int, char **) {
     tamer::rendezvous<int> r;
     tamer::initialize();
@@ -251,6 +267,7 @@ int main(int, char **) {
 
     test_debug1();
     test_distribute();
+    test_distribute_opt();
     tamer::loop();
     tamer::cleanup();
 }

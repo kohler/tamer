@@ -135,12 +135,12 @@ void simple_event::hard_at_trigger(simple_event* x, void (*f)(void*),
     if (!x || !*x)
 	f(arg);
     else {
-	x->at_trigger_arg_ =
-	    tamer::distribute(at_trigger_event(x->at_trigger_f_,
+        x->at_trigger_arg_ =
+            tamer::distribute(at_trigger_event(x->at_trigger_f_,
                                                x->at_trigger_arg_),
-			      at_trigger_event(f, arg))
-	    .__take_simple();
-	x->at_trigger_f_ = trigger_hook;
+                              at_trigger_event(f, arg))
+            .__take_simple();
+        x->at_trigger_f_ = trigger_hook;
     }
 }
 

@@ -55,7 +55,6 @@ class explicit_rendezvous;
 struct tamer_closure;
 
 class simple_event { public:
-
     // DO NOT derive from this class!
 
     typedef bool (simple_event::*unspecified_bool_type)() const;
@@ -76,6 +75,8 @@ class simple_event { public:
     inline abstract_rendezvous *rendezvous() const;
     inline uintptr_t rid() const;
     inline simple_event *next() const;
+    inline bool shared() const;
+    inline bool has_at_trigger() const;
 
     inline const char* file_annotation() const;
     inline int line_annotation() const;
@@ -88,7 +89,6 @@ class simple_event { public:
     static inline void at_trigger(simple_event* x, void (*f)(void*), void* arg);
 
   protected:
-
     abstract_rendezvous *_r;
     uintptr_t _rid;
     simple_event *_r_next;
@@ -110,7 +110,6 @@ class simple_event { public:
     static void hard_at_trigger(simple_event* x, void (*f)(void*), void* arg);
 
     friend class explicit_rendezvous;
-
 };
 
 
@@ -442,6 +441,14 @@ inline uintptr_t simple_event::rid() const {
 
 inline simple_event *simple_event::next() const {
     return _r_next;
+}
+
+inline bool simple_event::shared() const {
+    return _r && _refcount > 1;
+}
+
+inline bool simple_event::has_at_trigger() const {
+    return at_trigger_f_;
 }
 
 inline const char* simple_event::file_annotation() const {
