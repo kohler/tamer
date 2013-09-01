@@ -120,9 +120,10 @@ template <> struct value_pack<void, void, void, void> {
  *     twait { (void) make_event(); }
  *  @endcode
  *
- *  will print a message like "<tt>ex4.tt:11: active event leaked</tt>".
- *  However, it is sometimes convenient to rely on this triggering behavior,
- *  so the error message is turned off for rendezvous declared as volatile:
+ *  will print a message like "<tt>ex4.tt:11: dropping last reference to
+ *  active event</tt>". However, it is sometimes convenient to rely on this
+ *  triggering behavior, so the error message is turned off for rendezvous
+ *  declared as volatile:
  *
  *  @code
  *     twait volatile { (void) make_event(); }
