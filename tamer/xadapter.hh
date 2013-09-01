@@ -15,6 +15,7 @@
  */
 #include <tamer/event.hh>
 #include <tamer/driver.hh>
+#include <string.h>
 #include <errno.h>
 namespace tamer {
 namespace tamerpriv {
