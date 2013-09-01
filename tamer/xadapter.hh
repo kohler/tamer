@@ -187,8 +187,11 @@ class distribute_rendezvous : public functional_rendezvous,
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
     inline void add(event_type&& e);
 #endif
-    event<T0, T1, T2, T3> make_event() {
+    inline event<T0, T1, T2, T3> make_event() {
 	return tamer::TAMER_MAKE_FN_ANNOTATED_EVENT(*this, vs_);
+    }
+    inline int nchildren() const {
+        return nes_;
     }
   private:
     enum { nlocal = 2 };

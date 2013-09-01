@@ -237,6 +237,19 @@ tamed void test_distribute_opt() {
         e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
         e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
         e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
+        //fprintf(stderr, "%d\n", static_cast<tamer::tamerpriv::distribute_rendezvous<>*>(e1.__get_simple()->rendezvous())->nchildren());
+        e1();
+    }
+    twait {
+        tamer::event<> e1 = make_event();
+        e1.at_trigger(make_event());
+        e1.at_trigger(make_event());
+        e1.at_trigger(make_event());
+        e1.at_trigger(make_event());
+        e1.at_trigger(make_event());
+        e1.at_trigger(make_event());
+        e1.at_trigger(make_event());
+        e1.at_trigger(make_event());
         e1();
     }
 }
