@@ -209,17 +209,13 @@ void driver_tamer::loop(loop_flags flags)
          if (nfds == -1 && errno == EBADF)
              nfds = find_bad_fds();
     }
-    set_now();
 
-    // run signals
+    // process signals
+    set_now();
     if (sig_any_active)
 	dispatch_signals();
 
-    // run asaps
-    while (!asap_.empty())
-	asap_.pop_trigger();
-
-    // run file descriptors
+    // process fd events
     if (nfds > 0) {
 	for (int fd = 0; fd < fdbound_; ++fd) {
 	    tamerpriv::driver_fd<fdp> &x = fds_[fd];
@@ -227,15 +223,18 @@ void driver_tamer::loop(loop_flags flags)
 		if (FD_ISSET(fd, &_fdset[action + 2]->fds) && x.e[action])
 		    x.e[action].trigger(0);
 	}
+        run_unblocked();
     }
 
-    // run the timers that worked
+    // process timer events
     while (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
 	timers_.pop_trigger();
+    run_unblocked();
 
-    // run active closures
-    while (tamerpriv::blocking_rendezvous *r = pop_unblocked())
-	r->run();
+    // process asap events
+    while (!asap_.empty())
+	asap_.pop_trigger();
+    run_unblocked();
 
     // check flags
     if (flags == loop_forever && loop_state_)

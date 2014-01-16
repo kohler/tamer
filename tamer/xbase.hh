@@ -163,6 +163,7 @@ class simple_driver {
 
     inline bool has_unblocked() const;
     inline blocking_rendezvous* pop_unblocked();
+    inline void run_unblocked();
 
     blocking_rendezvous* unblocked_;
     blocking_rendezvous** unblocked_ptail_;
@@ -336,6 +337,11 @@ inline blocking_rendezvous* simple_driver::pop_unblocked() {
             unblocked_ptail_ = &unblocked_;
     }
     return r;
+}
+
+inline void simple_driver::run_unblocked() {
+    while (blocking_rendezvous* r = pop_unblocked())
+	r->run();
 }
 
 

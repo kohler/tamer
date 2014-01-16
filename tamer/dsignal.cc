@@ -131,8 +131,7 @@ void driver::dispatch_signals()
 	}
 
     // run closures activated by signals (plus maybe some others)
-    while (tamerpriv::blocking_rendezvous *r = pop_unblocked())
-	r->run();
+    run_unblocked();
 
     // reset signal handlers if appropriate
     for (int signo = 0; signo < NSIG; ++signo)

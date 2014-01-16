@@ -23,5 +23,5 @@ R 0: Heh
 R 0: Heh
 R 0: Heh
 R 0: Heh
-W error {{Broken pipe|Connection reset by peer}} after {{[789]|1[012]}}
+W error {{Broken pipe|Connection reset by peer}} after {{[789]|1[0123]}}
 Done

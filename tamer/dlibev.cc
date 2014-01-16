@@ -212,22 +212,23 @@ void driver_libev::loop(loop_flags flags) {
     else if (timer_set)
 	ev_periodic_stop(eloop_, &timerev.p);
 
-    // don't bother to run event loop if there is nothing it can do
+    // run the event loop, unless there's nothing it can do
     if (!(event_flags & EVRUN_NOWAIT) || fdactive_ != 0 || sig_ntotal != 0)
 	::ev_run(eloop_, event_flags);
+
+    // process fd events
     set_now();
+    run_unblocked();
 
-    // run asaps
-    while (!asap_.empty())
-	asap_.pop_trigger();
-
-    // run the timers that worked
+    // process timer events
     while (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
 	timers_.pop_trigger();
+    run_unblocked();
 
-    // run active closures
-    while (tamerpriv::blocking_rendezvous *r = pop_unblocked())
-	r->run();
+    // process asap events
+    while (!asap_.empty())
+	asap_.pop_trigger();
+    run_unblocked();
 
     if (flags == loop_forever)
 	goto again;

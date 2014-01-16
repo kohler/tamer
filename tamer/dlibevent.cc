@@ -195,23 +195,24 @@ void driver_libevent::loop(loop_flags flags)
     // don't bother to run event loop if there is nothing it can do
     if (!(event_flags & EVLOOP_NONBLOCK) || fdactive_ != 0 || sig_ntotal != 0)
 	::event_loop(event_flags);
+
+    // process fd events
     set_now();
+    run_unblocked();
 
-    // run asaps
-    while (!asap_.empty())
-	asap_.pop_trigger();
-
-    // run the timers that worked
+    // process timer events
     if (!timers_.empty()) {
 	if (!(event_flags & EVLOOP_NONBLOCK))
 	    evtimer_del(&timerev);
 	while (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
 	    timers_.pop_trigger();
+        run_unblocked();
     }
 
-    // run active closures
-    while (tamerpriv::blocking_rendezvous *r = pop_unblocked())
-	r->run();
+    // process asap events
+    while (!asap_.empty())
+	asap_.pop_trigger();
+    run_unblocked();
 
     if (flags == loop_forever)
 	goto again;
