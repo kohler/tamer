@@ -2,8 +2,8 @@
 Test that preevents behave like events. This is also a benchmarking program.
 
 %script
-$rundir/test/t08 preevent
-$rundir/test/t08 event
+$rundir/test/t08 event 2>&1
+$rundir/test/t08 preevent 2>&1
 
 %stdout -a
 It happened
