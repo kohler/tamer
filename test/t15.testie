@@ -1,0 +1,8 @@
+%info
+Check correctness of closure variable initialization
+
+%script
+$rundir/test/t15
+
+%stdout -a
+All OK
