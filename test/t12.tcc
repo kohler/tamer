@@ -19,7 +19,7 @@
 #include <tamer/tamer.hh>
 using namespace tamer;
 
-void f(event<> e) {
+void f(event<>) {
 }
 
 tamed void test_error() {
