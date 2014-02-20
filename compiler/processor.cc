@@ -113,23 +113,32 @@ str var_t::decl() const
     return b.str();
 }
 
-str var_t::param_decl(bool move) const
+str var_t::param_decl(bool move, bool escape) const
 {
     strbuf b;
     if (move && _type.pointer().empty() && _arrays.empty())
 	b << "TAMER_MOVEARG(" << _type.to_str() << ") ";
     else
 	b << _type.to_str();
+    if (escape)
+        b << "tamer__";
     b << _name << _arrays;
     return b.str();
 }
 
-str var_t::name(bool move) const
+str var_t::name(bool move, bool escape) const
 {
-    if (move  && _type.pointer().empty() && _arrays.empty()) {
+    if (move && _type.pointer().empty() && _arrays.empty()) {
 	strbuf b;
-	b << "TAMER_MOVE(" << _name << ")";
+	b << "TAMER_MOVE(";
+        if (escape)
+            b << "tamer__";
+        b << _name << ")";
 	return b.str();
+    } else if (escape) {
+        strbuf b;
+        b << "tamer__" << _name;
+        return b.str();
     } else
 	return _name;
 }
@@ -608,7 +617,7 @@ vartab_t::initialize(strbuf &b, bool self, outputter_t* o) const
             b << ", ";
         b << _vars[i].name();
         if (self)
-            b << "(" << _vars[i].name(true) << ")";
+            b << "(" << _vars[i].name(true, true) << ")";
         else
             b << init->output_in_constructor();
     }
@@ -616,16 +625,17 @@ vartab_t::initialize(strbuf &b, bool self, outputter_t* o) const
 }
 
 void
-vartab_t::paramlist(strbuf &b, list_mode_t list_mode, bool move) const
+vartab_t::paramlist(strbuf &b, list_mode_t list_mode, bool move,
+                    bool escape) const
 {
   for (unsigned i = 0; i < size () ; i++) {
     if (i != 0) b << ", ";
     switch (list_mode) {
     case DECLARATIONS:
-      b << _vars[i].param_decl(move);
+      b << _vars[i].param_decl(move, escape);
       break;
     case NAMES:
-      b << _vars[i].name(move);
+      b << _vars[i].name(move, escape);
       break;
     case TYPES:
       b << _vars[i].type().to_str();
@@ -730,7 +740,7 @@ tame_fn_t::output_closure(outputter_t *o)
   }
 
   if (_args) {
-      _args->paramlist(b, DECLARATIONS, true);
+      _args->paramlist(b, DECLARATIONS, true, true);
   }
 
   b << ") : " << base_type << "(tamer_activator_)";
@@ -823,7 +833,7 @@ tame_fn_t::signature() const
 	b << "inline ";
     b << _ret_type.to_str() << " " << _name << "(";
     if (_args)
-	_args->paramlist(b, DECLARATIONS, false);
+	_args->paramlist(b, DECLARATIONS, false, false);
     b << ")";
     if (_isconst)
 	b << " const";
@@ -859,7 +869,7 @@ tame_fn_t::output_firstfn(outputter_t *o)
     if (_class.length() && !(_opts & STATIC_DECL))
 	b << "this" << (_args ? ", " : "");
     if (_args)
-	_args->paramlist(b, NAMES, true);
+	_args->paramlist(b, NAMES, true, false);
     b << ");\n"
       << "  " << TAME_CLOSURE_NAME << "->tamer_activator_("
       << TAME_CLOSURE_NAME << ");\n}\n";
