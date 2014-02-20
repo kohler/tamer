@@ -2,6 +2,7 @@
 /*
  *
  * Copyright (C) 2005 Max Krohn (my last name AT mit DOT edu)
+ * Copyright (c) 2007-2014, Eddie Kohler
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as

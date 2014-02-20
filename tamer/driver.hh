@@ -1,6 +1,6 @@
 #ifndef TAMER_DRIVER_HH
 #define TAMER_DRIVER_HH 1
-/* Copyright (c) 2007-2013, Eddie Kohler
+/* Copyright (c) 2007-2014, Eddie Kohler
  * Copyright (c) 2007, Regents of the University of California
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -37,9 +37,9 @@ enum initialize_flags {
  *  constants to request a specific driver (use_tamer, use_libevent, or
  *  use_libev).
  *
- *  Tamer normally ignores the SIGPIPE signal, which is generally
- *  appropriate for event-driven programs. Add keep_sigpipe to @a flags if
- *  you plan to handle SIGPIPE yourself.
+ *  By default Tamer ignores the SIGPIPE signal, which is generally what
+ *  event-driven programs want. Add keep_sigpipe to @a flags if you want to
+ *  turn off this behavior.
  */
 bool initialize(int flags = 0);
 
