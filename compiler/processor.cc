@@ -943,6 +943,13 @@ tame_fn_t::output(outputter_t *o)
     }
 }
 
+static bool description_empty(const str& x) {
+    for (str::const_iterator it = x.begin(); it != x.end(); ++it)
+        if (!isspace(*it))
+            return false;
+    return true;
+}
+
 void
 tame_block_ev_t::output(outputter_t *o)
 {
@@ -975,14 +982,15 @@ tame_block_ev_t::output(outputter_t *o)
   int lineno = o->lineno();
   o->switch_to_mode(OUTPUT_TREADMILL, lineno);
   b << "/*}twait*/ " TWAIT_BLOCK_RENDEZVOUS "_holder.reset(); } while (0); ";
-  b << "  " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".set_location(__FILE__, __LINE__);\n";
-  if (!description_.empty())
-      b << "  " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".set_description((" << description_ << "));\n";
+  b << "  if (" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".has_waiting()) {\n"
+    << "    " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".set_location(__FILE__, __LINE__);\n";
+  if (!description_empty(description_))
+      b << "    " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".set_description((" << description_ << "));\n";
   b << _fn->label(_id) << ":\n"
-    << "  while (" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".has_waiting()) {\n"
-    << "      " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".block(" TAME_CLOSURE_NAME ", " << _id << ");\n"
-    << "      tamer_closure_holder_.reset();\n"
-    << "      " << _fn->return_expr() << "; }\n"
+    << "    if (" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".has_waiting()) {\n"
+    << "        " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".block(" TAME_CLOSURE_NAME ", " << _id << ");\n"
+    << "        tamer_closure_holder_.reset();\n"
+    << "        " << _fn->return_expr() << "; }}\n"
     << "  } while (0);\n";
   o->output_str(b.str());
   o->switch_to_mode(OUTPUT_PASSTHROUGH);
@@ -1053,7 +1061,7 @@ void
 tame_wait_t::output_blocked(strbuf &b, const str &jgn)
 {
     b << "    " << jgn << ".set_location(__FILE__, __LINE__);\n";
-    if (!description_.empty())
+    if (!description_empty(description_))
         b << "    " << jgn << ".set_description((" << description_ << "));\n";
     b << "    " << jgn << ".block(" TAME_CLOSURE_NAME ", " << _id << ");\n"
       << "    tamer_closure_holder_.reset();\n"

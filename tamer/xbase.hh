@@ -442,7 +442,7 @@ inline void blocking_rendezvous::set_location(const char* file, int line) {
 inline void blocking_rendezvous::set_description(std::string description) {
     if (description_)
         *description_ = TAMER_MOVE(description);
-    else
+    else if (!description.empty())
         description_ = new std::string(TAMER_MOVE(description));
 }
 
