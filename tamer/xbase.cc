@@ -19,14 +19,21 @@
 namespace tamer {
 namespace tamerpriv {
 
+void simple_driver::grow() {
+    rptr* new_rs = new rptr[rcap_ * 2];
+    memcpy(new_rs, rs_, sizeof(rptr) * rcap_);
+    for (unsigned i = rcap_ + 1; i != rcap_ * 2; ++i)
+        new_rs[i - 1].next = i;
+    new_rs[rcap_ * 2 - 1].next = 0;
+    rfree_ = rcap_;
+    rcap_ *= 2;
+    delete[] rs_;
+    rs_ = new_rs;
+}
+
 void blocking_rendezvous::hard_free() {
-    if (driver_) {
-	blocking_rendezvous **p = &driver_->unblocked_;
-	while (*p != this)
-	    p = &(*p)->unblocked_next_;
-	if (!(*p = unblocked_next_))
-	    driver_->unblocked_ptail_ = p;
-    }
+    if (driver_)
+        driver_->rs_[rpos_].r = 0;
     blocked_closure_->tamer_block_position_ = 1;
     blocked_closure_->tamer_activator_(blocked_closure_);
 }

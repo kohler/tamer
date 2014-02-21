@@ -58,6 +58,9 @@ class rendezvous : public tamerpriv::explicit_rendezvous,
 
     inline uintptr_t make_rid(const I& eid);
     using tamerpriv::blocking_rendezvous::block;
+
+    using tamerpriv::blocking_rendezvous::file_annotation;
+    using tamerpriv::blocking_rendezvous::line_annotation;
 };
 
 
@@ -172,6 +175,9 @@ class simple_rendezvous : public tamerpriv::explicit_rendezvous,
 
     inline uintptr_t make_rid(I eid) TAMER_NOEXCEPT;
     using tamerpriv::blocking_rendezvous::block;
+
+    using tamerpriv::blocking_rendezvous::file_annotation;
+    using tamerpriv::blocking_rendezvous::line_annotation;
 };
 
 template <typename T>
@@ -281,6 +287,9 @@ class rendezvous<> : public tamerpriv::explicit_rendezvous,
     void clear();
 
     using tamerpriv::blocking_rendezvous::block;
+
+    using tamerpriv::blocking_rendezvous::file_annotation;
+    using tamerpriv::blocking_rendezvous::line_annotation;
 };
 
 
@@ -324,6 +333,9 @@ class gather_rendezvous : public tamerpriv::blocking_rendezvous,
     void clear();
 
     using tamerpriv::blocking_rendezvous::block;
+
+    using tamerpriv::blocking_rendezvous::file_annotation;
+    using tamerpriv::blocking_rendezvous::line_annotation;
 
   private:
     tamerpriv::tamer_closure *linked_closure_;

@@ -160,13 +160,27 @@ class abstract_rendezvous {
 class simple_driver {
   protected:
     inline simple_driver();
+    inline ~simple_driver();
+
+    inline void add_blocked(blocking_rendezvous* r);
 
     inline bool has_unblocked() const;
     inline blocking_rendezvous* pop_unblocked();
     inline void run_unblocked();
 
-    blocking_rendezvous* unblocked_;
-    blocking_rendezvous** unblocked_ptail_;
+  private:
+    struct rptr {
+        blocking_rendezvous* r;
+        unsigned next;
+    };
+
+    unsigned rcap_;
+    mutable unsigned rfree_;
+    mutable unsigned runblocked_;
+    unsigned runblocked_tail_;
+    rptr* rs_;
+
+    void grow();
 
     friend class blocking_rendezvous;
 };
@@ -184,14 +198,17 @@ class blocking_rendezvous : public abstract_rendezvous {
     inline void unblock();
     inline void run();
 
+    inline const char* file_annotation() const;
+    inline int line_annotation() const;
+
   protected:
     simple_driver* driver_;
     tamer_closure* blocked_closure_;
-    blocking_rendezvous* unblocked_next_;
-
-    static inline blocking_rendezvous *unblocked_sentinel() {
-	return reinterpret_cast<blocking_rendezvous*>(uintptr_t(1));
-    }
+    unsigned rpos_;
+#if !TAMER_NOTRACE
+    int line_annotation_;
+    const char* file_annotation_;
+#endif
 
     void hard_free();
 
@@ -323,20 +340,39 @@ inline abstract_rendezvous::~abstract_rendezvous() TAMER_NOEXCEPT {
 
 
 inline simple_driver::simple_driver()
-    : unblocked_(), unblocked_ptail_(&unblocked_) {
+    : rcap_(64), rfree_(1), runblocked_(0), runblocked_tail_(0),
+      rs_(new rptr[rcap_]) {
+    rs_[0].r = 0;
+    for (unsigned i = 2; i != rcap_; ++i)
+        rs_[i - 1].next = i;
+    rs_[rcap_ - 1].next = 0;
+}
+
+inline simple_driver::~simple_driver() {
+    delete[] rs_;
 }
 
 inline bool simple_driver::has_unblocked() const {
-    return unblocked_;
+    while (runblocked_ && !rs_[runblocked_].r) {
+        unsigned next = rs_[runblocked_].next;
+        rs_[runblocked_].next = rfree_;
+        rfree_ = runblocked_;
+        runblocked_ = next;
+    }
+    return runblocked_ != 0;
 }
 
 inline blocking_rendezvous* simple_driver::pop_unblocked() {
-    blocking_rendezvous* r = unblocked_;
-    if (r) {
-        if (!(unblocked_ = r->unblocked_next_))
-            unblocked_ptail_ = &unblocked_;
-    }
-    return r;
+    if (has_unblocked()) {
+        unsigned i = runblocked_;
+        blocking_rendezvous* r = rs_[i].r;
+        runblocked_ = rs_[i].next;
+        rs_[i].r = 0;
+        rs_[i].next = rfree_;
+        rfree_ = i;
+        return r;
+    } else
+        return 0;
 }
 
 inline void simple_driver::run_unblocked() {
@@ -344,11 +380,21 @@ inline void simple_driver::run_unblocked() {
 	r->run();
 }
 
+inline void simple_driver::add_blocked(blocking_rendezvous* r) {
+    if (!rfree_)
+        grow();
+    unsigned i = rfree_;
+    rfree_ = rs_[i].next;
+    rs_[i].r = r;
+    rs_[i].next = 0;
+    r->rpos_ = i;
+}
+
 
 inline blocking_rendezvous::blocking_rendezvous(rendezvous_flags flags,
 						rendezvous_type rtype) TAMER_NOEXCEPT
     : abstract_rendezvous(flags, rtype), driver_(), blocked_closure_(),
-      unblocked_next_() {
+      rpos_(0) TAMER_IFTRACE(, file_annotation_(0)) {
 }
 
 inline blocking_rendezvous::~blocking_rendezvous() TAMER_NOEXCEPT {
@@ -358,18 +404,24 @@ inline blocking_rendezvous::~blocking_rendezvous() TAMER_NOEXCEPT {
 
 inline void blocking_rendezvous::block(simple_driver* driver, tamer_closure& c,
 				       unsigned position,
-				       const char*, int) {
+				       const char* file, int line) {
     assert(!blocked_closure_ && &c);
     blocked_closure_ = &c;
     driver_ = driver;
     c.tamer_block_position_ = position;
+    driver_->add_blocked(this);
+    TAMER_IFTRACE(file_annotation_ = file);
+    TAMER_IFTRACE(line_annotation_ = line);
+    TAMER_IFNOTRACE((void) file, (void) line);
 }
 
 inline void blocking_rendezvous::unblock() {
     if (blocked_closure_ && driver_) {
-	unblocked_next_ = 0;
-	*driver_->unblocked_ptail_ = this;
-	driver_->unblocked_ptail_ = &unblocked_next_;
+        if (driver_->runblocked_)
+            driver_->rs_[driver_->runblocked_tail_].next = rpos_;
+        else
+            driver_->runblocked_ = rpos_;
+        driver_->runblocked_tail_ = rpos_;
         driver_ = 0;
     }
 }
@@ -378,6 +430,14 @@ inline void blocking_rendezvous::run() {
     tamer_closure *c = blocked_closure_;
     blocked_closure_ = 0;
     c->tamer_activator_(c);
+}
+
+inline const char* blocking_rendezvous::file_annotation() const {
+    return TAMER_IFTRACE_ELSE(file_annotation_, 0);
+}
+
+inline int blocking_rendezvous::line_annotation() const {
+    return TAMER_IFTRACE_ELSE(line_annotation_, 0);
 }
 
 
