@@ -168,6 +168,9 @@ class simple_driver {
     inline blocking_rendezvous* pop_unblocked();
     inline void run_unblocked();
 
+    inline unsigned nrendezvous() const;
+    inline blocking_rendezvous* rendezvous(unsigned i) const;
+
   private:
     struct rptr {
         blocking_rendezvous* r;
@@ -189,6 +192,8 @@ class blocking_rendezvous : public abstract_rendezvous {
   public:
     inline blocking_rendezvous(rendezvous_flags flags, rendezvous_type rtype) TAMER_NOEXCEPT;
     inline ~blocking_rendezvous() TAMER_NOEXCEPT;
+
+    inline bool blocked() const;
 
     inline void block(simple_driver* driver,
                       tamer_closure& c, unsigned position,
@@ -390,6 +395,15 @@ inline void simple_driver::add_blocked(blocking_rendezvous* r) {
     r->rpos_ = i;
 }
 
+inline unsigned simple_driver::nrendezvous() const {
+    return rcap_;
+}
+
+inline blocking_rendezvous* simple_driver::rendezvous(unsigned i) const {
+    assert(i < rcap_);
+    return rs_[i].r;
+}
+
 
 inline blocking_rendezvous::blocking_rendezvous(rendezvous_flags flags,
 						rendezvous_type rtype) TAMER_NOEXCEPT
@@ -400,6 +414,10 @@ inline blocking_rendezvous::blocking_rendezvous(rendezvous_flags flags,
 inline blocking_rendezvous::~blocking_rendezvous() TAMER_NOEXCEPT {
     if (blocked_closure_)
 	hard_free();
+}
+
+inline bool blocking_rendezvous::blocked() const {
+    return blocked_closure_ && driver_;
 }
 
 inline void blocking_rendezvous::block(simple_driver* driver, tamer_closure& c,

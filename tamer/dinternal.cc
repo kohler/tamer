@@ -14,6 +14,7 @@
 #include "config.h"
 #include "dinternal.hh"
 #include <string.h>
+#include <sstream>
 
 namespace tamer {
 namespace tamerpriv {
@@ -40,6 +41,22 @@ driver::~driver() {
     indexed[index_] = 0;
     if (main == this)
         main = 0;
+}
+
+void driver::blocked_locations(std::vector<std::string>& x) {
+    for (unsigned i = 0; i != this->nrendezvous(); ++i)
+        if (tamerpriv::blocking_rendezvous* r = this->rendezvous(i)) {
+            if (!r->blocked())
+                /* do not include */;
+            else if (r->file_annotation() && r->line_annotation()) {
+                std::stringstream buf;
+                buf << r->file_annotation() << ":" << r->line_annotation();
+                x.push_back(buf.str());
+            } else if (r->file_annotation())
+                x.push_back(r->file_annotation());
+            else
+                x.push_back("<unknown>");
+        }
 }
 
 bool initialize(int flags) {

@@ -16,6 +16,8 @@
 #include <tamer/event.hh>
 #include <sys/time.h>
 #include <signal.h>
+#include <vector>
+#include <string>
 namespace tamer {
 namespace tamerpriv {
 extern struct timeval now;
@@ -67,6 +69,8 @@ class driver : public tamerpriv::simple_driver {
 
     virtual void loop(loop_flags flag) = 0;
     virtual void break_loop() = 0;
+
+    void blocked_locations(std::vector<std::string>& x);
 
     static driver* make_tamer();
     static driver* make_libevent();
