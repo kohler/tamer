@@ -212,6 +212,7 @@ __LOC__         { return loc_return (); }
 
 <TWAIT_ENTER>{
 volatile	{ return T_VOLATILE; }
+[\[]            { yy_push_state(EXPR_LIST_BR_BASE); return yytext[0]; }
 [(]		{ yy_push_state(JOIN_LIST_BASE); return yytext[0]; }
 [{]		{ switch_to_state(TWAIT_BODY_BASE); return yytext[0]; }
 [;]		{ yy_pop_state(); return yytext[0]; }
@@ -256,18 +257,16 @@ volatile	{ return T_VOLATILE; }
 
 <EXPR_LIST_BR_BASE>{
 \]		{ yy_pop_state (); return yytext[0]; }
-[,]		{ return yytext[0]; }
 }
 
 <EXPR_LIST_BR>{
 \]		{ yy_pop_state (); return std_ret (T_PASSTHROUGH); }
-[,]		{ return std_ret (T_PASSTHROUGH); }
 }
 
 <EXPR_LIST_BR_BASE,EXPR_LIST_BR>{
-\[		   { yy_push_state (EXPR_LIST_BR);
-	             return std_ret (T_PASSTHROUGH); }
-[^,\[\]/\n]+|"/"   { return std_ret (T_PASSTHROUGH); }
+\[		   { yy_push_state(EXPR_LIST_BR);
+	             return std_ret(T_PASSTHROUGH); }
+[^\[\]/\n]+|"/"    { return std_ret(T_PASSTHROUGH); }
 \n		   { return passthrough_newline(); }
 }
 

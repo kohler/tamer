@@ -1,0 +1,12 @@
+%info
+Check tamer blocked rendezvous list.
+
+%script
+$rundir/test/t16 | sort
+
+%stdout
+0 returned, 0 bytes read
+fd.tt:{{\d+}}
+t16.tcc:26
+t16.tcc:31
+t16.tcc:35

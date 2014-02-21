@@ -46,16 +46,8 @@ driver::~driver() {
 void driver::blocked_locations(std::vector<std::string>& x) {
     for (unsigned i = 0; i != this->nrendezvous(); ++i)
         if (tamerpriv::blocking_rendezvous* r = this->rendezvous(i)) {
-            if (!r->blocked())
-                /* do not include */;
-            else if (r->file_annotation() && r->line_annotation()) {
-                std::stringstream buf;
-                buf << r->file_annotation() << ":" << r->line_annotation();
-                x.push_back(buf.str());
-            } else if (r->file_annotation())
-                x.push_back(r->file_annotation());
-            else
-                x.push_back("<unknown>");
+            if (r->blocked())
+                x.push_back(r->location_description());
         }
 }
 

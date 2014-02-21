@@ -294,7 +294,15 @@ wait_body: '(' join_list ')' ';'
 	;
 
 twait: T_TWAIT twait_body { $$ = $2; }
-	;
+	| T_TWAIT '[' passthroughs ']' twait_body {
+            tame_el_t* e = $5;
+            if (tame_block_t* b = dynamic_cast<tame_block_t*>(e))
+                b->set_description($3.str());
+            else if (tame_wait_t* w = dynamic_cast<tame_wait_t*>(e))
+                w->set_description($3.str());
+            $$ = e;
+        }
+        ;
 
 twait_body: wait_body
 	| block_body

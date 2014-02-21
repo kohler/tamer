@@ -14,6 +14,7 @@
  * legally binding.
  */
 #include <stdexcept>
+#include <string>
 #include <stdint.h>
 #include <assert.h>
 #include <tamer/autoconf.h>
@@ -32,7 +33,7 @@ template <typename R, typename T0 = void> class preevent;
 class driver;
 
 class tamer_error : public std::runtime_error { public:
-    explicit tamer_error(const std::string &arg)
+    explicit tamer_error(const std::string& arg)
 	: runtime_error(arg) {
     }
 };
@@ -196,28 +197,35 @@ class blocking_rendezvous : public abstract_rendezvous {
     inline ~blocking_rendezvous() TAMER_NOEXCEPT;
 
     inline bool blocked() const;
+    inline bool has_location() const;
+    inline bool has_description() const;
+
+    inline void set_location(const char* file, int line);
+    inline void set_description(std::string description);
 
     inline void block(simple_driver* driver,
-                      tamer_closure& c, unsigned position,
-		      const char* file, int line);
-    inline void block(tamer_closure& c, unsigned position,
-		      const char* file, int line);
+                      tamer_closure& c, unsigned position);
+    inline void block(tamer_closure& c, unsigned position);
     inline void unblock();
     inline void run();
 
-    inline const char* file_annotation() const;
-    inline int line_annotation() const;
+    inline const char* location_file() const;
+    inline int location_line() const;
+    std::string location() const;
+    inline std::string description() const;
+    std::string location_description() const;
 
   protected:
     simple_driver* driver_;
     tamer_closure* blocked_closure_;
     unsigned rpos_;
 #if !TAMER_NOTRACE
-    int line_annotation_;
-    const char* file_annotation_;
+    int location_line_;
+    const char* location_file_;
+    std::string* description_;
 #endif
 
-    void hard_free();
+    void hard_free() TAMER_NOEXCEPT;
 
     friend class abstract_rendezvous;
     friend class simple_driver;
@@ -418,11 +426,11 @@ inline blocking_rendezvous* simple_driver::rendezvous(unsigned i) const {
 inline blocking_rendezvous::blocking_rendezvous(rendezvous_flags flags,
 						rendezvous_type rtype) TAMER_NOEXCEPT
     : abstract_rendezvous(flags, rtype), driver_(), blocked_closure_(),
-      rpos_(0) TAMER_IFTRACE(, file_annotation_(0)) {
+      rpos_(0) TAMER_IFTRACE(, location_file_(), description_()) {
 }
 
 inline blocking_rendezvous::~blocking_rendezvous() TAMER_NOEXCEPT {
-    if (blocked_closure_)
+    if (blocked_closure_ || description_)
 	hard_free();
 }
 
@@ -430,17 +438,34 @@ inline bool blocking_rendezvous::blocked() const {
     return blocked_closure_ && driver_;
 }
 
+inline bool blocking_rendezvous::has_location() const {
+    return location_file_ || location_line_;
+}
+
+inline bool blocking_rendezvous::has_description() const {
+    return description_ && !description_->empty();
+}
+
+inline void blocking_rendezvous::set_location(const char* file, int line) {
+    TAMER_IFTRACE(location_file_ = file);
+    TAMER_IFTRACE(location_line_ = line);
+    TAMER_IFNOTRACE((void) file, (void) line);
+}
+
+inline void blocking_rendezvous::set_description(std::string description) {
+    if (description_)
+        *description_ = TAMER_MOVE(description);
+    else
+        description_ = new std::string(TAMER_MOVE(description));
+}
+
 inline void blocking_rendezvous::block(simple_driver* driver, tamer_closure& c,
-				       unsigned position,
-				       const char* file, int line) {
+				       unsigned position) {
     assert(!blocked_closure_ && &c);
     blocked_closure_ = &c;
     driver_ = driver;
     c.tamer_block_position_ = position;
     driver_->add_blocked(this);
-    TAMER_IFTRACE(file_annotation_ = file);
-    TAMER_IFTRACE(line_annotation_ = line);
-    TAMER_IFNOTRACE((void) file, (void) line);
 }
 
 inline void blocking_rendezvous::unblock() {
@@ -456,12 +481,17 @@ inline void blocking_rendezvous::run() {
     c->tamer_activator_(c);
 }
 
-inline const char* blocking_rendezvous::file_annotation() const {
-    return TAMER_IFTRACE_ELSE(file_annotation_, 0);
+inline const char* blocking_rendezvous::location_file() const {
+    return TAMER_IFTRACE_ELSE(location_file_, 0);
 }
 
-inline int blocking_rendezvous::line_annotation() const {
-    return TAMER_IFTRACE_ELSE(line_annotation_, 0);
+inline int blocking_rendezvous::location_line() const {
+    return TAMER_IFTRACE_ELSE(location_line_, 0);
+}
+
+inline std::string blocking_rendezvous::description() const {
+    return TAMER_IFTRACE_ELSE(description_ ? *description_ : std::string(),
+                              std::string());
 }
 
 

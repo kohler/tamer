@@ -974,11 +974,13 @@ tame_block_ev_t::output(outputter_t *o)
 
   int lineno = o->lineno();
   o->switch_to_mode(OUTPUT_TREADMILL, lineno);
-  b << "/*}twait*/ " TWAIT_BLOCK_RENDEZVOUS "_holder.reset(); } while (0); "
-    << _fn->label(_id) << ":\n"
+  b << "/*}twait*/ " TWAIT_BLOCK_RENDEZVOUS "_holder.reset(); } while (0); ";
+  b << "  " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".set_location(__FILE__, __LINE__);\n";
+  if (!description_.empty())
+      b << "  " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".set_description((" << description_ << "));\n";
+  b << _fn->label(_id) << ":\n"
     << "  while (" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".has_waiting()) {\n"
-    << "      " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".block(" TAME_CLOSURE_NAME ", "
-    << _id << ", __FILE__, __LINE__);\n"
+    << "      " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".block(" TAME_CLOSURE_NAME ", " << _id << ");\n"
     << "      tamer_closure_holder_.reset();\n"
     << "      " << _fn->return_expr() << "; }\n"
     << "  } while (0);\n";
@@ -1048,10 +1050,12 @@ expr_list_t::output_vars (strbuf &b, bool first, const str &prfx,
 }
 
 void
-tame_join_t::output_blocked(strbuf &b, const str &jgn)
+tame_wait_t::output_blocked(strbuf &b, const str &jgn)
 {
-    b << "    " << jgn << ".block(" TAME_CLOSURE_NAME ", "
-      << _id << ", __FILE__, __LINE__);\n"
+    b << "    " << jgn << ".set_location(__FILE__, __LINE__);\n";
+    if (!description_.empty())
+        b << "    " << jgn << ".set_description((" << description_ << "));\n";
+    b << "    " << jgn << ".block(" TAME_CLOSURE_NAME ", " << _id << ");\n"
       << "    tamer_closure_holder_.reset();\n"
       << "    " << _fn->return_expr() << ";\n";
 }
@@ -1067,7 +1071,7 @@ tame_wait_t::output (outputter_t *o)
     strbuf b;
     b << _fn->label(_id) << ":\n";
     b << "do {\n";
-    o->line_number_line(b, _lineno);
+    o->line_number_line(b, lineno_);
     b << "  if (!" << jgn << ".join (";
     for (size_t i = 0; i < n_args (); i++) {
 	if (i > 0) b << ", ";

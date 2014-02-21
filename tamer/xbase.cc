@@ -15,6 +15,7 @@
 #include <tamer/tamer.hh>
 #include <tamer/adapter.hh>
 #include <stdio.h>
+#include <sstream>
 
 namespace tamer {
 namespace tamerpriv {
@@ -41,22 +42,67 @@ void simple_driver::add(blocking_rendezvous* r) {
     r->rpos_ = i;
 }
 
-void blocking_rendezvous::hard_free() {
-    if (driver_)
-        driver_->rs_[rpos_].r = 0;
-    blocked_closure_->tamer_block_position_ = 1;
-    blocked_closure_->tamer_activator_(blocked_closure_);
-}
 
 tamer_closure *abstract_rendezvous::linked_closure() const {
     if (rtype_ == rgather) {
-	const gather_rendezvous *gr = static_cast<const gather_rendezvous *>(this);
+	const gather_rendezvous *gr = static_cast<const gather_rendezvous*>(this);
 	return gr->linked_closure_;
     } else if (rtype_ == rexplicit) {
-	const blocking_rendezvous *br = static_cast<const blocking_rendezvous *>(this);
+	const blocking_rendezvous *br = static_cast<const blocking_rendezvous*>(this);
 	return br->blocked_closure_;
     } else
 	return 0;
+}
+
+
+void blocking_rendezvous::hard_free() TAMER_NOEXCEPT {
+    if (driver_)
+        driver_->rs_[rpos_].r = 0;
+    if (blocked_closure_) {
+        blocked_closure_->tamer_block_position_ = 1;
+        blocked_closure_->tamer_activator_(blocked_closure_);
+    }
+    if (description_)
+        delete description_;
+}
+
+std::string blocking_rendezvous::location() const {
+#if !TAMER_NOTRACE
+    std::stringstream buf;
+    if (location_file_ && location_line_)
+        buf << location_file_ << ":" << location_line_;
+    else if (location_file_)
+        buf << location_file_;
+    else if (location_line_)
+        buf << location_line_;
+    else
+        buf << "<unknown>";
+    return buf.str();
+#else
+    return std::string("<unknown>");
+#endif
+}
+
+std::string blocking_rendezvous::location_description() const {
+#if !TAMER_NOTRACE
+    std::stringstream buf;
+    if (location_file_ && location_line_)
+        buf << location_file_ << ":" << location_line_;
+    else if (location_file_)
+        buf << location_file_;
+    else if (location_line_)
+        buf << location_line_;
+    else if (!has_description())
+        buf << "<unknown>";
+    if (has_description()) {
+        if (buf.tellp() != 0)
+            buf << " ";
+        buf << *description_;
+    }
+    return buf.str();
+#else
+    return std::string("<unknown>");
+#endif
 }
 
 

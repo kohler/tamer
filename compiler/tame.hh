@@ -391,7 +391,6 @@ public:
 
 class tame_block_t;
 class tame_nonblock_t;
-class tame_join_t;
 class tame_fork_t;
 
 /*
@@ -689,9 +688,11 @@ class tame_block_t : public tame_env_t {
 public:
     tame_block_t (int l) : _lineno (l) {}
     virtual ~tame_block_t () {}
+    void set_description(const str& s) { description_ = s; }
     bool need_implicit_rendezvous() const { return true; }
 protected:
     int _lineno;
+    str description_;
 };
 
 class tame_block_thr_t : public tame_block_t {
@@ -731,23 +732,27 @@ private:
   expr_list_t *_args;
 };
 
-class tame_join_t : public tame_env_t {
+class tame_wait_t : public tame_env_t {
 public:
-  tame_join_t (tame_fn_t *f, expr_list_t *l) : _fn (f), _args (l) {}
+  tame_wait_t (tame_fn_t *f, expr_list_t *l, int ln)
+      : _fn(f), _args(l), lineno_(ln) {}
   bool is_jumpto () const { return true; }
   void set_id (int i) { _id = i; }
   int id () const { return _id; }
-  virtual void output(outputter_t *o) = 0;
+  void output(outputter_t *o);
   var_t join_group () const { return (*_args)[0]; }
   var_t arg (unsigned i) const { return (*_args)[i+1]; }
-  size_t n_args () const 
-  { assert (_args->size () > 0); return _args->size () - 1; }
+  size_t n_args() const { assert (_args->size () > 0); return _args->size () - 1; }
+  void set_description(const str& s) { description_ = s; }
 protected:
-  void output_blocked (strbuf &b, const str &jgn);
+  void output_blocked(strbuf &b, const str &jgn);
   tame_fn_t *_fn;
   expr_list_t *_args;
   int _id;
+  int lineno_;
+  std::string description_;
 };
+
 
 class tame_fork_t : public tame_env_t {
 public:
@@ -763,15 +768,6 @@ protected:
   tame_fn_t *_fn;
   expr_list_t *_args;
   int _id;
-};
-
-class tame_wait_t : public tame_join_t {
-public:
-  tame_wait_t (tame_fn_t *f, expr_list_t *l, int ln)
-    : tame_join_t (f, l), _lineno (ln) {}
-  void output(outputter_t *o);
-private:
-  int _lineno;
 };
 
 extern parse_state_t *state;
