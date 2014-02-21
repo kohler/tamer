@@ -984,7 +984,7 @@ tame_block_ev_t::output(outputter_t *o)
   b << "/*}twait*/ " TWAIT_BLOCK_RENDEZVOUS "_holder.reset(); } while (0); ";
   b << "  if (" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".has_waiting()) {\n"
     << "    " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".set_location(__FILE__, __LINE__);\n";
-  if (!description_empty(description_))
+  if (!description_empty(description_) && tamer_debug)
       b << "    " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".set_description((" << description_ << "));\n";
   b << _fn->label(_id) << ":\n"
     << "    if (" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".has_waiting()) {\n"
@@ -1061,7 +1061,7 @@ void
 tame_wait_t::output_blocked(strbuf &b, const str &jgn)
 {
     b << "    " << jgn << ".set_location(__FILE__, __LINE__);\n";
-    if (!description_empty(description_))
+    if (!description_empty(description_) && tamer_debug)
         b << "    " << jgn << ".set_description((" << description_ << "));\n";
     b << "    " << jgn << ".block(" TAME_CLOSURE_NAME ", " << _id << ");\n"
       << "    tamer_closure_holder_.reset();\n"
