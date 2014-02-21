@@ -31,6 +31,16 @@ void simple_driver::grow() {
     rs_ = new_rs;
 }
 
+void simple_driver::add(blocking_rendezvous* r) {
+    if (!rfree_)
+        grow();
+    unsigned i = rfree_;
+    rfree_ = rs_[i].next;
+    rs_[i].r = r;
+    rs_[i].next = 0;
+    r->rpos_ = i;
+}
+
 void blocking_rendezvous::hard_free() {
     if (driver_)
         driver_->rs_[rpos_].r = 0;

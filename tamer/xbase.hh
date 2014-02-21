@@ -163,6 +163,7 @@ class simple_driver {
     inline ~simple_driver();
 
     inline void add_blocked(blocking_rendezvous* r);
+    inline void make_unblocked(blocking_rendezvous* r);
 
     inline bool has_unblocked() const;
     inline blocking_rendezvous* pop_unblocked();
@@ -183,6 +184,7 @@ class simple_driver {
     unsigned runblocked_tail_;
     rptr* rs_;
 
+    void add(blocking_rendezvous* r);
     void grow();
 
     friend class blocking_rendezvous;
@@ -386,13 +388,21 @@ inline void simple_driver::run_unblocked() {
 }
 
 inline void simple_driver::add_blocked(blocking_rendezvous* r) {
-    if (!rfree_)
-        grow();
-    unsigned i = rfree_;
-    rfree_ = rs_[i].next;
-    rs_[i].r = r;
-    rs_[i].next = 0;
-    r->rpos_ = i;
+#if TAMER_NOTRACE
+    r->rpos_ = 0;
+#else
+    add(r);
+#endif
+}
+
+inline void simple_driver::make_unblocked(blocking_rendezvous* r) {
+    if (!r->rpos_)
+        add(r);
+    if (runblocked_)
+        rs_[runblocked_tail_].next = r->rpos_;
+    else
+        runblocked_ = r->rpos_;
+    runblocked_tail_ = r->rpos_;
 }
 
 inline unsigned simple_driver::nrendezvous() const {
@@ -435,11 +445,7 @@ inline void blocking_rendezvous::block(simple_driver* driver, tamer_closure& c,
 
 inline void blocking_rendezvous::unblock() {
     if (blocked_closure_ && driver_) {
-        if (driver_->runblocked_)
-            driver_->rs_[driver_->runblocked_tail_].next = rpos_;
-        else
-            driver_->runblocked_ = rpos_;
-        driver_->runblocked_tail_ = rpos_;
+        driver_->make_unblocked(this);
         driver_ = 0;
     }
 }
