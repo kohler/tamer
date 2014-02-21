@@ -149,8 +149,8 @@ inline void at_time(double expiry, event<> e, bool bg = false) {
  *  Triggers @a e when @a delay seconds have elapsed since @c now(), or soon
  *  afterwards.
  */
-inline void at_delay(const timeval &delay, event<> e) {
-    driver::main->at_delay(delay, e);
+inline void at_delay(const timeval &delay, event<> e, bool bg = false) {
+    driver::main->at_delay(delay, e, bg);
 }
 
 /** @brief  Register event for a given delay.
@@ -160,8 +160,8 @@ inline void at_delay(const timeval &delay, event<> e) {
  *  Triggers @a e when @a delay seconds have elapsed since @c now(), or soon
  *  afterwards.
  */
-inline void at_delay(double delay, event<> e) {
-    driver::main->at_delay(delay, e);
+inline void at_delay(double delay, event<> e, bool bg = false) {
+    driver::main->at_delay(delay, e, bg);
 }
 
 /** @brief  Register event for a given delay.
@@ -171,8 +171,8 @@ inline void at_delay(double delay, event<> e) {
  *  Triggers @a e when @a delay seconds have elapsed since @c now(), or soon
  *  afterwards.
  */
-inline void at_delay_sec(int delay, event<> e) {
-    driver::main->at_delay_sec(delay, e);
+inline void at_delay_sec(int delay, event<> e, bool bg = false) {
+    driver::main->at_delay_sec(delay, e, bg);
 }
 
 /** @brief  Register event for a given delay.
@@ -182,8 +182,8 @@ inline void at_delay_sec(int delay, event<> e) {
  *  Triggers @a e when @a delay milliseconds have elapsed since @c now(), or
  *  soon afterwards.
  */
-inline void at_delay_msec(int delay, event<> e) {
-    driver::main->at_delay_msec(delay, e);
+inline void at_delay_msec(int delay, event<> e, bool bg = false) {
+    driver::main->at_delay_msec(delay, e, bg);
 }
 
 /** @brief  Register event for a given delay.
@@ -193,8 +193,8 @@ inline void at_delay_msec(int delay, event<> e) {
  *  Triggers @a e when @a delay microseconds have elapsed since @c now(), or
  *  soon afterwards.
  */
-inline void at_delay_usec(int delay, event<> e) {
-    driver::main->at_delay_usec(delay, e);
+inline void at_delay_usec(int delay, event<> e, bool bg = false) {
+    driver::main->at_delay_usec(delay, e, bg);
 }
 
 /** @brief  Register event for signal occurrence.
