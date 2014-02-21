@@ -85,7 +85,7 @@ void cleanup() {
     driver::main = 0;
 }
 
-void driver::at_delay(double delay, event<> e)
+void driver::at_delay(double delay, event<> e, bool bg)
 {
     if (delay <= 0)
 	at_asap(e);
@@ -98,7 +98,7 @@ void driver::at_delay(double delay, event<> e)
 	    tv.tv_sec++;
 	    tv.tv_usec -= 1000000;
 	}
-	at_time(tv, e);
+	at_time(tv, e, bg);
     }
 }
 
@@ -169,7 +169,7 @@ void driver_timerset::expand() {
     tcap_ = ncap;
 }
 
-void driver_timerset::push(timeval when, simple_event *se) {
+void driver_timerset::push(timeval when, simple_event *se, bool bg) {
     using std::swap;
 
     // Remove empty trecs at heap's end
@@ -183,7 +183,8 @@ void driver_timerset::push(timeval when, simple_event *se) {
 	expand();
     unsigned top = nts_;
     ts_[top].when = when;
-    ts_[top].order = ++order_;
+    order_ += 2;
+    ts_[top].order = order_ + !bg;
     ts_[top].se = se;
     ++nts_;
 

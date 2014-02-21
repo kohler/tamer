@@ -47,7 +47,7 @@ class driver : public tamerpriv::simple_driver {
     // basic functions
     enum { fdread = 0, fdwrite = 1 }; // the order is important
     virtual void at_fd(int fd, int action, event<int> e) = 0;
-    virtual void at_time(const timeval &expiry, event<> e) = 0;
+    virtual void at_time(const timeval& expiry, event<> e, bool bg) = 0;
     virtual void at_asap(event<> e) = 0;
     virtual void kill_fd(int fd) = 0;
 
@@ -57,12 +57,13 @@ class driver : public tamerpriv::simple_driver {
     inline void at_fd_write(int fd, event<int> e);
     inline void at_fd_write(int fd, event<> e);
 
-    inline void at_time(double expiry, event<> e);
-    inline void at_delay(timeval delay, event<> e);
-    void at_delay(double delay, event<> e);
-    inline void at_delay_sec(int delay, event<> e);
-    inline void at_delay_msec(int delay, event<> e);
-    inline void at_delay_usec(int delay, event<> e);
+    inline void at_time(const timeval& expiry, event<> e);
+    inline void at_time(double expiry, event<> e, bool bg = false);
+    inline void at_delay(timeval delay, event<> e, bool bg = false);
+    void at_delay(double delay, event<> e, bool bg = false);
+    inline void at_delay_sec(int delay, event<> e, bool bg = false);
+    inline void at_delay_msec(int delay, event<> e, bool bg = false);
+    inline void at_delay_usec(int delay, event<> e, bool bg = false);
 
     static void at_signal(int signo, event<> e,
 			  signal_flags flags = signal_default);
@@ -121,47 +122,51 @@ inline void driver::at_fd_write(int fd, event<> e) {
     at_fd(fd, fdwrite, e);
 }
 
-inline void driver::at_time(double expiry, event<> e) {
+inline void driver::at_time(const timeval& expiry, event<> e) {
+    at_time(expiry, e, false);
+}
+
+inline void driver::at_time(double expiry, event<> e, bool bg) {
     timeval tv;
     tv.tv_sec = (long) expiry;
     tv.tv_usec = (long) ((expiry - tv.tv_sec) * 1000000);
-    at_time(tv, e);
+    at_time(tv, e, bg);
 }
 
-inline void driver::at_delay(timeval delay, event<> e) {
+inline void driver::at_delay(timeval delay, event<> e, bool bg) {
     timeradd(&delay, &now(), &delay);
-    at_time(delay, e);
+    at_time(delay, e, bg);
 }
 
-inline void driver::at_delay_sec(int delay, event<> e) {
+inline void driver::at_delay_sec(int delay, event<> e, bool bg) {
     if (delay <= 0)
 	at_asap(e);
     else {
 	timeval tv = now();
 	tv.tv_sec += delay;
-	at_time(tv, e);
+	at_time(tv, e, bg);
     }
 }
 
-inline void driver::at_delay_msec(int delay, event<> e) {
+inline void driver::at_delay_msec(int delay, event<> e, bool bg) {
     if (delay <= 0)
 	at_asap(e);
     else {
 	timeval tv;
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000;
-	at_delay(tv, e);
+	at_delay(tv, e, bg);
     }
 }
 
-inline void driver::at_delay_usec(int delay, event<> e) {
+inline void driver::at_delay_usec(int delay, event<> e, bool bg) {
     if (delay <= 0)
 	at_asap(e);
     else {
 	timeval tv;
 	tv.tv_sec = delay / 1000000;
 	tv.tv_usec = delay % 1000000;
-	at_delay(tv, e);
+	at_delay(tv, e, bg);
     }
 }
 

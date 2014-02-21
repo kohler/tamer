@@ -32,7 +32,7 @@ class driver_tamer : public driver {
     ~driver_tamer();
 
     virtual void at_fd(int fd, int action, event<int> e);
-    virtual void at_time(const timeval &expiry, event<> e);
+    virtual void at_time(const timeval &expiry, event<> e, bool bg);
     virtual void at_asap(event<> e);
     virtual void kill_fd(int fd);
 
@@ -155,9 +155,9 @@ void driver_tamer::update_fds() {
     }
 }
 
-void driver_tamer::at_time(const timeval &expiry, event<> e) {
+void driver_tamer::at_time(const timeval &expiry, event<> e, bool bg) {
     if (e)
-	timers_.push(expiry, e.__take_simple());
+	timers_.push(expiry, e.__take_simple(), bg);
 }
 
 void driver_tamer::at_asap(event<> e) {
@@ -184,13 +184,15 @@ void driver_tamer::loop(loop_flags flags)
 	|| has_unblocked()) {
 	timerclear(&to);
 	toptr = &to;
-    } else if (!timers_.empty()) {
+    } else if (!timers_.has_foreground()
+               && fdbound_ == 0
+               && sig_nforeground == 0)
+        // no foreground events!
+        return;
+    else if (!timers_.empty()) {
 	timersub(&timers_.expiry(), &now(), &to);
 	toptr = &to;
-    } else if (fdbound_ == 0 && sig_nforeground == 0)
-	// no events scheduled!
-	return;
-    else
+    } else
 	toptr = 0;
 
     // select!

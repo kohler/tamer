@@ -35,7 +35,7 @@ class driver_libevent : public driver {
     ~driver_libevent();
 
     virtual void at_fd(int fd, int action, event<int> e);
-    virtual void at_time(const timeval &expiry, event<> e);
+    virtual void at_time(const timeval &expiry, event<> e, bool bg);
     virtual void at_asap(event<> e);
     virtual void kill_fd(int fd);
 
@@ -155,9 +155,9 @@ void driver_libevent::update_fds() {
     }
 }
 
-void driver_libevent::at_time(const timeval &expiry, event<> e) {
+void driver_libevent::at_time(const timeval &expiry, event<> e, bool bg) {
     if (e)
-	timers_.push(expiry, e.__take_simple());
+	timers_.push(expiry, e.__take_simple(), bg);
 }
 
 void driver_libevent::at_asap(event<> e) {
@@ -182,6 +182,11 @@ void driver_libevent::loop(loop_flags flags)
 	|| sig_any_active
 	|| has_unblocked())
 	event_flags |= EVLOOP_NONBLOCK;
+    else if (!timers_.has_foreground()
+             && fdactive_ == 0
+             && sig_nforeground == 0)
+        // no foreground events!
+        return;
     else if (!timers_.empty()) {
 	if (!timer_set)
 	    evtimer_set(&timerev, libevent_timertrigger, 0);
@@ -189,8 +194,7 @@ void driver_libevent::loop(loop_flags flags)
 	timeval timeout = timers_.expiry();
 	timersub(&timeout, &now(), &timeout);
 	evtimer_add(&timerev, &timeout);
-    } else if (fdactive_ == 0 && sig_nforeground == 0)
-	return;
+    }
 
     // don't bother to run event loop if there is nothing it can do
     if (!(event_flags & EVLOOP_NONBLOCK) || fdactive_ != 0 || sig_ntotal != 0)

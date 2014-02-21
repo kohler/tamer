@@ -67,9 +67,10 @@ struct driver_timerset {
     ~driver_timerset();
 
     inline bool empty() const;
+    inline bool has_foreground() const;
     inline const timeval &expiry() const;
     inline void cull();
-    void push(timeval when, simple_event* se);
+    void push(timeval when, simple_event* se, bool bg);
     void pop_trigger();
 
   private:
@@ -242,6 +243,13 @@ inline bool driver_timerset::empty() const {
     return nts_ == 0;
 }
 
+inline bool driver_timerset::has_foreground() const {
+    for (unsigned i = 0; i != nts_; ++i)
+        if (ts_[i].order & 1)
+            return true;
+    return false;
+}
+
 inline const timeval &driver_timerset::expiry() const {
     assert(nts_ != 0);
     return ts_[0].when;
@@ -257,7 +265,7 @@ inline bool driver_timerset::trec::operator<(const trec &x) const {
 	|| (when.tv_sec == x.when.tv_sec
 	    && (when.tv_usec < x.when.tv_usec
 		|| (when.tv_usec == x.when.tv_usec
-		    && order < x.order)));
+		    && (int) (order - x.order) < 0)));
 }
 
 inline void driver_timerset::trec::clean() {

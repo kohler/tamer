@@ -39,7 +39,7 @@ public:
     ~driver_libev();
 
     virtual void at_fd(int fd, int action, event<int> e);
-    virtual void at_time(const timeval &expiry, event<> e);
+    virtual void at_time(const timeval &expiry, event<> e, bool bg);
     virtual void at_asap(event<> e);
     virtual void kill_fd(int fd);
 
@@ -167,9 +167,9 @@ void driver_libev::update_fds() {
     }
 }
 
-void driver_libev::at_time(const timeval &expiry, event<> e) {
+void driver_libev::at_time(const timeval &expiry, event<> e, bool bg) {
     if (e)
-	timers_.push(expiry, e.__take_simple());
+	timers_.push(expiry, e.__take_simple(), bg);
 }
 
 void driver_libev::at_asap(event<> e) {
@@ -196,6 +196,11 @@ void driver_libev::loop(loop_flags flags) {
 	|| sig_any_active
 	|| has_unblocked())
 	event_flags |= EVRUN_NOWAIT;
+    else if (!timers_.has_foreground()
+             && fdactive_ == 0
+             && sig_nforeground == 0)
+        // no foreground events!
+        return;
     else if (!timers_.empty()) {
 	if (!timer_set) {
 	    ev_init(&timerev.w, (ev_watcher_type) libev_timer_trigger);
@@ -206,10 +211,7 @@ void driver_libev::loop(loop_flags flags) {
 	timersub(&timers_.expiry(), &now(), &to);
 	timerev.p.offset = dtime(to);
 	ev_periodic_again(eloop_, &timerev.p);
-    } else if (fdactive_ == 0 && sig_nforeground == 0)
-	// no events scheduled!
-	return;
-    else if (timer_set)
+    } else if (timer_set)
 	ev_periodic_stop(eloop_, &timerev.p);
 
     // run the event loop, unless there's nothing it can do

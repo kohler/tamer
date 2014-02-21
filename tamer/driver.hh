@@ -133,13 +133,13 @@ inline void at_fd_write(int fd, event<int> e) {
  *
  *  Triggers @a e at timestamp @a expiry, or soon afterwards.
  */
-inline void at_time(const timeval &expiry, event<> e) {
-    driver::main->at_time(expiry, e);
+inline void at_time(const timeval &expiry, event<> e, bool bg = false) {
+    driver::main->at_time(expiry, e, bg);
 }
 
 /** @overload */
-inline void at_time(double expiry, event<> e) {
-    driver::main->at_time(expiry, e);
+inline void at_time(double expiry, event<> e, bool bg = false) {
+    driver::main->at_time(expiry, e, bg);
 }
 
 /** @brief  Register event for a given delay.
