@@ -72,7 +72,7 @@ class driver : public tamerpriv::simple_driver {
     static driver* make_libevent();
     static driver* make_libev();
 
-    static driver *main;
+    static driver* main;
 
     static volatile sig_atomic_t sig_any_active;
     static int sig_pipe[2];

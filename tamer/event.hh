@@ -143,7 +143,6 @@ template <> struct value_pack<void, void, void, void> {
 template <typename T0, typename T1, typename T2, typename T3>
 class event {
   public:
-
     typedef void result_type;
     typedef const T0 &first_argument_type;
     typedef const T1 &second_argument_type;
@@ -183,6 +182,9 @@ class event {
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES
     inline event<T0, T1, T2, T3>& operator=(event<T0, T1, T2, T3>&& x) TAMER_NOEXCEPT;
 #endif
+
+    inline const char* file_annotation() const;
+    inline int line_annotation() const;
 
     inline event<T0, T1, T2, T3>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = 0, int line = 0);
     inline tamerpriv::simple_event* __get_simple() const;
@@ -283,6 +285,9 @@ class event<T0, T1, T2, void> { public:
     }
 #endif
 
+    inline const char* file_annotation() const;
+    inline int line_annotation() const;
+
     event<T0, T1, T2>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = 0, int line = 0) {
         TAMER_DEBUG_ASSERT(!se_);
         se_ = new tamerpriv::simple_event(r, rid, file, line);
@@ -373,6 +378,9 @@ class event<T0, T1, void, void>
 	return *this;
     }
 #endif
+
+    inline const char* file_annotation() const;
+    inline int line_annotation() const;
 
     event<T0, T1>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = 0, int line = 0) {
         TAMER_DEBUG_ASSERT(!se_);
@@ -487,6 +495,9 @@ class event<T0, void, void, void>
         return *this = event<T0>(std::move(x));
     }
 #endif
+
+    inline const char* file_annotation() const;
+    inline int line_annotation() const;
 
     event<T0>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = 0, int line = 0) {
         TAMER_DEBUG_ASSERT(!se_);
@@ -615,6 +626,9 @@ class event<void, void, void, void> { public:
         return *this = event<>(std::move(x));
     }
 #endif
+
+    inline const char* file_annotation() const;
+    inline int line_annotation() const;
 
     event<>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = 0, int line = 0) {
         TAMER_DEBUG_ASSERT(!se_);
@@ -1799,6 +1813,54 @@ inline event<>::event(preevent<R>&& x)
     x.r_ = 0;
 }
 #endif
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline const char* event<T0, T1, T2, T3>::file_annotation() const {
+    return se_ ? se_->file_annotation() : 0;
+}
+
+template <typename T0, typename T1, typename T2>
+inline const char* event<T0, T1, T2>::file_annotation() const {
+    return se_ ? se_->file_annotation() : 0;
+}
+
+template <typename T0, typename T1>
+inline const char* event<T0, T1>::file_annotation() const {
+    return se_ ? se_->file_annotation() : 0;
+}
+
+template <typename T0>
+inline const char* event<T0>::file_annotation() const {
+    return se_ ? se_->file_annotation() : 0;
+}
+
+inline const char* event<>::file_annotation() const {
+    return se_ ? se_->file_annotation() : 0;
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline int event<T0, T1, T2, T3>::line_annotation() const {
+    return se_ ? se_->line_annotation() : 0;
+}
+
+template <typename T0, typename T1, typename T2>
+inline int event<T0, T1, T2>::line_annotation() const {
+    return se_ ? se_->line_annotation() : 0;
+}
+
+template <typename T0, typename T1>
+inline int event<T0, T1>::line_annotation() const {
+    return se_ ? se_->line_annotation() : 0;
+}
+
+template <typename T0>
+inline int event<T0>::line_annotation() const {
+    return se_ ? se_->line_annotation() : 0;
+}
+
+inline int event<>::line_annotation() const {
+    return se_ ? se_->line_annotation() : 0;
+}
 
 } // namespace tamer
 #endif /* TAMER_EVENT_HH */

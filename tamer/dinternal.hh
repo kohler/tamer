@@ -50,11 +50,11 @@ struct driver_asapset {
     ~driver_asapset();
 
     inline bool empty() const;
-    inline void push(simple_event *se);
+    inline void push(simple_event* se);
     inline void pop_trigger();
 
   private:
-    simple_event **ses_;
+    simple_event** ses_;
     unsigned head_;
     unsigned tail_;
     unsigned capmask_;
@@ -69,7 +69,7 @@ struct driver_timerset {
     inline bool empty() const;
     inline const timeval &expiry() const;
     inline void cull();
-    void push(timeval when, simple_event *se);
+    void push(timeval when, simple_event* se);
     void pop_trigger();
 
   private:
