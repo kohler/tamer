@@ -20,14 +20,27 @@
 namespace tamer {
 namespace tamerpriv {
 
+simple_driver::simple_driver()
+    : rcap_(0), rfree_(1), runblocked_(0), runblocked_tail_(0), rs_() {
+    grow();
+}
+
+simple_driver::~simple_driver() {
+    delete[] rs_;
+}
+
 void simple_driver::grow() {
-    rptr* new_rs = new rptr[rcap_ * 2];
+    unsigned new_rcap = rcap_ ? rcap_ * 2 : 64;
+    rptr* new_rs = new rptr[new_rcap];
     memcpy(new_rs, rs_, sizeof(rptr) * rcap_);
-    for (unsigned i = rcap_ + 1; i != rcap_ * 2; ++i)
-        new_rs[i - 1].next = i;
-    new_rs[rcap_ * 2 - 1].next = 0;
-    rfree_ = rcap_;
-    rcap_ *= 2;
+    for (unsigned i = rcap_; i != new_rcap - 1; ++i) {
+        new_rs[i].r = 0;
+        new_rs[i].next = i + 1;
+    }
+    new_rs[new_rcap - 1].r = 0;
+    new_rs[new_rcap - 1].next = 0;
+    rfree_ = rcap_ ? rcap_ : 1;
+    rcap_ = new_rcap;
     delete[] rs_;
     rs_ = new_rs;
 }

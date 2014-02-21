@@ -160,8 +160,8 @@ class abstract_rendezvous {
 
 class simple_driver {
   protected:
-    inline simple_driver();
-    inline ~simple_driver();
+    simple_driver();
+    ~simple_driver();
 
     inline void add_blocked(blocking_rendezvous* r);
     inline void make_unblocked(blocking_rendezvous* r);
@@ -353,19 +353,6 @@ inline abstract_rendezvous::~abstract_rendezvous() TAMER_NOEXCEPT {
 }
 #endif
 
-
-inline simple_driver::simple_driver()
-    : rcap_(64), rfree_(1), runblocked_(0), runblocked_tail_(0),
-      rs_(new rptr[rcap_]) {
-    rs_[0].r = 0;
-    for (unsigned i = 2; i != rcap_; ++i)
-        rs_[i - 1].next = i;
-    rs_[rcap_ - 1].next = 0;
-}
-
-inline simple_driver::~simple_driver() {
-    delete[] rs_;
-}
 
 inline bool simple_driver::has_unblocked() const {
     while (runblocked_ && !rs_[runblocked_].r) {
