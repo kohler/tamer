@@ -11,6 +11,15 @@ tamer \- C++ extensions for event-driven programming
 .B #include <tamer/tamer.hh>
 .B using namespace tamer;
 .sp
+\fBclass event<> { public:
+    event();
+    operator bool() const;
+    bool empty() const;
+    void trigger();
+    void operator()();  \fR// synonym for \fBtrigger()
+    void at_trigger(const event<>& \fItrigger_evt\fB);
+}
+\fR...\fB
 \fBclass event<T0, T1, T2, T3> { public:
     event();
     operator bool() const;
@@ -22,20 +31,31 @@ tamer \- C++ extensions for event-driven programming
 .sp
 class rendezvous<I> { public:
     rendezvous(rendezvous_flags \fIflags\fB = rnormal);
+    event<> make_event(const I& \fIeid\fB);
+    event<T0> make_event(const I& \fIeid\fB, T0& \fIs0\fB);
+    event<T0, T1> make_event(const I& \fIeid\fB, T0& \fIs0\fB, T1& \fIs1\fB);
+    event<T0, T1, T2> make_event(const I& \fIeid\fB,
+                                 T0& \fIs0\fB, T1& \fIs1\fB, T2& \fIs2\fB);
+    event<T0, T1, T2, T3> make_event(const I& \fIeid\fB,
+                                     T0& \fIs0\fB, T1& \fIs1\fB, T2& \fIs2\fB, T3& \fIs3\fB);
     bool has_events() const;
     bool has_ready() const;
     bool has_waiting() const;
     bool join(I& \fIeid\fB);
 }
 .sp
-event<T0, T1, T2, T3> make_event(rendezvous<I>& \fIrendezvous\fB,
-                                 const I& \fIeid\fB,
-                                 T0& \fIs0\fB, T1& \fIs1\fB, T2& \fIs2\fB, T3& \fIs3\fB);
-event<T0, T1, T2, T3> make_event(rendezvous<>& \fIrendezvous\fB,
-                                 T0& \fIs0\fB, T1& \fIs1\fB, T2& \fIs2\fB, T3& \fIs3\fB);
-\&...
-event<> make_event(rendezvous<I>& \fIrendezvous\fB, const I& \fIeid\fB);
-event<> make_event(rendezvous<>& \fIrendezvous\fB);
+class rendezvous<> { public:
+    rendezvous(rendezvous_flags \fIflags\fB = rnormal);
+    event<> make_event();
+    event<T0> make_event(T0& \fIs0\fB);
+    event<T0, T1> make_event(T0& \fIs0\fB, T1& \fIs1\fB);
+    event<T0, T1, T2> make_event(T0& \fIs0\fB, T1& \fIs1\fB, T2& \fIs2\fB);
+    event<T0, T1, T2, T3> make_event(T0& \fIs0\fB, T1& \fIs1\fB, T2& \fIs2\fB, T3& \fIs3\fB);
+    bool has_events() const;
+    bool has_ready() const;
+    bool has_waiting() const;
+    bool join();
+}
 .sp
 tamed void user_function(...) {
     tvars { ... };
@@ -44,8 +64,8 @@ tamed void user_function(...) {
 twait { ... }
 twait volatile { ... }
 .sp
-twait(rendezvous<I>& \fIrendezvous\fB, I& \fIeid\fB);
 twait(rendezvous<>& \fIrendezvous\fB);
+twait(rendezvous<I>& \fIrendezvous\fB, I& \fIeid\fB);
 .fi
 .SH DESCRIPTION
 .B Tamer
@@ -101,16 +121,15 @@ processing.
 .fi
 .SS "Events"
 .LP
-The
+To create an event, call the
 .BI make_event
-function creates and returns an event of type
-.BR event<*> .
-The event represents a future occurrence and is associated with some
-rendezvous.
+function of a
+.B rendezvous
+object.
 .nf
 .sp
 \fB  rendezvous<> \fIr\fB;
-  event<> \fIe\fB = make_event(\fIr\fB);\fR
+  event<> \fIe\fB = \fIr\fB.make_event();\fR
 .sp
 .fi
 The event's
@@ -136,7 +155,7 @@ event's results are given by its template arguments. For example:
 .nf
 .sp
 \fB  rendezvous<> \fIr\fB;  int \fIi\fB = 0;
-  event<int> \fIe\fB = make_event(\fIr\fB, \fIi\fB);
+  event<int> \fIe\fB = \fIr\fB.make_event(\fIi\fB);
   \fIe\fB.trigger(100);
   assert(\fIi\fB == 100);               // \fRassertion will succeed
 .sp
@@ -710,7 +729,7 @@ into existing events.  For example:
 .sp
 .nf
   \fBint \fIi\fB;  rendezvous<> \fIr\fB;
-  event<int> \fIe\fB = add_timeout(\fIdelay\fB, make_event(\fIr\fB, \fIi\fB));\fR
+  event<int> \fIe\fB = add_timeout(\fIdelay\fB, \fIr\fB.make_event(\fIi\fB));\fR
 .fi
 .sp
 The event on
@@ -779,7 +798,7 @@ trigger value.  For example:
 .sp
 .nf
   \fBint \fIi(-1)\fB;  rendezvous<> \fIr\fB;
-  event<int> \fIe\fB = with_timeout(\fIdelay\fB, make_event(\fIr\fB, \fIi\fB));\fR
+  event<int> \fIe\fB = with_timeout(\fIdelay\fB, \fIr\fB.make_event(\fIi\fB));\fR
 .fi
 .sp
 The event on
