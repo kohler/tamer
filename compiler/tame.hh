@@ -368,8 +368,6 @@ public:
 		    const str &sffx = "");
 };
 
-typedef enum { DECLARATIONS, NAMES, TYPES } list_mode_t;
-
 class vartab_t {
 public:
     vartab_t() {}
@@ -378,7 +376,8 @@ public:
     size_t size() const { return _vars.size (); }
     bool add(const var_t &v);
     void declarations(strbuf &b, const str &padding) const;
-    void paramlist(strbuf &b, list_mode_t m, bool move, bool escape) const;
+    typedef enum { pl_declarations, pl_declarations_named, pl_moves_named } paramlist_flags;
+    void paramlist(strbuf &b, paramlist_flags flags, const char* sep) const;
     void initialize(strbuf &b, bool self, outputter_t* o) const;
     bool exists(const str &n) const { return _tab.find(n) != _tab.end(); }
     const var_t *lookup(const str &n) const;
@@ -712,7 +711,7 @@ public:
     bool is_volatile() const { return _isvolatile; }
     void set_id(int i) { _id = i; }
     int id() const { return _id; }
-    void add_class_var(const var_t &v) { _class_vars.add (v); }
+    void add_class_var(const var_t &v) { _class_vars.add(v); }
     bool needs_counter() const { return true; }
 
   protected:

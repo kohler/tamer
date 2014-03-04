@@ -116,11 +116,11 @@ str var_t::decl() const
 str var_t::param_decl(bool move, bool escape) const
 {
     strbuf b;
-    if (move && _type.pointer().empty() && _arrays.empty())
+    if (move && _type.pointer().empty() && _arrays.empty() && !_name.empty())
 	b << "TAMER_MOVEARG(" << _type.to_str() << ") ";
     else
 	b << _type.to_str();
-    if (escape)
+    if (escape && !_name.empty())
         b << "tamer__";
     b << _name << _arrays;
     return b.str();
@@ -237,9 +237,9 @@ vartab_t::add(const var_t &v)
 {
     if (exists(v.name()))
 	return false;
-
     _vars.push_back(v);
-    _tab[v.name()] = _vars.size() - 1;
+    if (!v.name().empty())
+        _tab[v.name()] = _vars.size() - 1;
     return true;
 }
 
@@ -376,13 +376,12 @@ class mangler { public:
     static str cv(int);
 
     str s();
-    
+
     int _cvflag;
     int _lflag;
     str _base;
     str _ptr;
     strbuf _result;
-    
 };
 
 str mangler::cv(int cvflag)
@@ -595,11 +594,11 @@ str type_t::mangle() const
 }
 
 void
-vartab_t::declarations (strbuf &b, const str &padding) const
+vartab_t::declarations(strbuf &b, const str &padding) const
 {
-  for (unsigned i = 0; i < size (); i++) {
-    b << padding << _vars[i].decl() << ";\n";
-  }
+    for (unsigned i = 0; i < size(); ++i)
+        if (!_vars[i].name().empty())
+            b << padding << _vars[i].decl() << ";\n";
 }
 
 void
@@ -608,8 +607,10 @@ vartab_t::initialize(strbuf &b, bool self, outputter_t* o) const
   initializer_t *init = 0;
   unsigned lineno;
   for (unsigned i = 0; i < size (); i++) {
-    if (self || ((init = _vars[i].initializer()) &&
-                 init->do_constructor_output())) {
+      if (!_vars[i].name().empty()
+          && (self
+              || ((init = _vars[i].initializer())
+                  && init->do_constructor_output()))) {
         if (!self && (lineno = init->constructor_lineno())) {
             b << ",\n";
             o->line_number_line(b, lineno);
@@ -625,26 +626,28 @@ vartab_t::initialize(strbuf &b, bool self, outputter_t* o) const
 }
 
 void
-vartab_t::paramlist(strbuf &b, list_mode_t list_mode, bool move,
-                    bool escape) const
+vartab_t::paramlist(strbuf &b, paramlist_flags list_mode, const char* sep) const
 {
-  for (unsigned i = 0; i < size () ; i++) {
-    if (i != 0) b << ", ";
-    switch (list_mode) {
-    case DECLARATIONS:
-      b << _vars[i].param_decl(move, escape);
-      break;
-    case NAMES:
-      b << _vars[i].name(move, escape);
-      break;
-    case TYPES:
-      b << _vars[i].type().to_str();
-      break;
-    default:
-      assert (false);
-      break;
+    for (unsigned i = 0; i < size () ; i++) {
+        if (list_mode != pl_declarations && _vars[i].name().empty())
+            continue;
+        b << sep;
+        sep = ", ";
+        switch (list_mode) {
+        case pl_declarations:
+            b << _vars[i].param_decl(false, false);
+            break;
+        case pl_declarations_named:
+            b << _vars[i].param_decl(true, true);
+            break;
+        case pl_moves_named:
+            b << _vars[i].name(true, false);
+            break;
+        default:
+            assert(false);
+            break;
+        }
     }
-  }
 }
 
 str
@@ -733,15 +736,14 @@ tame_fn_t::output_closure(outputter_t *o)
     << "  " << closure().type().base_type ()
     << " (";
 
+  const char* sep = "";
   if (need_self ()) {
       b << _self.decl();
-      if (_args)
-	  b << ", ";
+      sep = ", ";
   }
 
-  if (_args) {
-      _args->paramlist(b, DECLARATIONS, true, true);
-  }
+  if (_args)
+      _args->paramlist(b, vartab_t::pl_declarations_named, sep);
 
   b << ") : " << base_type << "(tamer_activator_)";
 
@@ -794,10 +796,11 @@ tame_fn_t::output_stack_vars(strbuf &b)
 void
 tame_fn_t::output_arg_references(strbuf &b)
 {
-    for (unsigned i = 0; _args && i < _args->size(); i++) {
+    for (unsigned i = 0; _args && i != _args->size(); ++i) {
 	const var_t &v = _args->_vars[i];
-	b << "  " << v.ref_decl() << " TAMER_CLOSUREVARATTR = "
-	  << closure_nm() << "." << v.name() << ";\n";
+        if (!v.name().empty())
+            b << "  " << v.ref_decl() << " TAMER_CLOSUREVARATTR = "
+              << closure_nm() << "." << v.name() << ";\n";
     }
 }
 
@@ -833,7 +836,7 @@ tame_fn_t::signature() const
 	b << "inline ";
     b << _ret_type.to_str() << " " << _name << "(";
     if (_args)
-	_args->paramlist(b, DECLARATIONS, false, false);
+	_args->paramlist(b, vartab_t::pl_declarations, "");
     b << ")";
     if (_isconst)
 	b << " const";
@@ -866,10 +869,13 @@ tame_fn_t::output_firstfn(outputter_t *o)
 
     // If no vars section was specified, do it now.
     b << "  " << closure().decl() << " = new " << closure().type().base_type() << "(";
-    if (_class.length() && !(_opts & STATIC_DECL))
-	b << "this" << (_args ? ", " : "");
+    const char* sep = "";
+    if (_class.length() && !(_opts & STATIC_DECL)) {
+        b << "this";
+        sep = ", ";
+    }
     if (_args)
-	_args->paramlist(b, NAMES, true, false);
+	_args->paramlist(b, vartab_t::pl_moves_named, sep);
     b << ");\n"
       << "  " << TAME_CLOSURE_NAME << "->tamer_activator_("
       << TAME_CLOSURE_NAME << ");\n}\n";

@@ -67,7 +67,7 @@ int vars_lineno;
 %type <str> template_instantiation_list template_instantiation
 %type <str> template_instantiation_opt typedef_name_single
 %type <str> template_instantiation_list_opt identifier
-%type <str> typedef_name arrays_opt
+%type <str> typedef_name arrays_opt typedef_name_opt
 %type <str> passthrough passthroughs
 %type <typ_mod> declaration_specifiers
 %type <typ_mod> type_qualifier type_qualifier_list
@@ -78,7 +78,7 @@ int vars_lineno;
 %type <decl> declarator_cpp direct_declarator_cpp
 
 
-%type <vars> parameter_type_list_opt parameter_type_list parameter_list
+%type <vars> parameter_list parameter_list_nonempty
 %type <exprs> join_list id_list_opt id_list
 
 %type <opt>  const_opt volatile_opt
@@ -157,7 +157,7 @@ fn_specifiers: /* empty */		{ $$ = fn_specifier_t(); }
 
 /* declaration_specifiers is no longer optional ?! */
 fn_declaration: fn_specifiers declaration_specifiers pointer_opt
-		typedef_name '(' parameter_type_list_opt ')' const_opt
+		typedef_name '(' parameter_list ')' const_opt
 	{
            declarator_t* d = new declarator_t($4.str(), $6);
            if ($3.length() > 0)
@@ -333,20 +333,16 @@ declaration_list: declaration
 	| declaration_list declaration
 	;
 
-parameter_type_list_opt: /* empty */ { $$ = NULL; }
-	| parameter_type_list
-	;
-
 /* missing: '...'
  */
-parameter_type_list: parameter_list
-	;
+parameter_list: /* empty */ { $$ = (vartab_t*) 0; }
+	| parameter_list_nonempty;
 
-parameter_list: parameter_declaration
+parameter_list_nonempty: parameter_declaration
 	{
 	  $$ = new vartab_t ($1);
 	}
-	| parameter_list ',' parameter_declaration
+	| parameter_list_nonempty ',' parameter_declaration
 	{
 	  if (! ($1)->add ($3) ) {
 	    strbuf b;
@@ -406,12 +402,23 @@ init_declarator: declarator_cpp cpp_initializer_opt
 	;
 
 declarator: pointer_opt direct_declarator
-	{
-	  if ($1.length() > 0)
-	    $2->set_pointer($1.str());
+        {
+          $2->set_pointer($1.str());
   	  $$ = $2;
+	};
+
+/* use "typedef_name" instead of identifier for C++-style names
+ * simplified to not be recursive... */
+direct_declarator: typedef_name_opt
+	{
+	   $$ = new declarator_t($1.str());
+	}
+	| typedef_name_opt '(' parameter_list ')'
+	{
+	   $$ = new declarator_t($1.str(), $3);
 	}
 	;
+
 
 arrays_opt: /* empty */			{ $$ = lstr(get_yy_lineno(), ""); }
 	| arrays_opt '[' passthroughs ']' {
@@ -421,35 +428,18 @@ arrays_opt: /* empty */			{ $$ = lstr(get_yy_lineno(), ""); }
 
 declarator_cpp: pointer_opt direct_declarator_cpp
 	{
-	  if ($1.length() > 0)
-	    $2->set_pointer($1.str());
+          $2->set_pointer($1.str());
   	  $$ = $2;
-	}
-	;
+	};
+
+direct_declarator_cpp: identifier	{ $$ = new declarator_t($1.str()); };
+
 
 cpp_initializer_opt: /* empty */  { $$ = new initializer_t(); }
 	| '(' passthroughs ')'	  { $$ = new cpp_initializer_t($2, false); }
 	| '[' passthroughs ']'	  { $$ = new array_initializer_t($2); }
         | '{' passthroughs '}'	  { $$ = new cpp_initializer_t($2, true); }
 	| '=' passthroughs	  { $$ = new cpp_initializer_t($2, false); }
-	;
-
-direct_declarator_cpp: identifier	{ $$ = new declarator_t($1.str()); }
-	;
-
-/*
- * use "typedef_name" instead of identifier for C++-style names
- *
- * simplified to not be recursive...
- */
-direct_declarator: typedef_name
-	{
-	   $$ = new declarator_t($1.str());
-	}
-	| typedef_name '(' parameter_type_list_opt ')'
-	{
-	   $$ = new declarator_t($1.str(), $3);
-	}
 	;
 
 
@@ -521,6 +511,8 @@ typedef_name_single: identifier template_instantiation_opt
            CONCAT($1.lineno(), $1 << $2, $$);
 	}
 	;
+
+typedef_name_opt: typedef_name | /* empty */ { $$ = lstr(""); };
 
 template_instantiation_opt: /* empty */ 	{ $$ = lstr(""); }
 	| template_instantiation

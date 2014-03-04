@@ -254,6 +254,20 @@ tamed void test_distribute_opt() {
     }
 }
 
+tamed void test_unnamed_param(int) {
+}
+
+tamed void test_unnamed_param1(int, int) {
+}
+
+tamed void test_unnamed_param2(int a, int) {
+    (void) a;
+}
+
+tamed void test_unnamed_param3(int, int a) {
+    (void) a;
+}
+
 int main(int, char **) {
     tamer::rendezvous<int> r;
     tamer::initialize();
@@ -281,6 +295,12 @@ int main(int, char **) {
     test_debug1();
     test_distribute();
     test_distribute_opt();
+
+    test_unnamed_param(1);
+    test_unnamed_param1(1, 2);
+    test_unnamed_param2(1, 2);
+    test_unnamed_param3(1, 2);
+
     tamer::loop();
     tamer::cleanup();
 }
