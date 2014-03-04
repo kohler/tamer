@@ -156,9 +156,13 @@ fn_specifiers: /* empty */		{ $$ = fn_specifier_t(); }
 	;
 
 /* declaration_specifiers is no longer optional ?! */
-fn_declaration: fn_specifiers declaration_specifiers declarator const_opt
+fn_declaration: fn_specifiers declaration_specifiers pointer_opt
+		typedef_name '(' parameter_type_list_opt ')' const_opt
 	{
-	   $$ = new tame_fn_t($1, $2.to_str(), $3, $4, get_yy_lineno(),
+           declarator_t* d = new declarator_t($4.str(), $6);
+           if ($3.length() > 0)
+               d->set_pointer($3.str());
+	   $$ = new tame_fn_t($1, $2.to_str(), d, $8, get_yy_lineno(),
 			      get_yy_loc());
 	}
 	;
