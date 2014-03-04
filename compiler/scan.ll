@@ -121,6 +121,7 @@ template	{ yy_push_state (TEMPLATE_ENTER); return T_TEMPLATE; }
 [[]		{ yy_push_state(PP_BASE); return yytext[0]; }
 [{]		{ switch_to_state(TAME_BASE); return yytext[0]; }
 [;]		{ switch_to_state(INITIAL); return yytext[0]; }
+[=]		{ yy_push_state(PP_EQUALS); return yytext[0]; }
 }
 
 <TEMPLATE_ENTER>{
@@ -166,8 +167,8 @@ template	{ yy_push_state (TEMPLATE_ENTER); return T_TEMPLATE; }
 }
 
 <PP_EQUALS>{
-[,;]		{ yy_pop_state(); return yytext[0]; }
-[)\]]		{ return std_ret(T_PASSTHROUGH); }
+[,;\)]		{ yy_pop_state(); return yytext[0]; }
+[\]]		{ return std_ret(T_PASSTHROUGH); }
 }
 
 <PP_BASE>{

@@ -72,7 +72,7 @@ int vars_lineno;
 %type <typ_mod> declaration_specifiers
 %type <typ_mod> type_qualifier type_qualifier_list
 %type <typ_mod> type_specifier basic_type_specifier basic_type_specifier_list
-%type <initializer> cpp_initializer_opt
+%type <initializer> cpp_initializer_opt parameter_default_opt
 
 %type <decl> init_declarator declarator direct_declarator
 %type <decl> declarator_cpp direct_declarator_cpp
@@ -356,11 +356,12 @@ parameter_list_nonempty: parameter_declaration
 
 /* missing: abstract declarators
  */
-parameter_declaration: declaration_specifiers declarator arrays_opt
+parameter_declaration: declaration_specifiers declarator arrays_opt parameter_default_opt
 	{
 	  if ($2->params())
 	    warn << "parameters found when not expected\n";
 	  $$ = var_t($1, $2, $3, ARG);
+          $$.set_initializer($4);
 	}
 	;
 
@@ -442,6 +443,9 @@ cpp_initializer_opt: /* empty */  { $$ = new initializer_t(); }
 	| '=' passthroughs	  { $$ = new cpp_initializer_t($2, false); }
 	;
 
+parameter_default_opt: /* empty */ { $$ = (initializer_t*) 0; }
+        | '=' passthroughs        { $$ = new cpp_initializer_t($2, false); }
+        ;
 
 /* missing: first rule:
  *	storage_class_specifier declaration_specifiers_opt

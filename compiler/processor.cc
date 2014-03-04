@@ -636,6 +636,8 @@ vartab_t::paramlist(strbuf &b, paramlist_flags list_mode, const char* sep) const
         switch (list_mode) {
         case pl_declarations:
             b << _vars[i].param_decl(false, false);
+            if (_vars[i].initializer())
+                b << " = " << _vars[i].initializer()->output_in_constructor();
             break;
         case pl_declarations_named:
             b << _vars[i].param_decl(true, true);

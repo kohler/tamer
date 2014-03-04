@@ -261,11 +261,15 @@ tamed void test_unnamed_param1(int, int) {
 }
 
 tamed void test_unnamed_param2(int a, int) {
-    (void) a;
+    assert(a == 1);
 }
 
 tamed void test_unnamed_param3(int, int a) {
-    (void) a;
+    assert(a == 2);
+}
+
+tamed void test_default_param(int, int b = 2) {
+    assert(b == 2);
 }
 
 int main(int, char **) {
@@ -300,6 +304,8 @@ int main(int, char **) {
     test_unnamed_param1(1, 2);
     test_unnamed_param2(1, 2);
     test_unnamed_param3(1, 2);
+    test_default_param(1);
+    test_default_param(1, 2);
 
     tamer::loop();
     tamer::cleanup();

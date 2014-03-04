@@ -346,6 +346,7 @@ public:
 
     void set_type(const type_t &t) { _type = t; }
     initializer_t *initializer() const { return _initializer; }
+    void set_initializer(initializer_t* i) { _initializer = i; }
 
     str param_decl(bool move, bool escape) const;
     str decl() const;
@@ -401,19 +402,19 @@ public:
     declarator_t (const str &n, vartab_t *v)
 	: _name (n), _params (v), _initializer(0) {}
     declarator_t (const str &n) : _name (n), _params(0), _initializer(0) {}
-  void set_pointer (const str &s) { _pointer = s; }
-  str pointer () const { return _pointer; }
-  str name () const { return _name; }
-  vartab_t *params () { return _params; }
-  void set_params (vartab_t *v) { _params = v; }
-  void set_initializer (initializer_t *i) { _initializer = i; }
-  void dump () const ;
-  initializer_t *initializer () const { return _initializer; }
+    void set_pointer(const str &s) { _pointer = s; }
+    str pointer() const { return _pointer; }
+    str name() const { return _name; }
+    vartab_t *params() { return _params; }
+    void set_params(vartab_t *v) { _params = v; }
+    initializer_t *initializer() const { return _initializer; }
+    void set_initializer(initializer_t* i) { _initializer = i; }
+    void dump() const;
 private:
-  const str _name;
-  str _pointer;
-  vartab_t *_params;
-  initializer_t *_initializer;
+    const str _name;
+    str _pointer;
+    vartab_t *_params;
+    initializer_t *_initializer;
 };
 
 // Convert:
