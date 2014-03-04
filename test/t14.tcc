@@ -37,7 +37,7 @@ tamed void child(struct sockaddr_in* saddr, socklen_t saddr_len) {
         }
         twait { buf.take_until(cfd, '\n', 1024, str, make_event(ret)); }
         if (ret != 0) {
-            printf("W error %s after %d\n", strerror(-wret), write_rounds);
+            printf("W error %s after %d\n", strerror(-ret), write_rounds);
             break;
         } else if (str.length())
             printf("R %d: %s", ret, str.c_str());
