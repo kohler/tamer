@@ -274,9 +274,6 @@ class type_t {
     str arrays() const { return _arrays; }
     str to_str() const;
     str to_str_w_template_args(bool p = true) const;
-    str mk_ptr() const;
-    str alloc_ptr(const str &nm, const str &args) const;
-    str type_without_pointer() const;
     void set_base_type(const str &t) { _base_type = t; }
     void set_pointer(const str &p) { _pointer = p; }
     void set_arrays(const str &a) { _arrays = a; }
@@ -443,7 +440,7 @@ class tame_block_t;
 struct fn_specifier_t {
     fn_specifier_t() : _opts(0) { }
     unsigned _opts;
-    str _template;
+    str template_[2];
 };
 
 //
@@ -451,31 +448,11 @@ struct fn_specifier_t {
 //
 class tame_fn_t : public element_list_t {
   public:
-    tame_fn_t (const fn_specifier_t &fn, const str &r, declarator_t *d,
-	       bool c, unsigned l, str loc)
-	: _ret_type(ws_strip(r), ws_strip(d->pointer())),
-	  _name(d->name()),
-	  _method_name(strip_to_method(_name)),
-	  _class(strip_off_method(_name)),
-	  _self(c ? str("const ") + _class : _class, "*", "__tamer_self"),
-	  _isconst(c),
-	  _template(fn._template),
-	  _template_args(_class.length() ? template_args (_class) : ""),
-	  _the_closure(0),
-	  _declaration_only(false),
-	  _args(d->params()),
-	  _any_volatile_envs(false),
-	  _opts(fn._opts),
-	  _lineno(l),
-	  _n_labels(1),		// 0 = begin, 1 = exit prematurely
-	  _n_blocks(0),
-	  _loc(loc),
-	  _lbrace_lineno(0),
-	  _vars(NULL),
-	  _after_vars_el_encountered(false) {
-    }
+    tame_fn_t(const fn_specifier_t &fn, const str &r, declarator_t *d,
+              bool c, unsigned l, str loc);
     ~tame_fn_t() {
-	delete _the_closure;
+	delete the_closure_[0];
+        delete the_closure_[1];
     }
 
     vartab_t *stack_vars() { return &_stack_vars; }
@@ -513,41 +490,34 @@ class tame_fn_t : public element_list_t {
 
     str classname() const { return _class; }
     str name() const { return _name; }
-    str closure_type_name() const;
+    str closure_type_name(bool include_template) const;
     str closure_signature() const;
     str signature() const;
 
     void set_opts (int i) { _opts = i; }
     int opts () const { return _opts; }
 
-    bool need_self () const { return (_class.length() && !(_opts & STATIC_DECL)); }
+    bool need_self() const { return (_class.length() && !(_opts & STATIC_DECL)); }
 
     void output(outputter_t *o);
 
     void add_env(tame_env_t *g);
 
-    const var_t &closure() const {
-	if (!_the_closure)
-	    _the_closure = new var_t(mk_closure(false));
-	return *_the_closure;
+    const var_t& closure(bool object) const {
+	if (!the_closure_[object])
+	    the_closure_[object] = new var_t(mk_closure(object, false));
+	return *the_closure_[object];
     }
 
-  void hit_tame_block () { _n_blocks++; }
+    void hit_tame_block () { _n_blocks++; }
 
-    str closure_nm() const { return closure().name(); }
+    str label(str s) const;
+    str label(unsigned id) const ;
+    str loc() const { return _loc; }
 
-  str label (str s) const;
-  str label (unsigned id) const ;
-  str loc () const { return _loc; }
+    str return_expr() const;
 
-  str return_expr () const;
-
-    str template_str () const {
-	if (_template.length())
-	    return str("template< ") + _template + str(" >");
-	else
-	    return str();
-    }
+    void add_templates(strbuf& b, const char* sep) const;
 
   void set_lbrace_lineno (unsigned i) { _lbrace_lineno = i ; }
 
@@ -565,12 +535,13 @@ class tame_fn_t : public element_list_t {
     const var_t _self;
 
     const bool _isconst;
-    str _template;
-    str _template_args;
-    mutable var_t *_the_closure;
+    str class_template_;
+    str function_template_;
+    mutable var_t* the_closure_[2];
     bool _declaration_only;
 
-    var_t mk_closure(bool ref) const;
+    var_t mk_closure(bool object, bool ref) const;
+    void add_template_function_args(strbuf& buf) const;
 
     vartab_t *_args;
     vartab_t _stack_vars;
@@ -586,7 +557,7 @@ class tame_fn_t : public element_list_t {
     void output_arg_references(strbuf &b);
     void output_jump_tab(strbuf &b);
     void output_block_cb_switch(strbuf &b);
-  
+
     int _opts;
     unsigned _lineno;
     unsigned _n_labels;

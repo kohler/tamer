@@ -1,0 +1,17 @@
+%info
+Check tamed functions: member or not, template or not.
+
+%script
+$rundir/test/t18
+
+%stdout
+f
+tf 1
+tf Another one
+klass f
+tklass f 2
+klass tf 1
+klass tf Another one
+tklass tf 2 1
+tklass tf 2 Another one
+Done!

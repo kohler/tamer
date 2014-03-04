@@ -151,8 +151,11 @@ fn_specifiers: /* empty */		{ $$ = fn_specifier_t(); }
 	| fn_specifiers T_STATIC	{ $1._opts |= STATIC_DECL; $$ = $1; }
 	| fn_specifiers T_VIRTUAL	{ $1._opts |= VIRTUAL_DECL; $$ = $1; }
 	| fn_specifiers T_INLINE	{ $1._opts |= INLINE_DECL; $$ = $1; }
-	| fn_specifiers T_TEMPLATE '<' passthroughs '>'
-	{ $1._template = $4.str(); $$ = $1; }
+	| fn_specifiers T_TEMPLATE '<' passthroughs '>' {
+            bool which = $1.template_[0].length() != 0;
+            $1.template_[which] = $4.str();
+            $$ = $1;
+        }
 	;
 
 /* declaration_specifiers is no longer optional ?! */
