@@ -239,7 +239,7 @@ void driver_tamer::loop(loop_flags flags)
     run_unblocked();
 
     // check flags
-    if (flags == loop_forever && loop_state_)
+    if (loop_state_)
 	goto again;
 }
 
