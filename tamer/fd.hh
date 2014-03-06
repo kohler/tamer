@@ -175,10 +175,11 @@ class fd {
     friend bool operator!=(const fd &a, const fd &b);
 };
 
-void tcp_listen(int port, int backlog, event<fd> result);
-inline void tcp_listen(int port, event<fd> result);
-fd tcp_listen(int port, int backlog);
 inline fd tcp_listen(int port);
+fd tcp_listen(int port, int backlog);
+inline void tcp_listen(int port, event<fd> result);
+void tcp_listen(int port, int backlog, event<fd> result);
+
 void tcp_connect(struct in_addr addr, int port, event<fd> result);
 void udp_connect(struct in_addr addr, int port, event<fd> result);
 

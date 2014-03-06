@@ -323,7 +323,7 @@ tamed void notify(peer *pp, peer *cpeer)
 	twait {
 		tamer::event<tamer::fd> e = make_event(sock);
 		pp->cfd.at_close(e.unblocker());
-		tamer::tcp_connect(pp->caddr, pp->cport, tamer::add_timeout_sec(5, e));
+		tamer::tcp_connect(pp->caddr, pp->cport, tamer::add_timeout_sec(5, e, -ETIMEDOUT));
 	}
 	// will be a noop if sock is not connected
 	twait {

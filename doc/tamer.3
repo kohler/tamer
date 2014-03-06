@@ -729,7 +729,7 @@ into existing events.  For example:
 .sp
 .nf
   \fBint \fIi\fB;  rendezvous<> \fIr\fB;
-  event<int> \fIe\fB = add_timeout(\fIdelay\fB, \fIr\fB.make_event(\fIi\fB));\fR
+  event<int> \fIe\fB = add_timeout(\fIdelay\fB, \fIr\fB.make_event(\fIi\fB), \-ETIMEDOUT);\fR
 .fi
 .sp
 The event on
@@ -747,49 +747,49 @@ trigger value.
 seconds elapse.
 .I i
 is set to
-.B \-ETIMEDOUT
-(or, equivalently,
-.BR tamer::outcome::timeout ).
+.BR \-ETIMEDOUT .
 .LP
 Cancel adapters are available for timeouts and signals.
 .sp
 .nf
-.B event<int> add_timeout(const timeval& \fIdelay\fB, event<int> \fIe\fB)
-.B event<int> add_timeout_sec(int \fIdelay\fB, event<int> \fIe\fB)
-.B event<int> add_timeout_msec(int \fIdelay\fB, event<int> \fIe\fB)
+.B event<T> add_timeout(const timeval& \fIdelay\fB, event<T> \fIe\fB, const V& \fIv\fB)
+.B event<T> add_timeout_sec(int \fIdelay\fB, event<T> \fIe\fB, const V& \fIv\fB)
+.B event<T> add_timeout_msec(int \fIdelay\fB, event<T> \fIe\fB, const V& \fIv\fB)
 .fi
 .RS 5
-Returns a timeout-adapted version of
+Adds a timeout to
 .IR e .
-When the returned event is triggered,
-.I e
-is triggered with the same trigger value.
-If, however, the timeout of
+If the
 .I delay
-expires first, then
+expires before
+.I e
+is triggered normally, then
 .I e
 is triggered with value
-.BR \-ETIMEDOUT .
+.IR v .
+Returns
+.IR e .
 .RE
 .sp
 .nf
-.B event<int> add_signal(int \fIsignal\fB, event<int> \fIe\fB)
-.B event<int> add_signal(ITER \fIfirst\fB, ITER \fIlast\fB, event<int> \fIe\fB)
+.B event<T> add_signal(int \fIsignal\fB, event<T> \fIe\fB, const V& \fIv\fB)
+.B event<T> add_signal(ITER \fIfirst\fB, ITER \fIlast\fB, event<T> \fIe\fB, const V& \fIv\fB)
 .fi
 .RS 5
-Returns a signal-adapted version of
+Adds signal detection to
 .IR e .
-When the returned event is triggered,
-.I e
-is triggered with the same trigger value.
-If, however, the
+If the
 .I signal
 (or one of the signals in the iterator range
 .RI [ first ", " last ))
-happens first, then
+happens before
+.I e
+triggers normally, then
 .I e
 is triggered with value
-.BR \-EINTR .
+.IR v .
+Returns
+.IR e .
 .RE
 .PP
 There is also a set of cancel adapters that don't set
@@ -816,16 +816,13 @@ trigger value.
 seconds elapse.
 .I i
 retains its initial value.
-.PP
-This style of cancel adapter can handle any event type, not just
-.BR event<int> .
 .sp
 .nf
-.B event<T*> with_timeout(const timeval& \fIdelay\fB, event<T*> \fIe\fB)
-.B event<T*> with_timeout_sec(int \fIdelay\fB, event<T*> \fIe\fB)
-.B event<T*> with_timeout_msec(int \fIdelay\fB, event<T*> \fIe\fB)
-.B event<T*> with_signal(int \fIsignal\fB, event<T*> \fIe\fB)
-.B event<T*> with_signal(ITER \fIfirst\fB, ITER \fIlast\fB, event<T*> \fIe\fB)
+.B event<Ts> with_timeout(const timeval& \fIdelay\fB, event<Ts> \fIe\fB)
+.B event<Ts> with_timeout_sec(int \fIdelay\fB, event<Ts> \fIe\fB)
+.B event<Ts> with_timeout_msec(int \fIdelay\fB, event<Ts> \fIe\fB)
+.B event<Ts> with_signal(int \fIsignal\fB, event<Ts> \fIe\fB)
+.B event<Ts> with_signal(ITER \fIfirst\fB, ITER \fIlast\fB, event<Ts> \fIe\fB)
 .fi
 .RS 5
 Return cancel-adapted versions of
@@ -837,11 +834,11 @@ event triggered successfully.
 .RE
 .sp
 .nf
-.B event<T*> with_timeout(const timeval &\fIdelay\fB, event<T*> \fIe\fB, int& \fIresult\fB)
-.B event<T*> with_timeout_sec(int \fIdelay\fB, event<T*> \fIe\fB, int& \fIresult\fB)
-.B event<T*> with_timeout_msec(int \fIdelay\fB, event<T*> \fIe\fB, int& \fIresult\fB)
-.B event<T*> with_signal(int \fIsignal\fB, event<T*> \fIe\fB, int& \fIresult\fB)
-.B event<T*> with_signal(ITER \fIfirst\fB, ITER \fIlast\fB, event<T*> \fIe\fB,
+.B event<Ts> with_timeout(const timeval &\fIdelay\fB, event<Ts> \fIe\fB, int& \fIresult\fB)
+.B event<Ts> with_timeout_sec(int \fIdelay\fB, event<Ts> \fIe\fB, int& \fIresult\fB)
+.B event<Ts> with_timeout_msec(int \fIdelay\fB, event<Ts> \fIe\fB, int& \fIresult\fB)
+.B event<Ts> with_signal(int \fIsignal\fB, event<Ts> \fIe\fB, int& \fIresult\fB)
+.B event<Ts> with_signal(ITER \fIfirst\fB, ITER \fIlast\fB, event<Ts> \fIe\fB,
 .B "                      int& \fIresult\fB)"
 .fi
 .RS 5
