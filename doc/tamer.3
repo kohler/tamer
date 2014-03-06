@@ -605,7 +605,7 @@ The trigger value is as for
 .RE
 .sp
 .nf
-.B void at_time(const timeval &\fIexpiry\fB, event<> \fIe\fB)
+.B void at_time(const timeval& \fIexpiry\fB, event<> \fIe\fB)
 .fi
 .RS 5
 Triggers event
@@ -816,6 +816,7 @@ trigger value.
 seconds elapse.
 .I i
 retains its initial value.
+.RE
 .sp
 .nf
 .B event<Ts> with_timeout(const timeval& \fIdelay\fB, event<Ts> \fIe\fB)
@@ -834,7 +835,7 @@ event triggered successfully.
 .RE
 .sp
 .nf
-.B event<Ts> with_timeout(const timeval &\fIdelay\fB, event<Ts> \fIe\fB, int& \fIresult\fB)
+.B event<Ts> with_timeout(const timeval& \fIdelay\fB, event<Ts> \fIe\fB, int& \fIresult\fB)
 .B event<Ts> with_timeout_sec(int \fIdelay\fB, event<Ts> \fIe\fB, int& \fIresult\fB)
 .B event<Ts> with_timeout_msec(int \fIdelay\fB, event<Ts> \fIe\fB, int& \fIresult\fB)
 .B event<Ts> with_signal(int \fIsignal\fB, event<Ts> \fIe\fB, int& \fIresult\fB)

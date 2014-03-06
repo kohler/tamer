@@ -284,22 +284,22 @@ inline event<> add_timeout_msec(int delay, event<> e) {
 #if TAMER_HAVE_PREEVENT
 template <typename R>
 inline event<> add_timeout(const timeval& delay, preevent<R>&& pe) {
-    return add_timeout(delay, event<T0>(std::move(pe)));
+    return add_timeout(delay, event<>(std::move(pe)));
 }
 
 template <typename R>
 inline event<> add_timeout(double delay, preevent<R>&& pe) {
-    return add_timeout(delay, event<T0>(std::move(pe)));
+    return add_timeout(delay, event<>(std::move(pe)));
 }
 
 template <typename R>
 inline event<> add_timeout_sec(int delay, preevent<R>&& pe) {
-    return add_timeout_sec(delay, event<T0>(std::move(pe)));
+    return add_timeout_sec(delay, event<>(std::move(pe)));
 }
 
 template <typename R>
-inline event<T0> add_timeout_msec(int delay, preevent<R>&& pe) {
-    return add_timeout_msec(delay, event<T0>(std::move(pe)));
+inline event<> add_timeout_msec(int delay, preevent<R>&& pe) {
+    return add_timeout_msec(delay, event<>(std::move(pe)));
 }
 #endif
 
@@ -360,7 +360,6 @@ inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, preev
  *  Adds signal interruption to @a e. If signal @a signo occurs before @a e
  *  triggers naturally, then @a e is triggered.
  */
-template <typename T0>
 inline event<> add_signal(int signo, event<> e) {
     at_signal(signo, e);
     return e;
@@ -369,7 +368,7 @@ inline event<> add_signal(int signo, event<> e) {
 #if TAMER_HAVE_PREEVENT
 template <typename R>
 inline event<> add_signal(int signo, preevent<R>&& pe) {
-    return add_signal(signo, event<T0>(std::move(pe)));
+    return add_signal(signo, event<>(std::move(pe)));
 }
 #endif
 
