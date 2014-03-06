@@ -207,7 +207,7 @@ __LOC__         { return loc_return (); }
 
 <VARS_ENTER>{
 [{]		{ switch_to_state(HALF_PARSE); return yytext[0]; }
-.		{ return yyerror("illegal token found between 'tvars' and '{'");}
+.		{ return yyerror("illegal token found near closure variables");}
 }
 
 
@@ -319,6 +319,7 @@ return/[ \t\n(;]	{ return yyerror ("cannot return withint twait{..}"); }
 [{]		{ yylval.str = lstr(lineno, yytext); yy_push_state (TAME);
 		  return T_PASSTHROUGH; }
 
+tamed/[ \t\n{/]	    { return tame_ret(VARS_ENTER, T_TVARS); }
 tvars/[ \t\n{/]	    { return tame_ret(VARS_ENTER, T_TVARS); }
 DEFAULT_RETURN	    { return tame_ret(DEFRET_ENTER, T_DEFAULT_RETURN); }
 

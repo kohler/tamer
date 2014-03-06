@@ -272,6 +272,12 @@ tamed void test_default_param(int, int b = 2) {
     assert(b == 2);
 }
 
+tamed void test_tamed_tvars() {
+    tamed { int x = 0; }
+    twait { tamer::at_delay(0.01, tamer::bind(make_event(x), 1)); }
+    assert(x == 1);
+}
+
 int main(int, char **) {
     tamer::rendezvous<int> r;
     tamer::initialize();
@@ -306,6 +312,7 @@ int main(int, char **) {
     test_unnamed_param3(1, 2);
     test_default_param(1);
     test_default_param(1, 2);
+    test_tamed_tvars();
 
     tamer::loop();
     tamer::cleanup();
