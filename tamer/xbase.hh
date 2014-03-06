@@ -294,9 +294,6 @@ class functional_rendezvous : public abstract_rendezvous {
 typedef void (*tamer_closure_activator)(tamer_closure *);
 
 struct tamer_closure {
-    tamer_closure(tamer_closure_activator activator)
-	: tamer_activator_(activator), tamer_block_position_(0) {
-    }
     tamer_closure_activator tamer_activator_;
     unsigned tamer_block_position_;
 };

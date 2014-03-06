@@ -56,12 +56,19 @@ template <typename T> class tklass {
   public:
     tklass(T x) : x_(x) {}
     tamed void f(event<> e);
+    tamed void g(event<> e);
     tamed template <typename U> void tf(U x, event<> e);
     T x_;
 };
 
 tamed template <typename T> void tklass<T>::f(event<> e) {
     std::cout << "tklass f " << x_ << "\n";
+    e();
+}
+
+tamed template <typename T> void tklass<T>::g(event<> e) {
+    tamed { T y = x_; }
+    std::cout << "tklass g " << y << "\n";
     e();
 }
 
@@ -83,6 +90,7 @@ tamed void run() {
     twait { k.tf("Another one", make_event()); }
     twait { tk.tf(1, make_event()); }
     twait { tk.tf("Another one", make_event()); }
+    twait { tk.g(make_event()); }
 }
 
 int main(int, char**) {

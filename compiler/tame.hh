@@ -266,23 +266,24 @@ class type_t {
   public:
     type_t() {}
     type_t(const str &t, const str &p)
-	: _base_type(t), _pointer(p) {}
+	: _base_type(t) { set_pointer(p); }
     type_t(const str &t, const str &p, const str &ta)
-	: _base_type(t), _pointer(p), _template_args(ta) {}
+	: _base_type(t), _template_args(ta) { set_pointer(p); }
     str base_type() const { return _base_type; }
     str pointer() const { return _pointer; }
     str arrays() const { return _arrays; }
     str to_str() const;
-    str to_str_w_template_args(bool p = true) const;
+    str to_str_ref_to_ptr() const;
+    str to_str_w_template_args() const;
     void set_base_type(const str &t) { _base_type = t; }
-    void set_pointer(const str &p) { _pointer = p; }
+    void set_pointer(const str &p);
     void set_arrays(const str &a) { _arrays = a; }
     str mangle() const;
     bool is_complete() const { return _base_type.length(); }
     bool is_void() const {
 	return (_base_type == "void" && _pointer.length() == 0);
     }
-    bool is_ref() const { return _pointer.find('&') != str::npos; }
+    bool is_ref() const { return _pointer.back() == '&'; }
 private:
     str _base_type, _pointer, _arrays, _template_args;
 };
@@ -293,7 +294,7 @@ class initializer_t {
     initializer_t(const lstr &v) : _value(v) {}
     virtual ~initializer_t() {}
     unsigned constructor_lineno() const { return _value.lineno(); }
-    virtual str output_in_constructor() const { return ""; }
+    virtual str output_in_constructor(bool) const { return ""; }
     virtual str output_in_declaration() const { return ""; }
     virtual bool do_constructor_output() const { return false; }
     virtual str ref_prefix() const;
@@ -304,7 +305,7 @@ class initializer_t {
 class cpp_initializer_t : public initializer_t {
   public:
     cpp_initializer_t(const lstr &v, bool braces);
-    str output_in_constructor() const;
+    str output_in_constructor(bool is_ref) const;
     bool do_constructor_output() const { return true; }
   private:
     bool braces_;
@@ -373,10 +374,11 @@ public:
     ~vartab_t() {}
     size_t size() const { return _vars.size (); }
     bool add(const var_t &v);
-    void declarations(strbuf &b, const str &padding) const;
-    typedef enum { pl_declarations, pl_declarations_named, pl_moves_named } paramlist_flags;
+    void closure_declarations(strbuf& b, const str& padding) const;
+    void reference_declarations(strbuf& b, const str& padding) const;
+    typedef enum { pl_declarations, pl_assign_moves_named } paramlist_flags;
     void paramlist(strbuf &b, paramlist_flags flags, const char* sep) const;
-    void initialize(strbuf &b, bool self, outputter_t* o) const;
+    void initialize(strbuf& b, outputter_t* o) const;
     bool exists(const str &n) const { return _tab.find(n) != _tab.end(); }
     const var_t *lookup(const str &n) const;
     void mangle(strbuf &b) const;
@@ -553,8 +555,6 @@ class tame_fn_t : public element_list_t {
     void output_closure(outputter_t *o);
     void output_firstfn(outputter_t *o);
     void output_fn(outputter_t *o);
-    void output_stack_vars(strbuf &b);
-    void output_arg_references(strbuf &b);
     void output_jump_tab(strbuf &b);
     void output_block_cb_switch(strbuf &b);
 
