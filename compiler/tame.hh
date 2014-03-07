@@ -283,7 +283,10 @@ class type_t {
     bool is_void() const {
 	return (_base_type == "void" && _pointer.length() == 0);
     }
-    bool is_ref() const { return _pointer.back() == '&'; }
+    bool is_ref() const {
+        size_t l = _pointer.length();
+        return l > 0 && _pointer[l - 1] == '&';
+    }
 private:
     str _base_type, _pointer, _arrays, _template_args;
 };
