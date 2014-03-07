@@ -254,52 +254,56 @@ inline event<T0> add_timeout_msec(int delay, preevent<R, T0>&& pe, const T0& v) 
  *  @return  @a e.
  *
  *  Adds a timeout to @a e. If @a delay time passes before @a e triggers
- *  naturally, then @a e is triggered.
+ *  naturally, then @a e is unblocked (triggered without a value).
  *
  *  @note Versions of this function exist for @a delay values of types @c
  *  timeval, @c double, and under the names add_timeout_sec() and
  *  add_timeout_msec(), @c int numbers of seconds and milliseconds,
  *  respectively.
  */
-inline event<> add_timeout(const timeval& delay, event<> e) {
-    at_delay(delay, e);
+template <typename T0>
+inline event<T0> add_timeout(const timeval& delay, event<T0> e) {
+    at_delay(delay, e.unblocker());
     return e;
 }
 
-inline event<> add_timeout(double delay, event<> e) {
-    at_delay(delay, e);
+template <typename T0>
+inline event<T0> add_timeout(double delay, event<T0> e) {
+    at_delay(delay, e.unblocker());
     return e;
 }
 
-inline event<> add_timeout_sec(int delay, event<> e) {
-    at_delay_sec(delay, e);
+template <typename T0>
+inline event<T0> add_timeout_sec(int delay, event<T0> e) {
+    at_delay_sec(delay, e.unblocker());
     return e;
 }
 
-inline event<> add_timeout_msec(int delay, event<> e) {
-    at_delay_msec(delay, e);
+template <typename T0>
+inline event<T0> add_timeout_msec(int delay, event<T0> e) {
+    at_delay_msec(delay, e.unblocker());
     return e;
 }
 
 #if TAMER_HAVE_PREEVENT
-template <typename R>
-inline event<> add_timeout(const timeval& delay, preevent<R>&& pe) {
-    return add_timeout(delay, event<>(std::move(pe)));
+template <typename T0, typename R>
+inline event<T0> add_timeout(const timeval& delay, preevent<R, T0>&& pe) {
+    return add_timeout(delay, event<T0>(std::move(pe)));
 }
 
-template <typename R>
-inline event<> add_timeout(double delay, preevent<R>&& pe) {
-    return add_timeout(delay, event<>(std::move(pe)));
+template <typename T0, typename R>
+inline event<T0> add_timeout(double delay, preevent<R, T0>&& pe) {
+    return add_timeout(delay, event<T0>(std::move(pe)));
 }
 
-template <typename R>
-inline event<> add_timeout_sec(int delay, preevent<R>&& pe) {
-    return add_timeout_sec(delay, event<>(std::move(pe)));
+template <typename T0, typename R>
+inline event<T0> add_timeout_sec(int delay, preevent<R, T0>&& pe) {
+    return add_timeout_sec(delay, event<T0>(std::move(pe)));
 }
 
-template <typename R>
-inline event<> add_timeout_msec(int delay, preevent<R>&& pe) {
-    return add_timeout_msec(delay, event<>(std::move(pe)));
+template <typename T0, typename R>
+inline event<T0> add_timeout_msec(int delay, preevent<R, T0>&& pe) {
+    return add_timeout_msec(delay, event<T0>(std::move(pe)));
 }
 #endif
 
@@ -358,17 +362,18 @@ inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, preev
  *  @return  @a e.
  *
  *  Adds signal interruption to @a e. If signal @a signo occurs before @a e
- *  triggers naturally, then @a e is triggered.
+ *  triggers naturally, then @a e is unblocked (triggered without a value).
  */
-inline event<> add_signal(int signo, event<> e) {
-    at_signal(signo, e);
+template <typename T0>
+inline event<T0> add_signal(int signo, event<T0> e) {
+    at_signal(signo, e.unblocker());
     return e;
 }
 
 #if TAMER_HAVE_PREEVENT
-template <typename R>
-inline event<> add_signal(int signo, preevent<R>&& pe) {
-    return add_signal(signo, event<>(std::move(pe)));
+template <typename T0, typename R>
+inline event<T0> add_signal(int signo, preevent<R, T0>&& pe) {
+    return add_signal(signo, event<T0>(std::move(pe)));
 }
 #endif
 
@@ -379,19 +384,20 @@ inline event<> add_signal(int signo, preevent<R>&& pe) {
  *  @return  @a e.
  *
  *  Adds signal interruption to @a e. If any of the signals in [@a first, @a
- *  last) occur before @a e triggers naturally, then @a e is triggered.
+ *  last) occur before @a e triggers naturally, then @a e is unblocked
+ *  (triggered without a value).
  */
-template <typename SigInputIterator>
-inline event<> add_signal(SigInputIterator first, SigInputIterator last, event<> e) {
+template <typename T0, typename SigInputIterator>
+inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, event<T0> e) {
     for (; first != last; ++first)
 	at_signal(*first, e);
     return e;
 }
 
 #if TAMER_HAVE_PREEVENT
-template <typename R, typename SigInputIterator>
-inline event<> add_signal(SigInputIterator first, SigInputIterator last, preevent<R>&& pe) {
-    return add_signal(first, last, event<>(std::move(pe)));
+template <typename T0, typename R, typename SigInputIterator>
+inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, preevent<R, T0>&& pe) {
+    return add_signal(first, last, event<T0>(std::move(pe)));
 }
 #endif
 
@@ -402,8 +408,7 @@ inline event<> add_signal(SigInputIterator first, SigInputIterator last, preeven
  *  @return  @a e.
  *
  *  Adds a timeout to @a e. If @a delay passes before @a e triggers
- *  naturally, then @a e.unblocker() is triggered, which leaves @a e's
- *  results unchanged.
+ *  naturally, then @a e is unblocked (triggered without a value).
  *
  *  @note Versions of this function exist for @a delay values of types @c
  *  timeval, @c double, and under the names with_timeout_sec() and
@@ -462,8 +467,7 @@ inline event<T0> with_timeout_msec(int delay, preevent<R, T0>&& pe) {
  *  @return  @a e.
  *
  *  Adds signal interruption to @a e. If signal @a signo occurs before @a e
- *  triggers naturally, then @a e.unblocker() is triggered, which leaves @a
- *  e's results (if any) unchanged.
+ *  triggers naturally, then @a e is unblocked (triggered without a value).
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_signal(int signo, event<T0, T1, T2, T3> e) {
@@ -485,8 +489,8 @@ inline event<T0> with_signal(int signo, preevent<R, T0>&& pe) {
  *  @return  @a e.
  *
  *  Adds signal interruption to @a e. If a signal in [@a first, @a last)
- *  occurs before @a e triggers naturally, then @a e.unblocker() is triggered,
- *  which leaves @a e's results unchanged.
+ *  occurs before @a e triggers naturally, then @a e is unblocked (triggered
+ *  without a value).
  */
 template <typename T0, typename T1, typename T2, typename T3, typename SigInputIterator>
 inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e) {
@@ -511,9 +515,8 @@ inline event<T0> with_signal(SigInputIterator first, SigInputIterator last, pree
  *  @return      @a e.
  *
  *  Adds a timeout to @a e. If @a e triggers naturally before @a delay time
- *  passes, then @a result is set to 0. Otherwise, @a e.unblocker() is
- *  triggered, which leaves @a e's results unchanged, and @a result is set
- *  to @c -ETIMEDOUT.
+ *  passes, then @a result is set to 0. Otherwise, @a e is unblocked
+ *  (triggered without a value), and @a result is set to @c -ETIMEDOUT.
  *
  *  @note Versions of this function exist for @a delay values of types @c
  *  timeval, @c double, and under the names with_timeout_sec() and
@@ -573,9 +576,9 @@ inline event<T0> with_timeout_msec(int delay, preevent<R, T0>&& pe, int& result)
  *  @return      @a e.
  *
  *  Adds signal interruption to @a e. If @a e triggers naturally before
- *  signal @a signo occurs, then @a result is set to 0. Otherwise, @a
- *  e.unblocker() is triggered, which leaves @a e's results (if any)
- *  unchanged, and @a result is set to @c -EINTR.
+ *  signal @a signo occurs, then @a result is set to 0. Otherwise, @a e is
+ *  unblocked (triggered without a value), and @a result is set to @c
+ *  -EINTR.
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> with_signal(int signo, event<T0, T1, T2, T3> e, int &result) {
@@ -599,8 +602,8 @@ inline event<T0> with_signal(int signo, preevent<R, T0>&& pe, int& result) {
  *
  *  Adds signal interruption to @a e. If @a e triggers naturally before a
  *  signal in [@a first, @a last) occurs, then @a result is set to 0.
- *  Otherwise, @a e.unblocker() is triggered, which leaves @a e's results
- *  (if any) unchanged, and @a result is set to @c -EINTR.
+ *  Otherwise, @a e is unblocked (triggered without a value), and @a result
+ *  is set to @c -EINTR.
  */
 template <typename T0, typename T1, typename T2, typename T3, typename SigInputIterator>
 inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e, int &result) {

@@ -597,7 +597,6 @@ class event<void, void, void, void> { public:
     event<>& unblocker() TAMER_NOEXCEPT {
 	return *this;
     }
-
     event<> unblocker() const TAMER_NOEXCEPT {
 	return *this;
     }
