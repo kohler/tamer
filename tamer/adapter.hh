@@ -672,5 +672,13 @@ inline event<> fun_event(F f, A1 arg1, A2 arg2) {
     return TAMER_MAKE_FN_ANNOTATED_EVENT(*innerr);
 }
 
+
+template <typename C>
+inline event<typename C::value_type> push_back_event(C& container) {
+    tamerpriv::push_back_rendezvous<C>* r =
+        new tamerpriv::push_back_rendezvous<C>(container);
+    return TAMER_MAKE_FN_ANNOTATED_EVENT(*r, r->slot());
+}
+
 } /* namespace tamer */
 #endif /* TAMER_ADAPTER_HH */
