@@ -17,6 +17,7 @@
 #include <tamer/driver.hh>
 #include <string.h>
 #include <errno.h>
+#include <iterator>
 namespace tamer {
 namespace tamerpriv {
 
@@ -309,7 +310,38 @@ void push_back_rendezvous<C>::hook(functional_rendezvous* fr,
     push_back_rendezvous<C>* self = static_cast<push_back_rendezvous<C>*>(fr);
     self->remove_waiting();
     if (values)
-        self->c_.push_back(self->slot_);
+        self->c_.push_back(TAMER_MOVE(self->slot_));
+    delete self;
+}
+
+
+template <typename It>
+class output_rendezvous : public functional_rendezvous,
+                          public zero_argument_rendezvous_tag<output_rendezvous<It> > {
+  public:
+    typedef typename std::iterator_traits<It>::value_type value_type;
+    output_rendezvous(It& it)
+	: functional_rendezvous(hook), it_(it) {
+    }
+    value_type& slot() {
+        return slot_;
+    }
+  private:
+    It& it_;
+    value_type slot_;
+    static void hook(functional_rendezvous*, simple_event*, bool) TAMER_NOEXCEPT;
+};
+
+template <typename It>
+void output_rendezvous<It>::hook(functional_rendezvous* fr,
+                                 simple_event*,
+                                 bool values) TAMER_NOEXCEPT {
+    output_rendezvous<It>* self = static_cast<output_rendezvous<It>*>(fr);
+    self->remove_waiting();
+    if (values) {
+        *self->it_ = TAMER_MOVE(self->slot_);
+        ++self->it_;
+    }
     delete self;
 }
 

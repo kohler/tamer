@@ -680,5 +680,12 @@ inline event<typename C::value_type> push_back_event(C& container) {
     return TAMER_MAKE_FN_ANNOTATED_EVENT(*r, r->slot());
 }
 
+template <typename It>
+inline event<typename std::iterator_traits<It>::value_type> output_event(It& iterator) {
+    tamerpriv::output_rendezvous<It>* r =
+        new tamerpriv::output_rendezvous<It>(iterator);
+    return TAMER_MAKE_FN_ANNOTATED_EVENT(*r, r->slot());
+}
+
 } /* namespace tamer */
 #endif /* TAMER_ADAPTER_HH */

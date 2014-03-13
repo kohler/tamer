@@ -33,9 +33,20 @@ tamed void run() {
     assert(v[0] == 10039);
 }
 
+tamed void run2() {
+    tamed { int x[4]; int* it = x; }
+    tamer::at_delay(0.02, tamer::bind(tamer::output_event(it), 2));
+    tamer::at_delay(0.03, tamer::bind(tamer::output_event(it), 3));
+    tamer::at_delay(0.01, tamer::bind(tamer::output_event(it), 1));
+    assert(it == x);
+    twait { tamer::at_delay(0.05, make_event()); }
+    assert(it == x + 3 && x[0] == 1 && x[1] == 2 && x[2] == 3);
+}
+
 int main(int, char**) {
     tamer::initialize();
     run();
+    run2();
     tamer::loop();
     tamer::cleanup();
     std::cout << "OK!\n";
