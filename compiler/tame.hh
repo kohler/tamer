@@ -267,14 +267,11 @@ class type_t {
     type_t() {}
     type_t(const str &t, const str &p)
 	: _base_type(t) { set_pointer(p); }
-    type_t(const str &t, const str &p, const str &ta)
-	: _base_type(t), _template_args(ta) { set_pointer(p); }
     str base_type() const { return _base_type; }
     str pointer() const { return _pointer; }
     str arrays() const { return _arrays; }
     str to_str() const;
     str to_str_ref_to_ptr() const;
-    str to_str_w_template_args() const;
     void set_base_type(const str &t) { _base_type = t; }
     void set_pointer(const str &p);
     void set_arrays(const str &a) { _arrays = a; }
@@ -288,7 +285,7 @@ class type_t {
         return l > 0 && _pointer[l - 1] == '&';
     }
 private:
-    str _base_type, _pointer, _arrays, _template_args;
+    str _base_type, _pointer, _arrays;
 };
 
 class initializer_t {
@@ -331,8 +328,6 @@ public:
 	: _name(n), _type(t, p), _asc(a), _initializer(0) {}
     var_t(const type_t &t, const str &n, vartyp_t a = NONE)
 	: _name(n), _type(t), _asc(a), _initializer(0) {}
-    var_t(const str &t, const str &p, const str &n, vartyp_t a, const str &ta)
-	: _name(n), _type(t, p, ta), _asc(a), _initializer(0) {}
 
     const type_t &type() const { return _type; }
     const str &name() const { return _name; }

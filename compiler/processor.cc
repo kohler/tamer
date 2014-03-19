@@ -57,8 +57,6 @@ str type_t::to_str() const {
 str type_t::to_str_ref_to_ptr() const {
     strbuf b;
     b << _base_type;
-    if (_template_args.length())
-        b << _template_args;
     if (size_t l = _pointer.length()) {
         while (l != 0 && _pointer[l - 1] == '&')
             --l;
@@ -67,16 +65,6 @@ str type_t::to_str_ref_to_ptr() const {
         else
             b << _pointer;
     }
-    return b.str();
-}
-
-str type_t::to_str_w_template_args() const {
-    strbuf b;
-    b << _base_type;
-    if (_template_args.length())
-        b << _template_args;
-    if (_pointer.length())
-        b << _pointer;
     return b.str();
 }
 
@@ -619,7 +607,7 @@ str type_t::mangle() const
 {
     // It is too hard to mangle correctly given this representation.
     // Just give it a go.
-    return mangler(to_str_w_template_args()).s();
+    return mangler(to_str()).s();
 }
 
 void vartab_t::closure_declarations(strbuf& b, const str& padding) const
