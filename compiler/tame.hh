@@ -271,7 +271,7 @@ class type_t {
     str pointer() const { return _pointer; }
     str arrays() const { return _arrays; }
     str to_str() const;
-    str to_str_ref_to_ptr() const;
+    str decl_to_str() const;
     void set_base_type(const str &t) { _base_type = t; }
     void set_pointer(const str &p);
     void set_arrays(const str &a) { _arrays = a; }

@@ -54,10 +54,19 @@ str type_t::to_str() const {
     return b.str();
 }
 
-str type_t::to_str_ref_to_ptr() const {
+str type_t::decl_to_str() const {
     strbuf b;
-    b << _base_type;
-    if (size_t l = _pointer.length()) {
+    size_t l = _pointer.length(), p;
+    // XXX volatile, etc. GHETTO
+    if (!l
+        && (p = _base_type.find("const")) != str::npos
+        && (p + 5 == _base_type.length()
+            || isspace((unsigned char) _base_type[p + 5]))) {
+        b << _base_type.substr(0, p);
+        b << _base_type.substr(p + 5, _base_type.length() - (p + 5));
+    } else
+        b << _base_type;
+    if (l) {
         while (l != 0 && _pointer[l - 1] == '&')
             --l;
         if (l != _pointer.length())
@@ -71,7 +80,7 @@ str type_t::to_str_ref_to_ptr() const {
 str var_t::decl() const
 {
     strbuf b;
-    b << _type.to_str_ref_to_ptr();
+    b << _type.decl_to_str();
     if (_arrays.length() && _arrays[0] == '[') {
 	b << "(*" << _name << ")";
 	str::size_type rbrace = _arrays.find(']');
@@ -628,7 +637,7 @@ vartab_t::initialize(strbuf& b, outputter_t* o) const
                 o->line_number_line(b, lineno);
             b << "  new ((void*) &" TAME_CLOSURE_NAME "."
               << _vars[i].name(false, false) << ") "
-              << _vars[i].type().to_str_ref_to_ptr();
+              << _vars[i].type().decl_to_str();
             if (init)
                 b << init->output_in_constructor(_vars[i].type().is_ref());
             b << ";\n";
@@ -653,7 +662,7 @@ vartab_t::paramlist(strbuf &b, paramlist_flags list_mode, const char* sep) const
         case pl_assign_moves_named:
             b << "  new ((void*) &" << TAME_CLOSURE_NAME "->"
               << _vars[i].name(false, false) << ") "
-              << _vars[i].type().to_str_ref_to_ptr()
+              << _vars[i].type().decl_to_str()
               << "(" << (_vars[i].type().is_ref() ? "&" : "")
               << _vars[i].name(true, false) << ");\n";
             break;
