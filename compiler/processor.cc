@@ -1,6 +1,8 @@
 #include "tame.hh"
 #include <ctype.h>
 
+const lstr::size_type lstr::npos;
+
 var_t::var_t(const type_qualifier_t &t, declarator_t *d, const lstr &arrays, vartyp_t a)
     : _name(d->name()), _type(t.to_str(), d->pointer()), _asc(a),
       _initializer(d->initializer()), _arrays(arrays.str())
@@ -128,7 +130,7 @@ str var_t::name(bool move, bool escape) const
 str var_t::ref_decl() const
 {
     strbuf b;
-    str refit;
+    const char* refit;
     if (_type.is_ref())
 	refit = "";
     else if (_initializer)
@@ -143,31 +145,35 @@ str var_t::ref_decl() const
 	    b << _arrays.substr(rbrace + 1);
     } else
 	b << refit << " " << _name;
+    if (_initializer)
+        b << _initializer->ref_suffix();
     return b.str();
 }
 
-str
-initializer_t::ref_prefix() const
-{
-  return "&";
+const char* initializer_t::ref_prefix() const {
+    return "&";
 }
 
-str
-array_initializer_t::ref_prefix() const
-{
-  /*
-   * useful for when we can handle 2-dim++ arrays, but not really
-   * worthwhile for now.
-   *
-  strbuf b;
-  const char *cp = _value.cstr ();
-  while (*cp && (cp = strchr (cp, '['))) {
-    b << "*";
-    cp ++;
-  }
-  return b.str();
-  */
-  return "*";
+str initializer_t::ref_suffix() const {
+    return "";
+}
+
+const char* array_initializer_t::ref_prefix() const {
+    if (_value.find('[') == lstr::npos)
+        return "*";
+    else
+        return "(*";
+}
+
+str array_initializer_t::ref_suffix() const {
+    lstr::size_type pos = _value.find('[');
+    if (pos == lstr::npos)
+        return "";
+    else {
+        strbuf b;
+        b << ")" << _value.substr(pos) << "]";
+        return b.str();
+    }
 }
 
 str mangle(const str &in)
@@ -350,6 +356,16 @@ str array_initializer_t::output_in_declaration() const {
     strbuf b;
     b << "[" << _value.str() << "]";
     return b.str();
+}
+
+void array_initializer_t::append_array(const lstr& v) {
+    if (_value.empty())
+        _value = v;
+    else {
+        strbuf b;
+        b << _value.str() << "][" << v.str();
+        _value = lstr(_value.lineno(), b.str());
+    }
 }
 
 

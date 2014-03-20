@@ -87,21 +87,46 @@ public:
     explicit lstr(const std::string &s) : _s(s), _lineno(0) {}
     lstr(unsigned ln, const std::string &s) : _s(s), _lineno(ln) {}
     lstr(unsigned ln, const strbuf &s) : _s(s.str()), _lineno(ln) {}
-    const std::string &str() const { return _s; }
+
+    const std::string &str() const           { return _s; }
+    unsigned lineno() const                  { return _lineno; }
+
     typedef std::string::iterator iterator;
     typedef std::string::const_iterator const_iterator;
-    iterator begin() { return _s.begin(); }
-    iterator end() { return _s.end(); }
-    const_iterator begin() const { return _s.begin(); }
-    const_iterator end() const { return _s.end(); }
-    std::string::size_type length() const { return _s.length(); }
-    bool empty() const { return _s.empty(); }
-    void set_lineno (unsigned l) { _lineno = l; }
-    unsigned lineno () const { return _lineno; }
+    typedef std::string::size_type size_type;
+    static const size_type npos = std::string::npos;
+    bool empty() const                       { return _s.empty(); }
+    iterator begin()                         { return _s.begin(); }
+    iterator end()                           { return _s.end(); }
+    const_iterator begin() const             { return _s.begin(); }
+    const_iterator end() const               { return _s.end(); }
+    size_type length() const                 { return _s.length(); }
+    size_type find(const std::string& s, size_type pos = 0) const;
+    size_type find(const char* s, size_type pos = 0) const;
+    size_type find(char c, size_type pos = 0) const;
+    lstr substr(size_t pos = 0, size_t len = npos) const;
+
+    void set_lineno(unsigned l)              { _lineno = l; }
   private:
     std::string _s;
     unsigned _lineno;
 };
+
+inline size_t lstr::find(const std::string& s, size_type pos) const {
+    return _s.find(s, pos);
+}
+
+inline size_t lstr::find(const char* s, size_type pos) const {
+    return _s.find(s, pos);
+}
+
+inline size_t lstr::find(char c, size_type pos) const {
+    return _s.find(c, pos);
+}
+
+inline lstr lstr::substr(size_type pos, size_type len) const {
+    return lstr(lineno(), _s.substr(pos, len));
+}
 
 inline strbuf &operator<<(strbuf &ostr, const lstr &l) {
     ostr << l.str();
@@ -295,13 +320,14 @@ private:
 class initializer_t {
   public:
     initializer_t() : _value(0, "") {}
-    initializer_t(const lstr &v) : _value(v) {}
+    initializer_t(const lstr& v) : _value(v) {}
     virtual ~initializer_t() {}
     unsigned constructor_lineno() const { return _value.lineno(); }
     virtual str output_in_constructor(bool) const { return ""; }
     virtual str output_in_declaration() const { return ""; }
     virtual bool do_constructor_output() const { return false; }
-    virtual str ref_prefix() const;
+    virtual const char* ref_prefix() const;
+    virtual str ref_suffix() const;
   protected:
     lstr _value;
 };
@@ -317,10 +343,12 @@ class cpp_initializer_t : public initializer_t {
 
 class array_initializer_t : public initializer_t {
   public:
-    array_initializer_t(const lstr &v) : initializer_t(v) {}
+    array_initializer_t(const lstr& v) : initializer_t(v) {}
+    void append_array(const lstr& v);
     str output_in_constructor(bool is_ref) const;
     str output_in_declaration() const;
-    str ref_prefix() const;
+    const char* ref_prefix() const;
+    str ref_suffix() const;
 };
 
 class declarator_t;

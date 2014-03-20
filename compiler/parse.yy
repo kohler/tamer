@@ -72,7 +72,8 @@ int vars_lineno;
 %type <typ_mod> declaration_specifiers
 %type <typ_mod> type_qualifier type_qualifier_list
 %type <typ_mod> type_specifier basic_type_specifier basic_type_specifier_list
-%type <initializer> cpp_initializer_opt parameter_default_opt
+%type <initializer> cpp_initializer_opt arrays_cpp_initializer_opt
+%type <initializer> parameter_default_opt
 
 %type <decl> init_declarator declarator direct_declarator
 %type <decl> declarator_cpp direct_declarator_cpp
@@ -441,10 +442,18 @@ direct_declarator_cpp: identifier	{ $$ = new declarator_t($1.str()); };
 
 cpp_initializer_opt: /* empty */  { $$ = new initializer_t(); }
 	| '(' passthroughs ')'	  { $$ = new cpp_initializer_t($2, false); }
-	| '[' passthroughs ']'	  { $$ = new array_initializer_t($2); }
+        | arrays_cpp_initializer_opt
         | '{' passthroughs '}'	  { $$ = new cpp_initializer_t($2, true); }
 	| '=' passthroughs	  { $$ = new cpp_initializer_t($2, false); }
 	;
+
+arrays_cpp_initializer_opt:
+	'[' passthroughs ']'	  { $$ = new array_initializer_t($2); }
+	| arrays_cpp_initializer_opt '[' passthroughs ']' {
+            array_initializer_t* ai = static_cast<array_initializer_t*>($1);
+            ai->append_array($3);
+            $$ = ai;
+        };
 
 parameter_default_opt: /* empty */ { $$ = (initializer_t*) 0; }
         | '=' passthroughs        { $$ = new cpp_initializer_t($2, false); }
