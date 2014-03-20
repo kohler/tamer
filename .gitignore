@@ -61,8 +61,8 @@ ex/tamer-yes.cc
 
 test/Makefile
 test/Makefile.in
-test/t[01][0-9]
-test/t[01][0-9].cc
+test/t[012][0-9]
+test/t[012][0-9].cc
 
 bench/Makefile
 bench/Makefile.in
