@@ -624,7 +624,7 @@ vartab_t::initialize(strbuf& b, outputter_t* o) const
         if (!_vars[i].name().empty()) {
             initializer_t* init = _vars[i].initializer();
             if ((lineno = init->constructor_lineno()))
-                o->line_number_line(b, lineno);
+                o->set_lineno(lineno, b);
             b << "  new ((void*) &" TAME_CLOSURE_NAME "."
               << _vars[i].name(false, false) << ") "
               << _vars[i].decl(false);
@@ -1093,7 +1093,7 @@ tame_wait_t::output (outputter_t *o)
     strbuf b;
     b << _fn->label(_id) << ":\n";
     b << "do {\n";
-    o->line_number_line(b, lineno_);
+    o->set_lineno(lineno_, b);
     b << "  if (!" << jgn << ".join (";
     for (size_t i = 0; i < n_args (); i++) {
 	if (i > 0) b << ", ";

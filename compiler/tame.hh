@@ -147,29 +147,33 @@ typedef enum { OUTPUT_NONE = 0,
 
 class outputter_t {
 public:
-  outputter_t (const str &in, const str &out, bool ox)
+  outputter_t(const str &in, const str &out, bool ox)
     : _mode (OUTPUT_NONE), _infn (in), _outfn (out), _fd (-1),
       _lineno (1), _output_xlate (ox),
       _last_char_was_nl(true), _last_output_in_mode (OUTPUT_NONE),
       _cur_lineno(-1), _cur_file(""),
       _do_output_line_number(false) {}
-    virtual ~outputter_t ();
-    bool init ();
+    virtual ~outputter_t();
+    bool init();
 
-    void start_output ();
-    void flush ();
-    int lineno() const { return _lineno; }
+    void start_output();
+    void flush();
 
-    output_mode_t switch_to_mode (output_mode_t m, int ln = -1);
-    output_mode_t mode () const { return _mode; }
+    bool output_xlate() const { return _output_xlate; }
+
+    int lineno() const          { return _lineno; }
+    void set_lineno(unsigned lineo, strbuf& b);
+
+    output_mode_t switch_to_mode(output_mode_t m, int ln = -1);
+    output_mode_t mode() const { return _mode; }
     virtual void output_str(const str &s);
-    void line_number_line(strbuf& b, unsigned lineno) const;
 
     void fail_exit();
 
   protected:
-    void output_line_number ();
-    void _output_str (const str &s, const str &sep_str = str());
+    void export_lineno(strbuf& b) const;
+    void output_lineno();
+    void _output_str(const str &s, const str &sep_str = str());
     output_mode_t _mode;
   private:
     const str _infn, _outfn;
