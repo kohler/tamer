@@ -354,12 +354,14 @@ str cpp_initializer_t::output_in_constructor(bool is_ref) const
     return b.str();
 }
 
-str
-array_initializer_t::output_in_declaration() const
-{
-  strbuf b;
-  b << "[" << _value.str() << "]";
-  return b.str();
+str array_initializer_t::output_in_constructor(bool) const {
+    return output_in_declaration();
+}
+
+str array_initializer_t::output_in_declaration() const {
+    strbuf b;
+    b << "[" << _value.str() << "]";
+    return b.str();
 }
 
 

@@ -314,6 +314,7 @@ class cpp_initializer_t : public initializer_t {
 class array_initializer_t : public initializer_t {
   public:
     array_initializer_t(const lstr &v) : initializer_t(v) {}
+    str output_in_constructor(bool is_ref) const;
     str output_in_declaration() const;
     str ref_prefix() const;
 };
