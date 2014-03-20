@@ -77,19 +77,21 @@ str type_t::decl_to_str() const {
     return b.str();
 }
 
-str var_t::decl() const
+str var_t::decl(bool include_name) const
 {
     strbuf b;
     b << _type.decl_to_str();
     if (_arrays.length() && _arrays[0] == '[') {
-	b << "(*" << _name << ")";
+	b << "*";
+        if (include_name)
+            b << " " << _name;
 	str::size_type rbrace = _arrays.find(']');
 	if (rbrace != str::npos)
 	    b << _arrays.substr(rbrace + 1);
-    } else
+    } else if (include_name)
 	b << " " << _name;
-    if (_initializer)
-	b << _initializer->output_in_declaration ();
+    if (_initializer && include_name)
+	b << _initializer->output_in_declaration();
     return b.str();
 }
 
@@ -135,7 +137,7 @@ str var_t::ref_decl() const
 	refit = "&";
     b << _type.to_str();
     if (_arrays.length() && _arrays[0] == '[') {
-	b << "(*" << refit << _name << ")";
+	b << "*" << refit << " " << _name;
 	str::size_type rbrace = _arrays.find(']');
 	if (rbrace != str::npos)
 	    b << _arrays.substr(rbrace + 1);
@@ -611,7 +613,7 @@ void vartab_t::closure_declarations(strbuf& b, const str& padding) const
 {
     for (unsigned i = 0; i != size(); ++i)
         if (!_vars[i].name().empty())
-            b << padding << _vars[i].decl() << ";\n";
+            b << padding << _vars[i].decl(true) << ";\n";
 }
 
 void
@@ -625,7 +627,7 @@ vartab_t::initialize(strbuf& b, outputter_t* o) const
                 o->line_number_line(b, lineno);
             b << "  new ((void*) &" TAME_CLOSURE_NAME "."
               << _vars[i].name(false, false) << ") "
-              << _vars[i].type().decl_to_str();
+              << _vars[i].decl(false);
             if (init)
                 b << init->output_in_constructor(_vars[i].type().is_ref());
             b << ";\n";
@@ -650,7 +652,7 @@ vartab_t::paramlist(strbuf &b, paramlist_flags list_mode, const char* sep) const
         case pl_assign_moves_named:
             b << "  new ((void*) &" << TAME_CLOSURE_NAME "->"
               << _vars[i].name(false, false) << ") "
-              << _vars[i].type().decl_to_str()
+              << _vars[i].decl(false)
               << "(" << (_vars[i].type().is_ref() ? "&" : "")
               << _vars[i].name(true, false) << ");\n";
             break;
@@ -775,7 +777,7 @@ tame_fn_t::output_closure(outputter_t *o)
     output_reenter(b);
 
     if (_class.length() && !(_opts & STATIC_DECL))
-        b << "  " << _self.decl() << ";\n";
+        b << "  " << _self.decl(true) << ";\n";
     if (_args)
         _args->closure_declarations(b, "    ");
     _stack_vars.closure_declarations(b, "    ");
@@ -866,7 +868,7 @@ tame_fn_t::output_firstfn(outputter_t *o)
     b << signature() << "\n{\n";
 
     // If no vars section was specified, do it now.
-    b << "  " << closure(true).decl() << " = "
+    b << "  " << closure(true).decl(true) << " = "
       << "std::allocator< " << closure(true).type().base_type() << " >()."
       << "allocate(1);\n"
       << "  ((tamer::tamerpriv::tamer_closure*) " << TAME_CLOSURE_NAME ")->tamer_activator_ = "

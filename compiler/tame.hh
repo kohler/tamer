@@ -346,7 +346,7 @@ public:
     void set_initializer(initializer_t* i) { _initializer = i; }
 
     str param_decl(bool move, bool escape) const;
-    str decl() const;
+    str decl(bool include_name) const;
     str ref_decl() const;
     str _name;
 
