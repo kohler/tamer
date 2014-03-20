@@ -38,11 +38,23 @@ tamed void run2(std::string x[4]) {
     std::cout << x[3] << std::endl;
 }
 
+tamed void run3() {
+    tamed { std::string test[1024][1024]; }
+    for (int i = 0; i != 1024; ++i) {
+        char buf[5];
+        sprintf(buf, "%d", i);
+        test[i][i] = std::string(buf);
+    }
+    twait { tamer::at_delay(0.03, make_event()); }
+    std::cout << test[1023][1023] << std::endl;
+}
+
 int main(int, char**) {
     std::string x[4] = {"", "a", "b", "c"};
     tamer::initialize();
     run();
     run2(x);
+    run3();
     tamer::loop();
     tamer::cleanup();
     std::cout << "OK!\n";
