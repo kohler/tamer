@@ -123,20 +123,6 @@ str var_t::name(bool move, bool escape) const
 	return _name;
 }
 
-str var_t::decl(const str &p, int n) const
-{
-    strbuf b;
-    b << _type.to_str() << " " << p << n;
-    return b.str();
-}
-
-str var_t::decl(const str &p) const
-{
-    strbuf b;
-    b << _type.to_str() << " " << p << _name;
-    return b.str();
-}
-
 str var_t::ref_decl() const
 {
     strbuf b;

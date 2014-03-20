@@ -335,7 +335,7 @@ public:
     str name(bool move, bool escape) const;
     type_t *get_type() { return &_type; }
     const type_t *get_type_const() const { return &_type; }
-    bool is_complete() const { return _type.is_complete (); }
+    bool is_complete() const { return _type.is_complete(); }
 
     // ASC = Args, Stack or Class
     void set_asc(vartyp_t a) { _asc = a; }
@@ -347,8 +347,6 @@ public:
 
     str param_decl(bool move, bool escape) const;
     str decl() const;
-    str decl(const str &prfx, int n) const;
-    str decl(const str &prfx) const;
     str ref_decl() const;
     str _name;
 
