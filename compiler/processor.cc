@@ -59,6 +59,7 @@ str type_t::to_str() const {
 str type_t::decl_to_str() const {
     strbuf b;
     size_t l = _pointer.length(), p;
+
     // XXX volatile, etc. GHETTO
     if (!l
         && (p = _base_type.find("const")) != str::npos
@@ -68,6 +69,7 @@ str type_t::decl_to_str() const {
         b << _base_type.substr(p + 5, _base_type.length() - (p + 5));
     } else
         b << _base_type;
+
     if (l) {
         while (l != 0 && _pointer[l - 1] == '&')
             --l;
@@ -84,16 +86,16 @@ str var_t::decl(bool include_name) const
     strbuf b;
     b << _type.decl_to_str();
     if (_arrays.length() && _arrays[0] == '[') {
-	b << "*";
+	str::size_type rbrace = _arrays.find(']') + 1;
+	b << (rbrace == _arrays.length() ? "*" : "(*");
         if (include_name)
             b << " " << _name;
-	str::size_type rbrace = _arrays.find(']');
-	if (rbrace != str::npos)
-	    b << _arrays.substr(rbrace + 1);
+	if (rbrace != _arrays.length())
+	    b << ")" << _arrays.substr(rbrace);
     } else if (include_name)
 	b << " " << _name;
     if (_initializer && include_name)
-	b << _initializer->output_in_declaration();
+        _initializer->finish_type(b);
     return b.str();
 }
 
@@ -127,8 +129,7 @@ str var_t::name(bool move, bool escape) const
 	return _name;
 }
 
-str var_t::ref_decl() const
-{
+str var_t::ref_decl() const {
     strbuf b;
     const char* refit;
     if (_type.is_ref())
@@ -139,10 +140,10 @@ str var_t::ref_decl() const
 	refit = "&";
     b << _type.to_str();
     if (_arrays.length() && _arrays[0] == '[') {
-	b << "*" << refit << " " << _name;
-	str::size_type rbrace = _arrays.find(']');
-	if (rbrace != str::npos)
-	    b << _arrays.substr(rbrace + 1);
+	str::size_type rbrace = _arrays.find(']') + 1;
+        b << (rbrace == _arrays.length() ? "*" : "(*") << refit << " " << _name;
+	if (rbrace != _arrays.length())
+	    b << ")" << _arrays.substr(rbrace);
     } else
 	b << refit << " " << _name;
     if (_initializer)
@@ -306,56 +307,22 @@ void tame_fn_t::add_templates(strbuf& b, const char* sep) const {
 }
 
 cpp_initializer_t::cpp_initializer_t(const lstr &v, bool braces)
-    : initializer_t(v), braces_(braces)
-{
-#if 0
-    // rewrite "this" to "tamer_self_".  Do it the right way.
-    strbuf b;
-    int mode = 0;
-    std::string::iterator last = _value.begin();
-    for (std::string::iterator a = last; a + 4 <= _value.end(); a++)
-	if (*a == '\\')
-	    a++;
-	else if (mode == 0 && (*a == '\"' || *a == '\''))
-	    mode = *a;
-	else if (mode == *a && (*a == '\"' || *a == '\''))
-	    mode = 0;
-	else if (mode == 0 && *a == '/' && a[1] == '/')
-	    mode = '/';
-	else if (mode == 0 && *a == '/' && a[1] == '*')
-	    mode = '*';
-	else if (mode == '/' && *a == '\n')
-	    mode = 0;
-	else if (mode == '*' && *a == '*' && a[1] == '/')
-	    mode = 0, a++;
-	else if (mode == 0 && *a == 't' && a[1] == 'h' && a[2] == 'i' && a[3] == 's' && (a + 4 == _value.end() || (!isalnum(a[4]) && a[4] != '_' && a[4] != '$'))) {
-	    b << std::string(last, a) << TAMER_SELF_NAME;
-	    last = a + 4;
-	    a += 3;
-	}
-    if (last != _value.begin()) {
-	b << std::string(last, _value.end());
-	_value = lstr(_value.lineno(), b);
-    }
-#endif
+    : initializer_t(v), braces_(braces) {
 }
 
-str cpp_initializer_t::output_in_constructor(bool is_ref) const
-{
-    strbuf b;
+void initializer_t::finish_type(strbuf&) const {
+}
+
+void array_initializer_t::finish_type(strbuf& b) const {
+    b << "[" << _value << "]";
+}
+
+void initializer_t::initializer(strbuf&, bool) const {
+}
+
+void cpp_initializer_t::initializer(strbuf& b, bool is_ref) const {
     b << (braces_ ? '{' : '(') << (is_ref ? "&" : "")
       << _value.str() << (braces_ ? '}' : ')');
-    return b.str();
-}
-
-str array_initializer_t::output_in_constructor(bool) const {
-    return output_in_declaration();
-}
-
-str array_initializer_t::output_in_declaration() const {
-    strbuf b;
-    b << "[" << _value.str() << "]";
-    return b.str();
 }
 
 void array_initializer_t::append_array(const lstr& v) {
@@ -642,10 +609,13 @@ vartab_t::initialize(strbuf& b, outputter_t* o) const
             if ((lineno = init->constructor_lineno()))
                 o->set_lineno(lineno, b);
             b << "  new ((void*) &" TAME_CLOSURE_NAME "."
-              << _vars[i].name(false, false) << ") "
+              << _vars[i].name(false, false) << ") ("
               << _vars[i].decl(false);
             if (init)
-                b << init->output_in_constructor(_vars[i].type().is_ref());
+                init->finish_type(b);
+            b << ")";
+            if (init)
+                init->initializer(b, _vars[i].type().is_ref());
             b << ";\n";
         }
 }
@@ -662,13 +632,15 @@ vartab_t::paramlist(strbuf &b, paramlist_flags list_mode, const char* sep) const
         switch (list_mode) {
         case pl_declarations:
             b << _vars[i].param_decl(false, false);
-            if (_vars[i].initializer())
-                b << " = " << _vars[i].initializer()->output_in_constructor(false);
+            if (initializer_t* init = _vars[i].initializer()) {
+                b << " = ";
+                init->initializer(b, false);
+            }
             break;
         case pl_assign_moves_named:
             b << "  new ((void*) &" << TAME_CLOSURE_NAME "->"
-              << _vars[i].name(false, false) << ") "
-              << _vars[i].decl(false)
+              << _vars[i].name(false, false) << ") ("
+              << _vars[i].decl(false) << ")"
               << "(" << (_vars[i].type().is_ref() ? "&" : "")
               << _vars[i].name(true, false) << ");\n";
             break;
