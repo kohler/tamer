@@ -49,12 +49,19 @@ tamed void run3() {
     std::cout << test[1023][1023] << std::endl;
 }
 
+tamed void run4(std::string x[3][2]) {
+    twait { tamer::at_delay(0.04, make_event()); }
+    std::cout << x[2][1] << std::endl;
+}
+
 int main(int, char**) {
     std::string x[4] = {"", "a", "b", "c"};
+    std::string x2[3][2] = {{"aa", "bb"}, {"cc", "dd"}, {"ee", "ff"}};
     tamer::initialize();
     run();
     run2(x);
     run3();
+    run4(x2);
     tamer::loop();
     tamer::cleanup();
     std::cout << "OK!\n";
