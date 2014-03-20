@@ -68,6 +68,8 @@ bench/Makefile
 bench/Makefile.in
 bench/b01-asapwto
 bench/b01-asapwto.cc
+bench/b02-string
+bench/b02-string.cc
 
 knot/Makefile
 knot/Makefile.in
