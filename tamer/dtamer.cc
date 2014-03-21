@@ -179,7 +179,7 @@ void driver_tamer::loop(loop_flags flags)
     struct timeval to, *toptr;
     timers_.cull();
     if (!asap_.empty()
-	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
+	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >))
 	|| sig_any_active
 	|| has_unblocked()) {
 	timerclear(&to);
@@ -190,7 +190,7 @@ void driver_tamer::loop(loop_flags flags)
         // no foreground events!
         return;
     else if (!timers_.empty()) {
-	timersub(&timers_.expiry(), &now(), &to);
+	timersub(&timers_.expiry(), &recent(), &to);
 	toptr = &to;
     } else
 	toptr = 0;
@@ -213,7 +213,7 @@ void driver_tamer::loop(loop_flags flags)
     }
 
     // process signals
-    set_now();
+    set_recent();
     if (sig_any_active)
 	dispatch_signals();
 
@@ -229,7 +229,7 @@ void driver_tamer::loop(loop_flags flags)
     }
 
     // process timer events
-    while (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
+    while (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >))
 	timers_.pop_trigger();
     run_unblocked();
 

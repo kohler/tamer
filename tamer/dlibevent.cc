@@ -178,7 +178,7 @@ void driver_libevent::loop(loop_flags flags)
     int event_flags = EVLOOP_ONCE;
     timers_.cull();
     if (!asap_.empty()
-	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
+	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >))
 	|| sig_any_active
 	|| has_unblocked())
 	event_flags |= EVLOOP_NONBLOCK;
@@ -192,7 +192,7 @@ void driver_libevent::loop(loop_flags flags)
 	    evtimer_set(&timerev, libevent_timertrigger, 0);
 	timer_set = true;
 	timeval timeout = timers_.expiry();
-	timersub(&timeout, &now(), &timeout);
+	timersub(&timeout, &recent(), &timeout);
 	evtimer_add(&timerev, &timeout);
     }
 
@@ -201,14 +201,14 @@ void driver_libevent::loop(loop_flags flags)
 	::event_loop(event_flags);
 
     // process fd events
-    set_now();
+    set_recent();
     run_unblocked();
 
     // process timer events
     if (!timers_.empty()) {
 	if (!(event_flags & EVLOOP_NONBLOCK))
 	    evtimer_del(&timerev);
-	while (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
+	while (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >))
 	    timers_.pop_trigger();
         run_unblocked();
     }

@@ -21,7 +21,7 @@
 
 tamed void delay1(int x, tamer::event<> e) {
     twait { tamer::at_delay_msec(x, make_event()); }
-    fprintf(stderr, "@%d: %ld.%06d\n", x, (long int) tamer::now().tv_sec, (int) tamer::now().tv_usec);
+    fprintf(stderr, "@%d: %ld.%06d\n", x, (long int) tamer::recent().tv_sec, (int) tamer::recent().tv_usec);
     e.trigger();
 }
 

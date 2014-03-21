@@ -85,7 +85,7 @@ How does this work?
 
 *   After 5 seconds, the event is triggered. This resumes the tamed
     function, which prints to standard output.
-    
+
 *   Finally, the tamed function signals its actual completion by
     triggering the `done` event, which was passed as an argument. An
     event is used to indicate completion because tamed functions
@@ -133,4 +133,3 @@ How does this work?
     rather than an `event<>`. This event contains a reference to the
     `unblock_time` closure variable. When the event is triggered, the
     supplied double value will be stored there.
-

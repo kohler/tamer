@@ -20,8 +20,8 @@
 #include <string>
 namespace tamer {
 namespace tamerpriv {
-extern struct timeval now;
-extern bool now_updated;
+extern struct timeval recent;
+extern bool need_recent;
 } // namespace tamerpriv
 
 enum loop_flags {
@@ -92,7 +92,8 @@ class driver : public tamerpriv::simple_driver {
     static int next_index;
 };
 
-inline const timeval &now();
+inline timeval now();
+inline const timeval& recent();
 
 inline driver* driver::by_index(unsigned index) {
     return index < capacity ? indexed[index] : 0;
@@ -134,7 +135,7 @@ inline void driver::at_time(double expiry, event<> e, bool bg) {
 }
 
 inline void driver::at_delay(timeval delay, event<> e, bool bg) {
-    timeradd(&delay, &now(), &delay);
+    timeradd(&delay, &recent(), &delay);
     at_time(delay, e, bg);
 }
 
@@ -142,7 +143,7 @@ inline void driver::at_delay_sec(int delay, event<> e, bool bg) {
     if (delay <= 0)
 	at_asap(e);
     else {
-	timeval tv = now();
+	timeval tv = recent();
 	tv.tv_sec += delay;
 	at_time(tv, e, bg);
     }

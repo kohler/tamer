@@ -192,7 +192,7 @@ void driver_libev::loop(loop_flags flags) {
     int event_flags = EVRUN_ONCE;
     timers_.cull();
     if (!asap_.empty()
-	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
+	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >))
 	|| sig_any_active
 	|| has_unblocked())
 	event_flags |= EVRUN_NOWAIT;
@@ -208,7 +208,7 @@ void driver_libev::loop(loop_flags flags) {
 	    timer_set = true;
 	}
 	timeval to;
-	timersub(&timers_.expiry(), &now(), &to);
+	timersub(&timers_.expiry(), &recent(), &to);
 	timerev.p.offset = dtime(to);
 	ev_periodic_again(eloop_, &timerev.p);
     } else if (timer_set)
@@ -219,11 +219,11 @@ void driver_libev::loop(loop_flags flags) {
 	::ev_run(eloop_, event_flags);
 
     // process fd events
-    set_now();
+    set_recent();
     run_unblocked();
 
     // process timer events
-    while (!timers_.empty() && !timercmp(&timers_.expiry(), &now(), >))
+    while (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >))
 	timers_.pop_trigger();
     run_unblocked();
 

@@ -50,21 +50,26 @@ bool initialize(int flags = 0);
  */
 void cleanup();
 
-/** @brief  Fetches Tamer's current time.
- *  @return  Current timestamp.
- */
-inline const timeval &now() {
-    if (!tamerpriv::now_updated) {
-	gettimeofday(&tamerpriv::now, 0);
-	tamerpriv::now_updated = true;
+/** @brief  Return the current time. */
+inline timeval now() {
+    timeval tv;
+    gettimeofday(&tv, 0);
+    return tv;
+}
+
+/** @brief  Return a recent snapshot of the current time. */
+inline const timeval& recent() {
+    if (tamerpriv::need_recent) {
+        tamerpriv::recent = now();
+	tamerpriv::need_recent = false;
     }
-    return tamerpriv::now;
+    return tamerpriv::recent;
 }
 
 /** @brief  Sets Tamer's current time to the current timestamp.
  */
-inline void set_now() {
-    tamerpriv::now_updated = false;
+inline void set_recent() {
+    tamerpriv::need_recent = true;
 }
 
 /** @brief  Translate a time to a double. */
@@ -72,9 +77,14 @@ inline double dtime(const timeval tv) {
     return tv.tv_sec + tv.tv_usec / 1000000.;
 }
 
-/** @brief  Return Tamer's current time as a double. */
+/** @brief  Return the current time as a double. */
 inline double dnow() {
     return dtime(now());
+}
+
+/** @brief  Return a recent snapshot of the current time as a double. */
+inline double drecent() {
+    return dtime(recent());
 }
 
 /** @brief  Run driver loop according to @a flags. */
@@ -146,8 +156,8 @@ inline void at_time(double expiry, event<> e, bool bg = false) {
  *  @param  delay  Delay time.
  *  @param  e      Event.
  *
- *  Triggers @a e when @a delay seconds have elapsed since @c now(), or soon
- *  afterwards.
+ *  Triggers @a e when @a delay seconds have elapsed since @c recent(), or
+ *  soon afterwards.
  */
 inline void at_delay(const timeval &delay, event<> e, bool bg = false) {
     driver::main->at_delay(delay, e, bg);
@@ -157,8 +167,8 @@ inline void at_delay(const timeval &delay, event<> e, bool bg = false) {
  *  @param  delay  Delay time.
  *  @param  e      Event.
  *
- *  Triggers @a e when @a delay seconds have elapsed since @c now(), or soon
- *  afterwards.
+ *  Triggers @a e when @a delay seconds have elapsed since @c recent(), or
+ *  soon afterwards.
  */
 inline void at_delay(double delay, event<> e, bool bg = false) {
     driver::main->at_delay(delay, e, bg);
@@ -168,8 +178,8 @@ inline void at_delay(double delay, event<> e, bool bg = false) {
  *  @param  delay  Delay time.
  *  @param  e      Event.
  *
- *  Triggers @a e when @a delay seconds have elapsed since @c now(), or soon
- *  afterwards.
+ *  Triggers @a e when @a delay seconds have elapsed since @c recent(), or
+ *  soon afterwards.
  */
 inline void at_delay_sec(int delay, event<> e, bool bg = false) {
     driver::main->at_delay_sec(delay, e, bg);
@@ -179,8 +189,8 @@ inline void at_delay_sec(int delay, event<> e, bool bg = false) {
  *  @param  delay  Delay time in milliseconds.
  *  @param  e      Event.
  *
- *  Triggers @a e when @a delay milliseconds have elapsed since @c now(), or
- *  soon afterwards.
+ *  Triggers @a e when @a delay milliseconds have elapsed since @c recent(),
+ *  or soon afterwards.
  */
 inline void at_delay_msec(int delay, event<> e, bool bg = false) {
     driver::main->at_delay_msec(delay, e, bg);
@@ -190,8 +200,8 @@ inline void at_delay_msec(int delay, event<> e, bool bg = false) {
  *  @param  delay  Delay time in microseconds.
  *  @param  e      Event.
  *
- *  Triggers @a e when @a delay microseconds have elapsed since @c now(), or
- *  soon afterwards.
+ *  Triggers @a e when @a delay microseconds have elapsed since @c recent(),
+ *  or soon afterwards.
  */
 inline void at_delay_usec(int delay, event<> e, bool bg = false) {
     driver::main->at_delay_usec(delay, e, bg);

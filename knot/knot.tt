@@ -496,7 +496,7 @@ accept_loop(tamer::fd s)
 static unsigned long long
 timenow_usec ()
 {
-    return tamer::now().tv_usec + tamer::now().tv_sec * 1000000ULL;
+    return tamer::recent().tv_usec + tamer::recent().tv_sec * 1000000ULL;
 }
 
 static int 
