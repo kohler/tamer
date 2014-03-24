@@ -6,7 +6,7 @@ $rundir/test/t17 | sort
 
 %stdout
 0 returned, 0 bytes read
-fd.tt:{{\d+}}
+fd.tcc:{{\d+}}
 t17.tcc:28 READING SO OR OTHER
 t17.tcc:33 HELLO
 t17.tcc:37

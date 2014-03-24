@@ -13,7 +13,7 @@ libtamer_la_SOURCES = \
 	dtamer.cc \
 	dsignal.cc \
 	event.hh \
-	fd.hh fd.tt \
+	fd.hh fd.tcc \
 	dns.hh dns.tt \
 	lock.hh lock.tt \
 	ref.hh \
@@ -58,8 +58,10 @@ TAMER = ../compiler/tamer
 
 .tt.cc:
 	$(TAMER) -g -o $@ -c $< || (rm $@ && false)
+.tcc.cc:
+	$(TAMER) -g -o $@ -c $< || (rm $@ && false)
 
-fd.cc: $(TAMER) fd.tt
+fd.cc: $(TAMER) fd.tcc
 fdh.cc: $(TAMER) fdh.tt
 dns.cc: $(TAMER) dns.tt
 lock.cc: $(TAMER) lock.tt
