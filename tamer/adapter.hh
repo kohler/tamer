@@ -128,7 +128,7 @@ event<> bind(event<T0> e, V0 v0) {
 
 #if TAMER_HAVE_PREEVENT
 template <typename R, typename T0, typename V0>
-event<> bind(preevent<R, T0>&& pe, V0 v0) {
+inline event<> bind(preevent<R, T0>&& pe, V0 v0) {
     return bind(event<T0>(std::move(pe)), std::move(v0));
 }
 #endif
@@ -151,6 +151,18 @@ template <typename T0>
 inline event<T0> rebind(event<> e, T0& s0) {
     return event<T0>(TAMER_MOVE(e), s0);
 }
+
+#if TAMER_HAVE_PREEVENT
+template <typename T0, typename R>
+inline event<T0> rebind(preevent<R>&& pe) {
+    return tamerpriv::rebinder<T0>::make(std::move(pe));
+}
+
+template <typename T0, typename R>
+inline event<T0> rebind(preevent<R>&& pe, T0& s0) {
+    return event<T0>(TAMER_MOVE(pe), s0);
+}
+#endif
 
 /** @brief  Create an event that triggers another event with a mapped value.
  *  @param  e  Destination event taking T0 values.
