@@ -155,6 +155,8 @@ tamed void bindery() {
     // should print "after bindery 3 4", b/c ee.unblocker() == ee was
     // triggered, affecting the bind
     assert(i == 4);
+
+    twait { tamer::at_delay_usec(1, tamer::bind(tamer::rebind<std::string>(tamer::make_event()), "Hello")); }
 }
 
 int add1(int x) {
@@ -303,6 +305,9 @@ int main(int, char **) {
     tamer::loop();
 
     test_debug1();
+    // check rebinding with std::string on empty events
+    tamer::at_delay_usec(1, tamer::bind(tamer::rebind<std::string>(tamer::event<>()), "Hello"));
+
     test_distribute();
     test_distribute_opt();
 

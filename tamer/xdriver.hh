@@ -87,6 +87,7 @@ class driver : public tamerpriv::simple_driver {
 
   private:
     unsigned index_;
+    int int_placeholder_;
 
     static driver* indexed[capacity];
     static int next_index;
@@ -104,7 +105,7 @@ inline unsigned driver::index() const {
 }
 
 inline void driver::at_fd(int fd, int action, event<> e) {
-    at_fd(fd, action, event<int>(e, no_result()));
+    at_fd(fd, action, event<int>(e, int_placeholder_));
 }
 
 inline void driver::at_fd_read(int fd, event<int> e) {

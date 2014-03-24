@@ -387,7 +387,7 @@ inline void fd::read(void *buf, size_t size, size_t& nread, event<int> done) {
 }
 
 inline void fd::read(void *buf, size_t size, size_t& nread, event<> done) {
-    read(buf, size, &nread, unbind<int>(done));
+    read(buf, size, &nread, rebind<int>(done));
 }
 
 /** @brief  Read from file descriptor.
@@ -405,7 +405,7 @@ inline void fd::read(void *buf, size_t size, event<int> done) {
 }
 
 inline void fd::read(void *buf, size_t size, event<> done) {
-    read(buf, size, (size_t*) 0, unbind<int>(done));
+    read(buf, size, (size_t*) 0, rebind<int>(done));
 }
 
 /** @brief  Read from file descriptor.
@@ -427,7 +427,7 @@ inline void fd::read(struct iovec* iov, int iov_count, size_t& nread, event<int>
 }
 
 inline void fd::read(struct iovec* iov, int iov_count, size_t& nread, event<> done) {
-    read(iov, iov_count, &nread, unbind<int>(done));
+    read(iov, iov_count, &nread, rebind<int>(done));
 }
 
 /** @brief  Read once from file descriptor.
@@ -446,7 +446,7 @@ inline void fd::read(struct iovec* iov, int iov_count, size_t& nread, event<> do
  *  @sa read(void *, size_t, size_t &, event<int>)
  */
 inline void fd::read_once(void *buf, size_t size, size_t& nread, event<> done) {
-    read_once(buf, size, nread, unbind<int>(done));
+    read_once(buf, size, nread, rebind<int>(done));
 }
 
 /** @brief  Read once from file descriptor.
@@ -465,7 +465,7 @@ inline void fd::read_once(void *buf, size_t size, size_t& nread, event<> done) {
  *  @sa read(void *, size_t, size_t &, event<int>)
  */
 inline void fd::read_once(const struct iovec* iov, int iov_count, size_t& nread, event<> done) {
-    read_once(iov, iov_count, nread, unbind<int>(done));
+    read_once(iov, iov_count, nread, rebind<int>(done));
 }
 
 
@@ -485,7 +485,7 @@ inline void fd::write(const void *buf, size_t size, size_t& nwritten, event<int>
 }
 
 inline void fd::write(const void *buf, size_t size, size_t& nwritten, event<> done) {
-    write(buf, size, &nwritten, unbind<int>(done));
+    write(buf, size, &nwritten, rebind<int>(done));
 }
 
 /** @brief  Write to file descriptor.
@@ -505,7 +505,7 @@ inline void fd::write(struct iovec* iov, int iov_count, size_t& nwritten, event<
 }
 
 inline void fd::write(struct iovec* iov, int iov_count, size_t& nwritten, event<> done) {
-    write(iov, iov_count, &nwritten, unbind<int>(done));
+    write(iov, iov_count, &nwritten, rebind<int>(done));
 }
 
 /** @brief  Write to file descriptor.
@@ -521,7 +521,7 @@ inline void fd::write(const void *buf, size_t size, event<int> done) {
 }
 
 inline void fd::write(const void *buf, size_t size, event<> done) {
-    write(buf, size, 0, unbind<int>(done));
+    write(buf, size, 0, rebind<int>(done));
 }
 
 /** @brief  Write string to file descriptor.
@@ -536,7 +536,7 @@ inline void fd::write(const std::string& buf, size_t& nwritten, event<int> done)
 }
 
 inline void fd::write(const std::string& buf, size_t& nwritten, event<> done) {
-    write(buf, &nwritten, unbind<int>(done));
+    write(buf, &nwritten, rebind<int>(done));
 }
 
 /** @brief  Write string to file descriptor.
@@ -550,15 +550,15 @@ inline void fd::write(const std::string& buf, event<int> done) {
 }
 
 inline void fd::write(const std::string &buf, event<> done) {
-    write(buf, (size_t*) 0, unbind<int>(done));
+    write(buf, (size_t*) 0, rebind<int>(done));
 }
 
 inline void fd::write_once(const void *buf, size_t size, size_t& nwritten, event<> done) {
-    write_once(buf, size, nwritten, unbind<int>(done));
+    write_once(buf, size, nwritten, rebind<int>(done));
 }
 
 inline void fd::write_once(const struct iovec* iov, int iov_count, size_t& nwritten, event<> done) {
-    write_once(iov, iov_count, nwritten, unbind<int>(done));
+    write_once(iov, iov_count, nwritten, rebind<int>(done));
 }
 
 

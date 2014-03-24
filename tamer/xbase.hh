@@ -92,8 +92,8 @@ class simple_event { public:
   protected:
     abstract_rendezvous *_r;
     uintptr_t _rid;
-    simple_event *_r_next;
-    simple_event **_r_pprev;
+    simple_event* _r_next;
+    simple_event** _r_pprev;
     void (*at_trigger_f_)(void*);
     void* at_trigger_arg_;
     unsigned _refcount;

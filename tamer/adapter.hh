@@ -118,9 +118,9 @@ inline event<T0, T1, T2, T3> distribute(event<T0, T1, T2, T3> e1,
  *  value @a v0; triggering @a e instantly triggers the result's unblocker.
  */
 template <typename T0, typename V0>
-event<> bind(event<T0> e, const V0 &v0) {
-    tamerpriv::bind_rendezvous<T0, V0> *r =
-	new tamerpriv::bind_rendezvous<T0, V0>(e, v0);
+event<> bind(event<T0> e, V0 v0) {
+    tamerpriv::bind_rendezvous<T0, V0>* r =
+	new tamerpriv::bind_rendezvous<T0, V0>(e, TAMER_MOVE(v0));
     event<> bound = TAMER_MAKE_FN_ANNOTATED_EVENT(*r);
     e.at_trigger(bound);
     return bound;
@@ -128,8 +128,8 @@ event<> bind(event<T0> e, const V0 &v0) {
 
 #if TAMER_HAVE_PREEVENT
 template <typename R, typename T0, typename V0>
-event<> bind(preevent<R, T0>&& pe, const V0& v0) {
-    return bind(event<T0>(std::move(pe)), v0);
+event<> bind(preevent<R, T0>&& pe, V0 v0) {
+    return bind(event<T0>(std::move(pe)), std::move(v0));
 }
 #endif
 
@@ -143,17 +143,14 @@ event<> bind(preevent<R, T0>&& pe, const V0& v0) {
  *  triggers the result's unblocker.
  */
 template <typename T0>
-inline event<T0> unbind(const event<> &e) {
-    return event<T0>(e, no_result());
+inline event<T0> rebind(event<> e) {
+    return tamerpriv::rebinder<T0>::make(e);
 }
 
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-/** @overload */
 template <typename T0>
-inline event<T0> unbind(event<> &&e) {
-    return event<T0>(TAMER_MOVE(e), no_result());
+inline event<T0> rebind(event<> e, T0& s0) {
+    return event<T0>(TAMER_MOVE(e), s0);
 }
-#endif
 
 /** @brief  Create an event that triggers another event with a mapped value.
  *  @param  e  Destination event taking T0 values.

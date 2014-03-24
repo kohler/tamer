@@ -21,6 +21,12 @@
 namespace tamer {
 namespace tamerpriv {
 
+typedef union {
+    int i;
+    bool b;
+} placeholder_buffer_type;
+extern placeholder_buffer_type placeholder_buffer;
+
 class with_helper_rendezvous : public functional_rendezvous,
 			       public zero_argument_rendezvous_tag<with_helper_rendezvous> {
   public:
@@ -47,22 +53,49 @@ template <typename T0, typename V0>
 class bind_rendezvous : public functional_rendezvous,
 			public zero_argument_rendezvous_tag<bind_rendezvous<T0, V0> > {
   public:
-    bind_rendezvous(const event<T0> &e, const V0 &v0)
-	: functional_rendezvous(hook), e_(e), v0_(v0) {
+    bind_rendezvous(const event<T0>& e, V0 v0)
+	: functional_rendezvous(hook), e_(e), v0_(TAMER_MOVE(v0)) {
     }
   private:
     event<T0> e_;
     V0 v0_;
-    static void hook(functional_rendezvous *, simple_event *, bool) TAMER_NOEXCEPT;
+    static void hook(functional_rendezvous*, simple_event*, bool) TAMER_NOEXCEPT;
 };
 
 template <typename T0, typename V0>
 void bind_rendezvous<T0, V0>::hook(functional_rendezvous *fr,
 				   simple_event *, bool) TAMER_NOEXCEPT {
-    bind_rendezvous *self = static_cast<bind_rendezvous *>(fr);
+    bind_rendezvous<T0, V0>* self = static_cast<bind_rendezvous<T0, V0>*>(fr);
     self->e_.trigger(self->v0_);
     delete self;
 }
+
+
+template <typename T0>
+struct rebinder {
+    static event<T0> make(event<> e) {
+        T0* v0 = new T0;
+        simple_event::at_trigger(e.__get_simple(), deleter, v0);
+        return event<T0>(TAMER_MOVE(e), *v0);
+    }
+    static void deleter(void* x) {
+        delete static_cast<T0*>(x);
+    }
+};
+
+template <>
+struct rebinder<int> {
+    static event<int> make(event<> e) {
+        return event<int>(TAMER_MOVE(e), placeholder_buffer.i);
+    }
+};
+
+template <>
+struct rebinder<bool> {
+    static event<bool> make(event<> e) {
+        return event<bool>(TAMER_MOVE(e), placeholder_buffer.b);
+    }
+};
 
 
 template <typename T> struct decay { public: typedef T type; };
