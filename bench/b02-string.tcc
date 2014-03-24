@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <tamer/tamer.hh>
 #include <tamer/adapter.hh>
 #include <iostream>
