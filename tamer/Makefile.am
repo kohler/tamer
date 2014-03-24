@@ -5,6 +5,7 @@ lib_LTLIBRARIES = libtamer.la
 libtamer_la_SOURCES = \
 	adapter.hh \
 	bufferedio.hh bufferedio.tt \
+	channel.hh \
 	driver.hh \
 	dinternal.hh dinternal.cc \
 	dlibev.cc \
@@ -26,6 +27,7 @@ pkginclude_HEADERS = \
 	adapter.hh \
 	autoconf.h \
 	bufferedio.hh \
+	channel.hh \
 	driver.hh \
 	event.hh \
 	fd.hh \
