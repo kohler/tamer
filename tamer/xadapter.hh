@@ -214,6 +214,8 @@ inline distribute_rendezvous<T0, T1, T2, T3>::distribute_rendezvous()
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline distribute_rendezvous<T0, T1, T2, T3>::~distribute_rendezvous() {
+    for (int i = 0; i != nes_; ++i)
+        es_[i].~event();
     if (es_ != reinterpret_cast<event_type*>(local_es_))
         delete[] reinterpret_cast<char*>(es_);
 }
