@@ -963,9 +963,11 @@ tame_block_ev_t::output(outputter_t *o)
       b << TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".set_volatile(" << _isvolatile << "); ";
   b << "do {\n";
   if (tamer_debug)
-      b << "#define make_event(...) make_annotated_event(__FILE__, __LINE__, " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n";
+      b << "#define make_event(...) make_annotated_event(__FILE__, __LINE__, " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n"
+        << "#define make_preevent(...) make_annotated_preevent(__FILE__, __LINE__, " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n";
   else
-      b << "#define make_event(...) make_event(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n";
+      b << "#define make_event(...) make_event(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n"
+        << "#define make_preevent(...) make_preevent(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n";
   b << "    tamer::tamerpriv::rendezvous_owner<tamer::gather_rendezvous> " TWAIT_BLOCK_RENDEZVOUS "_holder(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ");\n";
   o->output_str(b.str());
 
@@ -996,7 +998,7 @@ tame_block_ev_t::output(outputter_t *o)
     << "  } while (0);\n";
   o->output_str(b.str());
   o->switch_to_mode(OUTPUT_PASSTHROUGH);
-  o->output_str("\n#undef make_event\n");
+  o->output_str("\n#undef make_event\n#undef make_preevent\n");
   o->switch_to_mode(om);
 }
 

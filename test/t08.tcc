@@ -25,7 +25,7 @@
 template <typename R>
 void immediate_preevent(int i, tamer::preevent<R> e) {
     if (i % 1024 == 0)
-        tamer::at_asap(e);
+        tamer::at_asap(std::move(e));
     else
         e();
 }
@@ -33,7 +33,7 @@ void immediate_preevent(int i, tamer::preevent<R> e) {
 tamed void function_preevent() {
     twait {
         for (int i = 0; i < 10000000; ++i)
-            immediate_preevent(i, make_event());
+            immediate_preevent(i, make_preevent());
     }
     std::cout << "It happened\n";
 }
