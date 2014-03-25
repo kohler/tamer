@@ -4,7 +4,7 @@ bin_PROGRAMS = tamer
 
 noinst_HEADERS = tame.hh parse.hh
 
-tamer_SOURCES = parse.yy scan.ll processor.cc const.cc output.cc tame.cc
+tamer_SOURCES = parse.yy scan.ll processor.cc output.cc tame.cc
 tamer_LDADD = $(LDADD) $(LDADD_THR)
 
 YYFLAGS = -d
