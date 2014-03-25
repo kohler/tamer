@@ -1318,11 +1318,19 @@ inline event<T0> make_event(one_argument_rendezvous_tag<R>& r, const I& eid, T0&
     return event<T0>(x0).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid));
 }
 
+#if !TAMER_HAVE_PREEVENT || !TAMER_PREFER_PREEVENT
 template <typename R, typename T0>
 inline event<T0> make_event(zero_argument_rendezvous_tag<R>& r, T0& x0)
 {
     return event<T0>(x0).__instantiate(static_cast<R&>(r), 0);
 }
+#else
+template <typename R, typename T0>
+inline preevent<R, T0> make_event(zero_argument_rendezvous_tag<R>& r, T0& x0)
+{
+    return preevent<R, T0>(static_cast<R&>(r), x0);
+}
+#endif
 
 #if TAMER_HAVE_PREEVENT
 template <typename R, typename T0>
@@ -1338,11 +1346,19 @@ inline event<> make_event(one_argument_rendezvous_tag<R>& r, const I& eid)
     return event<>().__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid));
 }
 
+#if !TAMER_HAVE_PREEVENT || !TAMER_PREFER_PREEVENT
 template <typename R>
 inline event<> make_event(zero_argument_rendezvous_tag<R>& r)
 {
     return event<>().__instantiate(static_cast<R&>(r), 0);
 }
+#else
+template <typename R>
+inline preevent<R> make_event(zero_argument_rendezvous_tag<R>& r)
+{
+    return preevent<R>(static_cast<R&>(r));
+}
+#endif
 
 #if TAMER_HAVE_PREEVENT
 template <typename R>
@@ -1440,17 +1456,27 @@ inline event<T0> simple_rendezvous<I>::make_event(I eid, T0& x0)
     return tamer::make_event(*this, eid, x0);
 }
 
+#if !TAMER_HAVE_PREEVENT || !TAMER_PREFER_PREEVENT
 template <typename T0>
-inline event<T0> rendezvous<>::make_event(T0& x0)
-{
+inline event<T0> rendezvous<>::make_event(T0& x0) {
     return tamer::make_event(*this, x0);
 }
 
 template <typename T0>
-inline event<T0> gather_rendezvous::make_event(T0& x0)
-{
+inline event<T0> gather_rendezvous::make_event(T0& x0) {
     return tamer::make_event(*this, x0);
 }
+#else
+template <typename T0>
+inline preevent<rendezvous<>, T0> rendezvous<>::make_event(T0& x0) {
+    return tamer::make_preevent(*this, x0);
+}
+
+template <typename T0>
+inline preevent<gather_rendezvous, T0> gather_rendezvous::make_event(T0& x0) {
+    return tamer::make_preevent(*this, x0);
+}
+#endif
 
 #if TAMER_HAVE_PREEVENT
 template <typename T0>
@@ -1478,24 +1504,30 @@ inline event<> simple_rendezvous<I>::make_event(I eid)
     return tamer::make_event(*this, eid);
 }
 
-inline event<> rendezvous<>::make_event()
-{
+#if !TAMER_HAVE_PREEVENT || !TAMER_PREFER_PREEVENT
+inline event<> rendezvous<>::make_event() {
     return tamer::make_event(*this);
 }
 
-inline event<> gather_rendezvous::make_event()
-{
+inline event<> gather_rendezvous::make_event() {
     return tamer::make_event(*this);
 }
+#else
+inline preevent<rendezvous<> > rendezvous<>::make_event() {
+    return tamer::make_preevent(*this);
+}
+
+inline preevent<gather_rendezvous> gather_rendezvous::make_event() {
+    return tamer::make_preevent(*this);
+}
+#endif
 
 #if TAMER_HAVE_PREEVENT
-inline preevent<rendezvous<> > rendezvous<>::make_preevent()
-{
+inline preevent<rendezvous<> > rendezvous<>::make_preevent() {
     return preevent<rendezvous<> >(*this);
 }
 
-inline preevent<gather_rendezvous> gather_rendezvous::make_preevent()
-{
+inline preevent<gather_rendezvous> gather_rendezvous::make_preevent() {
     return preevent<gather_rendezvous>(*this);
 }
 #endif
@@ -1586,11 +1618,31 @@ inline event<T0> make_annotated_event(const char *file, int line, one_argument_r
     return event<T0>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
+#if !TAMER_HAVE_PREEVENT || !TAMER_PREFER_PREEVENT
 template <typename R, typename T0>
 inline event<T0> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, T0& x0)
 {
     return event<T0>(x0).__instantiate(static_cast<R&>(r), 0, file, line);
 }
+
+template <typename R, typename T0>
+inline event<T0> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<T0>& sp)
+{
+    return event<T0>(sp).__instantiate(static_cast<R&>(r), 0, file, line);
+}
+#else
+template <typename R, typename T0>
+inline preevent<R, T0> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, T0& x0)
+{
+    return preevent<R, T0>(static_cast<R&>(r), x0, file, line);
+}
+
+template <typename R, typename T0>
+inline preevent<T0> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<T0>& sp)
+{
+    return preevent<R, T0>(static_cast<R&>(r), sp, file, line);
+}
+#endif
 
 #if TAMER_HAVE_PREEVENT
 template <typename R, typename T0>
@@ -1598,13 +1650,13 @@ inline preevent<R, T0> make_annotated_preevent(const char *file, int line, zero_
 {
     return preevent<R, T0>(static_cast<R&>(r), x0, file, line);
 }
-#endif
 
 template <typename R, typename T0>
-inline event<T0> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<T0>& sp)
+inline preevent<R, T0> make_annotated_preevent(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<T0>& sp)
 {
-    return event<T0>(sp).__instantiate(static_cast<R&>(r), 0, file, line);
+    return preevent<R, T0>(static_cast<R&>(r), sp, file, line);
 }
+#endif
 
 template <typename R, typename I>
 inline event<> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid)
@@ -1618,6 +1670,7 @@ inline event<> make_annotated_event(const char *file, int line, one_argument_ren
     return event<>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
+#if !TAMER_HAVE_PREEVENT || !TAMER_PREFER_PREEVENT
 template <typename R>
 inline event<> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r)
 {
@@ -1629,6 +1682,20 @@ inline event<> make_annotated_event(const char *file, int line, zero_argument_re
 {
     return event<>(sp).__instantiate(static_cast<R&>(r), 0, file, line);
 }
+#else
+template <typename R>
+inline preevent<R> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r)
+{
+    return preevent<R>(static_cast<R&>(r), file, line);
+}
+
+template <typename R>
+inline preevent<R> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<>& sp)
+{
+    (void) sp;
+    return preevent<R>(static_cast<R&>(r), file, line);
+}
+#endif
 
 #if TAMER_HAVE_PREEVENT
 template <typename R>
