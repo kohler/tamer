@@ -5,7 +5,7 @@ EXTRA_DIST = LICENSE
 
 SUBDIRS = compiler tamer test bench ex doc knot
 
-compiler tamer test bench ex doc knot:
+compiler tamer test bench ex doc knot: Makefile config.h
 	cd $@ && $(MAKE) $(AM_MAKEFLAGS)
 tamer: compiler
 test bench ex knot: compiler tamer
