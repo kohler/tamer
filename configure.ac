@@ -317,6 +317,7 @@ were not found.
 fi
 
 AC_SUBST([DRIVER_LIBS])
+AC_DEFINE_UNQUOTED([TAMER_LIBS], ["]$DRIVER_LIBS["], [Define to a C string with the libraries required to link a tamed program.])
 
 
 dnl

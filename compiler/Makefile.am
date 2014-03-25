@@ -8,7 +8,6 @@ tamer_SOURCES = parse.yy scan.ll processor.cc output.cc tame.cc
 tamer_LDADD = $(LDADD) $(LDADD_THR)
 
 YYFLAGS = -d
-DEFS = -DTAMER_LIBS='"@DRIVER_LIBS@"'
 
 parse.hh: parse.cc
 

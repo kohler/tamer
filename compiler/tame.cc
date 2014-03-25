@@ -1,3 +1,4 @@
+#include "config.h"
 #include "tame.hh"
 #include <iostream>
 #include <stdio.h>
