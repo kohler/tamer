@@ -665,7 +665,6 @@ class preevent : public std::unary_function<const T0&, void> {
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     inline TAMER_CONSTEXPR preevent(R& r, T0& x0, const char* file = 0, int line = 0) TAMER_NOEXCEPT;
-    inline TAMER_CONSTEXPR preevent(const preevent<R, T0>& x) TAMER_NOEXCEPT;
     inline preevent(preevent<R, T0>&& x) TAMER_NOEXCEPT;
 
     operator unspecified_bool_type() const {
@@ -713,6 +712,7 @@ class preevent : public std::unary_function<const T0&, void> {
     int line_annotation_;
 # endif
 
+    preevent(const preevent<R, T0>& x) TAMER_NOEXCEPT;
     template <typename TT0, typename TT1, typename TT2, typename TT3>
     friend class event;
 };
@@ -724,7 +724,6 @@ class preevent<R, void> {
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     inline TAMER_CONSTEXPR preevent(R& r, const char* file = 0, int line = 0) TAMER_NOEXCEPT;
-    inline TAMER_CONSTEXPR preevent(const preevent<R>& x) TAMER_NOEXCEPT;
     inline preevent(preevent<R>&& x) TAMER_NOEXCEPT;
 
     operator unspecified_bool_type() const {
@@ -760,6 +759,7 @@ class preevent<R, void> {
     int line_annotation_;
 # endif
 
+    preevent(const preevent<R>& x) TAMER_NOEXCEPT;
     template <typename TT0, typename TT1, typename TT2, typename TT3>
     friend class event;
 };
@@ -1215,11 +1215,8 @@ inline T0* event<T0>::result_pointer() const TAMER_NOEXCEPT {
 template <typename R, typename T0>
 inline TAMER_CONSTEXPR preevent<R, T0>::preevent(R& r, T0& x0, const char* file, int line) TAMER_NOEXCEPT
     : r_(&((void) file, (void) line, r)), s0_(&x0) TAMER_IFTRACE(, file_annotation_(file), line_annotation_(line)) {
-}
-
-template <typename R, typename T0>
-inline TAMER_CONSTEXPR preevent<R, T0>::preevent(const preevent<R, T0>& x) TAMER_NOEXCEPT
-    : r_(x.r_), s0_(x.s0_) TAMER_IFTRACE(, file_annotation_(x.file_annotation_), line_annotation_(x.line_annotation_)) {
+    // NB "(void) file, (void) line" in initializer b/c constexpr doesn't
+    // allow body
 }
 
 template <typename R, typename T0>
@@ -1231,11 +1228,6 @@ inline preevent<R, T0>::preevent(preevent<R, T0>&& x) TAMER_NOEXCEPT
 template <typename R>
 inline TAMER_CONSTEXPR preevent<R>::preevent(R& r, const char* file, int line) TAMER_NOEXCEPT
     : r_(&((void) file, (void) line, r)) TAMER_IFTRACE(, file_annotation_(file), line_annotation_(line)) {
-}
-
-template <typename R>
-inline TAMER_CONSTEXPR preevent<R>::preevent(const preevent<R>& x) TAMER_NOEXCEPT
-    : r_(x.r_) TAMER_IFTRACE(, file_annotation_(x.file_annotation_), line_annotation_(x.line_annotation_)) {
 }
 
 template <typename R>
