@@ -2,10 +2,14 @@
 Reading and cancellation.
 
 %script
+fsleep () {
+    perl -e "select(undef,undef,undef,$1)"
+}
+
 $rundir/test/t03
 echo Foo | $rundir/test/t03
-(sleep 1; echo Bar) | $rundir/test/t03
-(echo Baz; sleep 1; echo Quux) | $rundir/test/t03
+(fsleep 0.25; echo Bar) | $rundir/test/t03
+(echo Baz; fsleep 0.25; echo Quux) | $rundir/test/t03
 echo 0123456789a123456789b123456789c123456789d123456789e123456789 | $rundir/test/t03
 
 %stdout
