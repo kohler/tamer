@@ -43,3 +43,6 @@ tamer: dropping last reference to active event
 ====waitr 10
 tamer: dropping last reference to active event
 {{tamer:   t01.tcc:197: event was created here|}}
+
+%ignore
+#{{.*}}

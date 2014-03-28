@@ -22,28 +22,6 @@ namespace tamer {
  *  @brief  The event template classes and helper functions.
  */
 
-template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> struct value_pack;
-template <typename T0, typename T1, typename T2, typename T3> struct value_pack {
-    T0 v0;
-    T1 v1;
-    T2 v2;
-    T3 v3;
-};
-template <typename T0, typename T1, typename T2> struct value_pack<T0, T1, T2, void> {
-    T0 v0;
-    T1 v1;
-    T2 v2;
-};
-template <typename T0, typename T1> struct value_pack<T0, T1, void, void> {
-    T0 v0;
-    T1 v1;
-};
-template <typename T0> struct value_pack<T0, void, void, void> {
-    T0 v0;
-};
-template <> struct value_pack<void, void, void, void> {
-};
-
 /** @class event tamer/event.hh <tamer/tamer.hh>
  *  @brief  A future occurrence.
  *
@@ -183,6 +161,8 @@ class event {
     inline event<T0, T1, T2, T3>& operator=(event<T0, T1, T2, T3>&& x) TAMER_NOEXCEPT;
 #endif
 
+    inline event<T0, T1, T2, T3>& operator+=(event<T0, T1, T2, T3> x);
+
     inline const char* file_annotation() const;
     inline int line_annotation() const;
 
@@ -285,6 +265,8 @@ class event<T0, T1, T2, void> { public:
     }
 #endif
 
+    inline event<T0, T1, T2>& operator+=(event<T0, T1, T2> x);
+
     inline const char* file_annotation() const;
     inline int line_annotation() const;
 
@@ -378,6 +360,8 @@ class event<T0, T1, void, void>
 	return *this;
     }
 #endif
+
+    inline event<T0, T1>& operator+=(event<T0, T1> x);
 
     inline const char* file_annotation() const;
     inline int line_annotation() const;
@@ -491,6 +475,8 @@ class event<T0, void, void, void>
         return *this = event<T0>(std::move(x));
     }
 #endif
+
+    inline event<T0>& operator+=(event<T0> x);
 
     inline const char* file_annotation() const;
     inline int line_annotation() const;
@@ -621,6 +607,8 @@ class event<void, void, void, void> { public:
         return *this = event<>(std::move(x));
     }
 #endif
+
+    inline event<>& operator+=(event<> x);
 
     inline const char* file_annotation() const;
     inline int line_annotation() const;
@@ -1712,6 +1700,13 @@ inline event<> make_annotated_preevent(const char *file, int line, zero_argument
 }
 #endif
 
+namespace tamerpriv {
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> distribute_rendezvous<T0, T1, T2, T3>::make_event() {
+    return tamer::TAMER_MAKE_FN_ANNOTATED_EVENT(*this, vs_);
+}
+}
+
 
 template <typename T0, typename T1, typename T2>
 inline void event<T0, T1, T2>::at_trigger(const event<>& e) {
@@ -1815,6 +1810,45 @@ inline event<T0>::event(event<>&& x, T0& s0) TAMER_NOEXCEPT
     : se_(x.__take_simple()), s0_(&s0) {
 }
 #endif
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3>& event<T0, T1, T2, T3>::operator+=(event<T0, T1, T2, T3> x) {
+    typedef tamerpriv::distribute_rendezvous<T0, T1, T2, T3> rendezvous_type;
+    rendezvous_type::make(*this, TAMER_MOVE(x));
+    return *this;
+}
+
+template <typename T0, typename T1, typename T2>
+inline event<T0, T1, T2>& event<T0, T1, T2>::operator+=(event<T0, T1, T2> x) {
+    typedef tamerpriv::distribute_rendezvous<T0, T1, T2> rendezvous_type;
+    rendezvous_type::make(*this, TAMER_MOVE(x));
+    return *this;
+}
+
+template <typename T0, typename T1>
+inline event<T0, T1>& event<T0, T1>::operator+=(event<T0, T1> x) {
+    typedef tamerpriv::distribute_rendezvous<T0, T1> rendezvous_type;
+    rendezvous_type::make(*this, TAMER_MOVE(x));
+    return *this;
+}
+
+template <typename T0>
+inline event<T0>& event<T0>::operator+=(event<T0> x) {
+    typedef tamerpriv::distribute_rendezvous<T0> rendezvous_type;
+    rendezvous_type::make(*this, TAMER_MOVE(x));
+    return *this;
+}
+
+inline event<>& event<>::operator+=(event<> x) {
+    typedef tamerpriv::distribute_rendezvous<> rendezvous_type;
+    rendezvous_type::make(*this, TAMER_MOVE(x));
+    return *this;
+}
+
+template <typename T0, typename T1>
+inline event<T0, T1> operator+(event<T0, T1> a, event<T0, T1> b) {
+    return a += b;
+}
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline const char* event<T0, T1, T2, T3>::file_annotation() const {

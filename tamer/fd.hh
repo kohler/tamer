@@ -328,9 +328,9 @@ inline int fd::value() const {
  */
 inline void fd::at_close(event<> e) {
     if (*this)
-	_p->_at_close = distribute(_p->_at_close, e);
+	_p->_at_close += TAMER_MOVE(e);
     else
-	e.trigger();
+	e();
 }
 
 /** @brief  Close file descriptor.

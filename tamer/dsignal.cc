@@ -101,8 +101,7 @@ void driver::at_signal(int signo, event<> trigger, signal_flags flags)
     sig_nforeground += foreground;
     sig_ntotal += 1;
 
-    sig_handlers[signo] = distribute(TAMER_MOVE(sig_handlers[signo]),
-				     TAMER_MOVE(trigger));
+    sig_handlers[signo] += TAMER_MOVE(trigger);
     if (sigismember(&sig_dispatching, signo) == 0)
 	tamer_sigaction(signo, tamer_signal_handler);
 }

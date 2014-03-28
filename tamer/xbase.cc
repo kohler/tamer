@@ -211,12 +211,10 @@ void simple_event::hard_at_trigger(simple_event* x, void (*f)(void*),
     if (!x || !*x)
 	f(arg);
     else {
-        x->at_trigger_arg_ =
-            tamer::distribute(at_trigger_event(x->at_trigger_f_,
-                                               x->at_trigger_arg_),
-                              at_trigger_event(f, arg))
-            .__take_simple();
+        event<> t(at_trigger_event(x->at_trigger_f_, x->at_trigger_arg_));
+        t += at_trigger_event(f, arg);
         x->at_trigger_f_ = trigger_hook;
+        x->at_trigger_arg_ = t.__take_simple();
         //simple_event* se = static_cast<simple_event*>(x->at_trigger_arg_);
         //if (se->rendezvous()->rtype() == rdistribute)
         //    fprintf(stderr, "at_trigger %d\n", static_cast<distribute_rendezvous<>*>(se->rendezvous())->nchildren());

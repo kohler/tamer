@@ -14,6 +14,7 @@
  * legally binding.
  */
 #include <cassert>
+#include <cstring>
 #include <tamer/xbase.hh>
 namespace tamer {
 
@@ -341,6 +342,134 @@ class gather_rendezvous : public tamerpriv::blocking_rendezvous,
 };
 
 /** @endcond */
+
+/** @cond never */
+
+namespace tamerpriv {
+template <typename T0 = void, typename T1 = void, typename T2 = void, typename T3 = void>
+class distribute_rendezvous : public functional_rendezvous,
+			      public zero_argument_rendezvous_tag<distribute_rendezvous<T0, T1, T2, T3> > {
+  public:
+    typedef tamer::event<T0, T1, T2, T3> event_type;
+    inline distribute_rendezvous();
+    inline ~distribute_rendezvous();
+    static inline void make(event_type& a, event_type b);
+    inline event<T0, T1, T2, T3> make_event();
+    inline int nchildren() const {
+        return nes_;
+    }
+  private:
+    enum { nlocal = 2 };
+    int nes_;
+    int outstanding_;
+    event_type* es_;
+    tamer::value_pack<T0, T1, T2, T3> vs_;
+    char local_es_[sizeof(event_type) * nlocal];
+    static void hook(functional_rendezvous*, simple_event*, bool) TAMER_NOEXCEPT;
+    static void clear_hook(void*);
+    void add(event_type e);
+    static void hard_make(event_type& a, event_type b);
+    bool grow();
+};
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline distribute_rendezvous<T0, T1, T2, T3>::distribute_rendezvous()
+    : functional_rendezvous(tamerpriv::rdistribute, hook),
+      nes_(0), outstanding_(0), es_(reinterpret_cast<event_type*>(local_es_)) {
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline distribute_rendezvous<T0, T1, T2, T3>::~distribute_rendezvous() {
+    for (int i = 0; i != nes_; ++i)
+        es_[i].~event();
+    if (es_ != reinterpret_cast<event_type*>(local_es_))
+        delete[] reinterpret_cast<char*>(es_);
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+void distribute_rendezvous<T0, T1, T2, T3>::add(event_type e) {
+    if (nes_ >= nlocal && (nes_ & (nes_ - 1)) == 0 && !grow())
+        return;
+    new((void*) &es_[nes_]) event_type(TAMER_MOVE(e));
+    if (es_[nes_].__get_simple()->shared()) {
+        tamerpriv::simple_event::at_trigger(es_[nes_].__get_simple(), clear_hook, this);
+        ++outstanding_;
+    }
+    ++nes_;
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline void distribute_rendezvous<T0, T1, T2, T3>::make(event_type& a, event_type b) {
+    if (!a || !b) {
+        if (!a && b)
+            a = TAMER_MOVE(b);
+    } else
+        hard_make(a, TAMER_MOVE(b));
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+void distribute_rendezvous<T0, T1, T2, T3>::hard_make(event_type& a, event_type b) {
+    simple_event* se = a.__get_simple();
+    if (se == b.__get_simple())
+        return;
+    distribute_rendezvous<T0, T1, T2, T3>* r;
+    if (!se->shared() && !se->has_at_trigger()
+        && se->rendezvous()->rtype() == tamerpriv::rdistribute)
+        r = static_cast<distribute_rendezvous<T0, T1, T2, T3>*>(se->rendezvous());
+    else {
+        r = new distribute_rendezvous<T0, T1, T2, T3>;
+        r->add(TAMER_MOVE(a));
+        a = r->make_event();
+    }
+    r->add(TAMER_MOVE(b));
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+bool distribute_rendezvous<T0, T1, T2, T3>::grow() {
+    event_type* new_es = reinterpret_cast<event_type*>(new char[sizeof(event_type) * nes_ * 2]);
+    if (new_es) {
+        memcpy(new_es, es_, sizeof(event_type) * nes_);
+        if (es_ != reinterpret_cast<event_type*>(local_es_))
+            delete[] reinterpret_cast<char*>(es_);
+        es_ = new_es;
+        return true;
+    } else
+        return false;
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+void distribute_rendezvous<T0, T1, T2, T3>::hook(functional_rendezvous* fr,
+						 simple_event*,
+						 bool values) TAMER_NOEXCEPT {
+    distribute_rendezvous<T0, T1, T2, T3>* dr =
+	static_cast<distribute_rendezvous<T0, T1, T2, T3>*>(fr);
+    ++dr->outstanding_;		// keep memory around until we're done here
+    if (values) {
+        for (int i = 0; i != dr->nes_; ++i)
+            dr->es_[i].trigger(dr->vs_);
+    } else {
+        for (int i = 0; i != dr->nes_; ++i)
+            dr->es_[i].unblock();
+    }
+    if (--dr->outstanding_ == 0)
+        delete dr;
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+void distribute_rendezvous<T0, T1, T2, T3>::clear_hook(void* arg) {
+    distribute_rendezvous<T0, T1, T2, T3>* dr =
+	static_cast<distribute_rendezvous<T0, T1, T2, T3>*>(arg);
+    if (--dr->outstanding_ == 0) {
+        for (int i = 0; i != dr->nes_; ++i)
+            if (dr->es_[i])
+                return;
+	dr->remove_waiting();
+	delete dr;
+    }
+}
+} // namespace tamerpriv
+
+/** @endcond never */
 
 } // namespace tamer
 #endif /* TAMER__RENDEZVOUS_HH */

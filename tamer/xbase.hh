@@ -32,6 +32,28 @@ template <typename R, typename T0 = void> class preevent;
 #endif
 class driver;
 
+template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> struct value_pack;
+template <typename T0, typename T1, typename T2, typename T3> struct value_pack {
+    T0 v0;
+    T1 v1;
+    T2 v2;
+    T3 v3;
+};
+template <typename T0, typename T1, typename T2> struct value_pack<T0, T1, T2, void> {
+    T0 v0;
+    T1 v1;
+    T2 v2;
+};
+template <typename T0, typename T1> struct value_pack<T0, T1, void, void> {
+    T0 v0;
+    T1 v1;
+};
+template <typename T0> struct value_pack<T0, void, void, void> {
+    T0 v0;
+};
+template <> struct value_pack<void, void, void, void> {
+};
+
 class tamer_error : public std::runtime_error { public:
     explicit tamer_error(const std::string& arg)
 	: runtime_error(arg) {

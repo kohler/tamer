@@ -101,10 +101,9 @@ void driver_tamer::at_fd(int fd, int action, event<int> e) {
     if (e && (action == 0 || action == 1)) {
 	fds_.expand(this, fd);
 	tamerpriv::driver_fd<fdp> &x = fds_[fd];
-	if (x.e[action])
-	    e = tamer::distribute(TAMER_MOVE(x.e[action]), TAMER_MOVE(e));
-	x.e[action] = e;
-	tamerpriv::simple_event::at_trigger(e.__get_simple(), fd_disinterest,
+        x.e[action] += TAMER_MOVE(e);
+	tamerpriv::simple_event::at_trigger(x.e[action].__get_simple(),
+                                            fd_disinterest,
                                             make_fd_callback(this, fd));
 	fds_.push_change(fd);
     }

@@ -39,59 +39,10 @@ const int closed = -EPIPE;
  *  e2 are both triggered separately.
  */
 template <typename T0, typename T1, typename T2, typename T3>
-event<T0, T1, T2, T3> distribute(const event<T0, T1, T2, T3>& e1,
-				 const event<T0, T1, T2, T3>& e2) {
-    if (e1.empty())
-	return e2;
-    if (e2.empty())
-	return e1;
-    typedef tamerpriv::distribute_rendezvous<T0, T1, T2, T3> rendezvous_type;
-    rendezvous_type* dr = new rendezvous_type;
-    dr->add(e1);
-    dr->add(e2);
-    return dr->make_event();
+inline event<T0, T1, T2, T3> distribute(event<T0, T1, T2, T3> e1,
+                                        event<T0, T1, T2, T3> e2) {
+    return e1 += TAMER_MOVE(e2);
 }
-
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
-template <typename T0, typename T1, typename T2, typename T3>
-event<T0, T1, T2, T3> distribute(event<T0, T1, T2, T3>&& e1,
-				 event<T0, T1, T2, T3>&& e2) {
-    if (e1.empty())
-	return TAMER_MOVE(e2);
-    if (e2.empty())
-	return TAMER_MOVE(e1);
-    typedef tamerpriv::distribute_rendezvous<T0, T1, T2, T3> rendezvous_type;
-    tamerpriv::simple_event* se = e1.__get_simple();
-    if ((!se->shared() && !se->has_at_trigger())
-        && se->rendezvous()->rtype() == tamerpriv::rdistribute) {
-        rendezvous_type* dr = static_cast<rendezvous_type*>(se->rendezvous());
-        dr->add(TAMER_MOVE(e2));
-        return e1;
-    } else {
-        rendezvous_type* dr = new rendezvous_type;
-        dr->add(TAMER_MOVE(e1));
-        dr->add(TAMER_MOVE(e2));
-        return dr->make_event();
-    }
-}
-#endif
-
-#if TAMER_HAVE_PREEVENT
-template <typename R, typename T0>
-event<T0> distribute(event<T0> e1, preevent<R, T0>&& pe2) {
-    return distribute(std::move(e1), event<T0>(std::move(pe2)));
-}
-
-template <typename R, typename T0>
-event<T0> distribute(preevent<R, T0>&& pe1, event<T0> e2) {
-    return distribute(event<T0>(std::move(pe1)), std::move(e2));
-}
-
-template <typename R, typename S, typename T0>
-event<T0> distribute(preevent<R, T0>&& pe1, preevent<S, T0>&& pe2) {
-    return distribute(event<T0>(std::move(pe1)), event<T0>(std::move(pe2)));
-}
-#endif
 
 /** @brief  Create event that triggers @a e1, @a e2, and @a e3 when triggered.
  *  @param  e1  First event.
@@ -103,9 +54,10 @@ event<T0> distribute(preevent<R, T0>&& pe1, preevent<S, T0>&& pe2) {
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> distribute(event<T0, T1, T2, T3> e1,
-					event<T0, T1, T2, T3> e2,
-					event<T0, T1, T2, T3> e3) {
-    return distribute(distribute(TAMER_MOVE(e1), TAMER_MOVE(e2)), TAMER_MOVE(e3));
+                                        event<T0, T1, T2, T3> e2,
+                                        event<T0, T1, T2, T3> e3) {
+    e1 += TAMER_MOVE(e2);
+    return e1 += TAMER_MOVE(e3);
 }
 
 /** @brief  Create bound event for @a e with @a v0.
