@@ -208,17 +208,13 @@ inline event<> simple_event::at_trigger_event(void (*f)(void*), void* arg) {
 
 void simple_event::hard_at_trigger(simple_event* x, void (*f)(void*),
 				   void* arg) {
-    if (!x || !*x)
-	f(arg);
-    else {
+    if (x && *x) {
         event<> t(at_trigger_event(x->at_trigger_f_, x->at_trigger_arg_));
         t += at_trigger_event(f, arg);
         x->at_trigger_f_ = trigger_hook;
         x->at_trigger_arg_ = t.__take_simple();
-        //simple_event* se = static_cast<simple_event*>(x->at_trigger_arg_);
-        //if (se->rendezvous()->rtype() == rdistribute)
-        //    fprintf(stderr, "at_trigger %d\n", static_cast<distribute_rendezvous<>*>(se->rendezvous())->nchildren());
-    }
+    } else
+        f(arg);
 }
 
 
@@ -239,14 +235,12 @@ void event_prematurely_dereferenced(simple_event* se, abstract_rendezvous* r) {
 } // namespace tamer::tamerpriv::message
 } // namespace tamer::tamerpriv
 
-void rendezvous<>::clear()
-{
+void rendezvous<>::clear() {
     abstract_rendezvous::remove_waiting();
     explicit_rendezvous::remove_ready();
 }
 
-void gather_rendezvous::clear()
-{
+void gather_rendezvous::clear() {
     abstract_rendezvous::remove_waiting();
 }
 
