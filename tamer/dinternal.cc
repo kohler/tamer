@@ -21,6 +21,8 @@ namespace tamer {
 namespace tamerpriv {
 timeval recent;
 bool need_recent = true;
+time_type_t time_type = time_normal;
+static timeval virtual_offset = { 1000000000, 0 };
 } // namespace tamerpriv
 
 driver* driver::main;
@@ -83,6 +85,31 @@ bool initialize(int flags) {
 void cleanup() {
     delete driver::main;
     driver::main = 0;
+}
+
+void set_time_type(time_type_t tt) {
+    if (tamerpriv::time_type != tt) {
+        if (tamerpriv::time_type == time_virtual)
+            tamerpriv::virtual_offset = tamerpriv::recent;
+        tamerpriv::time_type = tt;
+        tamerpriv::need_recent = true;
+        if (tamerpriv::time_type == time_virtual)
+            tamerpriv::recent = tamerpriv::virtual_offset;
+    }
+}
+
+timeval now() {
+    if (tamerpriv::time_type == time_normal)
+        gettimeofday(&tamerpriv::recent, 0);
+    else {
+        ++tamerpriv::recent.tv_usec;
+        if (tamerpriv::recent.tv_usec == 1000000) {
+            ++tamerpriv::recent.tv_sec;
+            tamerpriv::recent.tv_usec = 0;
+        }
+    }
+    tamerpriv::need_recent = false;
+    return tamerpriv::recent;
 }
 
 void driver::at_delay(double delay, event<> e, bool bg)

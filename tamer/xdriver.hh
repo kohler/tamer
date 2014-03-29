@@ -93,7 +93,7 @@ class driver : public tamerpriv::simple_driver {
     static int next_index;
 };
 
-inline timeval now();
+timeval now();
 inline const timeval& recent();
 
 inline driver* driver::by_index(unsigned index) {

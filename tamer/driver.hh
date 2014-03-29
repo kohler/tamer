@@ -50,12 +50,12 @@ bool initialize(int flags = 0);
  */
 void cleanup();
 
-/** @brief  Return the current time. */
-inline timeval now() {
-    timeval tv;
-    gettimeofday(&tv, 0);
-    return tv;
-}
+enum time_type_t {
+    time_normal,
+    time_virtual
+};
+
+void set_time_type(time_type_t tt);
 
 /** @brief  Return a recent snapshot of the current time. */
 inline const timeval& recent() {
@@ -227,5 +227,6 @@ inline void at_asap(event<> e) {
     driver::main->at_asap(e);
 }
 
+namespace tamerpriv { extern time_type_t time_type; }
 } // namespace tamer
 #endif /* TAMER_DRIVER_HH */
