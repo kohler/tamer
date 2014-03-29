@@ -1,5 +1,5 @@
 %info
-Check tamer::channel.
+Check tamer virtual time.
 
 %script
 fsleep () {
