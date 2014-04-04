@@ -58,13 +58,36 @@ str type_t::to_str() const {
 
 str type_t::decl_to_str() const {
     strbuf b;
-    size_t l = _pointer.length(), p;
+    size_t l = _pointer.length(), p = _base_type.length();
 
     // XXX volatile, etc. GHETTO
-    if (!l
-        && (p = _base_type.find("const")) != str::npos
-        && (p + 5 == _base_type.length()
-            || isspace((unsigned char) _base_type[p + 5]))) {
+    if (!l) {
+        int last = ' ', depth = 0;
+        for (p = 0; p != _base_type.length(); ++p) {
+            switch (_base_type[p]) {
+            case '<': case '(':
+                ++depth;
+                break;
+            case '>': case ')':
+                --depth;
+                break;
+            case 'c':
+                if (depth == 0
+                    && p + 5 <= _base_type.length()
+                    && memcmp(&_base_type[p], "const", 5) == 0
+                    && !isalnum((unsigned char) last)
+                    && last != '_'
+                    && (p + 5 == _base_type.length()
+                        || (!isalnum((unsigned char) _base_type[p + 5])
+                            && _base_type[p + 5] != '_')))
+                    goto found;
+            }
+            last = _base_type[p];
+        }
+    }
+
+ found:
+    if (p != _base_type.length()) {
         b << _base_type.substr(0, p);
         b << _base_type.substr(p + 5, _base_type.length() - (p + 5));
     } else
