@@ -433,12 +433,8 @@ class event<T0, void, void, void>
 
     inline void trigger(T0 v0);
     inline void trigger(const value_pack<T0>& v);
-    template <typename V0>
-    inline void trigger(V0 v0) TAMER_DEPRECATEDATTR;
     inline void operator()(T0 v0);
     inline void operator()(const value_pack<T0>& v);
-    template <typename V0>
-    inline void operator()(V0 v0) TAMER_DEPRECATEDATTR;
     inline void unblock() TAMER_NOEXCEPT;
 
     inline T0& result() const TAMER_NOEXCEPT;
@@ -1121,15 +1117,6 @@ inline void event<T0>::trigger(const value_pack<T0>& v) {
     trigger(v.v0);
 }
 
-template <typename T0> template <typename V0>
-inline void event<T0>::trigger(V0 v0) {
-    if (se_ && *se_) {
-	*s0_ = v0;
-	se_->simple_trigger(true);
-	se_ = 0;
-    }
-}
-
 template <typename T0>
 inline void event<T0>::operator()(T0 v0) {
     trigger(v0);
@@ -1138,11 +1125,6 @@ inline void event<T0>::operator()(T0 v0) {
 template <typename T0>
 inline void event<T0>::operator()(const value_pack<T0>& v) {
     trigger(v);
-}
-
-template <typename T0> template <typename V0>
-inline void event<T0>::operator()(V0 v0) {
-    trigger(v0);
 }
 
 template <typename T0>
