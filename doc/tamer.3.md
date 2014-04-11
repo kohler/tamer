@@ -9,9 +9,10 @@ tamer(3) - event-driven programming support for C++
         event();
         operator bool() const;
         bool empty() const;
-        void trigger();
-        void operator()();   // synonym for trigger()
+        void operator()();
+        void trigger();   // synonym for operator()()
         void at_trigger(const event<>& e);
+        event<>& operator+=(event<> e);
     }
     
     template <typename T>
@@ -19,11 +20,12 @@ tamer(3) - event-driven programming support for C++
         event();
         operator bool() const;
         bool empty() const;
-        void trigger(const T& v);
-        void operator()(const T& v);
-        void unblock();
+        void operator()(T v);
+        void trigger(T v);
         void at_trigger(const event<>& e);
+        void unblock();
         event<> unblocker() const;
+        event<T>& operator+=(event<T> e);
     }
     
     tamed void example(event<> done) {
@@ -34,7 +36,7 @@ tamer(3) - event-driven programming support for C++
 
 ## DESCRIPTION
 
-`Tamer` comprises language extensions and libraries that simplify
+`Tamer` provides language extensions and libraries that simplify
 C++ event-driven programming. This page describes the Tamer
 abstractions and some of the user-accessible methods and functions in
 the Tamer library. Most Tamer programs will also use the tamer(1)
