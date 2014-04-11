@@ -60,6 +60,18 @@ inline event<T0, T1, T2, T3> distribute(event<T0, T1, T2, T3> e1,
     return e1 += TAMER_MOVE(e3);
 }
 
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0>
+inline event<T0> distribute(event<T0> e1, preevent<R, T0>&& e2) {
+    return e1 += TAMER_MOVE(e2);
+}
+
+template <typename R, typename T0>
+inline event<T0> distribute(preevent<R, T0>&& e1, event<T0> e2) {
+    return e2 += TAMER_MOVE(e1);
+}
+#endif
+
 /** @brief  Create bound event for @a e with @a v0.
  *  @param  e   Event.
  *  @param  v0  Trigger value.
