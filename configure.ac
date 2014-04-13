@@ -292,6 +292,7 @@ were not found.
     fi
 fi
 
+
 dnl
 dnl libev support
 dnl
@@ -318,6 +319,19 @@ fi
 
 AC_SUBST([DRIVER_LIBS])
 AC_DEFINE_UNQUOTED([TAMER_LIBS], ["]$DRIVER_LIBS["], [Define to a C string with the libraries required to link a tamed program.])
+
+
+dnl
+dnl http-parser support
+dnl
+
+AC_ARG_WITH([http-parser],
+	[AS_HELP_STRING([--without-http-parser], [don't include http-parser library])],
+	[:], [with_http_parser=yes])
+if test "$with_http_parser" = yes; then
+    AC_DEFINE([TAMER_HTTP_PARSER], [1], [Define if http-parser is available.])
+fi
+AM_CONDITIONAL([HTTP_PARSER], [test x$with_http_parser = xyes])
 
 
 dnl
@@ -381,6 +395,7 @@ AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug], [include more debugging
 if test "$enable_debug" = yes; then
     AC_DEFINE([TAMER_DEBUG], [1], [Define to include more debugging assertions.])
 fi
+AM_CONDITIONAL([TAMER_DEBUG], [test x$enable_debug = xyes])
 
 
 dnl

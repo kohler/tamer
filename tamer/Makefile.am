@@ -44,6 +44,8 @@ EXTRA_libtamer_la_SOURCES = \
 	fdh.hh fdh.tt
 libtamer_la_LIBADD = \
 	$(TAMER_FDHELPER_OBJS)
+libtamer_la_DEPENDENCIES = \
+	$(TAMER_FDHELPER_OBJS)
 
 bin_PROGRAMS = $(TAMER_FDHELPER_PROGRAM)
 EXTRA_PROGRAMS = tamerfdh
@@ -55,6 +57,16 @@ EXTRA_DIST = autoconf.h.in \
 
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_builddir)
 TAMER = ../compiler/tamer
+
+if HTTP_PARSER
+libtamer_la_SOURCES += ../http-parser/http_parser.c
+AM_CPPFLAGS += -I$(top_srcdir)/http-parser
+if TAMER_DEBUG
+AM_CPPFLAGS += -DHTTP_PARSER_STRICT=1
+else
+AM_CPPFLAGS += -DHTTP_PARSER_STRICT=0
+endif
+endif
 
 .tt.cc:
 	$(TAMER) -g -o $@ -c $< || (rm $@ && false)

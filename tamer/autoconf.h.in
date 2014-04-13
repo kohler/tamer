@@ -23,6 +23,11 @@
 #undef TAMER_NOTRACE
 #endif
 
+#ifndef TAMER_HTTP_PARSER
+/* Define if http_parser is included. */
+#undef TAMER_HTTP_PARSER
+#endif
+
 #if __GNUC__
 # define TAMER_GCCVERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #else
