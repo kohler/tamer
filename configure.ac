@@ -377,9 +377,9 @@ AC_ARG_ENABLE([fd-helper], [  --enable-fd-helper      enable experimental fd hel
                           (for nonblocking disk I/O)])
 if test "$enable_fd_helper" = yes; then
     AC_DEFINE([HAVE_TAMER_FDHELPER], [1], [Define if Tamer programs should use fdhelper for disk I/O.])
-    AC_SUBST([TAMER_FDHELPER_OBJS], ['fdhmsg.$(OBJEXT) fdh.$(OBJEXT)'])
     AC_SUBST([TAMER_FDHELPER_PROGRAM], ['tamerfdh${EXEEXT}'])
 fi
+AM_CONDITIONAL([FDHELPER], [test x$enable_fd_helper = xyes])
 
 
 dnl

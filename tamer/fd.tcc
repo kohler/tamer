@@ -603,6 +603,26 @@ tamed void fd::write_once(const struct iovec* iov, int iov_count, size_t& nwritt
     done.trigger(0);
 }
 
+ssize_t fd::direct_read(void* buf, size_t size) {
+    fdimp* fi = _p.get();
+    if (fi && fi->_fd >= 0)
+        return ::read(fi->_fd, buf, size);
+    else {
+        errno = EBADF;
+        return (ssize_t) -1;
+    }
+}
+
+ssize_t fd::direct_write(const void* buf, size_t size) {
+    fdimp* fi = _p.get();
+    if (fi && fi->_fd >= 0)
+        return ::write(fi->_fd, buf, size);
+    else {
+        errno = EBADF;
+        return (ssize_t) -1;
+    }
+}
+
 /** @brief  Send a message on a file descriptor.
  *  @param  buf          Buffer.
  *  @param  size         Buffer size.

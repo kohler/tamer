@@ -110,6 +110,9 @@ class fd {
 		 event<int> done);
     inline int shutdown(int how);
 
+    ssize_t direct_read(void* buf, size_t size);
+    ssize_t direct_write(const void* buf, size_t size);
+
     static int open_limit();
     static int open_limit(int n);
 

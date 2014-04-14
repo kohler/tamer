@@ -40,6 +40,7 @@ tamer/bufferedio.cc
 tamer/dns.cc
 tamer/fd.cc
 tamer/fdh.cc
+tamer/http.cc
 tamer/lock.cc
 tamer/stamp-h*
 tamer/tamer.pc
@@ -56,6 +57,8 @@ ex/osptracker
 ex/osptracker.cc
 ex/tamer-echosrv
 ex/tamer-echosrv.cc
+ex/tamer-httpd
+ex/tamer-httpd.cc
 ex/tamer-yes
 ex/tamer-yes.cc
 

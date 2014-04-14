@@ -1,6 +1,8 @@
 pkgconfigdir = ${libdir}/pkgconfig
 pkgconfig_DATA = tamer.pc
 
+bin_PROGRAMS =
+
 lib_LTLIBRARIES = libtamer.la
 libtamer_la_SOURCES = \
 	adapter.hh \
@@ -39,16 +41,6 @@ pkginclude_HEADERS = \
 	xadapter.hh \
 	xbase.hh \
 	xdriver.hh
-EXTRA_libtamer_la_SOURCES = \
-	fdhmsg.hh fdhmsg.cc \
-	fdh.hh fdh.tt
-libtamer_la_LIBADD = \
-	$(TAMER_FDHELPER_OBJS)
-libtamer_la_DEPENDENCIES = \
-	$(TAMER_FDHELPER_OBJS)
-
-bin_PROGRAMS = $(TAMER_FDHELPER_PROGRAM)
-EXTRA_PROGRAMS = tamerfdh
 
 tamerfdh_SOURCES = fdhelp.cc
 
@@ -59,13 +51,19 @@ AM_CPPFLAGS = -I$(top_srcdir) -I$(top_builddir)
 TAMER = ../compiler/tamer
 
 if HTTP_PARSER
-libtamer_la_SOURCES += ../http-parser/http_parser.c
+libtamer_la_SOURCES += ../http-parser/http_parser.c http.tcc http.hh
 AM_CPPFLAGS += -I$(top_srcdir)/http-parser
+pkginclude_HEADERS += $(top_srcdir)/http-parser/http_parser.h
 if TAMER_DEBUG
 AM_CPPFLAGS += -DHTTP_PARSER_STRICT=1
 else
 AM_CPPFLAGS += -DHTTP_PARSER_STRICT=0
 endif
+endif
+
+if FDHELPER
+libtamer_la_SOURCES += fdhmsg.hh fdhmsg.cc fdh.hh fdh.tt
+bin_PROGRAMS += tamerfdh
 endif
 
 .tt.cc:
@@ -78,6 +76,7 @@ fdh.cc: $(TAMER) fdh.tt
 dns.cc: $(TAMER) dns.tt
 lock.cc: $(TAMER) lock.tt
 bufferedio.cc: $(TAMER) bufferedio.tt
+http.cc: $(TAMER) http.tcc
 
 clean-local:
-	-rm -f lock.cc fd.cc fdh.cc dns.cc bufferedio.cc
+	-rm -f lock.cc fd.cc fdh.cc dns.cc bufferedio.cc http.cc
