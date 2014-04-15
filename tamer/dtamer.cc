@@ -58,7 +58,7 @@ class driver_tamer : public driver {
 
     tamerpriv::driver_fdset<fdp> fds_;
     int fdbound_;
-    xfd_set *_fdset[4];
+    xfd_set *fdset_[4];
     int fdset_fdcap_;
 
     tamerpriv::driver_timerset timers_;
@@ -79,16 +79,16 @@ driver_tamer::driver_tamer()
     assert(FD_SETSIZE <= fdset_fdcap_);
     assert((fdset_fdcap_ % 32) == 0);
     for (int i = 0; i < 4; ++i) {
-	_fdset[i] = reinterpret_cast<xfd_set *>(new char[fdset_fdcap_ / 8]);
+	fdset_[i] = reinterpret_cast<xfd_set *>(new char[fdset_fdcap_ / 8]);
 	if (i < fdreadnow)
-	    memset(_fdset[i], 0, fdset_fdcap_ / 8);
+	    memset(fdset_[i], 0, fdset_fdcap_ / 8);
     }
 }
 
 driver_tamer::~driver_tamer() {
     // free fd_sets
     for (int i = 0; i < 4; ++i)
-	delete[] reinterpret_cast<char *>(_fdset[i]);
+	delete[] reinterpret_cast<char *>(fdset_[i]);
 }
 
 void driver_tamer::fd_disinterest(void* arg) {
@@ -129,19 +129,19 @@ void driver_tamer::update_fds() {
 	    for (int acti = 0; acti < 4; ++acti) {
 		xfd_set *x = reinterpret_cast<xfd_set *>(new char[ncap / 8]);
 		if (acti < 2) {
-		    memcpy(x, _fdset[acti], fdset_fdcap_ / 8);
+		    memcpy(x, fdset_[acti], fdset_fdcap_ / 8);
 		    memset(&x->s[fdset_fdcap_ / 8], 0, (ncap - fdset_fdcap_) / 8);
 		}
-		delete[] reinterpret_cast<char *>(_fdset[acti]);
-		_fdset[acti] = x;
+		delete[] reinterpret_cast<char *>(fdset_[acti]);
+		fdset_[acti] = x;
 	    }
 	    fdset_fdcap_ = ncap;
 	}
 	for (int action = 0; action < 2; ++action)
 	    if (x.e[action])
-		FD_SET(fd, &_fdset[action]->fds);
+		FD_SET(fd, &fdset_[action]->fds);
 	    else
-		FD_CLR(fd, &_fdset[action]->fds);
+		FD_CLR(fd, &fdset_[action]->fds);
 	if (x.e[0] || x.e[1]) {
 	    if (fd >= fdbound_)
 		fdbound_ = fd + 1;
@@ -200,14 +200,14 @@ void driver_tamer::loop(loop_flags flags)
     if (sig_pipe[0] > nfds)
 	nfds = sig_pipe[0] + 1;
     if (nfds > 0) {
-	memcpy(_fdset[fdreadnow], _fdset[fdread], ((nfds + 63) & ~63) >> 3);
-	memcpy(_fdset[fdwritenow], _fdset[fdwrite], ((nfds + 63) & ~63) >> 3);
+	memcpy(fdset_[fdreadnow], fdset_[fdread], ((nfds + 63) & ~63) >> 3);
+	memcpy(fdset_[fdwritenow], fdset_[fdwrite], ((nfds + 63) & ~63) >> 3);
 	if (sig_pipe[0] >= 0)
-	    FD_SET(sig_pipe[0], &_fdset[fdreadnow]->fds);
+	    FD_SET(sig_pipe[0], &fdset_[fdreadnow]->fds);
     }
     if (nfds > 0 || !toptr || to.tv_sec != 0 || to.tv_usec != 0) {
-	nfds = select(nfds, &_fdset[fdreadnow]->fds,
-		      &_fdset[fdwritenow]->fds, 0, toptr);
+	nfds = select(nfds, &fdset_[fdreadnow]->fds,
+		      &fdset_[fdwritenow]->fds, 0, toptr);
          if (nfds == -1 && errno == EBADF)
              nfds = find_bad_fds();
     }
@@ -222,7 +222,7 @@ void driver_tamer::loop(loop_flags flags)
 	for (int fd = 0; fd < fdbound_; ++fd) {
 	    tamerpriv::driver_fd<fdp> &x = fds_[fd];
 	    for (int action = 0; action < 2; ++action)
-		if (FD_ISSET(fd, &_fdset[action + 2]->fds) && x.e[action])
+		if (FD_ISSET(fd, &fdset_[action + 2]->fds) && x.e[action])
 		    x.e[action].trigger(0);
 	}
         run_unblocked();
@@ -246,17 +246,17 @@ void driver_tamer::loop(loop_flags flags)
 
 int driver_tamer::find_bad_fds() {
     // first, combine all file descriptors from read & write
-    memcpy(_fdset[fdreadnow], _fdset[fdread], (fdbound_ + 31) & ~31);
+    memcpy(fdset_[fdreadnow], fdset_[fdread], (fdbound_ + 31) & ~31);
     for (int i = 0; i < fdbound_ / 32; ++i)
-        _fdset[fdreadnow]->u[i] |= _fdset[fdwrite]->u[i];
+        fdset_[fdreadnow]->u[i] |= fdset_[fdwrite]->u[i];
     // use binary search to find a bad file descriptor
     int l = 0, r = (fdbound_ + 7) & ~7;
     while (r - l > 1) {
         int m = l + ((r - l) >> 1);
-        memset(_fdset[fdwritenow], 0, l);
-        memcpy(&_fdset[fdwritenow]->s[l], &_fdset[fdreadnow]->s[l], m - l);
+        memset(fdset_[fdwritenow], 0, l);
+        memcpy(&fdset_[fdwritenow]->s[l], &fdset_[fdreadnow]->s[l], m - l);
         struct timeval tv = {0, 0};
-        int nfds = select(m << 3, &_fdset[fdwritenow]->fds, 0, 0, &tv);
+        int nfds = select(m << 3, &fdset_[fdwritenow]->fds, 0, 0, &tv);
         if (nfds == -1 && errno == EBADF)
             r = m;
         else if (nfds != -1)
@@ -264,18 +264,18 @@ int driver_tamer::find_bad_fds() {
     }
     // down to <= 8 file descriptors; test them one by one
     // clear result sets
-    memset(_fdset[fdreadnow], 0, ((fdbound_ + 63) & ~63) >> 3);
-    memset(_fdset[fdwritenow], 0, ((fdbound_ + 63) & ~63) >> 3);
+    memset(fdset_[fdreadnow], 0, ((fdbound_ + 63) & ~63) >> 3);
+    memset(fdset_[fdwritenow], 0, ((fdbound_ + 63) & ~63) >> 3);
     // set up result sets
     int nfds = 0;
     for (int f = l * 8; f != r * 8; ++f) {
-        int fr = FD_ISSET(f, &_fdset[fdread]->fds);
-        int fw = FD_ISSET(f, &_fdset[fdwrite]->fds);
+        int fr = FD_ISSET(f, &fdset_[fdread]->fds);
+        int fw = FD_ISSET(f, &fdset_[fdwrite]->fds);
         if ((fr || fw) && fcntl(f, F_GETFL) == -1 && errno == EBADF) {
             if (fr)
-                FD_SET(f, &_fdset[fdreadnow]->fds);
+                FD_SET(f, &fdset_[fdreadnow]->fds);
             if (fw)
-                FD_SET(f, &_fdset[fdwritenow]->fds);
+                FD_SET(f, &fdset_[fdwritenow]->fds);
             ++nfds;
         }
     }
