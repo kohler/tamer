@@ -15,6 +15,68 @@
  */
 namespace tamer {
 
+class ref;
+
+class ref_monitor {
+  public:
+    explicit inline ref_monitor(ref& m);
+    inline ~ref_monitor() {
+        if (pprev_)
+            *pprev_ = next_;
+        if (next_)
+            next_->pprev_ = pprev_;
+    }
+
+    typedef bool (ref_monitor::*unspecified_bool_type)() const;
+
+    bool empty() const {
+        return !pprev_;
+    }
+    operator unspecified_bool_type() const {
+        return pprev_ ? &ref_monitor::empty : 0;
+    }
+    bool operator!() const {
+        return !pprev_;
+    }
+
+  private:
+    ref_monitor** pprev_;
+    ref_monitor* next_;
+
+    ref_monitor(const ref_monitor&);
+    ref_monitor& operator=(const ref_monitor&);
+    friend class ref;
+};
+
+class ref {
+  public:
+    ref()
+        : first_(0) {
+    }
+    ~ref() {
+        while (ref_monitor* w = first_) {
+            first_ = w->next_;
+            w->pprev_ = 0;
+            w->next_ = 0;
+        }
+    }
+
+  private:
+    ref_monitor* first_;
+
+    ref(const ref&);
+    ref& operator=(const ref&);
+    friend class ref_monitor;
+};
+
+inline ref_monitor::ref_monitor(ref& m)
+    : pprev_(&m.first_), next_(m.first_) {
+    if (next_)
+        next_->pprev_ = &next_;
+    m.first_ = this;
+}
+
+
 template <typename T> class enable_ref_ptr_with_full_release;
 template <typename T> class ref_ptr;
 template <typename T> class passive_ref_ptr;
