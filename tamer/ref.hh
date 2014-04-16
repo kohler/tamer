@@ -95,19 +95,26 @@ template <typename T> class ref_ptr { public:
 	: _t(0) {
     }
 
-    template <typename U> explicit ref_ptr(U *u)
-	: _t(u) {
+    template <typename U> explicit ref_ptr(U* ptr)
+	: _t(ptr) {
 	assert(!_t || _t->use_count() == 1);
     }
 
-    ref_ptr(const ref_ptr<T> &r)
-	: _t(r._t) {
+    ref_ptr(const ref_ptr<T>& x)
+	: _t(x._t) {
 	if (_t)
 	    _t->add_ref_copy();
     }
 
-    template <typename U> ref_ptr(const ref_ptr<U> &r)
-	: _t(r._t) {
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    ref_ptr(ref_ptr<T>&& x)
+        : _t(x._t) {
+        x._t = 0;
+    }
+#endif
+
+    template <typename U> ref_ptr(const ref_ptr<U>& x)
+	: _t(x._t) {
 	if (_t)
 	    _t->add_ref_copy();
     }
@@ -117,37 +124,44 @@ template <typename T> class ref_ptr { public:
 	    delete _t;
     }
 
-    ref_ptr<T> &operator=(const ref_ptr<T> &r) {
-	if (r._t)
-	    r._t->add_ref_copy();
+    ref_ptr<T>& operator=(const ref_ptr<T>& x) {
+	if (x._t)
+	    x._t->add_ref_copy();
 	if (_t && _t->release())
 	    delete _t;
-	_t = r._t;
+	_t = x._t;
 	return *this;
     }
 
-    template <typename U> ref_ptr<T> &operator=(const ref_ptr<U> &r) {
-	if (r._t)
-	    r._t->add_ref_copy();
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    ref_ptr<T>& operator=(ref_ptr<T>&& x) {
+        std::swap(_t, x._t);
+	return *this;
+    }
+#endif
+
+    template <typename U> ref_ptr<T>& operator=(const ref_ptr<U>& x) {
+	if (x._t)
+	    x._t->add_ref_copy();
 	if (_t && _t->release())
 	    delete _t;
-	_t = r._t;
+	_t = x._t;
 	return *this;
     }
 
-    T &operator*() const {
+    T& operator*() const {
 	return *_t;
     }
 
-    T *operator->() const {
+    T* operator->() const {
 	return _t;
     }
 
-    T *get() const {
+    T* get() const {
 	return _t;
     }
 
-    typedef T *ref_ptr::*unspecified_bool_type;
+    typedef T* ref_ptr::*unspecified_bool_type;
 
     operator unspecified_bool_type() const {
 	return _t ? &ref_ptr::_t : 0;
@@ -158,9 +172,7 @@ template <typename T> class ref_ptr { public:
     }
 
   private:
-
-    T *_t;
-
+    T* _t;
 };
 
 
@@ -170,26 +182,33 @@ template <typename T> class passive_ref_ptr { public:
 	: _t(0) {
     }
 
-    template <typename U> explicit passive_ref_ptr(U *u)
-	: _t(u) {
+    template <typename U> explicit passive_ref_ptr(U* ptr)
+	: _t(ptr) {
 	if (_t)
 	    _t->weak_add_ref();
     }
 
-    template <typename U> explicit passive_ref_ptr(const ref_ptr<U> &r)
-	: _t(r.operator->()) {
+    template <typename U> explicit passive_ref_ptr(const ref_ptr<U>& x)
+	: _t(x.operator->()) {
 	if (_t)
 	    _t->weak_add_ref();
     }
 
-    passive_ref_ptr(const passive_ref_ptr<T> &r)
-	: _t(r._t) {
+    passive_ref_ptr(const passive_ref_ptr<T>& x)
+	: _t(x._t) {
 	if (_t)
 	    _t->weak_add_ref();
     }
 
-    template <typename U> passive_ref_ptr(const passive_ref_ptr<U> &r)
-	: _t(r._t) {
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    passive_ref_ptr(passive_ref_ptr<T>&& x)
+	: _t(x._t) {
+        x._t = 0;
+    }
+#endif
+
+    template <typename U> passive_ref_ptr(const passive_ref_ptr<U>& x)
+	: _t(x._t) {
 	if (_t)
 	    _t->weak_add_ref();
     }
@@ -199,37 +218,44 @@ template <typename T> class passive_ref_ptr { public:
 	    delete _t;
     }
 
-    passive_ref_ptr<T> &operator=(const passive_ref_ptr<T> &r) {
-	if (r._t)
-	    r._t->weak_add_ref();
+    passive_ref_ptr<T>& operator=(const passive_ref_ptr<T>& x) {
+	if (x._t)
+	    x._t->weak_add_ref();
 	if (_t && _t->weak_release())
 	    delete _t;
-	_t = r._t;
+	_t = x._t;
 	return *this;
     }
 
-    template <typename U> passive_ref_ptr<T> &operator=(const passive_ref_ptr<U> &r) {
-	if (r._t)
-	    r._t->weak_add_ref();
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    passive_ref_ptr<T>& operator=(passive_ref_ptr<T>&& x) {
+        std::swap(_t, x._t);
+        return *this;
+    }
+#endif
+
+    template <typename U> passive_ref_ptr<T>& operator=(const passive_ref_ptr<U>& x) {
+	if (x._t)
+	    x._t->weak_add_ref();
 	if (_t && _t->weak_release())
 	    delete _t;
-	_t = r._t;
+	_t = x._t;
 	return *this;
     }
 
-    T &operator*() const {
+    T& operator*() const {
 	return *_t;
     }
 
-    T *operator->() const {
+    T* operator->() const {
 	return _t;
     }
 
-    T *get() const {
+    T* get() const {
 	return _t;
     }
 
-    typedef T *passive_ref_ptr::*unspecified_bool_type;
+    typedef T* passive_ref_ptr::*unspecified_bool_type;
 
     operator unspecified_bool_type() const {
 	return _t ? &passive_ref_ptr::_t : 0;
@@ -240,9 +266,7 @@ template <typename T> class passive_ref_ptr { public:
     }
 
   private:
-
-    T *_t;
-
+    T* _t;
 };
 
 
