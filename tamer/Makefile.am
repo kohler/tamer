@@ -1,5 +1,6 @@
 pkgconfigdir = ${libdir}/pkgconfig
 pkgconfig_DATA = tamer.pc
+AUTOMAKE_OPTIONS = subdir-objects
 
 bin_PROGRAMS =
 
