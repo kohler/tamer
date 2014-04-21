@@ -222,6 +222,8 @@ fi
 dnl
 dnl C++11 features
 dnl
+SAVE_CXX="$CXX"
+if test -n "$GCC"; then CXX="$CXX -Werror"; fi
 
 AC_CACHE_CHECK([whether the C++ compiler understands constexpr], [ac_cv_cxx_constexpr], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[constexpr int f(int x) { return x + 1; }]], [[]])],
@@ -264,6 +266,8 @@ AC_CACHE_CHECK([whether the C++ compiler understands variadic templates], [ac_cv
 if test "$ac_cv_cxx_variadic_templates" = yes; then
     AC_DEFINE([TAMER_HAVE_CXX_VARIADIC_TEMPLATES], [1], [Define if the C++ compiler understands variadic templates.])
 fi
+
+CXX="$SAVE_CXX"
 
 
 dnl
