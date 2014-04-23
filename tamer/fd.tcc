@@ -966,7 +966,7 @@ tamed void udp_connect(struct in_addr addr, int port, event<fd> result) {
  *  whether the function succeeded, use valid() or error() on the resulting
  *  file descriptor.
  */
-fd unix_stream_listen(const std::string& path, int backlog)
+fd unix_stream_listen(std::string path, int backlog)
 {
     struct sockaddr_un saddr;
     if (path.length() >= sizeof(saddr.sun_path))
