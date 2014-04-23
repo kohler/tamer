@@ -188,9 +188,14 @@ inline fd tcp_listen(int port);
 fd tcp_listen(int port, int backlog);
 inline void tcp_listen(int port, event<fd> result);
 void tcp_listen(int port, int backlog, event<fd> result);
-
 void tcp_connect(struct in_addr addr, int port, event<fd> result);
+
 void udp_connect(struct in_addr addr, int port, event<fd> result);
+
+fd unix_stream_listen(const std::string& path, int backlog);
+inline fd unix_stream_listen(const std::string& path);
+void unix_stream_connect(std::string path, event<fd> result);
+
 
 struct exec_fd {
     enum fdtype {
@@ -665,6 +670,10 @@ inline void tcp_listen(int port, event<fd> result) {
  */
 inline fd tcp_listen(int port) {
     return tcp_listen(port, fd::default_backlog);
+}
+
+inline fd unix_stream_listen(const std::string& path) {
+    return unix_stream_listen(path, fd::default_backlog);
 }
 
 inline exec_fd::exec_fd(int child_fd, fdtype type, fd f)

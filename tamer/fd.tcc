@@ -17,6 +17,7 @@
 #include <sys/select.h>
 #include <sys/ioctl.h>
 #include <sys/resource.h>
+#include <sys/un.h>
 #include <stdio.h>
 #include <signal.h>
 #include <unistd.h>
@@ -874,7 +875,7 @@ int fd::open_limit(int n) {
 }
 
 
-/** @brief  Open a nonblocking TCP connection on port @a port.
+/** @brief  Open a TCP listening socket receiving connections to @a port.
  *  @param  port     Listening port (in host byte order).
  *  @param  backlog  Maximum connection backlog.
  *  @return File descriptor.
@@ -953,6 +954,59 @@ tamed void udp_connect(struct in_addr addr, int port, event<fd> result) {
 	f.close(ret);
     result.trigger(f);
 }
+
+
+/** @brief  Open a nonblocking TCP connection on port @a port.
+ *  @param  port     Listening port (in host byte order).
+ *  @param  backlog  Maximum connection backlog.
+ *  @return File descriptor.
+ *
+ *  The returned file descriptor is made nonblocking, and is opened with the
+ *  @c SO_REUSEADDR option. A negative value is returned on error. To check
+ *  whether the function succeeded, use valid() or error() on the resulting
+ *  file descriptor.
+ */
+fd unix_stream_listen(const std::string& path, int backlog)
+{
+    struct sockaddr_un saddr;
+    if (path.length() >= sizeof(saddr.sun_path))
+        return fd(-ENAMETOOLONG);
+    fd f = fd::socket(AF_UNIX, SOCK_STREAM, 0);
+    if (f) {
+	saddr.sun_family = AF_UNIX;
+        memcpy(saddr.sun_path, path.data(), path.length());
+        saddr.sun_path[path.length()] = 0;
+	int ret = f.bind((struct sockaddr *) &saddr, sizeof(saddr));
+	if (ret >= 0)
+	    ret = f.listen(backlog);
+	if (ret < 0 && f)
+	    f.close(ret);
+    }
+    return f;
+}
+
+tamed void unix_stream_connect(std::string path, event<fd> result) {
+    tvars {
+        fd f;
+        int ret = 0;
+        struct sockaddr_un saddr;
+    }
+    if (path.length() < sizeof(saddr.sun_path))
+        f = fd::socket(AF_UNIX, SOCK_STREAM, 0);
+    else
+        f = fd(-ENAMETOOLONG);
+    if (f)
+        twait {
+            saddr.sun_family = AF_UNIX;
+            memcpy(saddr.sun_path, path.data(), path.length());
+            saddr.sun_path[path.length()] = '\0';
+            f.connect((struct sockaddr *) &saddr, sizeof(saddr), make_event(ret));
+        }
+    if (ret < 0 && f)
+	f.close(ret);
+    result.trigger(f);
+}
+
 
 static int kill_exec_fds(std::vector<exec_fd> &exec_fds,
 			 std::vector<int> &inner_fds, int error) {
