@@ -34,6 +34,7 @@ class driver_tamer : public driver {
     virtual void at_fd(int fd, int action, event<int> e);
     virtual void at_time(const timeval &expiry, event<> e, bool bg);
     virtual void at_asap(event<> e);
+    virtual void at_preblock(event<> e);
     virtual void kill_fd(int fd);
 
     virtual void loop(loop_flags flags);
@@ -64,6 +65,7 @@ class driver_tamer : public driver {
     tamerpriv::driver_timerset timers_;
 
     tamerpriv::driver_asapset asap_;
+    tamerpriv::driver_asapset preblock_;
 
     bool loop_state_;
 
@@ -164,12 +166,22 @@ void driver_tamer::at_asap(event<> e) {
 	asap_.push(e.__take_simple());
 }
 
+void driver_tamer::at_preblock(event<> e) {
+    if (e)
+	preblock_.push(e.__take_simple());
+}
+
 void driver_tamer::loop(loop_flags flags)
 {
     if (flags == loop_forever)
         loop_state_ = true;
 
  again:
+    // process asap events
+    while (!preblock_.empty())
+	preblock_.pop_trigger();
+    run_unblocked();
+
     // fix file descriptors
     if (fds_.has_change())
 	update_fds();

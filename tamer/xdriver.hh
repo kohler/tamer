@@ -49,6 +49,7 @@ class driver : public tamerpriv::simple_driver {
     virtual void at_fd(int fd, int action, event<int> e) = 0;
     virtual void at_time(const timeval& expiry, event<> e, bool bg) = 0;
     virtual void at_asap(event<> e) = 0;
+    virtual void at_preblock(event<> e) = 0;
     virtual void kill_fd(int fd) = 0;
 
     inline void at_fd(int fd, int action, event<> e);

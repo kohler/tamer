@@ -227,6 +227,15 @@ inline void at_asap(event<> e) {
     driver::main->at_asap(e);
 }
 
+/** @brief  Register event to trigger before Tamer blocks.
+ *  @param  e  Event.
+ *
+ *  Triggers @a e (and runs its closure) before the next blocking point.
+ */
+inline void at_preblock(event<> e) {
+    driver::main->at_preblock(e);
+}
+
 namespace tamerpriv { extern time_type_t time_type; }
 } // namespace tamer
 #endif /* TAMER_DRIVER_HH */

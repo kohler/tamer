@@ -37,6 +37,7 @@ class driver_libevent : public driver {
     virtual void at_fd(int fd, int action, event<int> e);
     virtual void at_time(const timeval &expiry, event<> e, bool bg);
     virtual void at_asap(event<> e);
+    virtual void at_preblock(event<> e);
     virtual void kill_fd(int fd);
 
     virtual void loop(loop_flags flags);
@@ -60,6 +61,7 @@ class driver_libevent : public driver {
     tamerpriv::driver_timerset timers_;
 
     tamerpriv::driver_asapset asap_;
+    tamerpriv::driver_asapset preblock_;
 
     void expand_events();
     static void fd_disinterest(void* arg);
@@ -164,12 +166,22 @@ void driver_libevent::at_asap(event<> e) {
 	asap_.push(e.__take_simple());
 }
 
+void driver_libevent::at_preblock(event<> e) {
+    if (e)
+	preblock_.push(e.__take_simple());
+}
+
 void driver_libevent::loop(loop_flags flags)
 {
     ::event timerev;
     bool timer_set = false;
 
  again:
+    // process preblock events
+    while (!preblock_.empty())
+	preblock_.pop_trigger();
+    run_unblocked();
+
     // fix file descriptors
     if (fds_.has_change())
 	update_fds();
