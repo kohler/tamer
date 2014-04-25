@@ -467,5 +467,18 @@ void distribute_rendezvous<T0, T1, T2, T3>::clear_hook(void* arg) {
 
 /** @endcond never */
 
+namespace tamerpriv {
+
+inline void closure::initialize_closure(closure_activator f, ...) {
+    tamer_activator_ = f;
+    tamer_block_position_ = 0;
+    tamer_driver_index_ = 0;
+    tamer_blocked_driver_ = 0;
+    TAMER_IFTRACE(tamer_location_file_ = 0);
+    TAMER_IFTRACE(tamer_location_line_ = 0);
+    TAMER_IFTRACE(tamer_description_ = 0);
+}
+
+} // namespace tamerpriv
 } // namespace tamer
 #endif /* TAMER__RENDEZVOUS_HH */

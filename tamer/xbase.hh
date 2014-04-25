@@ -183,32 +183,33 @@ class simple_driver {
     simple_driver();
     ~simple_driver();
 
-    inline void add_blocked(blocking_rendezvous* r);
-    inline void make_unblocked(blocking_rendezvous* r);
+    inline void add_blocked(closure* c);
+    inline void make_unblocked(closure* c);
 
     inline bool has_unblocked() const;
-    inline blocking_rendezvous* pop_unblocked();
+    inline closure* pop_unblocked();
     inline void run_unblocked();
 
-    inline unsigned nrendezvous() const;
-    inline blocking_rendezvous* rendezvous(unsigned i) const;
+    inline unsigned nclosure_slots() const;
+    inline closure* closure_slot(unsigned i) const;
 
   private:
-    struct rptr {
-        blocking_rendezvous* r;
+    struct cptr {
+        closure* c;
         unsigned next;
     };
 
-    unsigned rcap_;
-    mutable unsigned rfree_;
-    mutable unsigned runblocked_;
-    unsigned runblocked_tail_;
-    rptr* rs_;
+    unsigned ccap_;
+    mutable unsigned cfree_;
+    mutable unsigned cunblocked_;
+    unsigned cunblocked_tail_;
+    cptr* cs_;
 
-    void add(blocking_rendezvous* r);
+    void add(closure* c);
     void grow();
 
     friend class blocking_rendezvous;
+    friend class closure;
 };
 
 class blocking_rendezvous : public abstract_rendezvous {
@@ -217,32 +218,13 @@ class blocking_rendezvous : public abstract_rendezvous {
     inline ~blocking_rendezvous() TAMER_NOEXCEPT;
 
     inline bool blocked() const;
-    inline bool has_location() const;
-    inline bool has_description() const;
-
-    inline void set_location(const char* file, int line);
-    inline void set_description(std::string description);
 
     inline void block(simple_driver* driver, closure& c, unsigned position);
     inline void block(closure& c, unsigned position);
     inline void unblock();
-    inline void run();
-
-    inline const char* location_file() const;
-    inline int location_line() const;
-    std::string location() const;
-    inline std::string description() const;
-    std::string location_description() const;
 
   protected:
-    simple_driver* driver_;
     closure* blocked_closure_;
-    unsigned rpos_;
-#if !TAMER_NOTRACE
-    int location_line_;
-    const char* location_file_;
-    std::string* description_;
-#endif
 
     void hard_free() TAMER_NOEXCEPT;
 
@@ -315,7 +297,27 @@ typedef void (*closure_activator)(closure*);
 struct closure {
     closure_activator tamer_activator_;
     unsigned tamer_block_position_;
+    unsigned tamer_driver_index_;
+    simple_driver* tamer_blocked_driver_;
+#if !TAMER_NOTRACE
+    int tamer_location_line_;
+    const char* tamer_location_file_;
+    std::string* tamer_description_;
+    inline ~closure();
+#endif
+    inline bool has_location() const;
+    inline bool has_description() const;
+    inline void set_location(const char* file, int line);
+    inline void set_description(std::string description);
+    inline const char* location_file() const;
+    inline int location_line() const;
+    std::string location() const;
+    inline std::string description() const;
+    std::string location_description() const;
+    inline void initialize_closure(closure_activator f, ...);
+    inline void unblock();
 };
+
 
 template <typename T>
 class closure_owner {
@@ -371,130 +373,142 @@ inline abstract_rendezvous::~abstract_rendezvous() TAMER_NOEXCEPT {
 
 
 inline bool simple_driver::has_unblocked() const {
-    while (runblocked_ && !rs_[runblocked_].r) {
-        unsigned next = rs_[runblocked_].next;
-        rs_[runblocked_].next = rfree_;
-        rfree_ = runblocked_;
-        runblocked_ = next;
+    while (cunblocked_ && !cs_[cunblocked_].c) {
+        unsigned next = cs_[cunblocked_].next;
+        cs_[cunblocked_].next = cfree_;
+        cfree_ = cunblocked_;
+        cunblocked_ = next;
     }
-    return runblocked_ != 0;
+    return cunblocked_ != 0;
 }
 
-inline blocking_rendezvous* simple_driver::pop_unblocked() {
+inline closure* simple_driver::pop_unblocked() {
     if (has_unblocked()) {
-        unsigned i = runblocked_;
-        blocking_rendezvous* r = rs_[i].r;
-        runblocked_ = rs_[i].next;
-        rs_[i].r = 0;
-        rs_[i].next = rfree_;
-        rfree_ = i;
-        return r;
+        unsigned i = cunblocked_;
+        closure* c = cs_[i].c;
+        cunblocked_ = cs_[i].next;
+        cs_[i].c = 0;
+        cs_[i].next = cfree_;
+        cfree_ = i;
+        return c;
     } else
         return 0;
 }
 
 inline void simple_driver::run_unblocked() {
-    while (blocking_rendezvous* r = pop_unblocked())
-	r->run();
+    while (closure* c = pop_unblocked())
+	c->tamer_activator_(c);
 }
 
-inline void simple_driver::add_blocked(blocking_rendezvous* r) {
+inline void simple_driver::add_blocked(closure* c) {
 #if TAMER_NOTRACE
-    r->rpos_ = 0;
+    c->tamer_driver_index_ = 0;
 #else
-    add(r);
+    add(c);
 #endif
 }
 
-inline void simple_driver::make_unblocked(blocking_rendezvous* r) {
-    if (!r->rpos_)
-        add(r);
-    if (runblocked_)
-        rs_[runblocked_tail_].next = r->rpos_;
+inline void simple_driver::make_unblocked(closure* c) {
+    if (!c->tamer_driver_index_)
+        add(c);
+    if (cunblocked_)
+        cs_[cunblocked_tail_].next = c->tamer_driver_index_;
     else
-        runblocked_ = r->rpos_;
-    runblocked_tail_ = r->rpos_;
+        cunblocked_ = c->tamer_driver_index_;
+    cunblocked_tail_ = c->tamer_driver_index_;
 }
 
-inline unsigned simple_driver::nrendezvous() const {
-    return rcap_;
+inline unsigned simple_driver::nclosure_slots() const {
+    return ccap_;
 }
 
-inline blocking_rendezvous* simple_driver::rendezvous(unsigned i) const {
-    assert(i < rcap_);
-    return rs_[i].r;
+inline closure* simple_driver::closure_slot(unsigned i) const {
+    assert(i < ccap_);
+    return cs_[i].c;
 }
 
 
 inline blocking_rendezvous::blocking_rendezvous(rendezvous_flags flags,
 						rendezvous_type rtype) TAMER_NOEXCEPT
-    : abstract_rendezvous(flags, rtype), driver_(), blocked_closure_(),
-      rpos_(0) TAMER_IFTRACE(, location_file_(), description_()) {
+    : abstract_rendezvous(flags, rtype), blocked_closure_() {
 }
 
 inline blocking_rendezvous::~blocking_rendezvous() TAMER_NOEXCEPT {
-    if (blocked_closure_ || description_)
+    if (blocked_closure_)
 	hard_free();
 }
 
 inline bool blocking_rendezvous::blocked() const {
-    return blocked_closure_ && driver_;
-}
-
-inline bool blocking_rendezvous::has_location() const {
-    return location_file_ || location_line_;
-}
-
-inline bool blocking_rendezvous::has_description() const {
-    return description_ && !description_->empty();
-}
-
-inline void blocking_rendezvous::set_location(const char* file, int line) {
-    TAMER_IFTRACE(location_file_ = file);
-    TAMER_IFTRACE(location_line_ = line);
-    TAMER_IFNOTRACE((void) file, (void) line);
-}
-
-inline void blocking_rendezvous::set_description(std::string description) {
-    if (description_)
-        *description_ = TAMER_MOVE(description);
-    else if (!description.empty())
-        description_ = new std::string(TAMER_MOVE(description));
+    return blocked_closure_ && blocked_closure_->tamer_blocked_driver_;
 }
 
 inline void blocking_rendezvous::block(simple_driver* driver, closure& c,
 				       unsigned position) {
-    assert(!blocked_closure_ && &c);
+    assert(&c && !c.tamer_blocked_driver_);
     blocked_closure_ = &c;
-    driver_ = driver;
     c.tamer_block_position_ = position;
-    driver_->add_blocked(this);
+    c.tamer_blocked_driver_ = driver;
+    driver->add_blocked(&c);
 }
 
-inline void blocking_rendezvous::unblock() {
-    if (blocked_closure_ && driver_) {
-        driver_->make_unblocked(this);
-        driver_ = 0;
+inline void closure::unblock() {
+    if (tamer_blocked_driver_) {
+        tamer_blocked_driver_->make_unblocked(this);
+        tamer_blocked_driver_ = 0;
     }
 }
 
-inline void blocking_rendezvous::run() {
-    closure* c = blocked_closure_;
-    blocked_closure_ = 0;
-    c->tamer_activator_(c);
+inline void blocking_rendezvous::unblock() {
+    if (blocked_closure_)
+        blocked_closure_->unblock();
 }
 
-inline const char* blocking_rendezvous::location_file() const {
-    return TAMER_IFTRACE_ELSE(location_file_, 0);
+
+#if !TAMER_NOTRACE
+inline closure::~closure() {
+    delete tamer_description_;
+}
+#endif
+
+inline bool closure::has_location() const {
+    return tamer_location_file_ || tamer_location_line_;
 }
 
-inline int blocking_rendezvous::location_line() const {
-    return TAMER_IFTRACE_ELSE(location_line_, 0);
+inline bool closure::has_description() const {
+    return tamer_description_ && !tamer_description_->empty();
 }
 
-inline std::string blocking_rendezvous::description() const {
-    return TAMER_IFTRACE_ELSE(description_ ? *description_ : std::string(),
-                              std::string());
+inline void closure::set_location(const char* file, int line) {
+    TAMER_IFTRACE(tamer_location_file_ = file);
+    TAMER_IFTRACE(tamer_location_line_ = line);
+    TAMER_IFNOTRACE((void) file, (void) line);
+}
+
+inline void closure::set_description(std::string description) {
+#if !TAMER_NOTRACE
+    if (tamer_description_)
+        *tamer_description_ = TAMER_MOVE(description);
+    else if (!description.empty())
+        tamer_description_ = new std::string(TAMER_MOVE(description));
+#else
+    (void) description;
+#endif
+}
+
+inline const char* closure::location_file() const {
+    return TAMER_IFTRACE_ELSE(tamer_location_file_, 0);
+}
+
+inline int closure::location_line() const {
+    return TAMER_IFTRACE_ELSE(tamer_location_line_, 0);
+}
+
+inline std::string closure::description() const {
+#if !TAMER_NOTRACE
+    if (tamer_description_)
+        return *tamer_description_;
+#endif
+    return std::string();
 }
 
 

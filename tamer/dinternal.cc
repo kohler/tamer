@@ -47,11 +47,9 @@ driver::~driver() {
 }
 
 void driver::blocked_locations(std::vector<std::string>& x) {
-    for (unsigned i = 0; i != this->nrendezvous(); ++i)
-        if (tamerpriv::blocking_rendezvous* r = this->rendezvous(i)) {
-            if (r->blocked())
-                x.push_back(r->location_description());
-        }
+    for (unsigned i = 0; i != this->nclosure_slots(); ++i)
+        if (tamerpriv::closure* c = this->closure_slot(i))
+            x.push_back(c->location_description());
 }
 
 bool initialize(int flags) {

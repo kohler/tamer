@@ -21,61 +21,56 @@ namespace tamer {
 namespace tamerpriv {
 
 simple_driver::simple_driver()
-    : rcap_(0), rfree_(1), runblocked_(0), runblocked_tail_(0), rs_() {
+    : ccap_(0), cfree_(1), cunblocked_(0), cunblocked_tail_(0), cs_() {
     grow();
 }
 
 simple_driver::~simple_driver() {
-    delete[] rs_;
+    delete[] cs_;
 }
 
 void simple_driver::grow() {
-    unsigned new_rcap = rcap_ ? rcap_ * 2 : 64;
-    rptr* new_rs = new rptr[new_rcap];
-    memcpy(new_rs, rs_, sizeof(rptr) * rcap_);
-    for (unsigned i = rcap_; i != new_rcap - 1; ++i) {
-        new_rs[i].r = 0;
-        new_rs[i].next = i + 1;
+    unsigned new_ccap = ccap_ ? ccap_ * 2 : 64;
+    cptr* new_cs = new cptr[new_ccap];
+    memcpy(new_cs, cs_, sizeof(cptr) * ccap_);
+    for (unsigned i = ccap_; i != new_ccap - 1; ++i) {
+        new_cs[i].c = 0;
+        new_cs[i].next = i + 1;
     }
-    new_rs[new_rcap - 1].r = 0;
-    new_rs[new_rcap - 1].next = 0;
-    rfree_ = rcap_ ? rcap_ : 1;
-    rcap_ = new_rcap;
-    delete[] rs_;
-    rs_ = new_rs;
+    new_cs[new_ccap - 1].c = 0;
+    new_cs[new_ccap - 1].next = 0;
+    cfree_ = ccap_ ? ccap_ : 1;
+    ccap_ = new_ccap;
+    delete[] cs_;
+    cs_ = new_cs;
 }
 
-void simple_driver::add(blocking_rendezvous* r) {
-    if (!rfree_)
+void simple_driver::add(closure* c) {
+    if (!cfree_)
         grow();
-    unsigned i = rfree_;
-    rfree_ = rs_[i].next;
-    rs_[i].r = r;
-    rs_[i].next = 0;
-    r->rpos_ = i;
+    unsigned i = cfree_;
+    cfree_ = cs_[i].next;
+    cs_[i].c = c;
+    cs_[i].next = 0;
+    c->tamer_driver_index_ = i;
 }
 
 
 void blocking_rendezvous::hard_free() TAMER_NOEXCEPT {
-    if (driver_)
-        driver_->rs_[rpos_].r = 0;
-    if (blocked_closure_) {
-        blocked_closure_->tamer_block_position_ = 1;
-        blocked_closure_->tamer_activator_(blocked_closure_);
-    }
-    if (description_)
-        delete description_;
+    assert(blocked_closure_);
+    blocked_closure_->tamer_block_position_ = (unsigned) -1;
+    blocked_closure_->unblock();
 }
 
-std::string blocking_rendezvous::location() const {
+std::string closure::location() const {
 #if !TAMER_NOTRACE
     std::stringstream buf;
-    if (location_file_ && location_line_)
-        buf << location_file_ << ":" << location_line_;
-    else if (location_file_)
-        buf << location_file_;
-    else if (location_line_)
-        buf << location_line_;
+    if (tamer_location_file_ && tamer_location_line_)
+        buf << tamer_location_file_ << ":" << tamer_location_line_;
+    else if (tamer_location_file_)
+        buf << tamer_location_file_;
+    else if (tamer_location_line_)
+        buf << tamer_location_line_;
     else
         buf << "<unknown>";
     return buf.str();
@@ -84,21 +79,21 @@ std::string blocking_rendezvous::location() const {
 #endif
 }
 
-std::string blocking_rendezvous::location_description() const {
+std::string closure::location_description() const {
 #if !TAMER_NOTRACE
     std::stringstream buf;
-    if (location_file_ && location_line_)
-        buf << location_file_ << ":" << location_line_;
-    else if (location_file_)
-        buf << location_file_;
-    else if (location_line_)
-        buf << location_line_;
+    if (tamer_location_file_ && tamer_location_line_)
+        buf << tamer_location_file_ << ":" << tamer_location_line_;
+    else if (tamer_location_file_)
+        buf << tamer_location_file_;
+    else if (tamer_location_line_)
+        buf << tamer_location_line_;
     else if (!has_description())
         buf << "<unknown>";
     if (has_description()) {
         if (buf.tellp() != 0)
             buf << " ";
-        buf << *description_;
+        buf << *tamer_description_;
     }
     return buf.str();
 #else
