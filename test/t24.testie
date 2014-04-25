@@ -1,0 +1,11 @@
+%info
+Check tamer::tamed_class.
+
+%script
+$rundir/test/t24
+
+%stdout
+delay 0.1 happened
+delay 0.2 happened
+return
+OK! 0 foos

@@ -780,8 +780,12 @@ tame_fn_t::output_closure(outputter_t *o)
 
     if (class_template_.length() || function_template_.length())
         add_templates(b, "\n");
-    b << "class " << closure_type_name(false)
-      << " : public tamer::tamerpriv::closure {\npublic:\n";
+    b << "class " << closure_type_name(false) << " : public tamer::tamerpriv";
+    if (_class.length() && !(_opts & STATIC_DECL))
+        b << "::closure_choice< " << _class << " >::type";
+    else
+        b << "::closure";
+    b << " {\npublic:\n";
 
     output_reenter(b);
 
@@ -870,18 +874,21 @@ tame_fn_t::closure_signature() const
 void
 tame_fn_t::output_firstfn(outputter_t *o)
 {
-    strbuf b;
     state->set_fn(this);
-
     output_mode_t om = o->switch_to_mode(OUTPUT_PASSTHROUGH);
+    str closure_type = closure(true).type().base_type();
+
+    strbuf b;
     b << signature() << "\n{\n";
 
-    // If no vars section was specified, do it now.
     b << "  " << closure(true).decl(true) << " = "
       << "std::allocator< " << closure(true).type().base_type() << " >()."
       << "allocate(1);\n"
-      << "  ((tamer::tamerpriv::closure*) " TAME_CLOSURE_NAME ")->initialize_closure("
-      << closure(true).type().base_type() << "::tamer_activator_);\n";
+      << "  ((typename " << closure_type << "::tamer_closure_type*) " TAME_CLOSURE_NAME ")->initialize_closure("
+      << closure(true).type().base_type() << "::tamer_activator_";
+    if (_class.length() && !(_opts & STATIC_DECL))
+        b << ", this";
+    b << ");\n";
     if (_class.length() && !(_opts & STATIC_DECL))
         b << "  " << TAME_CLOSURE_NAME "->" TAMER_SELF_NAME " = this;\n";
     if (_args)

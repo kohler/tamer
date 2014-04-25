@@ -30,6 +30,7 @@ template <typename T0 = void, typename T1 = void, typename T2 = void,
 #if TAMER_HAVE_PREEVENT
 template <typename R, typename T0 = void> class preevent;
 #endif
+class tamed_class;
 class driver;
 
 template <typename T0=void, typename T1=void, typename T2=void, typename T3=void> struct value_pack;
@@ -295,6 +296,7 @@ class functional_rendezvous : public abstract_rendezvous {
 typedef void (*closure_activator)(closure*);
 
 struct closure {
+    typedef closure tamer_closure_type;
     closure_activator tamer_activator_;
     unsigned tamer_block_position_;
     unsigned tamer_driver_index_;
@@ -316,6 +318,32 @@ struct closure {
     std::string location_description() const;
     inline void initialize_closure(closure_activator f, ...);
     inline void unblock();
+};
+
+struct tamed_class_closure : public closure {
+    typedef tamed_class_closure tamer_closure_type;
+    tamed_class_closure* tamer_closures_next_;
+    tamed_class_closure** tamer_closures_pprev_;
+    inline ~tamed_class_closure();
+    inline void initialize_closure(closure_activator f, tamed_class*);
+};
+
+template <typename T>
+struct detect_tamed_class {
+    static T* make_ptr();
+    static char (&check(tamed_class*))[1];
+    static char (&check(...))[2];
+    enum { value = sizeof(check(make_ptr())) == 1 };
+};
+
+template <typename T, bool B = (int) detect_tamed_class<T>::value == 1>
+struct closure_choice {
+    typedef closure type;
+};
+
+template <typename T>
+struct closure_choice<T, true> {
+    typedef tamed_class_closure type;
 };
 
 
