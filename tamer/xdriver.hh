@@ -174,7 +174,7 @@ inline void driver::at_delay_usec(int delay, event<> e, bool bg) {
 }
 
 namespace tamerpriv {
-inline void blocking_rendezvous::block(tamer_closure& c, unsigned position) {
+inline void blocking_rendezvous::block(closure& c, unsigned position) {
     block(tamer::driver::main, c, position);
 }
 } // namespace tamerpriv

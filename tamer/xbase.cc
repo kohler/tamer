@@ -56,7 +56,7 @@ void simple_driver::add(blocking_rendezvous* r) {
 }
 
 
-tamer_closure *abstract_rendezvous::linked_closure() const {
+closure* abstract_rendezvous::linked_closure() const {
     if (rtype_ == rgather) {
 	const gather_rendezvous *gr = static_cast<const gather_rendezvous*>(this);
 	return gr->linked_closure_;

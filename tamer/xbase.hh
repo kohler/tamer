@@ -75,7 +75,7 @@ class simple_event;
 class abstract_rendezvous;
 class blocking_rendezvous;
 class explicit_rendezvous;
-struct tamer_closure;
+struct closure;
 
 class simple_event { public:
     // DO NOT derive from this class!
@@ -163,7 +163,7 @@ class abstract_rendezvous {
 	is_volatile_ = v;
     }
 
-    tamer_closure *linked_closure() const;
+    closure* linked_closure() const;
 
   protected:
     simple_event *waiting_;
@@ -225,9 +225,8 @@ class blocking_rendezvous : public abstract_rendezvous {
     inline void set_location(const char* file, int line);
     inline void set_description(std::string description);
 
-    inline void block(simple_driver* driver,
-                      tamer_closure& c, unsigned position);
-    inline void block(tamer_closure& c, unsigned position);
+    inline void block(simple_driver* driver, closure& c, unsigned position);
+    inline void block(closure& c, unsigned position);
     inline void unblock();
     inline void run();
 
@@ -239,7 +238,7 @@ class blocking_rendezvous : public abstract_rendezvous {
 
   protected:
     simple_driver* driver_;
-    tamer_closure* blocked_closure_;
+    closure* blocked_closure_;
     unsigned rpos_;
 #if !TAMER_NOTRACE
     int location_line_;
@@ -313,17 +312,17 @@ class functional_rendezvous : public abstract_rendezvous {
     friend class simple_event;
 };
 
-typedef void (*tamer_closure_activator)(tamer_closure *);
+typedef void (*closure_activator)(closure*);
 
-struct tamer_closure {
-    tamer_closure_activator tamer_activator_;
+struct closure {
+    closure_activator tamer_activator_;
     unsigned tamer_block_position_;
 };
 
 template <typename T>
 class closure_owner {
   public:
-    inline closure_owner(T &c)
+    inline closure_owner(T& c)
 	: c_(&c) {
     }
     inline ~closure_owner() {
@@ -333,13 +332,13 @@ class closure_owner {
 	c_ = 0;
     }
   private:
-    T *c_;
+    T* c_;
 };
 
 template <typename R>
 class rendezvous_owner {
   public:
-    inline rendezvous_owner(R &r)
+    inline rendezvous_owner(R& r)
 	: r_(&r) {
     }
     inline ~rendezvous_owner() {
@@ -350,7 +349,7 @@ class rendezvous_owner {
 	r_ = 0;
     }
   private:
-    R *r_;
+    R* r_;
 };
 
 
@@ -465,7 +464,7 @@ inline void blocking_rendezvous::set_description(std::string description) {
         description_ = new std::string(TAMER_MOVE(description));
 }
 
-inline void blocking_rendezvous::block(simple_driver* driver, tamer_closure& c,
+inline void blocking_rendezvous::block(simple_driver* driver, closure& c,
 				       unsigned position) {
     assert(!blocked_closure_ && &c);
     blocked_closure_ = &c;
@@ -482,7 +481,7 @@ inline void blocking_rendezvous::unblock() {
 }
 
 inline void blocking_rendezvous::run() {
-    tamer_closure *c = blocked_closure_;
+    closure* c = blocked_closure_;
     blocked_closure_ = 0;
     c->tamer_activator_(c);
 }

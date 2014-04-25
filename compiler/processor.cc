@@ -760,7 +760,7 @@ tame_fn_t::closure_type_name(bool include_template) const
 void
 tame_fn_t::output_reenter (strbuf &b)
 {
-    b << "  static void tamer_activator_(tamer::tamerpriv::tamer_closure* super) {\n"
+    b << "  static void tamer_activator_(tamer::tamerpriv::closure* super) {\n"
       << "    " << closure_type_name(true) << "* self = static_cast<"
       << closure_type_name(true) << "*>(super);\n"
       << "    ";
@@ -778,12 +778,10 @@ tame_fn_t::output_closure(outputter_t *o)
     strbuf b;
     output_mode_t om = o->switch_to_mode (OUTPUT_TREADMILL);
 
-    const char *base_type = "tamer_closure";
-
     if (class_template_.length() || function_template_.length())
         add_templates(b, "\n");
-    b << "class " << closure_type_name(false) << " : public tamer::tamerpriv::"
-      << base_type << " {\npublic:\n";
+    b << "class " << closure_type_name(false)
+      << " : public tamer::tamerpriv::closure {\npublic:\n";
 
     output_reenter(b);
 
@@ -882,7 +880,7 @@ tame_fn_t::output_firstfn(outputter_t *o)
     b << "  " << closure(true).decl(true) << " = "
       << "std::allocator< " << closure(true).type().base_type() << " >()."
       << "allocate(1);\n"
-      << "  ((tamer::tamerpriv::tamer_closure*) " << TAME_CLOSURE_NAME ")->tamer_activator_ = "
+      << "  ((tamer::tamerpriv::closure*) " << TAME_CLOSURE_NAME ")->tamer_activator_ = "
       << closure(true).type().base_type() << "::tamer_activator_;\n"
       << "  " << TAME_CLOSURE_NAME "->tamer_block_position_ = 0;\n";
     if (_class.length() && !(_opts & STATIC_DECL))
