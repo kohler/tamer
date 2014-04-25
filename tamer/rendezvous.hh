@@ -294,10 +294,7 @@ class gather_rendezvous : public tamerpriv::blocking_rendezvous,
 			  public zero_argument_rendezvous_tag<gather_rendezvous> {
   public:
     inline gather_rendezvous()
-        : blocking_rendezvous(rnormal, tamerpriv::rgather), linked_closure_() {
-    }
-    inline gather_rendezvous(tamerpriv::closure* c)
-	: blocking_rendezvous(rnormal, tamerpriv::rgather), linked_closure_(c) {
+        : blocking_rendezvous(rnormal, tamerpriv::rgather) {
     }
     inline ~gather_rendezvous() {
 	if (waiting_)
@@ -337,7 +334,6 @@ class gather_rendezvous : public tamerpriv::blocking_rendezvous,
     using tamerpriv::blocking_rendezvous::block;
 
   private:
-    tamerpriv::closure* linked_closure_;
     friend class tamerpriv::abstract_rendezvous;
 };
 

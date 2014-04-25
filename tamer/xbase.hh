@@ -163,8 +163,6 @@ class abstract_rendezvous {
 	is_volatile_ = v;
     }
 
-    closure* linked_closure() const;
-
   protected:
     simple_event *waiting_;
     uint8_t rtype_;

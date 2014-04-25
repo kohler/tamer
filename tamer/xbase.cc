@@ -56,18 +56,6 @@ void simple_driver::add(blocking_rendezvous* r) {
 }
 
 
-closure* abstract_rendezvous::linked_closure() const {
-    if (rtype_ == rgather) {
-	const gather_rendezvous *gr = static_cast<const gather_rendezvous*>(this);
-	return gr->linked_closure_;
-    } else if (rtype_ == rexplicit) {
-	const blocking_rendezvous *br = static_cast<const blocking_rendezvous*>(this);
-	return br->blocked_closure_;
-    } else
-	return 0;
-}
-
-
 void blocking_rendezvous::hard_free() TAMER_NOEXCEPT {
     if (driver_)
         driver_->rs_[rpos_].r = 0;

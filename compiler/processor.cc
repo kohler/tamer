@@ -889,7 +889,7 @@ tame_fn_t::output_firstfn(outputter_t *o)
         _args->paramlist(b, vartab_t::pl_assign_moves_named, "");
     if (need_implicit_rendezvous())
         b << "  new ((void*) &" TAME_CLOSURE_NAME "->" TWAIT_BLOCK_RENDEZVOUS
-            ") tamer::gather_rendezvous(" TAME_CLOSURE_NAME ");\n";
+            ") tamer::gather_rendezvous;\n";
     b << "  " << TAME_CLOSURE_NAME << "->tamer_activator_("
       << TAME_CLOSURE_NAME << ");\n}\n";
 
