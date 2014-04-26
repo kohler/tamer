@@ -32,14 +32,14 @@ tamed void stdiny() {
 	//tamer::at_fd_read(0, with_signal(SIGINT, make_event(), fail));
 	//tamer::at_fd_read(0, make_event());
     }
-    fprintf(stderr, "====stdin result %d\n", fail);
+    fprintf(stderr, ":: stdin result %d\n", fail);
 }
 
 tamed void waitr(tamer::rendezvous<int> &r) {
     tvars { int x (); }
-    fprintf(stderr, "====waitr %d\n", x);
+    fprintf(stderr, ":: waitr %d\n", x);
     twait(r, x);
-    fprintf(stderr, "====waitr %d\n", x);
+    fprintf(stderr, ":: waitr %d\n", x);
 }
 
 tamed void waitsig() {

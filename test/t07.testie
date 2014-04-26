@@ -2,7 +2,7 @@
 Test templated tamed functions.
 
 %script
-$rundir/test/t07
+$VALGRIND $rundir/test/t07
 
 %stdout
 It happened

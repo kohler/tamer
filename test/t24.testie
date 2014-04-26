@@ -2,7 +2,7 @@
 Check tamer::tamed_class.
 
 %script
-$rundir/test/t24
+$VALGRIND $rundir/test/t24
 
 %stdout
 delay 0.1 happened

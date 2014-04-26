@@ -2,7 +2,7 @@
 Check tamed functions: member or not, template or not.
 
 %script
-$rundir/test/t18
+$VALGRIND $rundir/test/t18
 
 %stdout
 f

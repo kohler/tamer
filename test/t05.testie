@@ -2,7 +2,7 @@
 Test string rendezvous values.
 
 %script
-$rundir/test/t05
+$VALGRIND $rundir/test/t05
 
 %stdout
 3967

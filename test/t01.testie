@@ -2,10 +2,10 @@
 Bag o' tests, including of some adapters.
 
 %script
-echo Wacky | $rundir/test/t01
+echo Wacky | $VALGRIND $rundir/test/t01
 
 %stderr
-====waitr 0
+:: waitr 0
 @0: triggered 1
 @0: triggered 100
 @0: triggered 101
@@ -16,7 +16,7 @@ echo Wacky | $rundir/test/t01
 @0: done cancellina2
 @0: before bindery 1
 @0: before mappery 1
-====stdin result 0
+:: stdin result 0
 @100: {{[\d.]+}}
 @250: {{[\d.]+}}
 @400: {{[\d.]+}}
@@ -40,9 +40,10 @@ tamer: dropping last reference to active event
 @700: after mappery 3
 @700+: after mappery 11
 @1000: {{[\d.]+}}
-====waitr 10
+:: waitr 10
 tamer: dropping last reference to active event
 {{tamer:   t01.tcc:197: event was created here|}}
 
 %ignore
 #{{.*}}
+{{^==\d+==.*}}

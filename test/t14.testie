@@ -2,7 +2,7 @@
 Check shutdown() and close() in client/server
 
 %script
-$rundir/test/t14
+$VALGRIND $rundir/test/t14
 
 %stdout -a
 W 0: Hello

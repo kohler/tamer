@@ -2,7 +2,7 @@
 Check large numbers of file descriptors
 
 %script
-$rundir/test/t10
+$VALGRIND $rundir/test/t10
 
 %stdout
 GOOD: Got character A after {{\d+}} passes

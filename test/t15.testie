@@ -2,7 +2,7 @@
 Check correctness of closure variable initialization
 
 %script
-$rundir/test/t15
+$VALGRIND $rundir/test/t15
 
 %stdout -a
 All OK

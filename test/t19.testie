@@ -2,7 +2,7 @@
 Check push_back_event.
 
 %script
-$rundir/test/t19
+$VALGRIND $rundir/test/t19
 
 %stdout
 OK!

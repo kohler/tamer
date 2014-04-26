@@ -2,7 +2,7 @@
 Check the Tamer lock subsystem
 
 %script
-$rundir/test/t13
+$VALGRIND $rundir/test/t13
 
 %stdout
 1: acquired

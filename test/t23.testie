@@ -2,7 +2,7 @@
 Check tamer::event<const char *>.
 
 %script
-$rundir/test/t23
+$VALGRIND $rundir/test/t23
 
 %stdout
 0.05: faster

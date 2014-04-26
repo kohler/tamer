@@ -6,11 +6,11 @@ fsleep () {
     perl -e "select(undef,undef,undef,$1)"
 }
 
-$rundir/test/t03
-echo Foo | $rundir/test/t03
-(fsleep 0.25; echo Bar) | $rundir/test/t03
-(echo Baz; fsleep 0.25; echo Quux) | $rundir/test/t03
-echo 0123456789a123456789b123456789c123456789d123456789e123456789 | $rundir/test/t03
+$VALGRIND $rundir/test/t03
+echo Foo | $VALGRIND $rundir/test/t03
+(fsleep 0.25; echo Bar) | $VALGRIND $rundir/test/t03
+(echo Baz; fsleep 0.25; echo Quux) | $VALGRIND $rundir/test/t03
+echo 0123456789a123456789b123456789c123456789d123456789e123456789 | $VALGRIND $rundir/test/t03
 
 %stdout
 got 0: 0: 

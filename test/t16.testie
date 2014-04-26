@@ -2,7 +2,7 @@
 Check tamer blocked rendezvous list.
 
 %script
-$rundir/test/t16 | sort
+$VALGRIND $rundir/test/t16 | sort
 
 %stdout
 0 returned, 0 bytes read

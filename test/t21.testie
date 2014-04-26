@@ -2,7 +2,7 @@
 Check tamer::channel.
 
 %script
-$rundir/test/t21
+$VALGRIND $rundir/test/t21
 
 %stdout
 0 -1

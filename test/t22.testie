@@ -8,7 +8,7 @@ fsleep () {
 
 x=`perl -e "print time"`
 (echo foo; fsleep 0.2; echo crap) |
-      (fsleep 0.1; $rundir/test/t22)
+      (fsleep 0.1; $VALGRIND $rundir/test/t22)
 y=`perl -e "print time"`
 echo delta $(($y - $x))
 
@@ -19,3 +19,6 @@ echo delta $(($y - $x))
 1000000200.0000{{\d+}}
 OK!
 delta {{0|1}}
+
+%ignore
+{{^==\d+==.*}}
