@@ -467,8 +467,10 @@ inline void closure::unblock() {
 }
 
 inline void blocking_rendezvous::unblock() {
-    if (blocked_closure_)
+    if (blocked_closure_) {
         blocked_closure_->unblock();
+        blocked_closure_ = 0;
+    }
 }
 
 
