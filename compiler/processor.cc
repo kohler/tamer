@@ -907,6 +907,7 @@ tame_fn_t::output_fn(outputter_t *o)
 
     output_mode_t om = o->switch_to_mode(OUTPUT_PASSTHROUGH);
     b << closure_signature() << "\n{\n";
+    b << "#define exit_at_destroy(x) tamerpriv::exit_at_destroy(" TAME_CLOSURE_NAME << ", (x))\n";
 
     o->output_str(b.str());
 
@@ -916,7 +917,8 @@ tame_fn_t::output_fn(outputter_t *o)
 
     element_list_t::output(o);
 
-    o->switch_to_mode (om);
+    o->output_str("#undef exit_at_destroy\n}\n");
+    o->switch_to_mode(om);
 }
 
 void

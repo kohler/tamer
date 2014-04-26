@@ -133,11 +133,10 @@ fn:	tame_decl '{'
 	    yyerror ("Function has non-void return type but no "
 	    	     "DEFAULT_RETURN specified");
  	  }
-	  state->push (new tame_fn_return_t (get_yy_lineno (),
-				            state->function ()));
-	  state->passthrough (lstr (get_yy_lineno (), "}"));
-	  state->pop_list ();
-	  state->clear_fn ();
+	  state->push(new tame_fn_return_t(get_yy_lineno(),
+				           state->function()));
+	  state->pop_list();
+	  state->clear_fn();
 	}
 	|
 	tame_decl ';'
