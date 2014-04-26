@@ -187,12 +187,14 @@ class simple_driver {
     inline void add_blocked(closure* c);
     inline void make_unblocked(closure* c);
 
-    inline bool has_unblocked() const;
     inline closure* pop_unblocked();
-    inline void run_unblocked();
 
     inline unsigned nclosure_slots() const;
     inline closure* closure_slot(unsigned i) const;
+
+  public:
+    inline bool has_unblocked() const;
+    inline void run_unblocked();
 
   private:
     struct cptr {

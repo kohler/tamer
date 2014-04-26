@@ -81,6 +81,8 @@ bool initialize(int flags) {
 }
 
 void cleanup() {
+    while (driver::main->has_unblocked())
+        driver::main->run_unblocked();
     delete driver::main;
     driver::main = 0;
 }
