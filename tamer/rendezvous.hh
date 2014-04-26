@@ -370,7 +370,7 @@ class distribute_rendezvous : public functional_rendezvous,
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline distribute_rendezvous<T0, T1, T2, T3>::distribute_rendezvous()
-    : functional_rendezvous(tamerpriv::rdistribute, hook),
+    : functional_rendezvous(rvolatile, rdistribute, hook),
       nes_(0), outstanding_(0), es_(reinterpret_cast<event_type*>(local_es_)) {
 }
 
@@ -435,7 +435,7 @@ bool distribute_rendezvous<T0, T1, T2, T3>::grow() {
 
 template <typename T0, typename T1, typename T2, typename T3>
 void distribute_rendezvous<T0, T1, T2, T3>::hook(functional_rendezvous* fr,
-						 simple_event*,
+						 simple_event* x,
 						 bool values) TAMER_NOEXCEPT {
     distribute_rendezvous<T0, T1, T2, T3>* dr =
 	static_cast<distribute_rendezvous<T0, T1, T2, T3>*>(fr);
@@ -443,9 +443,12 @@ void distribute_rendezvous<T0, T1, T2, T3>::hook(functional_rendezvous* fr,
     if (values) {
         for (int i = 0; i != dr->nes_; ++i)
             dr->es_[i].trigger(dr->vs_);
-    } else {
+    } else if (!x->unused()) {
         for (int i = 0; i != dr->nes_; ++i)
             dr->es_[i].unblock();
+    } else {
+        for (int i = 0; i != dr->nes_; ++i)
+            tamerpriv::simple_event::unuse(dr->es_[i].__take_simple());
     }
     if (--dr->outstanding_ == 0)
         delete dr;

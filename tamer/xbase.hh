@@ -93,6 +93,7 @@ class simple_event { public:
     static inline void use(simple_event *e) TAMER_NOEXCEPT;
     static inline void unuse(simple_event *e) TAMER_NOEXCEPT;
     static inline void unuse_clean(simple_event *e) TAMER_NOEXCEPT;
+    inline bool unused() const;
 
     inline operator unspecified_bool_type() const;
     inline bool empty() const;
@@ -283,6 +284,11 @@ class functional_rendezvous : public abstract_rendezvous {
 				 void (*f)(functional_rendezvous *fr,
 					   simple_event *e, bool values) TAMER_NOEXCEPT)
 	: abstract_rendezvous(rnormal, rtype), f_(f) {
+    }
+    inline functional_rendezvous(rendezvous_flags rflags, rendezvous_type rtype,
+				 void (*f)(functional_rendezvous *fr,
+					   simple_event *e, bool values) TAMER_NOEXCEPT)
+	: abstract_rendezvous(rflags, rtype), f_(f) {
     }
     inline ~functional_rendezvous() {
 	remove_waiting();
@@ -569,6 +575,10 @@ inline void simple_event::unuse(simple_event *e) TAMER_NOEXCEPT {
 inline void simple_event::unuse_clean(simple_event *e) TAMER_NOEXCEPT {
     if (e && --e->_refcount == 0)
 	delete e;
+}
+
+inline bool simple_event::unused() const {
+    return _refcount == 0;
 }
 
 inline simple_event::operator unspecified_bool_type() const {

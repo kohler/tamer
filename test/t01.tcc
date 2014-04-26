@@ -74,12 +74,12 @@ tamed void scatter() {
 						    TAMER_MAKE_ANNOTATED_EVENT(r, 3)));
     (void) tamer::distribute(e, TAMER_MAKE_ANNOTATED_EVENT(r, 0));
     // should print "avoided leak of active event" (because we just threw away
-    // that event), then "== distributed 1, 2, 3, 0"
+    // that event), then "== distributed 0, 1, 2, 3"
     j = 0;
     while (r.has_events()) {
 	twait(r, i);
-	fprintf(stderr, "@%d: distributed %d\n", 502, i);
-	assert(i == "1230"[j] - '0');
+	fprintf(stderr, "@%d: distributed %d\n", i ? 1002 : 502, i);
+	assert(i == "0123"[j] - '0');
 	++j;
     }
 }

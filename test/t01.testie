@@ -26,9 +26,6 @@ echo Wacky | $VALGRIND $rundir/test/t01
 @502: distributed 0
 tamer: dropping last reference to active event
 {{tamer:   .*: event was created here|}}
-@502: distributed 1
-@502: distributed 2
-@502: distributed 3
 @502: distributed 0
 @600: after bindery 2
 @600: got bindery
@@ -41,6 +38,9 @@ tamer: dropping last reference to active event
 @700+: after mappery 11
 @1000: {{[\d.]+}}
 :: waitr 10
+@1002: distributed 1
+@1002: distributed 2
+@1002: distributed 3
 tamer: dropping last reference to active event
 {{tamer:   t01.tcc:197: event was created here|}}
 

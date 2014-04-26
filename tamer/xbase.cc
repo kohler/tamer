@@ -109,6 +109,7 @@ void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
 
  retry:
     abstract_rendezvous *r = x->_r;
+    bool reduce_refcount = x->_refcount > 0;
 
     if (r) {
 	// See also trigger_list_for_remove(), trigger_for_unuse().
@@ -138,7 +139,9 @@ void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
     // Important to keep an event in memory until all its at_triggers are
     // triggered -- some functional rendezvous, like with_helper_rendezvous,
     // depend on this property -- so don't delete just yet.
-    if (--x->_refcount == 0) {
+    if (reduce_refcount)
+        --x->_refcount;
+    if (x->_refcount == 0) {
 	x->_r_next = to_delete;
 	to_delete = x;
     }
@@ -176,7 +179,6 @@ void simple_event::trigger_hook(void* arg) {
 void simple_event::unuse_trigger() TAMER_NOEXCEPT {
     if (_r) {
 	message::event_prematurely_dereferenced(this, _r);
-	++_refcount;
 	simple_trigger(false);
     } else
 	delete this;
