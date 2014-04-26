@@ -780,12 +780,8 @@ tame_fn_t::output_closure(outputter_t *o)
 
     if (class_template_.length() || function_template_.length())
         add_templates(b, "\n");
-    b << "class " << closure_type_name(false) << " : public tamer::tamerpriv";
-    if (_class.length() && !(_opts & STATIC_DECL))
-        b << "::closure_choice< " << _class << " >::type";
-    else
-        b << "::closure";
-    b << " {\npublic:\n";
+    b << "class " << closure_type_name(false)
+      << " : public tamer::tamerpriv::closure {\npublic:\n";
 
     output_reenter(b);
 

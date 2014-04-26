@@ -474,11 +474,11 @@ class tamed_class {
     inline ~tamed_class();
 
   private:
-    tamerpriv::tamed_class_closure* tamer_closures_;
+    tamerpriv::closure* tamer_closures_;
 
     tamed_class(const tamed_class&);
     tamed_class& operator=(const tamed_class&);
-    friend class tamerpriv::tamed_class_closure;
+    friend class tamerpriv::closure;
 };
 
 inline tamed_class::tamed_class()
@@ -486,7 +486,7 @@ inline tamed_class::tamed_class()
 }
 
 inline tamed_class::~tamed_class() {
-    while (tamerpriv::tamed_class_closure* tc = tamer_closures_) {
+    while (tamerpriv::closure* tc = tamer_closures_) {
         tamer_closures_ = tc->tamer_closures_next_;
         tc->tamer_block_position_ = (unsigned) -1;
         tc->tamer_closures_pprev_ = 0;
@@ -505,21 +505,24 @@ inline void closure::initialize_closure(closure_activator f, ...) {
     TAMER_IFTRACE(tamer_location_file_ = 0);
     TAMER_IFTRACE(tamer_location_line_ = 0);
     TAMER_IFTRACE(tamer_description_ = 0);
+    tamer_closures_pprev_ = 0;
 }
 
-inline tamed_class_closure::~tamed_class_closure() {
-    if (tamer_closures_pprev_
-        && (*tamer_closures_pprev_ = tamer_closures_next_))
-        tamer_closures_next_->tamer_closures_pprev_ = tamer_closures_pprev_;
-}
-
-inline void tamed_class_closure::initialize_closure(closure_activator f,
-                                                    tamed_class* k) {
-    closure::initialize_closure(f);
+inline void closure::exit_at_destroy(tamed_class* k) {
+    assert(!tamer_closures_pprev_);
     tamer_closures_pprev_ = &k->tamer_closures_;
     if ((tamer_closures_next_ = k->tamer_closures_))
         tamer_closures_next_->tamer_closures_pprev_ = &tamer_closures_next_;
     k->tamer_closures_ = this;
+}
+
+inline void closure::initialize_closure(closure_activator f, tamed_class* k) {
+    initialize_closure(f);
+    exit_at_destroy(k);
+}
+
+inline void exit_at_destroy(closure& cl, tamed_class* k) {
+    cl.exit_at_destroy(k);
 }
 
 } // namespace tamerpriv

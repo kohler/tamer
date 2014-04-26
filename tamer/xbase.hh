@@ -305,8 +305,10 @@ struct closure {
     int tamer_location_line_;
     const char* tamer_location_file_;
     std::string* tamer_description_;
-    inline ~closure();
 #endif
+    closure* tamer_closures_next_;
+    closure** tamer_closures_pprev_;
+    inline ~closure();
     inline bool has_location() const;
     inline bool has_description() const;
     inline void set_location(const char* file, int line);
@@ -317,33 +319,9 @@ struct closure {
     inline std::string description() const;
     std::string location_description() const;
     inline void initialize_closure(closure_activator f, ...);
+    inline void initialize_closure(closure_activator f, tamed_class* k);
+    inline void exit_at_destroy(tamed_class* k);
     inline void unblock();
-};
-
-struct tamed_class_closure : public closure {
-    typedef tamed_class_closure tamer_closure_type;
-    tamed_class_closure* tamer_closures_next_;
-    tamed_class_closure** tamer_closures_pprev_;
-    inline ~tamed_class_closure();
-    inline void initialize_closure(closure_activator f, tamed_class*);
-};
-
-template <typename T>
-struct detect_tamed_class {
-    static T* make_ptr();
-    static char (&check(tamed_class*))[1];
-    static char (&check(...))[2];
-    enum { value = sizeof(check(make_ptr())) == 1 };
-};
-
-template <typename T, bool B = (int) detect_tamed_class<T>::value == 1>
-struct closure_choice {
-    typedef closure type;
-};
-
-template <typename T>
-struct closure_choice<T, true> {
-    typedef tamed_class_closure type;
 };
 
 
@@ -492,11 +470,12 @@ inline void blocking_rendezvous::unblock() {
 }
 
 
-#if !TAMER_NOTRACE
 inline closure::~closure() {
+    if (tamer_closures_pprev_
+        && (*tamer_closures_pprev_ = tamer_closures_next_))
+        tamer_closures_next_->tamer_closures_pprev_ = tamer_closures_pprev_;
     delete tamer_description_;
 }
-#endif
 
 inline bool closure::has_location() const {
     return tamer_location_file_ || tamer_location_line_;
