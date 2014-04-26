@@ -168,6 +168,7 @@ class event {
 
     inline event<T0, T1, T2, T3>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = 0, int line = 0);
     inline tamerpriv::simple_event* __get_simple() const;
+    inline tamerpriv::simple_event* __take_simple();
 
   private:
     tamerpriv::simple_event* se_;
@@ -278,6 +279,11 @@ class event<T0, T1, T2, void> { public:
     tamerpriv::simple_event* __get_simple() const {
 	return se_;
     }
+    tamerpriv::simple_event* __take_simple() {
+	tamerpriv::simple_event *se = se_;
+	se_ = 0;
+	return se;
+    }
 
   private:
 
@@ -373,6 +379,11 @@ class event<T0, T1, void, void>
     }
     tamerpriv::simple_event* __get_simple() const {
 	return se_;
+    }
+    tamerpriv::simple_event* __take_simple() {
+	tamerpriv::simple_event *se = se_;
+	se_ = 0;
+	return se;
     }
 
   private:
@@ -485,7 +496,6 @@ class event<T0, void, void, void>
     tamerpriv::simple_event* __get_simple() const {
 	return se_;
     }
-
     tamerpriv::simple_event* __take_simple() {
 	tamerpriv::simple_event *se = se_;
 	se_ = 0;
@@ -617,7 +627,6 @@ class event<void, void, void, void> { public:
     tamerpriv::simple_event* __get_simple() const {
 	return se_;
     }
-
     tamerpriv::simple_event* __take_simple() {
 	tamerpriv::simple_event *se = se_;
 	se_ = 0;
@@ -986,8 +995,19 @@ event<T0, T1, T2, T3>& event<T0, T1, T2, T3>::__instantiate(tamerpriv::abstract_
  *  @return  Underlying occurrence.
  */
 template <typename T0, typename T1, typename T2, typename T3>
-inline tamerpriv::simple_event *event<T0, T1, T2, T3>::__get_simple() const {
+inline tamerpriv::simple_event* event<T0, T1, T2, T3>::__get_simple() const {
     return se_;
+}
+
+/** @internal
+ *  @brief  Return underlying occurrence, making this event empty.
+ *  @return  Underlying occurrence.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline tamerpriv::simple_event* event<T0, T1, T2, T3>::__take_simple() {
+    tamerpriv::simple_event *se = se_;
+    se_ = 0;
+    return se;
 }
 
 
