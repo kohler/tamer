@@ -76,7 +76,7 @@ class simple_event;
 class abstract_rendezvous;
 class blocking_rendezvous;
 class explicit_rendezvous;
-struct closure;
+class closure;
 
 class simple_event { public:
     // DO NOT derive from this class!
@@ -303,7 +303,8 @@ class functional_rendezvous : public abstract_rendezvous {
 
 typedef void (*closure_activator)(closure*);
 
-struct closure {
+class closure {
+  public:
     typedef closure tamer_closure_type;
     closure_activator tamer_activator_;
     unsigned tamer_block_position_;
