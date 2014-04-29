@@ -922,9 +922,9 @@ tame_fn_t::output_fn(outputter_t *o)
 }
 
 void
-tame_vars_t::output (outputter_t *o)
+tame_vars_t::output(outputter_t *o)
 {
-  _fn->output_vars (o, _lineno);
+    _fn->output_vars(o, _lineno);
 }
 
 void
@@ -1072,18 +1072,6 @@ parse_state_t::output (outputter_t *o)
 {
   o->start_output ();
   element_list_t::output (o);
-}
-
-bool
-expr_list_t::output_vars (strbuf &b, bool first, const str &prfx,
-			  const str &sffx)
-{
-  for (unsigned i = 0; i < size (); i++) {
-    if (!first) b << ", ";
-    else first = false;
-    b << prfx << (*this)[i].name () << sffx;
-  }
-  return first;
 }
 
 void

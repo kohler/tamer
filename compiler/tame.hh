@@ -386,11 +386,7 @@ protected:
     str _arrays;
 };
 
-class expr_list_t : public std::vector<var_t>
-{
-public:
-  bool output_vars (strbuf &b, bool first = false, const str &prfx = "",
-		    const str &sffx = "");
+class expr_list_t : public std::vector<var_t> {
 };
 
 class vartab_t {
@@ -485,7 +481,6 @@ class tame_fn_t : public element_list_t {
 
     vartab_t *stack_vars() { return &_stack_vars; }
     vartab_t *args() { return _args; }
-    vartab_t *class_vars_tmp() { return &_class_vars_tmp; }
 
     void set_declaration_only() {
 	_declaration_only = true;
@@ -501,7 +496,7 @@ class tame_fn_t : public element_list_t {
     }
 
     // called from tame_vars_t class
-    void output_vars (outputter_t *o, int ln);
+    void output_vars(outputter_t *o, int ln);
 
     // default return statement is "return;"; can be overidden,
     // but only once.
@@ -573,7 +568,6 @@ class tame_fn_t : public element_list_t {
 
     vartab_t *_args;
     vartab_t _stack_vars;
-    vartab_t _class_vars_tmp;
     std::vector<tame_env_t *> _envs;
     bool _any_volatile_envs;
 
@@ -637,7 +631,6 @@ public:
 
   // access variable tables in the currently active function
   vartab_t *stack_vars () { return _fn ? _fn->stack_vars () : NULL; }
-  vartab_t *class_vars_tmp () { return _fn ? _fn->class_vars_tmp () : NULL ; }
   vartab_t *args () { return _fn ? _fn->args () : NULL; }
 
   void set_decl_specifier (const type_qualifier_t &m) { _decl_specifier = m; }
