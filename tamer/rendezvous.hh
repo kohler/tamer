@@ -505,10 +505,10 @@ inline void closure::initialize_closure(closure_activator f, ...) {
     tamer_block_position_ = 0;
     tamer_driver_index_ = 0;
     tamer_blocked_driver_ = 0;
+    tamer_closures_pprev_ = 0;
     TAMER_IFTRACE(tamer_location_file_ = 0);
     TAMER_IFTRACE(tamer_location_line_ = 0);
     TAMER_IFTRACE(tamer_description_ = 0);
-    tamer_closures_pprev_ = 0;
 }
 
 inline void closure::exit_at_destroy(tamed_class* k) {
@@ -524,10 +524,39 @@ inline void closure::initialize_closure(closure_activator f, tamed_class* k) {
     exit_at_destroy(k);
 }
 
-inline void exit_at_destroy(closure& cl, tamed_class* k) {
-    cl.exit_at_destroy(k);
+} // namespace tamerpriv
+
+
+class destroy_guard {
+  public:
+    inline destroy_guard(tamerpriv::closure& cl, tamed_class* k);
+    inline ~destroy_guard();
+
+  private:
+    class shiva_closure : public tamerpriv::closure {
+      public:
+        tamerpriv::closure* linked_closure_;
+    };
+    shiva_closure* shiva_;
+
+    destroy_guard(const destroy_guard&);
+    destroy_guard& operator=(const destroy_guard&);
+    static void activator(tamerpriv::closure*);
+    void birth_shiva(tamerpriv::closure& cl, tamed_class* k);
+};
+
+inline destroy_guard::destroy_guard(tamerpriv::closure& cl, tamed_class* k)
+    : shiva_() {
+    if (!cl.tamer_closures_pprev_)
+        cl.exit_at_destroy(k);
+    else
+        birth_shiva(cl, k);
 }
 
-} // namespace tamerpriv
+inline destroy_guard::~destroy_guard() {
+    if (shiva_)
+        delete shiva_;
+}
+
 } // namespace tamer
 #endif /* TAMER__RENDEZVOUS_HH */

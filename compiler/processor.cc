@@ -623,7 +623,7 @@ void vartab_t::closure_declarations(strbuf& b, const str& padding) const
 }
 
 void
-vartab_t::initialize(strbuf& b, outputter_t* o) const
+vartab_t::initialize(strbuf& b, outputter_t* o, tame_fn_t* fn) const
 {
     unsigned lineno;
     for (unsigned i = 0; i != size(); ++i)
@@ -637,7 +637,12 @@ vartab_t::initialize(strbuf& b, outputter_t* o) const
             if (init)
                 init->finish_type(b);
             b << ")";
-            if (init)
+            // tamer::destroy_guard objects need special initialization
+            if (fn && init
+                && (_vars[i].type().base_type() == "tamer::destroy_guard"
+                    || _vars[i].type().base_type() == "destroy_guard"))
+                b << "(" TAME_CLOSURE_NAME ", " << init->value() << ")";
+            else if (init)
                 init->initializer(b, _vars[i].type().is_ref());
             b << ";\n";
         }
@@ -907,7 +912,6 @@ tame_fn_t::output_fn(outputter_t *o)
 
     output_mode_t om = o->switch_to_mode(OUTPUT_PASSTHROUGH);
     b << closure_signature() << "\n{\n";
-    b << "#define exit_at_destroy(x) tamerpriv::exit_at_destroy(" TAME_CLOSURE_NAME << ", (x))\n";
 
     o->output_str(b.str());
 
@@ -917,7 +921,7 @@ tame_fn_t::output_fn(outputter_t *o)
 
     element_list_t::output(o);
 
-    o->output_str("#undef exit_at_destroy\n}\n");
+    o->output_str("}\n");
     o->switch_to_mode(om);
 }
 
@@ -940,7 +944,7 @@ tame_fn_t::output_vars(outputter_t *o, int ln)
     output_jump_tab(b);
     // output stack declaration
     if (_stack_vars.size())
-        _stack_vars.initialize(b, o);
+        _stack_vars.initialize(b, o, this);
 
     o->output_str(b.str());
     // will switch modes as appropriate (internally)

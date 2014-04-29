@@ -23,6 +23,7 @@ timeval recent;
 bool need_recent = true;
 time_type_t time_type = time_normal;
 static timeval virtual_offset = { 1000000000, 0 };
+simple_driver simple_driver::immediate_driver;
 } // namespace tamerpriv
 
 driver* driver::main;

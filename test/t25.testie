@@ -1,0 +1,15 @@
+%info
+Check tamer::destroy_guard.
+
+%script
+$VALGRIND $rundir/test/t25
+
+%stdout
+f @0
+g @0
+f @1
+g @1
+suicider 3 dying
+suicider 1 dying
+suicider 2 dying
+OK!

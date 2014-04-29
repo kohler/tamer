@@ -197,6 +197,8 @@ class simple_driver {
     inline bool has_unblocked() const;
     inline void run_unblocked();
 
+    static simple_driver immediate_driver;
+
   private:
     struct cptr {
         closure* c;
@@ -310,26 +312,30 @@ class closure {
     unsigned tamer_block_position_;
     unsigned tamer_driver_index_;
     simple_driver* tamer_blocked_driver_;
+    closure* tamer_closures_next_;
+    closure** tamer_closures_pprev_;
 #if !TAMER_NOTRACE
     int tamer_location_line_;
     const char* tamer_location_file_;
     std::string* tamer_description_;
 #endif
-    closure* tamer_closures_next_;
-    closure** tamer_closures_pprev_;
     inline ~closure();
+
     inline bool has_location() const;
     inline bool has_description() const;
-    inline void set_location(const char* file, int line);
-    inline void set_description(std::string description);
     inline const char* location_file() const;
     inline int location_line() const;
     std::string location() const;
     inline std::string description() const;
     std::string location_description() const;
+
     inline void initialize_closure(closure_activator f, ...);
     inline void initialize_closure(closure_activator f, tamed_class* k);
+    inline void set_location(const char* file, int line);
+    inline void set_description(std::string description);
+
     inline void exit_at_destroy(tamed_class* k);
+
     inline void unblock();
 };
 
@@ -467,16 +473,19 @@ inline void blocking_rendezvous::block(simple_driver* driver, closure& c,
 }
 
 inline void closure::unblock() {
-    if (tamer_blocked_driver_) {
-        tamer_blocked_driver_->make_unblocked(this);
+    if (simple_driver* d = tamer_blocked_driver_) {
         tamer_blocked_driver_ = 0;
+        if (d != &simple_driver::immediate_driver)
+            d->make_unblocked(this);
+        else
+            tamer_activator_(this);
     }
 }
 
 inline void blocking_rendezvous::unblock() {
-    if (blocked_closure_) {
-        blocked_closure_->unblock();
+    if (closure* cl = blocked_closure_) {
         blocked_closure_ = 0;
+        cl->unblock();
     }
 }
 

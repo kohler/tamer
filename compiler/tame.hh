@@ -322,6 +322,7 @@ class initializer_t {
     initializer_t() : _value(0, "") {}
     initializer_t(const lstr& v) : _value(v) {}
     virtual ~initializer_t() {}
+    const lstr& value() const { return _value; }
     unsigned constructor_lineno() const { return _value.lineno(); }
     virtual void finish_type(strbuf& b) const;
     virtual void initializer(strbuf& b, bool is_ref) const;
@@ -400,7 +401,7 @@ public:
     void reference_declarations(strbuf& b, const str& padding) const;
     typedef enum { pl_declarations, pl_assign_moves_named } paramlist_flags;
     void paramlist(strbuf &b, paramlist_flags flags, const char* sep) const;
-    void initialize(strbuf& b, outputter_t* o) const;
+    void initialize(strbuf& b, outputter_t* o, tame_fn_t* fn) const;
     bool exists(const str &n) const { return _tab.find(n) != _tab.end(); }
     const var_t *lookup(const str &n) const;
     void mangle(strbuf &b) const;

@@ -229,4 +229,17 @@ void gather_rendezvous::clear() {
     abstract_rendezvous::remove_waiting();
 }
 
+void destroy_guard::birth_shiva(tamerpriv::closure& cl, tamed_class* k) {
+    shiva_ = new shiva_closure;
+    shiva_->linked_closure_ = &cl;
+    shiva_->initialize_closure(activator, k);
+    shiva_->tamer_blocked_driver_ = &tamerpriv::simple_driver::immediate_driver;
+}
+
+void destroy_guard::activator(tamerpriv::closure* cl) {
+    shiva_closure* shiva = static_cast<shiva_closure*>(cl);
+    shiva->linked_closure_->tamer_block_position_ = (unsigned) -1;
+    shiva->linked_closure_->unblock();
+}
+
 } // namespace tamer
