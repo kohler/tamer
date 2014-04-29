@@ -1,6 +1,5 @@
 pkgconfigdir = ${libdir}/pkgconfig
 pkgconfig_DATA = tamer.pc
-AUTOMAKE_OPTIONS = subdir-objects
 
 bin_PROGRAMS =
 
@@ -52,7 +51,7 @@ AM_CPPFLAGS = -I$(top_srcdir) -I$(top_builddir)
 TAMER = ../compiler/tamer
 
 if HTTP_PARSER
-libtamer_la_SOURCES += ../http-parser/http_parser.c http.tcc http.hh
+libtamer_la_SOURCES += http_parser.c http.tcc http.hh
 AM_CPPFLAGS += -I$(top_srcdir)/http-parser
 pkginclude_HEADERS += $(top_srcdir)/http-parser/http_parser.h
 if TAMER_DEBUG
