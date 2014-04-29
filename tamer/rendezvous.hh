@@ -448,7 +448,7 @@ void distribute_rendezvous<T0, T1, T2, T3>::hook(functional_rendezvous* fr,
             dr->es_[i].unblock();
     } else {
         for (int i = 0; i != dr->nes_; ++i)
-            tamerpriv::simple_event::unuse(dr->es_[i].__take_simple());
+            tamerpriv::simple_event::unuse(dr->es_[i].__release_simple());
     }
     if (--dr->outstanding_ == 0)
         delete dr;

@@ -170,17 +170,17 @@ void driver_libev::update_fds() {
 
 void driver_libev::at_time(const timeval &expiry, event<> e, bool bg) {
     if (e)
-	timers_.push(expiry, e.__take_simple(), bg);
+	timers_.push(expiry, e.__release_simple(), bg);
 }
 
 void driver_libev::at_asap(event<> e) {
     if (e)
-	asap_.push(e.__take_simple());
+	asap_.push(e.__release_simple());
 }
 
 void driver_libev::at_preblock(event<> e) {
     if (e)
-	preblock_.push(e.__take_simple());
+	preblock_.push(e.__release_simple());
 }
 
 void driver_libev::loop(loop_flags flags) {

@@ -197,7 +197,7 @@ void simple_event::hard_at_trigger(simple_event* x, void (*f)(void*),
         event<> t(at_trigger_event(x->at_trigger_f_, x->at_trigger_arg_));
         t += at_trigger_event(f, arg);
         x->at_trigger_f_ = trigger_hook;
-        x->at_trigger_arg_ = t.__take_simple();
+        x->at_trigger_arg_ = t.__release_simple();
     } else
         f(arg);
 }
