@@ -182,9 +182,9 @@ inline http_message& http_message::header(std::string key, std::string value) {
 }
 
 inline http_message& http_message::header(std::string key, size_t value) {
-    char buf[100];
-    snprintf(buf, sizeof(buf), "%zu", value);
-    add_header(TAMER_MOVE(key), std::string(buf));
+    std::ostringstream buf;
+    buf << value;
+    add_header(TAMER_MOVE(key), buf.str());
     return *this;
 }
 
