@@ -1,0 +1,9 @@
+%info
+Check stupid bug in timer heap.
+
+%script
+$VALGRIND $rundir/test/t26
+
+%stdout
+004002
+OK!
