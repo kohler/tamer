@@ -220,6 +220,7 @@ void driver_timerset::push(timeval when, simple_event *se, bool bg) {
     unsigned i = top;
     while (i != 0) {
 	unsigned trial = (i - (arity == 2)) / arity;
+#if 0
 	if (ts_[trial].se->empty()) {
 	    // Bubble empty trecs towards end of heap
 	    unsigned xtrial = trial * arity + (arity == 2 || trial == 0),
@@ -234,7 +235,9 @@ void driver_timerset::push(timeval when, simple_event *se, bool bg) {
 	    swap(ts_[trial].se, ts_[smallest].se);
 	    if (smallest != i)
 		break;
-	} else if (ts_[i] < ts_[trial]) {
+	} else
+#endif
+        if (ts_[i] < ts_[trial]) {
 	    swap(ts_[trial], ts_[i]);
 	    i = trial;
 	} else
