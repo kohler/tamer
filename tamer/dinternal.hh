@@ -77,7 +77,7 @@ struct driver_timerset {
     struct trec {
 	timeval when;
 	unsigned order;
-	simple_event *se;
+	simple_event* se;
 	inline bool operator<(const trec &x) const;
 	inline void clean();
     };
@@ -88,6 +88,9 @@ struct driver_timerset {
     unsigned tcap_;
     unsigned order_;
 
+    static inline unsigned heap_parent(unsigned i);
+    static inline unsigned heap_first_child(unsigned i);
+    inline unsigned heap_last_child(unsigned i) const;
     void hard_cull(bool from_pop) const;
     void expand();
 };
@@ -270,6 +273,19 @@ inline bool driver_timerset::trec::operator<(const trec &x) const {
 
 inline void driver_timerset::trec::clean() {
     simple_event::unuse_clean(se);
+}
+
+inline unsigned driver_timerset::heap_parent(unsigned i) {
+    return (i - (arity == 2)) / arity;
+}
+
+inline unsigned driver_timerset::heap_first_child(unsigned i) {
+    return i * arity + (arity == 2 || i == 0);
+}
+
+inline unsigned driver_timerset::heap_last_child(unsigned i) const {
+    unsigned p = i * arity + arity + (arity == 2);
+    return p < nts_ ? p : nts_;
 }
 
 } // namespace tamerpriv

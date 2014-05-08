@@ -197,7 +197,7 @@ void driver_timerset::expand() {
     tcap_ = ncap;
 }
 
-void driver_timerset::push(timeval when, simple_event *se, bool bg) {
+void driver_timerset::push(timeval when, simple_event* se, bool bg) {
     using std::swap;
 
     // Remove empty trecs at heap's end
@@ -209,17 +209,16 @@ void driver_timerset::push(timeval when, simple_event *se, bool bg) {
     // Append new trec
     if (nts_ == tcap_)
 	expand();
-    unsigned top = nts_;
-    ts_[top].when = when;
+    ts_[nts_].when = when;
     order_ += 2;
-    ts_[top].order = order_ + !bg;
-    ts_[top].se = se;
+    ts_[nts_].order = order_ + !bg;
+    ts_[nts_].se = se;
     ++nts_;
 
     // Swap trec to proper position in heap
-    unsigned i = top;
+    unsigned i = nts_ - 1;
     while (i != 0) {
-	unsigned trial = (i - (arity == 2)) / arity;
+	unsigned p = heap_parent(i);
 #if 0
 	if (ts_[trial].se->empty()) {
 	    // Bubble empty trecs towards end of heap
@@ -237,9 +236,9 @@ void driver_timerset::push(timeval when, simple_event *se, bool bg) {
 		break;
 	} else
 #endif
-        if (ts_[i] < ts_[trial]) {
-	    swap(ts_[trial], ts_[i]);
-	    i = trial;
+        if (ts_[i] < ts_[p]) {
+	    swap(ts_[p], ts_[i]);
+	    i = p;
 	} else
 	    break;
     }
@@ -268,13 +267,10 @@ void driver_timerset::hard_cull(bool from_pop) const {
 
     unsigned i = 0;
     while (1) {
-	unsigned smallest = i,
-	    trial = i * arity + (arity == 2 || i == 0),
-	    end_trial = trial + arity - (arity != 2 && i == 0);
-	end_trial = end_trial < nts_ ? end_trial : nts_;
-	for (; trial < end_trial; ++trial)
-	    if (ts_[trial] < ts_[smallest])
-		smallest = trial;
+	unsigned smallest = i;
+        for (unsigned t = heap_first_child(i); t < heap_last_child(i); ++t)
+            if (ts_[t] < ts_[smallest])
+                smallest = t;
 	if (smallest == i)
 	    break;
 	swap(ts_[i], ts_[smallest]);
