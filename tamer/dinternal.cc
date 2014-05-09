@@ -15,6 +15,7 @@
 #include "dinternal.hh"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <sstream>
 
 namespace tamer {
@@ -158,8 +159,8 @@ driver_timerset::~driver_timerset() {
     delete[] ts_;
 }
 
-#if 0
 void driver_timerset::check() {
+#if 0
     fprintf(stderr, "---");
     for (unsigned k = 0; k != nts_; ++k)
 	if (ts_[k].se->empty())
@@ -185,8 +186,8 @@ void driver_timerset::check() {
 		assert(0);
 	    }
     }
-}
 #endif
+}
 
 void driver_timerset::expand() {
     unsigned ncap = (tcap_ ? (tcap_ * 4) + 3 : 31);
@@ -199,86 +200,74 @@ void driver_timerset::expand() {
 
 void driver_timerset::push(timeval when, simple_event* se, bool bg) {
     using std::swap;
-
-    // Remove empty trecs at heap's end
-    while (nts_ != 0 && ts_[nts_ - 1].se->empty()) {
-	--nts_;
-	ts_[nts_].clean();
-    }
+    assert(!se->empty());
 
     // Append new trec
     if (nts_ == tcap_)
-	expand();
-    ts_[nts_].when = when;
+        expand();
+    unsigned pos = nts_;
+    ts_[pos].when = when;
     order_ += 2;
-    ts_[nts_].order = order_ + !bg;
-    ts_[nts_].se = se;
+    ts_[pos].order = order_ + !bg;
+    ts_[pos].se = se;
     ++nts_;
 
     // Swap trec to proper position in heap
-    unsigned i = nts_ - 1;
-    while (i != 0) {
-	unsigned p = heap_parent(i);
-#if 0
-	if (ts_[trial].se->empty()) {
-	    // Bubble empty trecs towards end of heap
-	    unsigned xtrial = trial * arity + (arity == 2 || trial == 0),
-		xendtrial = xtrial + arity - (arity != 2 && trial == 0),
-		smallest = xtrial;
-	    xendtrial = (xendtrial < nts_ ? xendtrial : nts_);
-	    for (++xtrial; xtrial < xendtrial; ++xtrial)
-		if (ts_[xtrial] < ts_[smallest])
-		    smallest = xtrial;
-	    ts_[trial].when = ts_[smallest].when;
-	    ts_[trial].order = ts_[smallest].order;
-	    swap(ts_[trial].se, ts_[smallest].se);
-	    if (smallest != i)
-		break;
-	} else
-#endif
-        if (ts_[i] < ts_[p]) {
-	    swap(ts_[p], ts_[i]);
-	    i = p;
-	} else
-	    break;
+    while (pos != 0) {
+        unsigned p = heap_parent(pos);
+        if (!(ts_[pos] < ts_[p]))
+            break;
+        swap(ts_[pos], ts_[p]);
+        pos = p;
+    }
+
+    // If heap is largish, check to see if a random element is empty.
+    // If it's empty, remove it, and look for another empty element.
+    // This should help keep the timer heap small even if we set many
+    // more timers than get a chance to fire.
+    while (nts_ >= 32) {
+        pos = rand_ % nts_;
+        rand_ = rand_ * 1664525 + 1013904223U; // Numerical Recipes LCG
+        if (!ts_[pos].se->empty())
+            break;
+        hard_cull(pos);
     }
 }
 
-void driver_timerset::pop_trigger() {
-    assert(nts_ != 0);
-    ts_[0].se->simple_trigger(false);
-    hard_cull(true);
-}
-
-void driver_timerset::hard_cull(bool from_pop) const {
+void driver_timerset::hard_cull(unsigned pos) const {
     using std::swap;
     assert(nts_ != 0);
-    if (from_pop)
-	goto skip_clean;
 
- again:
-    assert(ts_[0].se->empty());
-    ts_[0].clean();
- skip_clean:
+    if (pos == (unsigned) -1) {
+        pos = 0;
+        ts_[pos].se->simple_trigger(false);
+    } else
+        ts_[pos].clean();
+
     --nts_;
-    if (nts_ == 0)
-	return;
-    ts_[0] = ts_[nts_];
+    if (nts_ == pos)
+        return;
+    swap(ts_[nts_], ts_[pos]);
 
-    unsigned i = 0;
-    while (1) {
-	unsigned smallest = i;
-        for (unsigned t = heap_first_child(i); t < heap_last_child(i); ++t)
-            if (ts_[t] < ts_[smallest])
-                smallest = t;
-	if (smallest == i)
-	    break;
-	swap(ts_[i], ts_[smallest]);
-	i = smallest;
+    if (pos == 0 || !(ts_[pos] < ts_[heap_parent(pos)])) {
+        while (1) {
+            unsigned smallest = pos;
+            for (unsigned t = heap_first_child(pos);
+                 t < heap_last_child(pos); ++t)
+                if (ts_[t] < ts_[smallest])
+                    smallest = t;
+            if (smallest == pos)
+                break;
+            swap(ts_[pos], ts_[smallest]);
+            pos = smallest;
+        }
+    } else {
+        do {
+            unsigned p = heap_parent(pos);
+            swap(ts_[pos], ts_[p]);
+            pos = p;
+        } while (pos && ts_[pos] < ts_[heap_parent(pos)]);
     }
-
-    if (ts_[0].se->empty())
-	goto again;
 }
 
 } // namespace tamerpriv

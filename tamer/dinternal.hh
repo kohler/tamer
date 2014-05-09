@@ -71,7 +71,9 @@ struct driver_timerset {
     inline const timeval &expiry() const;
     inline void cull();
     void push(timeval when, simple_event* se, bool bg);
-    void pop_trigger();
+    inline void pop_trigger();
+
+    void check();
 
   private:
     struct trec {
@@ -85,13 +87,14 @@ struct driver_timerset {
     enum { arity = 4 };
     trec *ts_;
     mutable unsigned nts_;
+    unsigned rand_;
     unsigned tcap_;
     unsigned order_;
 
     static inline unsigned heap_parent(unsigned i);
     static inline unsigned heap_first_child(unsigned i);
     inline unsigned heap_last_child(unsigned i) const;
-    void hard_cull(bool from_pop) const;
+    void hard_cull(unsigned pos) const;
     void expand();
 };
 
@@ -239,7 +242,7 @@ inline void driver_asapset::pop_trigger() {
 }
 
 inline driver_timerset::driver_timerset()
-    : ts_(0), nts_(0), tcap_(0), order_(0) {
+    : ts_(0), nts_(0), rand_(8173), tcap_(0), order_(0) {
 }
 
 inline bool driver_timerset::empty() const {
@@ -259,8 +262,8 @@ inline const timeval &driver_timerset::expiry() const {
 }
 
 inline void driver_timerset::cull() {
-    if (nts_ != 0 && ts_[0].se->empty())
-	hard_cull(false);
+    while (nts_ != 0 && ts_[0].se->empty())
+	hard_cull(0);
 }
 
 inline bool driver_timerset::trec::operator<(const trec &x) const {
@@ -286,6 +289,10 @@ inline unsigned driver_timerset::heap_first_child(unsigned i) {
 inline unsigned driver_timerset::heap_last_child(unsigned i) const {
     unsigned p = i * arity + arity + (arity == 2);
     return p < nts_ ? p : nts_;
+}
+
+inline void driver_timerset::pop_trigger() {
+    hard_cull((unsigned) -1);
 }
 
 } // namespace tamerpriv
