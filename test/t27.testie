@@ -1,0 +1,13 @@
+%info
+Check virtual.
+
+%script
+$VALGRIND $rundir/test/t27
+
+%stdout
+foo delay 0.1 happened
+bar delay 0.2 happened
+return
+foo delay 0.3 happened
+bar delay 0.4 happened
+OK! 2 foos
