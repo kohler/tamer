@@ -1,0 +1,11 @@
+%info
+Check lambdas.
+
+%script
+$VALGRIND $rundir/test/t28
+
+%stdout -a
+in helper 54
+
+%stdout -a
+no c++11 lambda support

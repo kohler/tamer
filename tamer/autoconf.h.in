@@ -52,6 +52,12 @@
 #define TAMER_HAVE_CXX_NOEXCEPT 1
 #endif
 
+#if !defined(TAMER_HAVE_CXX_LAMBDAS) && \
+  (TAMER_CLANGVERSION >= 30100 || TAMER_GCCVERSION >= 40500)
+/* Define if the C++ compiler understands lambdas. */
+#define TAMER_HAVE_CXX_LAMBDAS 1
+#endif
+
 #if !defined(TAMER_HAVE_CXX_RVALUE_REFERENCES) && \
   (TAMER_CLANGVERSION >= 20900 || TAMER_GCCVERSION >= 40300)
 /* Define if the C++ compiler understands rvalue references. */
