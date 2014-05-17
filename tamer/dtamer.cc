@@ -26,10 +26,86 @@ using tamerpriv::make_fd_callback;
 using tamerpriv::fd_callback_driver;
 using tamerpriv::fd_callback_fd;
 
+union xfd_set {
+    fd_set fds;
+    char s[1];
+    uint64_t q[1];
+};
+
+class xfd_setpair {
+  public:
+    inline xfd_setpair() {
+        f_[0] = f_[1] = 0;
+        cap_ = 0;
+    }
+    inline ~xfd_setpair() {
+        delete[] reinterpret_cast<char*>(f_[0]);
+    }
+    inline void ensure(int fd) {
+        if (unsigned(fd) >= cap_)
+            hard_ensure(fd);
+    }
+    inline void copy(const xfd_setpair& x, int bound);
+    inline void copy_combined(const xfd_setpair& x, int bound);
+    inline void transfer_segment(int lb, int rb);
+    inline void clear();
+    inline fd_set& operator[](int action) {
+        assert(unsigned(action) < 2);
+        return f_[action]->fds;
+    }
+    inline const fd_set& operator[](int action) const {
+        assert(unsigned(action) < 2);
+        return f_[action]->fds;
+    }
+  private:
+    xfd_set* f_[2];
+    unsigned cap_;
+    void hard_ensure(int fd);
+};
+
+void xfd_setpair::hard_ensure(int fd) {
+    unsigned ncap = cap_ ? cap_ * 2 : sizeof(xfd_set) * 8;
+    while (unsigned(fd) >= ncap)
+        ncap *= 2;
+    assert((ncap % 64) == 0);
+    xfd_set* nf = reinterpret_cast<xfd_set*>(new char[ncap / 4]);
+    memcpy(&nf->s[0], f_[0], cap_ / 8);
+    memset(&nf->s[cap_ / 8], 0, (ncap - cap_) / 8);
+    memcpy(&nf->s[ncap / 8], f_[1], cap_ / 8);
+    memset(&nf->s[(ncap + cap_) / 8], 0, (ncap - cap_) / 8);
+    delete[] reinterpret_cast<char*>(f_[0]);
+    f_[0] = nf;
+    f_[1] = reinterpret_cast<xfd_set*>(&nf->s[ncap / 8]);
+    cap_ = ncap;
+}
+
+inline void xfd_setpair::copy(const xfd_setpair& x, int bound) {
+    ensure(bound);
+    unsigned nb = ((unsigned(bound) + 63) & ~63) >> 3;
+    memcpy(f_[0], x.f_[0], nb);
+    memcpy(f_[1], x.f_[1], nb);
+}
+
+inline void xfd_setpair::copy_combined(const xfd_setpair& x, int bound) {
+    ensure(bound);
+    unsigned nb = ((unsigned(bound) + 63) & ~63) >> 3;
+    memcpy(f_[0], x.f_[0], nb);
+    for (unsigned i = 0; i != (nb >> 3); ++i)
+        f_[0]->q[i] |= x.f_[1]->q[i];
+}
+
+inline void xfd_setpair::transfer_segment(int lb, int rb) {
+    memset(f_[1], 0, lb);
+    memcpy(&f_[1]->s[lb], &f_[0]->s[lb], rb - lb);
+}
+
+inline void xfd_setpair::clear() {
+    memset(f_[0], 0, cap_ >> 2);
+}
+
 class driver_tamer : public driver {
   public:
     driver_tamer();
-    ~driver_tamer();
 
     virtual void at_fd(int fd, int action, event<int> e);
     virtual void at_time(const timeval &expiry, event<> e, bool bg);
@@ -47,20 +123,9 @@ class driver_tamer : public driver {
 	}
     };
 
-    union xfd_set {
-	fd_set fds;
-	char s[1];
-        uint64_t q[1];
-    };
-
-    enum {
-        fdreadnow = fdread + 2, fdwritenow = fdwrite + 2
-    };
-
     tamerpriv::driver_fdset<fdp> fds_;
     unsigned fdbound_;
-    xfd_set* fdset_[4];
-    unsigned fdset_fdcap_;
+    xfd_setpair fdsets_;
 
     tamerpriv::driver_timerset timers_;
 
@@ -70,33 +135,13 @@ class driver_tamer : public driver {
     bool loop_state_;
 
     static void fd_disinterest(void* arg);
-    void initialize_fdsets();
     void update_fds();
-    int find_bad_fds();
+    int find_bad_fds(xfd_setpair&);
 };
 
 
 driver_tamer::driver_tamer()
-    : fdbound_(0), fdset_fdcap_(0), loop_state_(false) {
-    fdset_[0] = fdset_[1] = fdset_[2] = fdset_[3] = (xfd_set*) 0;
-    initialize_fdsets();
-}
-
-driver_tamer::~driver_tamer() {
-    for (int i = 0; i < 4; ++i)
-	delete[] reinterpret_cast<char*>(fdset_[i]);
-}
-
-void driver_tamer::initialize_fdsets() {
-    assert(!fdset_fdcap_);
-    fdset_fdcap_ = sizeof(xfd_set) * 8; // make multiple of 8B
-    assert(FD_SETSIZE <= fdset_fdcap_);
-    assert((fdset_fdcap_ % 64) == 0);
-    for (int i = 0; i < 4; ++i) {
-	fdset_[i] = reinterpret_cast<xfd_set*>(new char[fdset_fdcap_ / 8]);
-	if (i < fdreadnow)
-	    memset(fdset_[i], 0, fdset_fdcap_ / 8);
-    }
+    : fdbound_(0), loop_state_(false) {
 }
 
 void driver_tamer::fd_disinterest(void* arg) {
@@ -130,26 +175,12 @@ void driver_tamer::update_fds() {
     int fd;
     while ((fd = fds_.pop_change()) >= 0) {
 	tamerpriv::driver_fd<fdp>& x = fds_[fd];
-	if ((unsigned) fd >= fdset_fdcap_) {
-	    unsigned ncap = fdset_fdcap_ * 2;
-	    while (ncap < (unsigned) fd)
-		ncap *= 2;
-	    for (int acti = 0; acti < 4; ++acti) {
-		xfd_set *x = reinterpret_cast<xfd_set*>(new char[ncap / 8]);
-		if (acti < 2) {
-		    memcpy(x, fdset_[acti], fdset_fdcap_ / 8);
-		    memset(&x->s[fdset_fdcap_ / 8], 0, (ncap - fdset_fdcap_) / 8);
-		}
-		delete[] reinterpret_cast<char*>(fdset_[acti]);
-		fdset_[acti] = x;
-	    }
-	    fdset_fdcap_ = ncap;
-	}
+        fdsets_.ensure(fd);
 	for (int action = 0; action < 2; ++action)
 	    if (x.e[action])
-		FD_SET(fd, &fdset_[action]->fds);
+		FD_SET(fd, &fdsets_[action]);
 	    else
-		FD_CLR(fd, &fdset_[action]->fds);
+		FD_CLR(fd, &fdsets_[action]);
 	if (x.e[0] || x.e[1]) {
 	    if ((unsigned) fd >= fdbound_)
 		fdbound_ = fd + 1;
@@ -181,6 +212,7 @@ void driver_tamer::loop(loop_flags flags)
 {
     if (flags == loop_forever)
         loop_state_ = true;
+    xfd_setpair fdnow;
 
  again:
     // process asap events
@@ -215,19 +247,19 @@ void driver_tamer::loop(loop_flags flags)
 
     // select!
     int nfds = fdbound_;
-    if (sig_pipe[0] > nfds)
-	nfds = sig_pipe[0] + 1;
+    if (sig_pipe[0] > nfds) {
+        fdsets_.ensure(sig_pipe[0]);
+        nfds = sig_pipe[0] + 1;
+    }
     if (nfds > 0) {
-	memcpy(fdset_[fdreadnow], fdset_[fdread], ((nfds + 63) & ~63) >> 3);
-	memcpy(fdset_[fdwritenow], fdset_[fdwrite], ((nfds + 63) & ~63) >> 3);
-	if (sig_pipe[0] >= 0)
-	    FD_SET(sig_pipe[0], &fdset_[fdreadnow]->fds);
+        fdnow.copy(fdsets_, nfds);
+        if (sig_pipe[0] >= 0)
+            FD_SET(sig_pipe[0], &fdnow[0]);
     }
     if (nfds > 0 || !toptr || to.tv_sec != 0 || to.tv_usec != 0) {
-	nfds = select(nfds, &fdset_[fdreadnow]->fds,
-		      &fdset_[fdwritenow]->fds, 0, toptr);
+	nfds = select(nfds, &fdnow[0], &fdnow[1], 0, toptr);
         if (nfds == -1 && errno == EBADF)
-            nfds = find_bad_fds();
+            nfds = find_bad_fds(fdnow);
     }
 
     // process signals
@@ -240,7 +272,7 @@ void driver_tamer::loop(loop_flags flags)
 	for (unsigned fd = 0; fd < fdbound_; ++fd) {
 	    tamerpriv::driver_fd<fdp> &x = fds_[fd];
 	    for (int action = 0; action < 2; ++action)
-		if (FD_ISSET(fd, &fdset_[action + 2]->fds) && x.e[action])
+		if (FD_ISSET(fd, &fdnow[action]) && x.e[action])
 		    x.e[action].trigger(0);
 	}
         run_unblocked();
@@ -263,20 +295,16 @@ void driver_tamer::loop(loop_flags flags)
 	goto again;
 }
 
-int driver_tamer::find_bad_fds() {
+int driver_tamer::find_bad_fds(xfd_setpair& fdnow) {
     // first, combine all file descriptors from read & write
-    unsigned nbytes = ((fdbound_ + 63) & ~63) >> 3;
-    memcpy(fdset_[fdreadnow], fdset_[fdread], nbytes);
-    for (unsigned i = 0; i < nbytes / 8; ++i)
-        fdset_[fdreadnow]->q[i] |= fdset_[fdwrite]->q[i];
+    fdnow.copy_combined(fdsets_, fdbound_);
     // use binary search to find a bad file descriptor
     int l = 0, r = (fdbound_ + 7) & ~7;
     while (r - l > 1) {
         int m = l + ((r - l) >> 1);
-        memset(fdset_[fdwritenow], 0, l);
-        memcpy(&fdset_[fdwritenow]->s[l], &fdset_[fdreadnow]->s[l], m - l);
+        fdnow.transfer_segment(l, m);
         struct timeval tv = {0, 0};
-        int nfds = select(m << 3, &fdset_[fdwritenow]->fds, 0, 0, &tv);
+        int nfds = select(m << 3, &fdnow[1], 0, 0, &tv);
         if (nfds == -1 && errno == EBADF)
             r = m;
         else if (nfds != -1)
@@ -284,18 +312,17 @@ int driver_tamer::find_bad_fds() {
     }
     // down to <= 8 file descriptors; test them one by one
     // clear result sets
-    memset(fdset_[fdreadnow], 0, nbytes);
-    memset(fdset_[fdwritenow], 0, nbytes);
+    fdnow.clear();
     // set up result sets
     int nfds = 0;
     for (int f = l * 8; f != r * 8; ++f) {
-        int fr = FD_ISSET(f, &fdset_[fdread]->fds);
-        int fw = FD_ISSET(f, &fdset_[fdwrite]->fds);
+        int fr = FD_ISSET(f, &fdsets_[0]);
+        int fw = FD_ISSET(f, &fdsets_[1]);
         if ((fr || fw) && fcntl(f, F_GETFL) == -1 && errno == EBADF) {
             if (fr)
-                FD_SET(f, &fdset_[fdreadnow]->fds);
+                FD_SET(f, &fdnow[0]);
             if (fw)
-                FD_SET(f, &fdset_[fdwritenow]->fds);
+                FD_SET(f, &fdnow[1]);
             ++nfds;
         }
     }
