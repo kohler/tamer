@@ -244,7 +244,7 @@ void driver_tamer::loop(loop_flags flags)
 		    x.e[action].trigger(0);
 	}
         run_unblocked();
-    } else if (!timers_.empty())
+    } else if (!timers_.empty() && tamerpriv::time_type == time_virtual)
         tamerpriv::recent = timers_.expiry();
 
     // process timer events
