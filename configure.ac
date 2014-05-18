@@ -150,7 +150,7 @@ dnl ntohs, ntohl (need them in C++ code)
 dnl
 
 AC_LANG_CPLUSPLUS
-AC_CHECK_HEADERS([byteorder.h netinet/in.h sys/param.h])
+AC_CHECK_HEADERS([byteorder.h netinet/in.h sys/param.h sys/epoll.h])
 AC_MSG_CHECKING([whether ntohs and ntohl are defined])
 ac_ntoh_defined=no
 AC_COMPILE_IFELSE(

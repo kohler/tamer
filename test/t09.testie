@@ -2,8 +2,7 @@
 Check that tamer can recover from closed file descriptors.
 
 %script
-TAMER_DRIVER=tamer $VALGRIND $rundir/test/t09
-# NB does not work with libev or libevent drivers!!
+$VALGRIND $rundir/test/t09
 
 %stdout
--9 returned, 0 bytes read
+-125 returned, 0 bytes read

@@ -32,7 +32,7 @@ int main(int, char**) {
     tamer::fd fr, fw;
     tamer::fd::pipe(fr, fw);
     readit(fr);
-    close(fr.value());
+    fr.close();
     tamer::loop();
     tamer::cleanup();
 }

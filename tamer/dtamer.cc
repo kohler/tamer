@@ -19,6 +19,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#if HAVE_SYS_EPOLL_H
+# include <sys/epoll.h>
+#endif
 
 namespace tamer {
 namespace {
@@ -40,6 +43,9 @@ class xfd_setpair {
     }
     inline ~xfd_setpair() {
         delete[] reinterpret_cast<char*>(f_[0]);
+    }
+    inline int size() const {
+        return cap_;
     }
     inline void ensure(int fd) {
         if (unsigned(fd) >= cap_)
@@ -103,9 +109,33 @@ inline void xfd_setpair::clear() {
     memset(f_[0], 0, cap_ >> 2);
 }
 
+#if HAVE_SYS_EPOLL_H
+class xepoll_eventset {
+  public:
+    xepoll_eventset()
+        : es_(new struct epoll_event[128]) {
+    }
+    ~xepoll_eventset() {
+        delete[] es_;
+    }
+    int size() const {
+        return 128;
+    }
+    struct epoll_event* data() {
+        return es_;
+    }
+    epoll_event& operator[](int i) {
+        return es_[i];
+    }
+  private:
+    struct epoll_event* es_;
+};
+#endif
+
 class driver_tamer : public driver {
   public:
     driver_tamer();
+    ~driver_tamer();
 
     virtual void at_fd(int fd, int action, event<int> e);
     virtual void at_time(const timeval &expiry, event<> e, bool bg);
@@ -125,6 +155,9 @@ class driver_tamer : public driver {
 
     tamerpriv::driver_fdset<fdp> fds_;
     unsigned fdbound_;
+#if HAVE_SYS_EPOLL_H
+    int epollfd_;
+#endif
     xfd_setpair fdsets_;
 
     tamerpriv::driver_timerset timers_;
@@ -133,15 +166,36 @@ class driver_tamer : public driver {
     tamerpriv::driver_asapset preblock_;
 
     bool loop_state_;
+#if HAVE_SYS_EPOLL_H
+    bool epoll_sig_pipe_;
+    pid_t epoll_pid_;
+#endif
 
     static void fd_disinterest(void* arg);
     void update_fds();
     int find_bad_fds(xfd_setpair&);
+#if HAVE_SYS_EPOLL_H
+    static inline int epoll_fd_events(bool readable, bool writable);
+    inline void epoll_fd(int fd, int old_events, int events);
+    void epoll_recreate();
+#endif
 };
 
 
 driver_tamer::driver_tamer()
     : fdbound_(0), loop_state_(false) {
+#if HAVE_SYS_EPOLL_H
+    epollfd_ = epoll_create1(EPOLL_CLOEXEC);
+    epoll_sig_pipe_ = false;
+    epoll_pid_ = getpid();
+#endif
+}
+
+driver_tamer::~driver_tamer() {
+#if HAVE_SYS_EPOLL_H
+    if (epollfd_ >= 0)
+        close(epollfd_);
+#endif
 }
 
 void driver_tamer::fd_disinterest(void* arg) {
@@ -171,16 +225,73 @@ void driver_tamer::kill_fd(int fd) {
     }
 }
 
+#if HAVE_SYS_EPOLL_H
+inline int driver_tamer::epoll_fd_events(bool readable, bool writable) {
+    return (readable ? int(EPOLLIN) : 0) | (writable ? int(EPOLLOUT) : 0);
+}
+
+inline void driver_tamer::epoll_fd(int fd, int old_events, int events) {
+    if (old_events != events) {
+        struct epoll_event ev;
+        memset(&ev, 0, sizeof(ev)); // avoid valgrind complaints
+        ev.events = events;
+        ev.data.fd = fd;
+        int action;
+        if (!old_events)
+            action = EPOLL_CTL_ADD;
+        else if (events)
+            action = EPOLL_CTL_MOD;
+        else
+            action = EPOLL_CTL_DEL;
+        int r = epoll_ctl(epollfd_, action, fd, &ev);
+        if (r < 0) {
+            close(epollfd_);
+            epollfd_ = -1;
+        }
+    }
+}
+
+void driver_tamer::epoll_recreate() {
+    close(epollfd_);
+    epollfd_ = epoll_create1(EPOLL_CLOEXEC);
+    if (epollfd_ < 0)
+        return;
+    int max = std::min(fds_.size(), fdsets_.size());
+    for (int fd = 0; fd < max; ++fd) {
+        int events = epoll_fd_events(FD_ISSET(fd, &fdsets_[0]),
+                                     FD_ISSET(fd, &fdsets_[1]));
+        if (events)
+            epoll_fd(fd, 0, events);
+    }
+    if (epoll_sig_pipe_)
+        epoll_fd(sig_pipe[0], 0, EPOLLIN);
+    epoll_pid_ = getpid();
+}
+#endif
+
 void driver_tamer::update_fds() {
     int fd;
     while ((fd = fds_.pop_change()) >= 0) {
 	tamerpriv::driver_fd<fdp>& x = fds_[fd];
         fdsets_.ensure(fd);
-	for (int action = 0; action < 2; ++action)
+
+        bool wasset[2] = { false, false };
+	for (int action = 0; action < 2; ++action) {
+            wasset[action] = FD_ISSET(fd, &fdsets_[action]);
 	    if (x.e[action])
 		FD_SET(fd, &fdsets_[action]);
 	    else
 		FD_CLR(fd, &fdsets_[action]);
+        }
+
+#if HAVE_SYS_EPOLL_H
+        if (epollfd_ >= 0)
+            epoll_fd(fd, epoll_fd_events(wasset[0], wasset[1]),
+                     epoll_fd_events(x.e[0], x.e[1]));
+#else
+        (void) wasset;
+#endif
+
 	if (x.e[0] || x.e[1]) {
 	    if ((unsigned) fd >= fdbound_)
 		fdbound_ = fd + 1;
@@ -213,6 +324,11 @@ void driver_tamer::loop(loop_flags flags)
     if (flags == loop_forever)
         loop_state_ = true;
     xfd_setpair fdnow;
+#if HAVE_SYS_EPOLL_H
+    xepoll_eventset epollnow;
+    if (epollfd_ >= 0 && epoll_pid_ != getpid())
+        epoll_recreate();
+#endif
 
  again:
     // process asap events
@@ -246,7 +362,25 @@ void driver_tamer::loop(loop_flags flags)
 	toptr = 0;
 
     // select!
-    int nfds = fdbound_;
+    int nfds = 0;
+#if HAVE_SYS_EPOLL_H
+    int nepoll = 0;
+    if (epollfd_ >= 0 && !epoll_sig_pipe_ && sig_pipe[0] >= 0) {
+        epoll_fd(sig_pipe[0], 0, EPOLLIN);
+        epoll_sig_pipe_ = true;
+    }
+    if (epollfd_ >= 0 || !toptr || to.tv_sec != 0 || to.tv_usec != 0) {
+        int blockms;
+        if (!toptr)
+            blockms = -1;
+        else
+            blockms = to.tv_sec * 1000 + (to.tv_usec + 250) / 1000;
+        nepoll = epoll_wait(epollfd_, epollnow.data(), epollnow.size(),
+                            blockms);
+        goto after_select;
+    }
+#endif
+    nfds = fdbound_;
     if (sig_pipe[0] > nfds) {
         fdsets_.ensure(sig_pipe[0]);
         nfds = sig_pipe[0] + 1;
@@ -260,24 +394,47 @@ void driver_tamer::loop(loop_flags flags)
 	nfds = select(nfds, &fdnow[0], &fdnow[1], 0, toptr);
         if (nfds == -1 && errno == EBADF)
             nfds = find_bad_fds(fdnow);
+        goto after_select;
     }
 
+ after_select:
     // process signals
     set_recent();
     if (sig_any_active)
 	dispatch_signals();
 
     // process fd events
+#if HAVE_SYS_EPOLL_H
+    if (epollfd_ >= 0) {
+        for (int i = 0; i < nepoll; ++i) {
+            struct epoll_event& e = epollnow[i];
+            if (e.data.fd == sig_pipe[0])
+                continue;
+            if (e.events & EPOLLIN)
+                fds_[e.data.fd].e[0].trigger(0);
+            else if (e.events & (EPOLLERR | EPOLLHUP))
+                fds_[e.data.fd].e[0].trigger(-1);
+            if (e.events & EPOLLOUT)
+                fds_[e.data.fd].e[1].trigger(0);
+            else if (e.events & (EPOLLERR | EPOLLHUP))
+                fds_[e.data.fd].e[1].trigger(-1);
+        }
+        run_unblocked();
+        goto after_fd;
+    }
+#endif
     if (nfds > 0) {
 	for (unsigned fd = 0; fd < fdbound_; ++fd) {
 	    tamerpriv::driver_fd<fdp> &x = fds_[fd];
 	    for (int action = 0; action < 2; ++action)
-		if (FD_ISSET(fd, &fdnow[action]) && x.e[action])
+		if (FD_ISSET(fd, &fdnow[action]))
 		    x.e[action].trigger(0);
 	}
         run_unblocked();
+        goto after_fd;
     }
 
+ after_fd:
     // process timer events
     if (!timers_.empty() && tamerpriv::time_type == time_virtual && nfds == 0)
         tamerpriv::recent = timers_.expiry();
