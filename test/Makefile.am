@@ -34,7 +34,7 @@ t28_SOURCES = t28.tcc
 DRIVER_LIBS = @DRIVER_LIBS@
 MALLOC_LIBS = @MALLOC_LIBS@
 LDADD = ../tamer/libtamer.la $(DRIVER_LIBS) $(MALLOC_LIBS)
-LDFLAGS = -static
+AM_LDFLAGS = -static
 
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_builddir)
 DEFS = -DTAMER_DEBUG
