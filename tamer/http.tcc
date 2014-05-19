@@ -132,7 +132,7 @@ const char* http_message::default_status_message(unsigned code) {
 bool http_message::has_canonical_header(const std::string& key) const {
     for (std::vector<http_header>::const_iterator it = raw_headers_.begin();
          it != raw_headers_.end(); ++it)
-        if (header_equals_canonical(it->name, key))
+        if (it->is_canonical(key.data(), key.length()))
             return true;
     return false;
 }

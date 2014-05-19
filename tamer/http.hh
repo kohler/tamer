@@ -63,8 +63,6 @@ class http_message {
     inline http_message& body(std::string body);
 
     static std::string canonicalize(std::string x);
-    static bool header_equals_canonical(const std::string& key,
-                                        const std::string& canonical);
     static const char* default_status_message(unsigned code);
 
   private:
@@ -223,16 +221,6 @@ inline http_message& http_message::date_header(std::string key, time_t value) {
 inline http_message& http_message::body(std::string body) {
     body_ = TAMER_MOVE(body);
     return *this;
-}
-
-inline bool http_message::header_equals_canonical(const std::string& a,
-                                                  const std::string& b) {
-    if (a.length() != b.length())
-        return false;
-    for (size_t i = 0; i != a.length(); ++i)
-        if (tolower((unsigned char) a[i]) == b[i])
-            return false;
-    return true;
 }
 
 inline bool http_parser::ok() const {
