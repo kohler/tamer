@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([tamer], [1.5.0])
+AC_INIT([tamer], [1.7.0])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_HEADERS([config.h tamer/autoconf.h:tamer/autoconf.h.in])
 AM_INIT_AUTOMAKE
@@ -10,11 +10,13 @@ dnl
 dnl compilers
 dnl
 
+ac_user_cxx=${CXX+y}
+
 AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_CXX
 AC_PROG_CXXCPP
-if test -n "$GCC" ; then CC="$CC -W -Wall" ; CXX="$CXX -W -Wall" ; fi
+if test -n "$GCC"; then CC="$CC -W -Wall"; CXX="$CXX -W -Wall"; fi
 
 AC_LANG_CPLUSPLUS
 AC_CACHE_CHECK([whether the C++ compiler works], [ac_cv_cxx_works], [
@@ -225,6 +227,34 @@ dnl
 SAVE_CXX="$CXX"
 if test -n "$GCC"; then CXX="$CXX -Werror"; fi
 
+AC_CACHE_CHECK([whether the C++ compiler understands rvalue references], [ac_cv_cxx_rvalue_references], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int &) { return 1; } int f(int &&) { return 0; }]], [[return f(int());]])],
+	[ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])])
+if test "$ac_cv_cxx_rvalue_references" != yes -a -z "$ac_user_cxx"; then
+    SAVE_CXX="${SAVE_CXX} -std=gnu++0x"
+    CXX="${SAVE_CXX} -Werror"
+    AC_MSG_CHECKING([whether the C++ compiler with -std=gnu++0x understands rvalue refs])
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int &) { return 1; } int f(int &&) { return 0; }]], [[return f(int());]])],
+	[ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])
+    AC_MSG_RESULT([$ac_cv_cxx_rvalue_references])
+fi
+if test "$ac_cv_cxx_rvalue_references" = yes; then
+    AC_DEFINE([TAMER_HAVE_CXX_RVALUE_REFERENCES], [1], [Define if the C++ compiler understands rvalue references.])
+fi
+
+AC_MSG_CHECKING([for std::move])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <utility>], [[long x = 0; long &&y = std::move(x); (void) y;]])], [ac_cv_std_move=yes], [ac_cv_std_move=no])
+AC_MSG_RESULT([$ac_cv_std_move])
+if test "$ac_cv_std_move" != yes; then
+    AC_MSG_ERROR([
+
+The C++ compiler does not appear to understand C++11.
+To fix this problem, try supplying a "CXX" argument to ./configure,
+such as "./configure CXX='c++ -std=gnu++0x'".
+If you are using clang on Mac, ensure the '-stdlib=libc++' option.
+])
+fi
+
 AC_CACHE_CHECK([whether the C++ compiler understands constexpr], [ac_cv_cxx_constexpr], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[constexpr int f(int x) { return x + 1; }]], [[]])],
 	[ac_cv_cxx_constexpr=yes], [ac_cv_cxx_constexpr=no])])
@@ -244,13 +274,6 @@ AC_CACHE_CHECK([whether the C++ compiler understands static_assert], [ac_cv_cxx_
 	[ac_cv_cxx_static_assert=yes], [ac_cv_cxx_static_assert=no])])
 if test "$ac_cv_cxx_static_assert" = yes; then
     AC_DEFINE([TAMER_HAVE_CXX_STATIC_ASSERT], [1], [Define if the C++ compiler understands static_assert.])
-fi
-
-AC_CACHE_CHECK([whether the C++ compiler understands rvalue references], [ac_cv_cxx_rvalue_references], [
-    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int &) { return 1; } int f(int &&) { return 0; }]], [[return f(int());]])],
-	[ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])])
-if test "$ac_cv_cxx_rvalue_references" = yes; then
-    AC_DEFINE([TAMER_HAVE_CXX_RVALUE_REFERENCES], [1], [Define if the C++ compiler understands rvalue references.])
 fi
 
 AC_CACHE_CHECK([whether the C++ compiler understands template alias], [ac_cv_cxx_template_alias], [
