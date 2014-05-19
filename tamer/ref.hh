@@ -168,12 +168,10 @@ template <typename T> class ref_ptr { public:
 	    _t->add_ref_copy();
     }
 
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
     ref_ptr(ref_ptr<T>&& x)
         : _t(x._t) {
         x._t = 0;
     }
-#endif
 
     template <typename U> ref_ptr(const ref_ptr<U>& x)
 	: _t(x._t) {
@@ -195,12 +193,10 @@ template <typename T> class ref_ptr { public:
 	return *this;
     }
 
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
     ref_ptr<T>& operator=(ref_ptr<T>&& x) {
         std::swap(_t, x._t);
 	return *this;
     }
-#endif
 
     template <typename U> ref_ptr<T>& operator=(const ref_ptr<U>& x) {
 	if (x._t)
@@ -262,12 +258,10 @@ template <typename T> class passive_ref_ptr { public:
 	    _t->weak_add_ref();
     }
 
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
     passive_ref_ptr(passive_ref_ptr<T>&& x)
 	: _t(x._t) {
         x._t = 0;
     }
-#endif
 
     template <typename U> passive_ref_ptr(const passive_ref_ptr<U>& x)
 	: _t(x._t) {
@@ -289,12 +283,10 @@ template <typename T> class passive_ref_ptr { public:
 	return *this;
     }
 
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
     passive_ref_ptr<T>& operator=(passive_ref_ptr<T>&& x) {
         std::swap(_t, x._t);
         return *this;
     }
-#endif
 
     template <typename U> passive_ref_ptr<T>& operator=(const passive_ref_ptr<U>& x) {
 	if (x._t)

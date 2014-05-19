@@ -40,15 +40,11 @@ class fd {
     inline fd();
     explicit inline fd(int f);
     inline fd(const fd& f);
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
     inline fd(fd&& f);
-#endif
     inline ~fd();
 
     inline fd& operator=(const fd& f);
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
     inline fd& operator=(fd&& f);
-#endif
 
     static void open(const char *filename, int flags, mode_t mode,
 		     event<fd> result);
@@ -254,11 +250,9 @@ inline fd::fd(const fd &f)
     : _p(f._p) {
 }
 
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
 inline fd::fd(fd&& f)
     : _p(std::move(f._p)) {
 }
-#endif
 
 /** @brief  Destroy the file descriptor wrapper.
  *  @note   The underlying file descriptor is closed if this was the last
@@ -275,12 +269,10 @@ inline fd& fd::operator=(const fd& f) {
     return *this;
 }
 
-#if TAMER_HAVE_CXX_RVALUE_REFERENCES
 inline fd& fd::operator=(fd&& f) {
     _p = std::move(f._p);
     return *this;
 }
-#endif
 
 /** @brief  Open a file descriptor.
  *  @param  filename  File name.
