@@ -10,6 +10,28 @@
 namespace tamer {
 class http_parser;
 
+struct http_header {
+    std::string name;
+    std::string value;
+    inline http_header(std::string n, std::string v)
+        : name(TAMER_MOVE(n)), value(TAMER_MOVE(v)) {
+    }
+    inline bool is_canonical(const char* s, size_t len) const {
+        if (name.length() != len)
+            return false;
+        const char* x = name.data();
+        const char* end = s + len;
+        for (; s != end; ++s, ++x)
+            if (*s != *x
+                && (*s < 'A' || *s > 'Z' || (*s - 'A' + 'a') != *x))
+                return false;
+        return true;
+    }
+    inline bool is_content_length() const {
+        return is_canonical("content-length", 14);
+    }
+};
+
 class http_message {
   public:
     inline http_message();
@@ -40,7 +62,7 @@ class http_message {
     inline http_message& date_header(std::string key, time_t value);
     inline http_message& body(std::string body);
 
-    static std::string canonical_header(std::string x);
+    static std::string canonicalize(std::string x);
     static bool header_equals_canonical(const std::string& key,
                                         const std::string& canonical);
     static const char* default_status_message(unsigned code);
@@ -55,7 +77,7 @@ class http_message {
 
     std::string url_;
     std::string status_message_;
-    std::vector<std::string> raw_headers_;
+    std::vector<http_header> raw_headers_;
     std::string body_;
 
     friend class http_parser;
@@ -99,6 +121,8 @@ class http_parser {
     static int on_body(::http_parser* hp, const char* s, size_t len);
     static int on_message_complete(::http_parser* hp);
     inline void copy_parser_status(message_data& md);
+    static void unparse_request_headers(std::ostringstream& buf,
+                                        const http_message& m);
     static void unparse_response_headers(std::ostringstream& buf,
                                          const http_message& m,
                                          bool include_content_length);
@@ -147,7 +171,7 @@ inline const std::string& http_message::url() const {
 }
 
 inline bool http_message::has_header(const std::string& key) const {
-    return has_canonical_header(canonical_header(key));
+    return has_canonical_header(canonicalize(key));
 }
 
 inline const std::string& http_message::body() const {

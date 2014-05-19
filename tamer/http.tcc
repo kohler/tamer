@@ -109,9 +109,12 @@ const http_parser_settings http_parser::settings = {
 };
 
 
-std::string http_message::canonical_header(std::string x) {
-    for (size_t i = 0; i != x.length(); ++i)
-        x[i] = tolower((unsigned char) x[i]);
+std::string http_message::canonicalize(std::string x) {
+    for (size_t i = 0; i != x.length(); ++i) {
+        unsigned char c = (unsigned char) x[i];
+        if (c >= 'A' && c <= 'Z')
+            x[i] = c - 'A' + 'a';
+    }
     return x;
 }
 
@@ -127,9 +130,9 @@ const char* http_message::default_status_message(unsigned code) {
 }
 
 bool http_message::has_canonical_header(const std::string& key) const {
-    for (std::vector<std::string>::const_iterator it = raw_headers_.begin();
-         it != raw_headers_.end(); it += 2)
-        if (header_equals_canonical(*it, key))
+    for (std::vector<http_header>::const_iterator it = raw_headers_.begin();
+         it != raw_headers_.end(); ++it)
+        if (header_equals_canonical(it->name, key))
             return true;
     return false;
 }
@@ -151,8 +154,7 @@ static inline bool string_equals(const std::string& s, const char* c_str, size_t
 #define STRING_EQUALS(s, c_str) string_equals((s), (c_str), sizeof(c_str) - 1)
 
 void http_message::add_header(std::string key, std::string value) {
-    raw_headers_.push_back(TAMER_MOVE(key));
-    raw_headers_.push_back(TAMER_MOVE(value));
+    raw_headers_.push_back(http_header(TAMER_MOVE(key), TAMER_MOVE(value)));
 #if 0
     std::string lckey(raw_headers_[raw_headers_.size() - 2]);
     for (std::string::iterator it = lckey.begin();
@@ -313,17 +315,25 @@ tamed void http_parser::receive(fd f, event<http_message> done) {
     done(TAMER_MOVE(md.hm));
 }
 
+void http_parser::unparse_request_headers(std::ostringstream& buf,
+                                          const http_message& m) {
+    buf << http_method_str(m.method()) << " " << m.url()
+        << " HTTP/" << m.http_major() << "." << m.http_minor() << "\r\n";
+    bool need_content_length = !m.body_.empty();
+    for (std::vector<http_header>::const_iterator it = m.raw_headers_.begin();
+         it != m.raw_headers_.end(); ++it) {
+        buf << it->name << ": " << it->value << "\r\n";
+        need_content_length = need_content_length && !it->is_content_length();
+    }
+    if (need_content_length)
+        buf << "Content-Length: " << m.body_.length() << "\r\n";
+    buf << "\r\n";
+}
+
 tamed static void http_parser::send_request(fd f, const http_message& m,
                                             event<> done) {
     tamed { std::ostringstream buf; std::string body; }
-    buf << http_method_str(m.method()) << " " << m.url()
-        << " HTTP/" << m.http_major() << "." << m.http_minor() << "\r\n";
-    for (std::vector<std::string>::const_iterator it = m.raw_headers_.begin();
-         it != m.raw_headers_.end(); it += 2)
-        buf << *it << ": " << it[1] << "\r\n";
-    if (!m.body_.empty() && !m.has_canonical_header("content-length"))
-        buf << "Content-Length: " << m.body_.length() << "\r\n";
-    buf << "\r\n";
+    unparse_request_headers(buf, m);
     body = m.body();
     if (body.length() + buf.str().length() < 16384) {
         buf << TAMER_MOVE(body);
@@ -344,11 +354,13 @@ void http_parser::unparse_response_headers(std::ostringstream& buf,
     else
         buf << m.status_message();
     buf << "\r\n";
-    for (std::vector<std::string>::const_iterator it = m.raw_headers_.begin();
-         it != m.raw_headers_.end(); it += 2)
-        buf << *it << ": " << it[1] << "\r\n";
-    if (!m.body_.empty() && include_content_length
-        && !m.has_canonical_header("content-length"))
+    bool need_content_length = !m.body_.empty() && include_content_length;
+    for (std::vector<http_header>::const_iterator it = m.raw_headers_.begin();
+         it != m.raw_headers_.end(); ++it) {
+        buf << it->name << ": " << it->value << "\r\n";
+        need_content_length = need_content_length && !it->is_content_length();
+    }
+    if (need_content_length)
         buf << "Content-Length: " << m.body_.length() << "\r\n";
     buf << "\r\n";
 }
