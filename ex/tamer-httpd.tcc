@@ -17,11 +17,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sstream>
 
 tamed void runone(tamer::fd cfd, double delay) {
     tvars {
         tamer::http_parser hp(HTTP_REQUEST);
         tamer::http_message req, res;
+        std::ostringstream buf;
     }
 
     while (cfd) {
@@ -29,9 +31,15 @@ tamed void runone(tamer::fd cfd, double delay) {
         if (!hp.ok())
             break;
         res.clear();
+        buf.str(std::string());
+        buf << "URL: " << req.url() << "\n";
+        for (auto it = req.header_begin(); it != req.header_end(); ++it)
+            buf << "Header: " << it->name << ": " << it->value << "\n";
+        for (auto it = req.query_begin(); it != req.query_end(); ++it)
+            buf << "Query: " << it->name << ": " << it->value << "\n";
         res.status_code(200).date_header("Date", time(NULL))
             .header("Content-Type", "text/plain")
-            .body(req.url() + " is a bad choice.\n");
+            .body(buf.str());
         twait { hp.send(cfd, res, make_event()); }
         if (!hp.should_keep_alive())
             break;

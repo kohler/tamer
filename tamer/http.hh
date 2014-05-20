@@ -5,7 +5,8 @@
 #include <vector>
 #include <string>
 #include <sstream>
-#include <map>
+#include <memory>
+#include <unordered_map>
 #include <time.h>
 namespace tamer {
 class http_parser;
@@ -15,6 +16,12 @@ struct http_header {
     std::string value;
     inline http_header(std::string n, std::string v)
         : name(TAMER_MOVE(n)), value(TAMER_MOVE(v)) {
+    }
+    inline bool is(const char* s, size_t len) const {
+        return name.length() == len && memcmp(name.data(), s, len) == 0;
+    }
+    inline bool is(const std::string& s) const {
+        return is(s.data(), s.length());
     }
     inline bool is_canonical(const char* s, size_t len) const {
         if (name.length() != len)
@@ -26,6 +33,9 @@ struct http_header {
                 && (*s < 'A' || *s > 'Z' || (*s - 'A' + 'a') != *x))
                 return false;
         return true;
+    }
+    inline bool is_canonical(const std::string& s) const {
+        return is_canonical(s.data(), s.length());
     }
     inline bool is_content_length() const {
         return is_canonical("content-length", 14);
@@ -46,9 +56,19 @@ class http_message {
     inline const std::string& status_message() const;
     inline enum http_method method() const;
     inline const std::string& url() const;
-    bool has_canonical_header(const std::string& key) const;
-    inline bool has_header(const std::string& key) const;
+    bool has_canonical_header(const std::string& name) const;
+    inline bool has_header(const std::string& name) const;
     inline const std::string& body() const;
+    inline bool has_query() const;
+    inline std::string query() const;
+    bool has_query(const std::string& name) const;
+    std::string query(const std::string& name) const;
+
+    typedef std::vector<http_header>::const_iterator header_iterator;
+    inline header_iterator header_begin() const;
+    inline header_iterator header_end() const;
+    inline header_iterator query_begin() const;
+    inline header_iterator query_end() const;
 
     void clear();
     void add_header(std::string key, std::string value);
@@ -66,6 +86,19 @@ class http_message {
     static const char* default_status_message(unsigned code);
 
   private:
+    enum {
+        info_url = 1, info_query = 2
+    };
+
+    struct info_type {
+        unsigned flags;
+        struct http_parser_url urlp;
+        std::vector<http_header> raw_query;
+        inline info_type()
+            : flags(0) {
+        }
+    };
+
     unsigned short major_;
     unsigned short minor_;
     unsigned status_code_ : 16;
@@ -78,6 +111,11 @@ class http_message {
     std::vector<http_header> raw_headers_;
     std::string body_;
 
+    mutable std::shared_ptr<info_type> info_;
+
+    inline void kill_info(unsigned f) const;
+    inline info_type& info(unsigned f) const;
+    void make_info(unsigned f) const;
     friend class http_parser;
 };
 
@@ -136,6 +174,11 @@ inline http_message::http_message()
       error_(HPE_OK), upgrade_(0) {
 }
 
+inline void http_message::kill_info(unsigned f) const {
+    if (info_)
+        info_->flags &= ~f;
+}
+
 inline unsigned http_message::http_major() const {
     return major_;
 }
@@ -176,6 +219,19 @@ inline const std::string& http_message::body() const {
     return body_;
 }
 
+inline bool http_message::has_query() const {
+    return info(info_url).urlp.field_set & (1 << UF_QUERY);
+}
+
+inline std::string http_message::query() const {
+    const info_type& i = info(info_url);
+    if (i.urlp.field_set & (1 << UF_QUERY))
+        return url_.substr(i.urlp.field_data[UF_QUERY].off,
+                           i.urlp.field_data[UF_QUERY].len);
+    else
+        return std::string();
+}
+
 inline http_message& http_message::status_code(unsigned code) {
     status_code_ = code;
     status_message_ = std::string();
@@ -195,6 +251,7 @@ inline http_message& http_message::method(enum http_method method) {
 
 inline http_message& http_message::url(std::string url) {
     url_ = TAMER_MOVE(url);
+    kill_info(info_url | info_query);
     return *this;
 }
 
@@ -221,6 +278,28 @@ inline http_message& http_message::date_header(std::string key, time_t value) {
 inline http_message& http_message::body(std::string body) {
     body_ = TAMER_MOVE(body);
     return *this;
+}
+
+inline http_message::info_type& http_message::info(unsigned f) const {
+    if (!info_ || !info_.unique() || (info_->flags & f) != f)
+        make_info(f);
+    return *info_.get();
+}
+
+inline http_message::header_iterator http_message::header_begin() const {
+    return raw_headers_.begin();
+}
+
+inline http_message::header_iterator http_message::header_end() const {
+    return raw_headers_.end();
+}
+
+inline http_message::header_iterator http_message::query_begin() const {
+    return info(info_query).raw_query.begin();
+}
+
+inline http_message::header_iterator http_message::query_end() const {
+    return info(info_query).raw_query.end();
 }
 
 inline bool http_parser::ok() const {
