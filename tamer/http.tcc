@@ -207,7 +207,9 @@ void http_message::make_info(unsigned f) const {
     info_type& i = *info_;
 
     if (!(i.flags & info_url) && (f & (info_url | info_query))) {
-        http_parser_parse_url(url_.data(), url_.length(), method_ == HTTP_CONNECT, &i.urlp);
+        int r = http_parser_parse_url(url_.data(), url_.length(), method_ == HTTP_CONNECT, &i.urlp);
+        if (r)
+            i.urlp.field_set = 0;
         i.flags |= info_url;
     }
 
@@ -265,6 +267,31 @@ void http_message::make_info(unsigned f) const {
         }
         i.flags |= info_query;
     }
+}
+
+std::string http_message::host() const {
+    info_type& i = info(info_url);
+    if (i.urlp.field_set & (1 << UF_HOST))
+        return url_.substr(i.urlp.field_data[UF_HOST].off,
+                           i.urlp.field_data[UF_HOST].len);
+    for (auto it = raw_headers_.begin(); it != raw_headers_.end(); ++it)
+        if (it->is_canonical("host", 4))
+            return it->value;
+    return std::string();
+}
+
+std::string http_message::url_host_port() const {
+    info_type& i = info(info_url);
+    std::string host;
+    if (i.urlp.field_set & (1 << UF_HOST))
+        host = url_.substr(i.urlp.field_data[UF_HOST].off,
+                           i.urlp.field_data[UF_HOST].len);
+    if ((i.urlp.field_set & (1 << UF_PORT)) && !host.empty()) {
+        host += ":";
+        host += url_.substr(i.urlp.field_data[UF_PORT].off,
+                            i.urlp.field_data[UF_PORT].len);
+    }
+    return host;
 }
 
 bool http_message::has_query(const std::string& name) const {
@@ -403,7 +430,7 @@ tamed void http_parser::receive(fd f, event<http_message> done) {
         twait { tamer::at_fd_read(f.value(), make_event()); }
     }
 
-    if (!md.done && !md.hm.error_)
+    if (done && !md.done && !md.hm.error_)
         hp_.http_errno = md.hm.error_ = HPE_UNKNOWN;
     done(TAMER_MOVE(md.hm));
 }

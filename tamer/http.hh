@@ -26,11 +26,11 @@ struct http_header {
     inline bool is_canonical(const char* s, size_t len) const {
         if (name.length() != len)
             return false;
-        const char* x = name.data();
+        const char* names = name.data();
         const char* end = s + len;
-        for (; s != end; ++s, ++x)
-            if (*s != *x
-                && (*s < 'A' || *s > 'Z' || (*s - 'A' + 'a') != *x))
+        for (; s != end; ++s, ++names)
+            if (*s != *names
+                && (*s < 'A' || *s > 'Z' || (*s - 'A' + 'a') != *names))
                 return false;
         return true;
     }
@@ -48,6 +48,7 @@ class http_message {
 
     inline bool ok() const;
     inline bool operator!() const;
+    inline enum http_errno error() const;
 
     inline unsigned http_major() const;
     inline unsigned http_minor() const;
@@ -59,6 +60,12 @@ class http_message {
     bool has_canonical_header(const std::string& name) const;
     inline bool has_header(const std::string& name) const;
     inline const std::string& body() const;
+
+    std::string host() const;
+    inline std::string url_schema() const;
+    inline std::string url_host() const;
+    std::string url_host_port() const;
+    inline std::string url_path() const;
     inline bool has_query() const;
     inline std::string query() const;
     bool has_query(const std::string& name) const;
@@ -73,6 +80,7 @@ class http_message {
     void clear();
     void add_header(std::string key, std::string value);
 
+    inline http_message& error(enum http_errno e);
     inline http_message& status_code(unsigned code);
     inline http_message& status_code(unsigned code, std::string message);
     inline http_message& method(enum http_method method);
@@ -116,6 +124,8 @@ class http_message {
     inline void kill_info(unsigned f) const;
     inline info_type& info(unsigned f) const;
     void make_info(unsigned f) const;
+    inline bool has_url_field(int field) const;
+    inline std::string url_field(int field) const;
     friend class http_parser;
 };
 
@@ -195,6 +205,10 @@ inline bool http_message::operator!() const {
     return !ok();
 }
 
+inline enum http_errno http_message::error() const {
+    return (enum http_errno) error_;
+}
+
 inline unsigned http_message::status_code() const {
     return status_code_;
 }
@@ -219,17 +233,42 @@ inline const std::string& http_message::body() const {
     return body_;
 }
 
+inline bool http_message::has_url_field(int field) const {
+    return info(info_url).urlp.field_set & (1 << field);
+}
+
+inline std::string http_message::url_field(int field) const {
+    const info_type& i = info(info_url);
+    if (i.urlp.field_set & (1 << field))
+        return url_.substr(i.urlp.field_data[field].off,
+                           i.urlp.field_data[field].len);
+    else
+        return std::string();
+}
+
 inline bool http_message::has_query() const {
-    return info(info_url).urlp.field_set & (1 << UF_QUERY);
+    return has_url_field(UF_QUERY);
 }
 
 inline std::string http_message::query() const {
-    const info_type& i = info(info_url);
-    if (i.urlp.field_set & (1 << UF_QUERY))
-        return url_.substr(i.urlp.field_data[UF_QUERY].off,
-                           i.urlp.field_data[UF_QUERY].len);
-    else
-        return std::string();
+    return url_field(UF_QUERY);
+}
+
+inline std::string http_message::url_schema() const {
+    return url_field(UF_SCHEMA);
+}
+
+inline std::string http_message::url_host() const {
+    return url_field(UF_HOST);
+}
+
+inline std::string http_message::url_path() const {
+    return url_field(UF_PATH);
+}
+
+inline http_message& http_message::error(enum http_errno e) {
+    error_ = e;
+    return *this;
 }
 
 inline http_message& http_message::status_code(unsigned code) {
