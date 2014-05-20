@@ -211,7 +211,7 @@ int fd::pipe(fd& rfd, fd& wfd)
  */
 void fd::fstat(struct stat &stat_out, event<int> done)
 {
-    fdimp *fi = _p.get();
+    fdimp *fi = _p;
     if (fi && fi->_fd >= 0) {
 #if HAVE_TAMER_FDHELPER
 	_fdhm.fstat(fi->_fd, stat_out, done);
@@ -228,7 +228,7 @@ tamed void fd::read(void *buf, size_t size, size_t* nread_ptr, event<int> done)
     tvars {
 	size_t pos = 0;
 	ssize_t amt;
-	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
+	fdimp_weak_ref fi(_p);
     }
 
     if (nread_ptr)
@@ -274,7 +274,7 @@ tamed void fd::read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<i
 	size_t pos = 0;
         size_t size = 0;
 	ssize_t amt;
-	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
+	fdimp_weak_ref fi(_p);
     }
 
     if (nread_ptr)
@@ -331,7 +331,7 @@ tamed void fd::read_once(void* buf, size_t size, size_t& nread, event<int> done)
 {
     tvars {
 	ssize_t amt;
-	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
+	fdimp_weak_ref fi(_p);
     }
 
     nread = 0;
@@ -364,7 +364,7 @@ tamed void fd::read_once(const struct iovec* iov, int iov_count, size_t& nread, 
 {
     tvars {
 	ssize_t amt;
-	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
+	fdimp_weak_ref fi(_p);
     }
 
     nread = 0;
@@ -399,7 +399,7 @@ tamed void fd::write(const void* buf, size_t size, size_t* nwritten_ptr,
     tvars {
 	size_t pos = 0;
 	ssize_t amt;
-	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
+	fdimp_weak_ref fi(_p);
     }
 
     if (nwritten_ptr)
@@ -454,7 +454,7 @@ tamed void fd::write(struct iovec* iov, int iov_count, size_t* nwritten_ptr,
 	size_t pos = 0;
         size_t size = 0;
 	ssize_t amt;
-	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
+	fdimp_weak_ref fi(_p);
     }
 
     if (nwritten_ptr)
@@ -526,7 +526,7 @@ tamed void fd::write_once(const void *buf, size_t size, size_t &nwritten, event<
 {
     tvars {
 	ssize_t amt;
-	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
+	fdimp_weak_ref fi(_p);
     }
 
     nwritten = 0;
@@ -575,7 +575,7 @@ tamed void fd::write_once(const struct iovec* iov, int iov_count, size_t& nwritt
 {
     tvars {
 	ssize_t amt;
-	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
+	fdimp_weak_ref fi(_p);
     }
 
     nwritten = 0;
@@ -605,7 +605,7 @@ tamed void fd::write_once(const struct iovec* iov, int iov_count, size_t& nwritt
 }
 
 ssize_t fd::direct_read(void* buf, size_t size) {
-    fdimp* fi = _p.get();
+    fdimp* fi = _p;
     if (fi && fi->_fd >= 0)
         return ::read(fi->_fd, buf, size);
     else {
@@ -615,7 +615,7 @@ ssize_t fd::direct_read(void* buf, size_t size) {
 }
 
 ssize_t fd::direct_write(const void* buf, size_t size) {
-    fdimp* fi = _p.get();
+    fdimp* fi = _p;
     if (fi && fi->_fd >= 0)
         return ::write(fi->_fd, buf, size);
     else {
@@ -638,7 +638,7 @@ tamed void fd::sendmsg(const void *buf, size_t size, int transfer_fd,
 	struct iovec iov;
 	char transfer_fd_space[64];
 	ssize_t amt;
-	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
+	fdimp_weak_ref fi(_p);
     }
 
     if (!fi || fi->_fd < 0) {
@@ -748,7 +748,7 @@ tamed void fd::accept(struct sockaddr *addr_out, socklen_t *addrlen_out,
 {
     tvars {
 	int f = -ECANCELED;
-	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
+	fdimp_weak_ref fi(_p);
     }
 
     if (!fi || fi->_fd < 0) {
@@ -789,7 +789,7 @@ tamed void fd::connect(const struct sockaddr *addr, socklen_t addrlen,
 {
     tvars {
 	int x, ret(0);
-	passive_ref_ptr<fd::fdimp> fi(this->_p.get());
+	fdimp_weak_ref fi(_p);
     }
 
     if (!fi || fi->_fd < 0) {

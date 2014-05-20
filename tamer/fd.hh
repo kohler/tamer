@@ -15,7 +15,6 @@
  */
 #include <tamer/tamer.hh>
 #include <tamer/lock.hh>
-#include <tamer/ref.hh>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -34,7 +33,7 @@ class fd {
     struct fdimp;
 
   public:
-    typedef ref_ptr<fdimp> fd::*unspecified_bool_type;
+    typedef bool (fd::*unspecified_bool_type)() const;
     enum { default_backlog = 128 };
 
     inline fd();
@@ -123,21 +122,7 @@ class fd {
     inline int make_nonblocking();
 
   private:
-
-    struct fdcloser {
-	fdcloser(fd::fdimp *f)
-	    : _f(f) {
-	}
-	fdcloser(const ref_ptr<fd::fdimp> &f)
-	    : _f(f) {
-	}
-	void operator()() {
-	    _f->close();
-	}
-	passive_ref_ptr<fd::fdimp> _f;
-    };
-
-    struct fdimp : public enable_ref_ptr_with_full_release<fdimp> {
+    struct fdimp {
 	int _fd;
 	mutex _rlock;
 	mutex _wlock;
@@ -145,19 +130,54 @@ class fd {
 #if HAVE_TAMER_FDHELPER
 	bool _is_file;
 #endif
+        unsigned ref_count_;
+        unsigned weak_count_;
 
 	fdimp(int fd)
 	    : _fd(fd)
 #if HAVE_TAMER_FDHELPER
 	    , _is_file(false)
 #endif
-	{
+            , ref_count_(1), weak_count_(0) {
 	}
-	void full_release() {
-	    if (_fd >= 0)
-		close();
-	}
+        void deref() {
+            if (!--ref_count_)
+                close();
+            if (!ref_count_ && !weak_count_)
+                delete this;
+        }
 	int close(int leave_error = -EBADF);
+    };
+
+    class fdimp_weak_ref {
+      public:
+        fdimp_weak_ref(fdimp* p)
+            : p_(p) {
+            if (p_)
+                ++p_->weak_count_;
+        }
+        ~fdimp_weak_ref() {
+            if (p_ && !--p_->weak_count_ && !p_->ref_count_)
+                delete p_;
+        }
+        operator unspecified_bool_type() const {
+            return p_ ? &fd::valid : 0;
+        }
+        fdimp* operator->() const {
+            return p_;
+        }
+      private:
+        fdimp* p_;
+    };
+
+    struct fdcloser {
+	fdcloser(fd::fdimp* f)
+	    : f_(f) {
+	}
+	void operator()() {
+	    f_->close();
+	}
+        fdimp_weak_ref f_;
     };
 
     class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_&);
@@ -174,7 +194,7 @@ class fd {
     class closure__sendmsg__PKvkiQi_; void sendmsg(closure__sendmsg__PKvkiQi_ &);
     class closure__open__PKci6mode_tQ2fd_; static void open(closure__open__PKci6mode_tQ2fd_ &);
 
-    ref_ptr<fdimp> _p;
+    fdimp* _p;
 
     friend bool operator==(const fd &a, const fd &b);
     friend bool operator!=(const fd &a, const fd &b);
@@ -248,10 +268,13 @@ inline fd::fd(int value)
  */
 inline fd::fd(const fd &f)
     : _p(f._p) {
+    if (_p)
+        ++_p->ref_count_;
 }
 
 inline fd::fd(fd&& f)
-    : _p(std::move(f._p)) {
+    : _p(f._p) {
+    f._p = 0;
 }
 
 /** @brief  Destroy the file descriptor wrapper.
@@ -259,18 +282,27 @@ inline fd::fd(fd&& f)
  *          remaining wrapper.
  */
 inline fd::~fd() {
+    if (_p)
+        _p->deref();
 }
 
 /** @brief  Assign this file descriptor to refer to @a x.
  *  @param  f  Source file descriptor.
  */
 inline fd& fd::operator=(const fd& f) {
+    if (f._p)
+        ++f._p->ref_count_;
+    if (_p)
+        _p->deref();
     _p = f._p;
     return *this;
 }
 
 inline fd& fd::operator=(fd&& f) {
-    _p = std::move(f._p);
+    if (_p)
+        _p->deref();
+    _p = f._p;
+    f._p = 0;
     return *this;
 }
 
@@ -309,7 +341,7 @@ inline bool fd::valid() const {
  *  @return  True if file descriptor is valid, false if not.
  */
 inline fd::operator unspecified_bool_type() const {
-    return _p && _p->_fd >= 0 ? &fd::_p : 0;
+    return _p && _p->_fd >= 0 ? &fd::valid : 0;
 }
 
 /** @brief  Test if file descriptor is invalid.
@@ -596,7 +628,7 @@ inline void fd::close(int errcode) {
     if (_p)
 	_p->close(errcode);
     else if (errcode < 0 && errcode != -EBADF)
-	_p = ref_ptr<fdimp>(new fdimp(errcode));
+	_p = new fdimp(errcode);
 }
 
 /** @cond never */
