@@ -244,7 +244,7 @@ inline void driver_tamer::epoll_fd(int fd, int old_events, int events) {
         else
             action = EPOLL_CTL_DEL;
         int r = epoll_ctl(epollfd_, action, fd, &ev);
-        if (r < 0) {
+        if (r < 0 && (action != EPOLL_CTL_DEL || errno != EBADF)) {
             close(epollfd_);
             epollfd_ = -1;
         }
