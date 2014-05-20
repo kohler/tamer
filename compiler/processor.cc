@@ -623,29 +623,34 @@ void vartab_t::closure_declarations(strbuf& b, const str& padding) const
 }
 
 void
-vartab_t::initialize(strbuf& b, outputter_t* o, tame_fn_t* fn) const
+vartab_t::initializers_and_reference_declarations(strbuf& b, outputter_t* o,
+                                                  tame_fn_t* fn) const
 {
     unsigned lineno;
-    for (unsigned i = 0; i != size(); ++i)
-        if (!_vars[i].name().empty()) {
-            initializer_t* init = _vars[i].initializer();
-            if ((lineno = init->constructor_lineno()))
-                o->set_lineno(lineno, b);
-            b << "  new ((void*) &" TAME_CLOSURE_NAME "."
-              << _vars[i].name(false, false) << ") ("
-              << _vars[i].decl(false);
-            if (init)
-                init->finish_type(b);
-            b << ")";
-            // tamer::destroy_guard objects need special initialization
-            if (fn && init
-                && (_vars[i].type().base_type() == "tamer::destroy_guard"
-                    || _vars[i].type().base_type() == "destroy_guard"))
-                b << "(" TAME_CLOSURE_NAME ", " << init->value() << ")";
-            else if (init)
-                init->initializer(b, _vars[i].type().is_ref());
-            b << ";\n";
-        }
+    for (unsigned i = 0; i != size(); ++i) {
+        const var_t& v = _vars[i];
+        if (v.name().empty())
+            continue;
+        initializer_t* init = v.initializer();
+        if ((lineno = init->constructor_lineno()))
+            o->set_lineno(lineno, b);
+        b << "  if (" TAME_CLOSURE_NAME ".tamer_block_position_ == 0)\n"
+          << "    new ((void*) &" TAME_CLOSURE_NAME "."
+          << v.name(false, false) << ") ("
+          << v.decl(false);
+        if (init)
+            init->finish_type(b);
+        b << ")";
+        // tamer::destroy_guard objects need special initialization
+        if (fn && init
+            && (v.type().base_type() == "tamer::destroy_guard"
+                || v.type().base_type() == "destroy_guard"))
+            b << "(" TAME_CLOSURE_NAME ", " << init->value() << ")";
+        else if (init)
+            init->initializer(b, v.type().is_ref());
+        b << ";\n";
+        v.reference_declaration(b, "  ");
+    }
 }
 
 void
@@ -805,24 +810,23 @@ tame_fn_t::output_closure(outputter_t *o)
     o->switch_to_mode(om);
 }
 
-void vartab_t::reference_declarations(strbuf& b, const str& padding) const {
-    for (unsigned i = 0; i != size(); ++i) {
-        const var_t& v = _vars[i];
-        if (!v.name().empty()) {
-            b << padding << v.ref_decl() << " TAMER_CLOSUREVARATTR = ";
-            if (v.type().is_ref())
-                b << "*";
-            b << TAME_CLOSURE_NAME "." << v.name() << ";\n";
-        }
+void var_t::reference_declaration(strbuf& b, const str& padding) const {
+    if (!name().empty()) {
+        b << padding << ref_decl() << " TAMER_CLOSUREVARATTR = ";
+        if (type().is_ref())
+            b << "*";
+        b << TAME_CLOSURE_NAME "." << name() << ";\n";
     }
+}
+void vartab_t::reference_declarations(strbuf& b, const str& padding) const {
+    for (unsigned i = 0; i != size(); ++i)
+        _vars[i].reference_declaration(b, padding);
 }
 
 void
 tame_fn_t::output_jump_tab(strbuf &b)
 {
-    b << "  tamer::tamerpriv::closure_owner<" << closure_type_name(true)
-      << " > tamer_closure_holder_(" << TAME_CLOSURE_NAME << ");\n"
-      << "  switch (" << TAME_CLOSURE_NAME << ".tamer_block_position_) {\n"
+    b << "  switch (" << TAME_CLOSURE_NAME << ".tamer_block_position_) {\n"
       << "  case 0: break;\n";
     for (unsigned i = 0; i < _envs.size(); i++) {
         if (_envs[i]->is_jumpto()) {
@@ -939,12 +943,12 @@ tame_fn_t::output_vars(outputter_t *o, int ln)
 
     if (_args)
         _args->reference_declarations(b, "  ");
-    _stack_vars.reference_declarations(b, "  ");
+    b << "  tamer::tamerpriv::closure_owner<" << closure_type_name(true)
+      << " > tamer_closure_holder_(" << TAME_CLOSURE_NAME << ");\n";
+
+    _stack_vars.initializers_and_reference_declarations(b, o, this);
 
     output_jump_tab(b);
-    // output stack declaration
-    if (_stack_vars.size())
-        _stack_vars.initialize(b, o, this);
 
     o->output_str(b.str());
     // will switch modes as appropriate (internally)

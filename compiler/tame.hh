@@ -378,6 +378,7 @@ public:
     str param_decl(bool move, bool escape) const;
     str decl(bool include_name) const;
     str ref_decl() const;
+    void reference_declaration(strbuf& b, const str& padding) const;
     str _name;
 
 protected:
@@ -399,9 +400,10 @@ public:
     bool add(const var_t &v);
     void closure_declarations(strbuf& b, const str& padding) const;
     void reference_declarations(strbuf& b, const str& padding) const;
+    void initializers_and_reference_declarations(strbuf& b, outputter_t* o,
+                                                 tame_fn_t* fn) const;
     typedef enum { pl_declarations, pl_assign_moves_named } paramlist_flags;
     void paramlist(strbuf &b, paramlist_flags flags, const char* sep) const;
-    void initialize(strbuf& b, outputter_t* o, tame_fn_t* fn) const;
     bool exists(const str &n) const { return _tab.find(n) != _tab.end(); }
     const var_t *lookup(const str &n) const;
     void mangle(strbuf &b) const;
