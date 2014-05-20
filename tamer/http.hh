@@ -131,7 +131,7 @@ class http_message {
     friend class http_parser;
 };
 
-class http_parser {
+class http_parser : public tamed_class {
   public:
     http_parser(enum http_parser_type type);
 
