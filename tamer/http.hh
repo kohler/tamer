@@ -80,6 +80,8 @@ class http_message {
     void clear();
     void add_header(std::string key, std::string value);
 
+    inline http_message& http_major(unsigned v);
+    inline http_message& http_minor(unsigned v);
     inline http_message& error(enum http_errno e);
     inline http_message& status_code(unsigned code);
     inline http_message& status_code(unsigned code, std::string message);
@@ -264,6 +266,16 @@ inline std::string http_message::url_host() const {
 
 inline std::string http_message::url_path() const {
     return url_field(UF_PATH);
+}
+
+inline http_message& http_message::http_major(unsigned v) {
+    major_ = v;
+    return *this;
+}
+
+inline http_message& http_message::http_minor(unsigned v) {
+    minor_ = v;
+    return *this;
 }
 
 inline http_message& http_message::error(enum http_errno e) {
