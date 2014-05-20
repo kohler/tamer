@@ -147,9 +147,9 @@ inline std::ostream& operator<<(std::ostream& s, const lstr& l) {
 struct type_qualifier_t {
     type_qualifier_t () {}
     type_qualifier_t (const type_qualifier_t &t)
-	: _lineno (t._lineno), _v (t._v) {}
+        : _lineno (t._lineno), _v (t._v) {}
     type_qualifier_t (const lstr &s)
-	{ if (s.length()) add_lstr (s); }
+        { if (s.length()) add_lstr (s); }
 
     void add_str(const str &s) { _v.push_back(s); }
     void add_lstr(const lstr &s) { add_str(s.str()); _lineno = s.lineno(); }
@@ -166,9 +166,9 @@ struct type_qualifier_t {
 
 
 typedef enum { OUTPUT_NONE = 0,
-	       OUTPUT_PASSTHROUGH = 1,
-	       OUTPUT_TREADMILL = 2,
-	       OUTPUT_BIG_NEW_CHUNK = 3 } output_mode_t;
+               OUTPUT_PASSTHROUGH = 1,
+               OUTPUT_TREADMILL = 2,
+               OUTPUT_BIG_NEW_CHUNK = 3 } output_mode_t;
 
 class outputter_t {
 public:
@@ -242,10 +242,10 @@ class element_list_t : public tame_el_t {
     virtual void output(outputter_t *o);
     void passthrough(const lstr& l);
     void push(tame_el_t *e) {
-	if (_lst.empty() || _lst.back() != e) {
-	    push_hook(e);
-	    _lst.push_back(e);
-	}
+        if (_lst.empty() || _lst.back() != e) {
+            push_hook(e);
+            _lst.push_back(e);
+        }
     }
     virtual void push_hook (tame_el_t *) {}
     bool need_implicit_rendezvous() const;
@@ -280,10 +280,10 @@ class tame_passthrough_t : public tame_el_t {
   public:
     tame_passthrough_t(const lstr &s) { append (s); }
     bool append(const lstr& s) {
-	if (buf_.tellp() == 0)
-	    lineno_ = s.lineno();
-	buf_ << s;
-	return true;
+        if (buf_.tellp() == 0)
+            lineno_ = s.lineno();
+        buf_ << s;
+        return true;
     }
     void output(outputter_t *o);
   private:
@@ -295,7 +295,7 @@ class type_t {
   public:
     type_t() {}
     type_t(const str &t, const str &p)
-	: _base_type(t) { set_pointer(p); }
+        : _base_type(t) { set_pointer(p); }
     str base_type() const { return _base_type; }
     str pointer() const { return _pointer; }
     str arrays() const { return _arrays; }
@@ -307,7 +307,7 @@ class type_t {
     str mangle() const;
     bool is_complete() const { return _base_type.length(); }
     bool is_void() const {
-	return (_base_type == "void" && _pointer.length() == 0);
+        return (_base_type == "void" && _pointer.length() == 0);
     }
     bool is_ref() const {
         size_t l = _pointer.length();
@@ -356,9 +356,9 @@ public:
     var_t(const str &n, vartyp_t a = NONE) : _name (n), _asc (a), _initializer(0) {}
     var_t(const type_qualifier_t &m, declarator_t *d, const lstr &arrays, vartyp_t a = NONE);
     var_t(const str &t, const str &p, const str &n, vartyp_t a = NONE)
-	: _name(n), _type(t, p), _asc(a), _initializer(0) {}
+        : _name(n), _type(t, p), _asc(a), _initializer(0) {}
     var_t(const type_t &t, const str &n, vartyp_t a = NONE)
-	: _name(n), _type(t), _asc(a), _initializer(0) {}
+        : _name(n), _type(t), _asc(a), _initializer(0) {}
 
     const type_t &type() const { return _type; }
     const str &name() const { return _name; }
@@ -422,7 +422,7 @@ class tame_fork_t;
 class declarator_t {
 public:
     declarator_t (const str &n, vartab_t *v)
-	: _name (n), _params (v), _initializer(0) {}
+        : _name (n), _params (v), _initializer(0) {}
     declarator_t (const str &n) : _name (n), _params(0), _initializer(0) {}
     void set_pointer(const str &s) { _pointer = s; }
     str pointer() const { return _pointer; }
@@ -457,8 +457,8 @@ class tame_block_t;
 
 #define STATIC_DECL           1
 #define CONST_DECL            2
-#define VIRTUAL_DECL	      4
-#define INLINE_DECL	      8
+#define VIRTUAL_DECL          4
+#define INLINE_DECL           8
 
 // function specifier embodies static and template keywords and options
 // at present, and perhaps more in the future.
@@ -476,7 +476,7 @@ class tame_fn_t : public element_list_t {
     tame_fn_t(const fn_specifier_t &fn, const str &r, declarator_t *d,
               bool c, unsigned l, str loc);
     ~tame_fn_t() {
-	delete the_closure_[0];
+        delete the_closure_[0];
         delete the_closure_[1];
     }
 
@@ -484,16 +484,16 @@ class tame_fn_t : public element_list_t {
     vartab_t *args() { return _args; }
 
     void set_declaration_only() {
-	_declaration_only = true;
+        _declaration_only = true;
     }
 
     bool any_volatile_envs() const {
-	return _any_volatile_envs;
+        return _any_volatile_envs;
     }
 
     void push_hook(tame_el_t *el) {
-	if (el->goes_after_vars())
-	    _after_vars_el_encountered = true;
+        if (el->goes_after_vars())
+            _after_vars_el_encountered = true;
     }
 
     // called from tame_vars_t class
@@ -502,14 +502,14 @@ class tame_fn_t : public element_list_t {
     // default return statement is "return;"; can be overidden,
     // but only once.
     bool set_default_return (str s) {
-	bool ret = _default_return.length() == 0;
-	_default_return = s;
-	return ret;
+        bool ret = _default_return.length() == 0;
+        _default_return = s;
+        return ret;
     }
 
     // if non-void return, then there must be a default return
     bool check_return_type () const {
-	return (_ret_type.is_void () || _default_return.length());
+        return (_ret_type.is_void () || _default_return.length());
     }
 
     str classname() const { return _class; }
@@ -528,9 +528,9 @@ class tame_fn_t : public element_list_t {
     void add_env(tame_env_t *g);
 
     const var_t& closure(bool object) const {
-	if (!the_closure_[object])
-	    the_closure_[object] = new var_t(mk_closure(object, false));
-	return *the_closure_[object];
+        if (!the_closure_[object])
+            the_closure_[object] = new var_t(mk_closure(object, false));
+        return *the_closure_[object];
     }
 
     void hit_tame_block () { _n_blocks++; }
@@ -546,8 +546,8 @@ class tame_fn_t : public element_list_t {
   void set_lbrace_lineno (unsigned i) { _lbrace_lineno = i ; }
 
     bool set_vars (tame_vars_t *v) {
-	_vars = v;
-	return (!_after_vars_el_encountered);
+        _vars = v;
+        return (!_after_vars_el_encountered);
     }
   const tame_vars_t *get_vars () const { return _vars; }
 
@@ -612,7 +612,7 @@ public:
 class parse_state_t : public element_list_t {
 public:
   parse_state_t () : _xlate_line_numbers (false),
-		     _need_line_xlate (true)
+                     _need_line_xlate (true)
   {
     _lists.push_back (this);
   }
@@ -695,7 +695,7 @@ public:
 class tame_block_ev_t : public tame_block_t {
 public:
     tame_block_ev_t(tame_fn_t *f, bool isvolatile, int l)
-	: tame_block_t(l), _fn(f), _id(0), _isvolatile(isvolatile) {}
+        : tame_block_t(l), _fn(f), _id(0), _isvolatile(isvolatile) {}
     ~tame_block_ev_t() {}
 
     void output(outputter_t *o);
@@ -789,7 +789,7 @@ extern str filename;
 do {                                                      \
       strbuf b;                                           \
       b << in;                                            \
-      out = lstr (ln, b.str());				  \
+      out = lstr (ln, b.str());                           \
 } while (0)
 
 extern bool tamer_debug;

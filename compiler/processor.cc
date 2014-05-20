@@ -13,9 +13,9 @@ str ws_strip (str s)
 {
     str::iterator f = s.begin(), b = s.end();
     while (f < b && isspace((unsigned char) *f))
-	f++;
+        f++;
     while (f < b && isspace((unsigned char) b[-1]))
-	b--;
+        b--;
     return str(f, b);
 }
 
@@ -24,18 +24,18 @@ str template_args(str s)
     str::size_type a = s.find('<');
     str::size_type b = s.rfind('>');
     if (a != str::npos && b != str::npos && a < b)
-	return s.substr(a, b - a + 1);
+        return s.substr(a, b - a + 1);
     else
-	return str();
+        return str();
 }
 
 void element_list_t::output(outputter_t *o) {
     for (std::list<tame_el_t *>::iterator i = _lst.begin(); i != _lst.end(); i++)
-	(*i)->output(o);
+        (*i)->output(o);
 }
 
 #define TAME_CLOSURE_NAME     "tamer_closure_"
-#define TAMER_SELF_NAME	      "tamer_self_"
+#define TAMER_SELF_NAME       "tamer_self_"
 #define TWAIT_BLOCK_RENDEZVOUS "tamer_gather_rendezvous_"
 
 const var_t *
@@ -43,16 +43,16 @@ vartab_t::lookup(const str &n) const
 {
     std::map<str, unsigned>::const_iterator i = _tab.find(n);
     if (i == _tab.end())
-	return 0;
+        return 0;
     else
-	return &_vars[i->second];
+        return &_vars[i->second];
 }
 
 str type_t::to_str() const {
     strbuf b;
     b << _base_type;
     if (_pointer.length())
-	b << _pointer;
+        b << _pointer;
     return b.str();
 }
 
@@ -109,14 +109,14 @@ str var_t::decl(bool include_name) const
     strbuf b;
     b << _type.decl_to_str();
     if (_arrays.length() && _arrays[0] == '[') {
-	str::size_type rbrace = _arrays.find(']') + 1;
-	b << (rbrace == _arrays.length() ? "*" : "(*");
+        str::size_type rbrace = _arrays.find(']') + 1;
+        b << (rbrace == _arrays.length() ? "*" : "(*");
         if (include_name)
             b << " " << _name;
-	if (rbrace != _arrays.length())
-	    b << ")" << _arrays.substr(rbrace);
+        if (rbrace != _arrays.length())
+            b << ")" << _arrays.substr(rbrace);
     } else if (include_name)
-	b << " " << _name;
+        b << " " << _name;
     if (_initializer && include_name)
         _initializer->finish_type(b);
     return b.str();
@@ -126,9 +126,9 @@ str var_t::param_decl(bool move, bool escape) const
 {
     strbuf b;
     if (move && _type.pointer().empty() && _arrays.empty() && !_name.empty())
-	b << "TAMER_MOVEARG(" << _type.to_str() << ") ";
+        b << "TAMER_MOVEARG(" << _type.to_str() << ") ";
     else
-	b << _type.to_str() << " ";
+        b << _type.to_str() << " ";
     if (escape && !_name.empty())
         b << "tamer__";
     b << _name << _arrays;
@@ -138,37 +138,37 @@ str var_t::param_decl(bool move, bool escape) const
 str var_t::name(bool move, bool escape) const
 {
     if (move && _type.pointer().empty() && _arrays.empty()) {
-	strbuf b;
-	b << "TAMER_MOVE(";
+        strbuf b;
+        b << "TAMER_MOVE(";
         if (escape)
             b << "tamer__";
         b << _name << ")";
-	return b.str();
+        return b.str();
     } else if (escape) {
         strbuf b;
         b << "tamer__" << _name;
         return b.str();
     } else
-	return _name;
+        return _name;
 }
 
 str var_t::ref_decl() const {
     strbuf b;
     const char* refit;
     if (_type.is_ref())
-	refit = "";
+        refit = "";
     else if (_initializer)
-	refit = _initializer->ref_prefix();
+        refit = _initializer->ref_prefix();
     else
-	refit = "&";
+        refit = "&";
     b << _type.to_str();
     if (_arrays.length() && _arrays[0] == '[') {
-	str::size_type rbrace = _arrays.find(']') + 1;
+        str::size_type rbrace = _arrays.find(']') + 1;
         b << (rbrace == _arrays.length() ? "*" : "(*") << refit << " " << _name;
-	if (rbrace != _arrays.length())
-	    b << ")" << _arrays.substr(rbrace);
+        if (rbrace != _arrays.length())
+            b << ")" << _arrays.substr(rbrace);
     } else
-	b << refit << " " << _name;
+        b << refit << " " << _name;
     if (_initializer)
         b << _initializer->ref_suffix();
     return b.str();
@@ -204,8 +204,8 @@ str mangle(const str &in)
 {
     strbuf b;
     for (str::const_iterator i = in.begin(); i != in.end(); i++)
-	if (!isspace((unsigned char) *i))
-	    b << (*i == ':' || *i == '<' || *i == '>' || *i == ',' ? '_' : (char) *i);
+        if (!isspace((unsigned char) *i))
+            b << (*i == ':' || *i == '<' || *i == '>' || *i == ',' ? '_' : (char) *i);
     return b.str();
 }
 
@@ -214,9 +214,9 @@ strip_to_method (const str &in)
 {
     str::size_type p = in.rfind("::");
     if (p == str::npos)
-	return in;
+        return in;
     else
-	return in.substr(p + 2);
+        return in.substr(p + 2);
 }
 
 str
@@ -224,9 +224,9 @@ strip_off_method (const str &in)
 {
     str::size_type p = in.rfind("::");
     if (p == str::npos)
-	return str();
+        return str();
     else
-	return in.substr(0, p);
+        return in.substr(0, p);
 }
 
 
@@ -234,7 +234,7 @@ bool
 vartab_t::add(const var_t &v)
 {
     if (exists(v.name()))
-	return false;
+        return false;
     _vars.push_back(v);
     if (!v.name().empty())
         _tab[v.name()] = _vars.size() - 1;
@@ -257,7 +257,7 @@ void
 element_list_t::passthrough(const lstr &s)
 {
     if (_lst.empty() || !_lst.back()->append(s))
-	_lst.push_back(new tame_passthrough_t(s));
+        _lst.push_back(new tame_passthrough_t(s));
 
 }
 
@@ -295,7 +295,7 @@ tame_fn_t::tame_fn_t(const fn_specifier_t &fn, const str &r, declarator_t *d,
       _any_volatile_envs(false),
       _opts(fn._opts),
       _lineno(l),
-      _n_labels(1),		// 0 = begin, 1 = exit prematurely
+      _n_labels(1),             // 0 = begin, 1 = exit prematurely
       _n_blocks(0),
       _loc(loc),
       _lbrace_lineno(0),
@@ -316,9 +316,9 @@ tame_fn_t::add_env (tame_env_t *e)
 {
     _envs.push_back(e);
     if (e->is_jumpto())
-	e->set_id(++_n_labels);
+        e->set_id(++_n_labels);
     if (e->is_volatile())
-	_any_volatile_envs = true;
+        _any_volatile_envs = true;
 }
 
 void tame_fn_t::add_templates(strbuf& b, const char* sep) const {
@@ -367,8 +367,8 @@ var_t tame_fn_t::mk_closure(bool object, bool ref) const {
     strbuf b;
     b << "closure__" << _method_name;
     if (_args) {
-	b << "__";
-	_args->mangle(b);
+        b << "__";
+        _args->mangle(b);
     }
     if (object && !function_template_.empty())
         add_template_function_args(b);
@@ -378,7 +378,7 @@ var_t tame_fn_t::mk_closure(bool object, bool ref) const {
 void vartab_t::mangle(strbuf &b) const
 {
     for (unsigned i = 0; i < size(); i++)
-	b << _vars[i].type().mangle();
+        b << _vars[i].type().mangle();
 }
 
 class mangler { public:
@@ -402,51 +402,51 @@ class mangler { public:
 str mangler::cv(int cvflag)
 {
     if (!cvflag)
-	return str();
+        return str();
     if (cvflag == 1)
-	return "K";
+        return "K";
     else if (cvflag == 2)
-	return "V";
+        return "V";
     str s;
     if (cvflag & 4)
-	s += "r";
+        s += "r";
     if (cvflag & 2)
-	s += "V";
+        s += "V";
     if (cvflag & 1)
-	s += "K";
+        s += "K";
     if (cvflag & 8)
-	s += "N";
+        s += "N";
     return s;
 }
 
 void mangler::make_base(const str &nnn)
 {
     if (!_base.length()) {
-	if (((_lflag & 4) && nnn != "i" && nnn != "d")
-	    || ((_lflag & 3) && nnn != "c" && nnn != "s" && nnn != "i"))
-	    _base = "i";
+        if (((_lflag & 4) && nnn != "i" && nnn != "d")
+            || ((_lflag & 3) && nnn != "c" && nnn != "s" && nnn != "i"))
+            _base = "i";
     }
     if (!_base.length() && !nnn.length())
-	_base = "vv";
+        _base = "vv";
     if (_base.length()) {
-	if ((_lflag & 8) && _base == "i")
-	    _base = "x";
-	else if ((_lflag & 4) && _base == "i")
-	    _base = "l";
-	else if ((_lflag & 4) && _base == "d")
-	    _base = "e";
-	if ((_lflag & 1) && _base == "c")
-	    _base = "a";
-	else if ((_lflag & 2) && _base == "c")
-	    _base = "h";
-	else if ((_lflag & 2) && (_base == "s" || _base == "i" || _base == "l" || _base == "x"))
-	    _base[0]++;
-	if (_cvflag & 8)
-	    _base += "E";
-	_base = _ptr + cv(_cvflag) + _base;
-	_cvflag = 0;
-	_lflag = 0;
-	_ptr = "";
+        if ((_lflag & 8) && _base == "i")
+            _base = "x";
+        else if ((_lflag & 4) && _base == "i")
+            _base = "l";
+        else if ((_lflag & 4) && _base == "d")
+            _base = "e";
+        if ((_lflag & 1) && _base == "c")
+            _base = "a";
+        else if ((_lflag & 2) && _base == "c")
+            _base = "h";
+        else if ((_lflag & 2) && (_base == "s" || _base == "i" || _base == "l" || _base == "x"))
+            _base[0]++;
+        if (_cvflag & 8)
+            _base += "E";
+        _base = _ptr + cv(_cvflag) + _base;
+        _cvflag = 0;
+        _lflag = 0;
+        _ptr = "";
     }
 }
 
@@ -454,14 +454,14 @@ void mangler::do_base(const str &new_base)
 {
     make_base(new_base);
     if (_base.length())
-	_result << _base;
+        _result << _base;
     _base = new_base;
 }
 
 str mangler::s()
 {
     if (_ptr.length() || _cvflag || _lflag)
-	make_base("");
+        make_base("");
     _result << _base;
     return _result.str();
 }
@@ -480,125 +480,125 @@ mangler::mangler(const str &s)
     // Just give it a go.
 
     for (str::const_iterator i = s.begin(); i != s.end(); )
-	if (isalpha((unsigned char) *i) || *i == '_') {
-	    str::const_iterator j = i;
-	    for (i++; i != s.end(); i++)
-		if (!isalnum((unsigned char) *i) && *i != '_')
-		    break;
-	    str s(j, i);
-	    if (s == "restrict")
-		_cvflag |= 4;
-	    else if (s == "volatile")
-		_cvflag |= 2;
-	    else if (s == "const")
-		_cvflag |= 1;
-	    else if (s == "void")
-		do_base("v");
-	    else if (s == "wchar_t")
-		do_base("w");
-	    else if (s == "size_t")
-		do_base("k");
-	    else if (s == "bool")
-		do_base("b");
-	    else if (s == "char")
-		do_base("c");
-	    else if (s == "signed")
-		_lflag |= 1;
-	    else if (s == "unsigned")
-		_lflag |= 2;
-	    else if (s == "int")
-		do_base("i");
-	    else if (s == "long")
-		_lflag |= (_lflag & 4 ? 8 : 4);
-	    else if (s == "float")
-		do_base("f");
-	    else if (s == "double")
-		do_base("d");
-	    else if (s == "struct" || s == "union" || s == "class" || s == "enum")
-		/* do nothing */;
-	    else
-		do_base(ntoa(s.length()) + s);
-	} else if (*i == ':' && i+1 != s.end() && i[1] == ':') {
-	    if (_base == "3std")
-		_base = "St";
-	    else if (_base == "5tamer")
-		_base = "Sx";
-	    for (i += 2; i != s.end() && isspace((unsigned char) *i); i++)
-		/* */;
-	    str::const_iterator j = i;
-	    for (; i != s.end() && (isalnum((unsigned char) *i) || *i == '_'); i++)
-		/* */;
-	    if (j != i)
-		_base += ntoa(i - j) + str(j, i);
-	    if (_base == "St9allocator")
-		_base = "Sa";
-	    else if (_base == "St12basic_string")
-		_base = "Sb";
-	    else if (_base == "St6string")
-		_base = "Ss";
-	    else if (_base == "Sx5event")
-		_base = "Q";
-	    else if (_base == "Sx2fd")
-		_base = "Sf";
-	    else
-		_cvflag |= 8;
-	} else if (*i == '*') {
-	    if (_lflag || _cvflag)
-		make_base("");
-	    _ptr = "P" + _ptr;
-	    i++;
-	} else if (*i == '&') {
-	    if (_lflag || _cvflag)
-		make_base("");
-	    _ptr = "R" + _ptr;
-	    i++;
-	} else if (isdigit((unsigned char) *i)) {
-	    str::const_iterator j = i;
-	    for (i++; i != s.end() && isdigit((unsigned char) *i); i++)
-		/* */;
-	    do_base(str(j, i));
-	} else if (*i == '[') {
-	    str::const_iterator j = i+1;
-	    for (i++; i != s.end() && *i != ']'; i++)
-		/* */;
-	    if (_lflag || _cvflag)
-		make_base("");
-	    if (i != j)
-		_ptr = "P" + _ptr;
-	    else
-		_ptr = "A" + mangler(str(j, i)).s() + "_";
-	    if (i != s.end())
-		i++;
-	} else if (*i == '<') {
-	    str::const_iterator j = i+1;
-	    int inner = 0;
-	    strbuf b;
-	    for (++i; i != s.end() && (*i != '>' || inner); ++i)
-		if (*i == '<')
-		    inner++;
-		else if (*i == '>')
-		    inner--;
-		else if (*i == ',' && !inner) {
-		    b << mangler(str(j, i)).s();
-		    j = i+1;
-		}
-	    b << mangler(str(j, i)).s();
-	    if (i != s.end())
-		i++;
-	    if (_base == "5event") {
-		_base = "Q";
-		_cvflag &= ~8;
-	    }
-	    str targs = b.str();
-	    if (_base == "Q")
-		_base = _base + targs + "_";
-	    else
-		_base = _base + "I" + targs + "E";
-	} else if (*i == '.' && i+2 < s.end() && i[1] == '.' && i[2] == '.') {
-	    do_base("z");
-	    i += 2;
-	} else
-	    i++;
+        if (isalpha((unsigned char) *i) || *i == '_') {
+            str::const_iterator j = i;
+            for (i++; i != s.end(); i++)
+                if (!isalnum((unsigned char) *i) && *i != '_')
+                    break;
+            str s(j, i);
+            if (s == "restrict")
+                _cvflag |= 4;
+            else if (s == "volatile")
+                _cvflag |= 2;
+            else if (s == "const")
+                _cvflag |= 1;
+            else if (s == "void")
+                do_base("v");
+            else if (s == "wchar_t")
+                do_base("w");
+            else if (s == "size_t")
+                do_base("k");
+            else if (s == "bool")
+                do_base("b");
+            else if (s == "char")
+                do_base("c");
+            else if (s == "signed")
+                _lflag |= 1;
+            else if (s == "unsigned")
+                _lflag |= 2;
+            else if (s == "int")
+                do_base("i");
+            else if (s == "long")
+                _lflag |= (_lflag & 4 ? 8 : 4);
+            else if (s == "float")
+                do_base("f");
+            else if (s == "double")
+                do_base("d");
+            else if (s == "struct" || s == "union" || s == "class" || s == "enum")
+                /* do nothing */;
+            else
+                do_base(ntoa(s.length()) + s);
+        } else if (*i == ':' && i+1 != s.end() && i[1] == ':') {
+            if (_base == "3std")
+                _base = "St";
+            else if (_base == "5tamer")
+                _base = "Sx";
+            for (i += 2; i != s.end() && isspace((unsigned char) *i); i++)
+                /* */;
+            str::const_iterator j = i;
+            for (; i != s.end() && (isalnum((unsigned char) *i) || *i == '_'); i++)
+                /* */;
+            if (j != i)
+                _base += ntoa(i - j) + str(j, i);
+            if (_base == "St9allocator")
+                _base = "Sa";
+            else if (_base == "St12basic_string")
+                _base = "Sb";
+            else if (_base == "St6string")
+                _base = "Ss";
+            else if (_base == "Sx5event")
+                _base = "Q";
+            else if (_base == "Sx2fd")
+                _base = "Sf";
+            else
+                _cvflag |= 8;
+        } else if (*i == '*') {
+            if (_lflag || _cvflag)
+                make_base("");
+            _ptr = "P" + _ptr;
+            i++;
+        } else if (*i == '&') {
+            if (_lflag || _cvflag)
+                make_base("");
+            _ptr = "R" + _ptr;
+            i++;
+        } else if (isdigit((unsigned char) *i)) {
+            str::const_iterator j = i;
+            for (i++; i != s.end() && isdigit((unsigned char) *i); i++)
+                /* */;
+            do_base(str(j, i));
+        } else if (*i == '[') {
+            str::const_iterator j = i+1;
+            for (i++; i != s.end() && *i != ']'; i++)
+                /* */;
+            if (_lflag || _cvflag)
+                make_base("");
+            if (i != j)
+                _ptr = "P" + _ptr;
+            else
+                _ptr = "A" + mangler(str(j, i)).s() + "_";
+            if (i != s.end())
+                i++;
+        } else if (*i == '<') {
+            str::const_iterator j = i+1;
+            int inner = 0;
+            strbuf b;
+            for (++i; i != s.end() && (*i != '>' || inner); ++i)
+                if (*i == '<')
+                    inner++;
+                else if (*i == '>')
+                    inner--;
+                else if (*i == ',' && !inner) {
+                    b << mangler(str(j, i)).s();
+                    j = i+1;
+                }
+            b << mangler(str(j, i)).s();
+            if (i != s.end())
+                i++;
+            if (_base == "5event") {
+                _base = "Q";
+                _cvflag &= ~8;
+            }
+            str targs = b.str();
+            if (_base == "Q")
+                _base = _base + targs + "_";
+            else
+                _base = _base + "I" + targs + "E";
+        } else if (*i == '.' && i+2 < s.end() && i[1] == '.' && i[2] == '.') {
+            do_base("z");
+            i += 2;
+        } else
+            i++;
 }
 
 void type_t::set_pointer(const str& p) {
@@ -699,8 +699,8 @@ bool
 element_list_t::need_implicit_rendezvous() const
 {
     for (std::list<tame_el_t *>::const_iterator i = _lst.begin(); i != _lst.end(); i++)
-	if ((*i)->need_implicit_rendezvous())
-	    return true;
+        if ((*i)->need_implicit_rendezvous())
+            return true;
     return false;
 }
 
@@ -715,9 +715,9 @@ void
 tame_passthrough_t::output(outputter_t *o)
 {
     if (buf_.tellp() != 0) {
-	output_mode_t old = o->switch_to_mode (OUTPUT_PASSTHROUGH, lineno_);
-	o->output_str(buf_.str());
-	o->switch_to_mode(old);
+        output_mode_t old = o->switch_to_mode (OUTPUT_PASSTHROUGH, lineno_);
+        o->output_str(buf_.str());
+        o->switch_to_mode(old);
     }
 }
 
@@ -770,9 +770,9 @@ tame_fn_t::output_reenter (strbuf &b)
       << closure_type_name(true) << "*>(super);\n"
       << "    ";
     if (_class.length() && !(_opts & STATIC_DECL))
-	b << "self->" << _self.name() << "->" << _method_name;
+        b << "self->" << _self.name() << "->" << _method_name;
     else
-	b << _name;
+        b << _name;
     b << "(*self);\n"
       << "  }\n";
 }
@@ -843,17 +843,17 @@ tame_fn_t::signature() const
     if (class_template_.length() || function_template_.length())
         add_templates(b, " ");
     if ((_opts & STATIC_DECL) && !_class.length())
-	b << "static ";
+        b << "static ";
     if (_opts & VIRTUAL_DECL)
-	b << "virtual ";
+        b << "virtual ";
     if (_opts & INLINE_DECL)
-	b << "inline ";
+        b << "inline ";
     b << _ret_type.to_str() << " " << _name << "(";
     if (_args)
-	_args->paramlist(b, vartab_t::pl_declarations, "");
+        _args->paramlist(b, vartab_t::pl_declarations, "");
     b << ")";
     if (_isconst)
-	b << " const";
+        b << " const";
     return b.str();
 }
 
@@ -864,11 +864,11 @@ tame_fn_t::closure_signature() const
     if (class_template_.length() || function_template_.length())
         add_templates(b, " ");
     if ((_opts & STATIC_DECL) && !_class.length())
-	b << "static ";
+        b << "static ";
     b << _ret_type.to_str() << " " << _name << "("
       << mk_closure(true, true).ref_decl() << ")";
     if (_isconst)
-	b << " const";
+        b << " const";
     return b.str();
 }
 
@@ -917,7 +917,7 @@ tame_fn_t::output_fn(outputter_t *o)
 
     // If no vars section was specified, do it now.
     if (!_vars)
-	output_vars(o, _lbrace_lineno);
+        output_vars(o, _lbrace_lineno);
 
     element_list_t::output(o);
 
@@ -958,19 +958,19 @@ tame_fn_t::output(outputter_t *o)
     if (!_class.length() || _declaration_only) {
         if (!function_template_.empty())
             b << "template < " << function_template_ << " > ";
-	b << "class " << closure(false).type().base_type() << ";";
+        b << "class " << closure(false).type().base_type() << ";";
     }
     if (_declaration_only)
-	b << " " << signature() << ";";
+        b << " " << signature() << ";";
     if (!_class.length())
         b << " " << closure_signature() << ";";
     str bstr = b.str();
     if (bstr.length())
-	o->output_str(bstr + "\n");
+        o->output_str(bstr + "\n");
     if (!_declaration_only) {
-	output_closure(o);
-	output_firstfn(o);
-	output_fn(o);
+        output_closure(o);
+        output_firstfn(o);
+        output_fn(o);
     }
 }
 
@@ -1063,11 +1063,11 @@ str
 tame_fn_t::return_expr () const
 {
     if (_default_return.length()) {
-	strbuf b;
-	b << "do { " << _default_return << "} while (0)";
-	return b.str();
+        strbuf b;
+        b << "do { " << _default_return << "} while (0)";
+        return b.str();
     } else {
-	return "return";
+        return "return";
     }
 }
 
@@ -1103,8 +1103,8 @@ tame_wait_t::output (outputter_t *o)
     o->set_lineno(lineno_, b);
     b << "  if (!" << jgn << ".join (";
     for (size_t i = 0; i < n_args (); i++) {
-	if (i > 0) b << ", ";
-	b << "" << arg (i).name () << "";
+        if (i > 0) b << ", ";
+        b << "" << arg (i).name () << "";
     }
     b << ")) {\n";
     output_blocked (b, jgn);
@@ -1164,7 +1164,7 @@ type_qualifier_t &
 type_qualifier_t::concat (const type_qualifier_t &m)
 {
     for (size_t i = 0; i < m._v.size (); i++) {
-	_v.push_back (m._v[i]);
+        _v.push_back (m._v[i]);
     }
     return (*this);
 }
