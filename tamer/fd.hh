@@ -110,6 +110,7 @@ class fd {
     void connect(const struct sockaddr *addr, socklen_t addrlen,
 		 event<int> done);
     inline int shutdown(int how);
+    inline int socket_error() const;
 
     ssize_t direct_read(void* buf, size_t size);
     ssize_t direct_write(const void* buf, size_t size);
@@ -205,6 +206,7 @@ fd tcp_listen(int port, int backlog);
 inline void tcp_listen(int port, event<fd> result);
 void tcp_listen(int port, int backlog, event<fd> result);
 void tcp_connect(struct in_addr addr, int port, event<fd> result);
+inline void tcp_connect(int port, event<fd> result);
 
 void udp_connect(struct in_addr addr, int port, event<fd> result);
 
@@ -417,6 +419,17 @@ inline int fd::shutdown(int how) {
     if (_p && _p->_fd >= 0)
         return ::shutdown(_p->_fd, how);
     else
+        return -EBADF;
+}
+
+/** @brief  Return any socket error state for this file descriptor. */
+inline int fd::socket_error() const {
+    if (_p && _p->_fd >= 0) {
+        int error = 0;
+        socklen_t len = sizeof(error);
+        int r = getsockopt(_p->_fd, SOL_SOCKET, SO_ERROR, &error, &len);
+        return r ? -error : 0;
+    } else
         return -EBADF;
 }
 
@@ -694,6 +707,12 @@ inline void tcp_listen(int port, event<fd> result) {
  */
 inline fd tcp_listen(int port) {
     return tcp_listen(port, fd::default_backlog);
+}
+
+inline void tcp_connect(int port, event<fd> result) {
+    struct in_addr in;
+    in.s_addr = INADDR_LOOPBACK;
+    tcp_connect(in, port, std::move(result));
 }
 
 inline fd unix_stream_listen(std::string path) {
