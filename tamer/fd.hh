@@ -711,7 +711,7 @@ inline fd tcp_listen(int port) {
 
 inline void tcp_connect(int port, event<fd> result) {
     struct in_addr in;
-    in.s_addr = INADDR_LOOPBACK;
+    in.s_addr = ntohl(INADDR_LOOPBACK);
     tcp_connect(in, port, std::move(result));
 }
 
