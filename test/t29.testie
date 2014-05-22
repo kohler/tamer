@@ -1,0 +1,8 @@
+%info
+Check reference correctness.
+
+%script
+$VALGRIND $rundir/test/t29
+
+%stdout
+Got 19324
