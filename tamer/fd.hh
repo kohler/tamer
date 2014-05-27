@@ -98,16 +98,16 @@ class fd {
     void write_once(const struct iovec* iov, int iov_count, size_t& nwritten, event<int> done);
     inline void write_once(const struct iovec* iov, int iov_count, size_t& nwritten, event<> done);
 
-    void sendmsg(const void *buf, size_t size, int transfer_fd, event<int> done);
-    inline void sendmsg(const void *buf, size_t size, event<int> done);
+    void sendmsg(const void* buf, size_t size, int transfer_fd, event<int> done);
+    inline void sendmsg(const void* buf, size_t size, event<int> done);
 
-    void fstat(struct stat &stat, event<int> done);
+    void fstat(struct stat& stat, event<int> done);
 
     int listen(int backlog = default_backlog);
-    int bind(const struct sockaddr *addr, socklen_t addrlen);
-    void accept(struct sockaddr *addr, socklen_t *addrlen, event<fd> result);
+    int bind(const struct sockaddr* addr, socklen_t addrlen);
+    void accept(struct sockaddr* addr, socklen_t* addrlen, event<fd> result);
     inline void accept(event<fd> result);
-    void connect(const struct sockaddr *addr, socklen_t addrlen,
+    void connect(const struct sockaddr* addr, socklen_t addrlen,
 		 event<int> done);
     inline int shutdown(int how);
     inline int socket_error() const;
@@ -251,16 +251,16 @@ struct exec_fd {
     inline exec_fd(int child_fd, fdtype type, fd f = fd());
 };
 
-pid_t exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
-	   const std::vector<const char *> &argv, char * const envp[]);
-inline pid_t execv(fd &in, fd &out, const char *program,
-		   const std::vector<const char *> &argv);
-inline pid_t execv(fd &in, fd &out, fd &err, const char *program,
-		   const std::vector<const char *> &argv);
-inline pid_t execvp(fd &in, fd &out, const char *program,
-		    const std::vector<const char *> &argv);
-inline pid_t execvp(fd &in, fd &out, fd &err, const char *program,
-		    const std::vector<const char *> &argv);
+pid_t exec(std::vector<exec_fd>& exec_fds, const char* program, bool path,
+	   const std::vector<const char*> &argv, char* const envp[]);
+inline pid_t execv(fd& in, fd& out, const char* program,
+		   const std::vector<const char*>& argv);
+inline pid_t execv(fd& in, fd& out, fd& err, const char* program,
+		   const std::vector<const char*>& argv);
+inline pid_t execvp(fd& in, fd& out, const char* program,
+		    const std::vector<const char*>& argv);
+inline pid_t execvp(fd& in, fd& out, fd& err, const char* program,
+		    const std::vector<const char*>& argv);
 
 
 /** @brief  Construct an invalid file descriptor.
@@ -344,7 +344,7 @@ inline fd& fd::operator=(fd&& f) {
  *
  *  @sa open(const char *, int, mode_t, event<fd>)
  */
-inline void fd::open(const char *filename, int flags, event<fd> f) {
+inline void fd::open(const char* filename, int flags, event<fd> f) {
     open(filename, flags, 0777, f);
 }
 
@@ -472,11 +472,11 @@ inline int fd::socket_error() const {
  *
  *  @sa read_once(void*, size_t, size_t&, event<int>)
  */
-inline void fd::read(void *buf, size_t size, size_t& nread, event<int> done) {
+inline void fd::read(void* buf, size_t size, size_t& nread, event<int> done) {
     read(buf, size, &nread, done);
 }
 
-inline void fd::read(void *buf, size_t size, size_t& nread, event<> done) {
+inline void fd::read(void* buf, size_t size, size_t& nread, event<> done) {
     read(buf, size, &nread, rebind<int>(done));
 }
 
@@ -490,11 +490,11 @@ inline void fd::read(void *buf, size_t size, size_t& nread, event<> done) {
  *  *, size_t, size_t &, event<int>), but does not return the number of
  *  characters actually read.
  */
-inline void fd::read(void *buf, size_t size, event<int> done) {
+inline void fd::read(void* buf, size_t size, event<int> done) {
     read(buf, size, (size_t*) 0, done);
 }
 
-inline void fd::read(void *buf, size_t size, event<> done) {
+inline void fd::read(void* buf, size_t size, event<> done) {
     read(buf, size, (size_t*) 0, rebind<int>(done));
 }
 
