@@ -147,38 +147,25 @@ class fd {
             if (!ref_count_ && !weak_count_)
                 delete this;
         }
+        void weak_deref() {
+            if (!--weak_count_ && !ref_count_)
+                delete this;
+        }
 	int close(int leave_error = -EBADF);
     };
 
-    class fdimp_weak_ref {
-      public:
-        fdimp_weak_ref(fdimp* p)
-            : p_(p) {
-            if (p_)
-                ++p_->weak_count_;
-        }
-        ~fdimp_weak_ref() {
-            if (p_ && !--p_->weak_count_ && !p_->ref_count_)
-                delete p_;
-        }
-        operator unspecified_bool_type() const {
-            return p_ ? &fd::valid : 0;
-        }
-        fdimp* operator->() const {
-            return p_;
-        }
-      private:
-        fdimp* p_;
-    };
-
     struct fdcloser {
-	fdcloser(fd::fdimp* f)
-	    : f_(f) {
+	fdcloser(fd::fdimp* imp)
+	    : imp_(imp) {
+            ++imp_->weak_count_;
 	}
+        ~fdcloser() {
+            imp_->weak_deref();
+        }
 	void operator()() {
-	    f_->close();
+	    imp_->close();
 	}
-        fdimp_weak_ref f_;
+        fd::fdimp* imp_;
     };
 
     class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_&);
@@ -199,6 +186,45 @@ class fd {
 
     friend bool operator==(const fd &a, const fd &b);
     friend bool operator!=(const fd &a, const fd &b);
+    friend class fdref;
+};
+
+class fdref {
+  public:
+    typedef fd::unspecified_bool_type unspecified_bool_type;
+
+    enum ref_type { strong = 0, weak = 1 };
+    inline fdref();
+    explicit inline fdref(const fd& f);
+    explicit inline fdref(fd&& f);
+    inline fdref(const fd& f, ref_type ref);
+    inline fdref(fd&& f, ref_type ref);
+    inline ~fdref();
+
+    inline operator unspecified_bool_type() const;
+    inline bool operator!() const;
+    inline int value() const;
+
+    inline void acquire_read(event<> done);
+    inline void release_read();
+    inline ssize_t read(void* buf, size_t size);
+
+    inline void acquire_write(event<> done);
+    inline void release_write();
+    inline ssize_t write(const void* buf, size_t size);
+
+    inline void close();
+    inline void close(int errcode);
+
+  private:
+    enum { read_locked = 2, write_locked = 4 };
+    fd::fdimp* imp_;
+    int flags_;
+
+    fdref(const fdref&) = delete;
+    fdref& operator=(const fdref&) = delete;
+
+    friend class fd;
 };
 
 inline fd tcp_listen(int port);
@@ -672,6 +698,124 @@ inline bool operator==(const fd &a, const fd &b) {
  */
 inline bool operator!=(const fd &a, const fd &b) {
     return a._p != b._p;
+}
+
+
+inline fdref::fdref()
+    : imp_(0), flags_(0) {
+}
+
+inline fdref::fdref(const fd& f)
+    : imp_(f._p), flags_(0) {
+    if (imp_)
+        ++imp_->ref_count_;
+}
+
+inline fdref::fdref(fd&& f)
+    : imp_(f._p), flags_(0) {
+    f._p = 0;
+}
+
+inline fdref::fdref(const fd& f, ref_type ref)
+    : imp_(f._p), flags_(ref) {
+    if (imp_ && ref == weak)
+        ++imp_->weak_count_;
+    else if (imp_)
+        ++imp_->ref_count_;
+}
+
+inline fdref::fdref(fd&& f, ref_type ref)
+    : imp_(f._p), flags_(ref) {
+    f._p = 0;
+    if (imp_ && ref == weak) {
+        ++imp_->weak_count_;
+        imp_->deref();
+    }
+}
+
+inline fdref::~fdref() {
+    if (imp_ && (flags_ & read_locked))
+        imp_->_rlock.release();
+    if (imp_ && (flags_ & write_locked))
+        imp_->_wlock.release();
+    if (imp_ && (flags_ & weak))
+        imp_->weak_deref();
+    else if (imp_)
+        imp_->deref();
+}
+
+inline fdref::operator unspecified_bool_type() const {
+    return imp_ && imp_->_fd >= 0 ? &fd::valid : 0;
+}
+
+inline bool fdref::operator!() const {
+    return !imp_ || imp_->_fd < 0;
+}
+
+inline int fdref::value() const {
+    return imp_ ? imp_->_fd : -EBADF;
+}
+
+inline void fdref::acquire_read(event<> done) {
+    assert(!(flags_ & read_locked));
+    flags_ |= read_locked;
+    if (imp_)
+        imp_->_rlock.acquire(std::move(done));
+    else
+        done();
+}
+
+inline void fdref::release_read() {
+    assert(flags_ & read_locked);
+    flags_ &= ~read_locked;
+    if (imp_)
+        imp_->_rlock.release();
+}
+
+inline ssize_t fdref::read(void* buf, size_t size) {
+    assert(flags_ & read_locked);
+    if (imp_ && imp_->_fd >= 0)
+        return ::read(imp_->_fd, buf, size);
+    else {
+        errno = EBADF;
+        return -1;
+    }
+}
+
+inline void fdref::acquire_write(event<> done) {
+    assert(!(flags_ & write_locked));
+    flags_ |= write_locked;
+    if (imp_)
+        imp_->_wlock.acquire(std::move(done));
+    else
+        done();
+}
+
+inline void fdref::release_write() {
+    assert(flags_ & write_locked);
+    flags_ &= ~write_locked;
+    if (imp_)
+        imp_->_wlock.release();
+}
+
+inline ssize_t fdref::write(const void* buf, size_t size) {
+    assert(flags_ & write_locked);
+    if (imp_ && imp_->_fd >= 0)
+        return ::write(imp_->_fd, buf, size);
+    else {
+        errno = EBADF;
+        return -1;
+    }
+}
+
+inline void fdref::close() {
+    if (imp_)
+        imp_->close();
+}
+
+inline void fdref::close(int errcode) {
+    if (imp_)
+        imp_->close(errcode);
 }
 
 

@@ -228,28 +228,28 @@ tamed void fd::read(void *buf, size_t size, size_t* nread_ptr, event<int> done)
     tvars {
 	size_t pos = 0;
 	ssize_t amt;
-	fdimp_weak_ref fi(_p);
+        fdref fi(*this, fdref::weak);
     }
 
     if (nread_ptr)
         *nread_ptr = 0;
 
-    if (!fi || fi->_fd < 0) {
+    if (!fi) {
 	done.trigger(-EBADF);
 	return;
     }
 
 #if HAVE_TAMER_FDHELPER
-    if (fi->_is_file) {
-	_fdhm.read(fi->_fd, buf, size, nread, done);
+    if (fi.imp_->_is_file) {
+	_fdhm.read(fi.value(), buf, size, nread, done);
 	return;
     }
 #endif
 
-    twait { fi->_rlock.acquire(make_event()); }
+    twait { fi.acquire_read(make_event()); }
 
-    while (pos != size && done && fi->_fd >= 0) {
-	amt = ::read(fi->_fd, static_cast<char *>(buf) + pos, size - pos);
+    while (pos != size && done && fi) {
+	amt = fi.read(static_cast<char*>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
             if (nread_ptr)
@@ -257,15 +257,14 @@ tamed void fd::read(void *buf, size_t size, size_t* nread_ptr, event<int> done)
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(fi->_fd, make_event()); }
+	    twait { tamer::at_fd_read(fi.value(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
 
-    fi->_rlock.release();
-    done.trigger(pos == size || fi->_fd >= 0 ? 0 : -ECANCELED);
+    done.trigger(pos == size || fi ? 0 : -ECANCELED);
 }
 
 tamed void fd::read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<int> done)
@@ -274,13 +273,13 @@ tamed void fd::read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<i
 	size_t pos = 0;
         size_t size = 0;
 	ssize_t amt;
-	fdimp_weak_ref fi(_p);
+        fdref fi(*this, fdref::weak);
     }
 
     if (nread_ptr)
         *nread_ptr = 0;
 
-    if (!fi || fi->_fd < 0) {
+    if (!fi) {
 	done.trigger(-EBADF);
 	return;
     }
@@ -289,16 +288,16 @@ tamed void fd::read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<i
         size += iov[i].iov_len;
 
 #if HAVE_TAMER_FDHELPER
-    if (fi->_is_file) {
-	_fdhm.read(fi->_fd, buf, size, nread, done);
+    if (fi.imp_->_is_file) {
+	_fdhm.read(fi.value(), buf, size, nread, done);
 	return;
     }
 #endif
 
-    twait { fi->_rlock.acquire(make_event()); }
+    twait { fi.acquire_read(make_event()); }
 
-    while (pos != size && done && fi->_fd >= 0) {
-	amt = ::readv(fi->_fd, iov, iov_count);
+    while (pos != size && done && fi) {
+	amt = ::readv(fi.value(), iov, iov_count);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
 	    if (nread_ptr)
@@ -316,47 +315,45 @@ tamed void fd::read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<i
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(fi->_fd, make_event()); }
+	    twait { tamer::at_fd_read(fi.value(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
 
-    fi->_rlock.release();
-    done.trigger(pos == size || fi->_fd >= 0 ? 0 : -ECANCELED);
+    done.trigger(pos == size || fi ? 0 : -ECANCELED);
 }
 
 tamed void fd::read_once(void* buf, size_t size, size_t& nread, event<int> done)
 {
     tvars {
 	ssize_t amt;
-	fdimp_weak_ref fi(_p);
+        fdref fi(*this, fdref::weak);
     }
 
     nread = 0;
 
-    if (!fi || fi->_fd < 0) {
+    if (!fi) {
 	done.trigger(-EBADF);
 	return;
     }
 
-    twait { fi->_rlock.acquire(make_event()); }
+    twait { fi.acquire_read(make_event()); }
 
-    while (done && fi->_fd >= 0) {
-	amt = ::read(fi->_fd, static_cast<char *>(buf), size);
+    while (done && fi) {
+	amt = fi.read(static_cast<char*>(buf), size);
 	if (amt != (ssize_t) -1) {
             nread = amt;
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(fi->_fd, make_event()); }
+	    twait { tamer::at_fd_read(fi.value(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
 
-    fi->_rlock.release();
     done.trigger(0);
 }
 
@@ -364,32 +361,31 @@ tamed void fd::read_once(const struct iovec* iov, int iov_count, size_t& nread, 
 {
     tvars {
 	ssize_t amt;
-	fdimp_weak_ref fi(_p);
+	fdref fi(*this, fdref::weak);
     }
 
     nread = 0;
 
-    if (!fi || fi->_fd < 0) {
+    if (!fi) {
 	done.trigger(-EBADF);
 	return;
     }
 
-    twait { fi->_rlock.acquire(make_event()); }
+    twait { fi.acquire_read(make_event()); }
 
-    while (done && fi->_fd >= 0) {
-	amt = ::readv(fi->_fd, iov, iov_count);
+    while (done && fi) {
+	amt = ::readv(fi.value(), iov, iov_count);
 	if (amt != (ssize_t) -1) {
             nread = amt;
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(fi->_fd, make_event()); }
+	    twait { tamer::at_fd_read(fi.value(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
 
-    fi->_rlock.release();
     done.trigger(0);
 }
 
@@ -399,28 +395,28 @@ tamed void fd::write(const void* buf, size_t size, size_t* nwritten_ptr,
     tvars {
 	size_t pos = 0;
 	ssize_t amt;
-	fdimp_weak_ref fi(_p);
+	fdref fi(*this, fdref::weak);
     }
 
     if (nwritten_ptr)
         *nwritten_ptr = 0;
 
-    if (!fi || fi->_fd < 0) {
+    if (!fi) {
 	done.trigger(-EBADF);
 	return;
     }
 
 #if HAVE_TAMER_FDHELPER
-    if (fi->_is_file) {
-	_fdhm.write(fi->_fd, buf, size, nwritten, done);
+    if (fi.imp_->_is_file) {
+	_fdhm.write(fi.value(), buf, size, nwritten, done);
 	return;
     }
 #endif
 
-    twait { fi->_wlock.acquire(make_event()); }
+    twait { fi.acquire_write(make_event()); }
 
-    while (pos != size && done && fi->_fd >= 0) {
-	amt = ::write(fi->_fd, static_cast<const char *>(buf) + pos, size - pos);
+    while (pos != size && done && fi) {
+	amt = fi.write(static_cast<const char*>(buf) + pos, size - pos);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
 	    if (nwritten_ptr)
@@ -428,15 +424,14 @@ tamed void fd::write(const void* buf, size_t size, size_t* nwritten_ptr,
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(fi->_fd, make_event()); }
+	    twait { tamer::at_fd_write(fi.value(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
 
-    fi->_wlock.release();
-    done.trigger(pos == size || fi->_fd >= 0 ? 0 : -ECANCELED);
+    done.trigger(pos == size || fi ? 0 : -ECANCELED);
 }
 
 tamed void fd::write(std::string s, size_t* nwritten_ptr, event<int> done)
@@ -454,20 +449,20 @@ tamed void fd::write(struct iovec* iov, int iov_count, size_t* nwritten_ptr,
 	size_t pos = 0;
         size_t size = 0;
 	ssize_t amt;
-	fdimp_weak_ref fi(_p);
+	fdref fi(*this, fdref::weak);
     }
 
     if (nwritten_ptr)
         *nwritten_ptr = 0;
 
-    if (!fi || fi->_fd < 0) {
+    if (!fi) {
 	done.trigger(-EBADF);
 	return;
     }
 
 #if HAVE_TAMER_FDHELPER
-    if (fi->_is_file) {
-	_fdhm.write(fi->_fd, buf, size, nwritten, done);
+    if (fi.imp_->_is_file) {
+	_fdhm.write(fi.value(), buf, size, nwritten, done);
 	return;
     }
 #endif
@@ -475,10 +470,10 @@ tamed void fd::write(struct iovec* iov, int iov_count, size_t* nwritten_ptr,
     for (int i = 0; i != iov_count; ++i)
         size += iov[i].iov_len;
 
-    twait { fi->_wlock.acquire(make_event()); }
+    twait { fi.acquire_write(make_event()); }
 
-    while (pos != size && done && fi->_fd >= 0) {
-	amt = ::writev(fi->_fd, iov, iov_count);
+    while (pos != size && done && fi) {
+	amt = ::writev(fi.value(), iov, iov_count);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
 	    if (nwritten_ptr)
@@ -496,15 +491,14 @@ tamed void fd::write(struct iovec* iov, int iov_count, size_t* nwritten_ptr,
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(fi->_fd, make_event()); }
+	    twait { tamer::at_fd_write(fi.value(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
 
-    fi->_wlock.release();
-    done.trigger(pos == size || fi->_fd >= 0 ? 0 : -ECANCELED);
+    done.trigger(pos == size || fi ? 0 : -ECANCELED);
 }
 
 /** @brief  Write once to file descriptor.
@@ -526,32 +520,31 @@ tamed void fd::write_once(const void *buf, size_t size, size_t &nwritten, event<
 {
     tvars {
 	ssize_t amt;
-	fdimp_weak_ref fi(_p);
+        fdref fi(*this, fdref::weak);
     }
 
     nwritten = 0;
 
-    if (!fi || fi->_fd < 0) {
+    if (!fi) {
 	done.trigger(-EBADF);
 	return;
     }
 
-    twait { fi->_wlock.acquire(make_event()); }
+    twait { fi.acquire_write(make_event()); }
 
-    while (done && fi->_fd >= 0) {
-	amt = ::write(fi->_fd, static_cast<const char *>(buf), size);
+    while (done && fi) {
+	amt = fi.write(static_cast<const char*>(buf), size);
 	if (amt != (ssize_t) -1) {
 	    nwritten = amt;
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(fi->_fd, make_event()); }
+	    twait { tamer::at_fd_write(fi.value(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
 
-    fi->_wlock.release();
     done.trigger(0);
 }
 
@@ -575,32 +568,31 @@ tamed void fd::write_once(const struct iovec* iov, int iov_count, size_t& nwritt
 {
     tvars {
 	ssize_t amt;
-	fdimp_weak_ref fi(_p);
+	fdref fi(*this, fdref::weak);
     }
 
     nwritten = 0;
 
-    if (!fi || fi->_fd < 0) {
+    if (!fi) {
 	done.trigger(-EBADF);
 	return;
     }
 
-    twait { fi->_wlock.acquire(make_event()); }
+    twait { fi.acquire_write(make_event()); }
 
-    while (done && fi->_fd >= 0) {
-	amt = ::writev(fi->_fd, iov, iov_count);
+    while (done && fi) {
+	amt = ::writev(fi.value(), iov, iov_count);
 	if (amt != (ssize_t) -1) {
 	    nwritten = amt;
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(fi->_fd, make_event()); }
+	    twait { tamer::at_fd_write(fi.value(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
 	}
     }
 
-    fi->_wlock.release();
     done.trigger(0);
 }
 
@@ -638,10 +630,10 @@ tamed void fd::sendmsg(const void *buf, size_t size, int transfer_fd,
 	struct iovec iov;
 	char transfer_fd_space[64];
 	ssize_t amt;
-	fdimp_weak_ref fi(_p);
+	fdref fi(*this, fdref::weak);
     }
 
-    if (!fi || fi->_fd < 0) {
+    if (!fi) {
 	done.trigger(-EBADF);
 	return;
     }
@@ -669,17 +661,17 @@ tamed void fd::sendmsg(const void *buf, size_t size, int transfer_fd,
     }
 
     // send message
-    while (done && fi->_fd >= 0) {
-	amt = ::sendmsg(fi->_fd, &msg, 0);
+    while (done && fi) {
+	amt = ::sendmsg(fi.value(), &msg, 0);
 	if (amt != (ssize_t) -1)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(fi->_fd, make_event()); }
+	    twait { tamer::at_fd_write(fi.value(), make_event()); }
 	} else if (errno != EINTR)
 	    done.trigger(-errno);
     }
 
-    done.trigger(fi->_fd >= 0 ? 0 : -ECANCELED);
+    done.trigger(fi ? 0 : -ECANCELED);
 }
 
 /** @brief  Create a socket file descriptor.
@@ -748,30 +740,29 @@ tamed void fd::accept(struct sockaddr *addr_out, socklen_t *addrlen_out,
 {
     tvars {
 	int f = -ECANCELED;
-	fdimp_weak_ref fi(_p);
+	fdref fi(*this, fdref::weak);
     }
 
-    if (!fi || fi->_fd < 0) {
+    if (!fi) {
 	done.trigger(fd());
 	return;
     }
 
-    twait { fi->_rlock.acquire(make_event()); }
+    twait { fi.acquire_read(make_event()); }
 
-    while (done && fi->_fd >= 0) {
-	f = ::accept(fi->_fd, addr_out, addrlen_out);
+    while (done && fi) {
+	f = ::accept(fi.value(), addr_out, addrlen_out);
 	if (f >= 0) {
 	    make_nonblocking(f);
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(fi->_fd, make_event()); }
+	    twait { tamer::at_fd_read(fi.value(), make_event()); }
 	} else if (errno != EINTR) {
 	    f = -errno;
 	    break;
 	}
     }
 
-    fi->_rlock.release();
     done.trigger(fd(f));
 }
 
@@ -789,31 +780,31 @@ tamed void fd::connect(const struct sockaddr *addr, socklen_t addrlen,
 {
     tvars {
 	int x, ret(0);
-	fdimp_weak_ref fi(_p);
+	fdref fi(*this, fdref::weak);
     }
 
-    if (!fi || fi->_fd < 0) {
+    if (!fi) {
 	done.trigger(-EBADF);
 	return;
     }
 
-    twait { fi->_wlock.acquire(make_event()); }
+    twait { fi.acquire_write(make_event()); }
 
-    x = ::connect(fi->_fd, addr, addrlen);
+    x = ::connect(fi.value(), addr, addrlen);
     if (x == -1 && errno != EINPROGRESS)
 	ret = -errno;
     else if (x == -1) {
-	twait { tamer::at_fd_write(fi->_fd, make_event()); }
+	twait { tamer::at_fd_write(fi.value(), make_event()); }
 	socklen_t socklen = sizeof(x);
-	if (!done || fi->_fd < 0)
+	if (!done || fi.value() < 0)
 	    ret = -ECANCELED;
-	else if (getsockopt(fi->_fd, SOL_SOCKET, SO_ERROR, (void *) &x, &socklen) == -1)
+	else if (getsockopt(fi.value(), SOL_SOCKET, SO_ERROR,
+                            (void *) &x, &socklen) == -1)
 	    ret = -errno;
 	else if (x != 0)
 	    ret = -x;
     }
 
-    fi->_wlock.release();
     done.trigger(ret);
 }
 
