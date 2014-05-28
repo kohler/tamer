@@ -413,7 +413,7 @@ tamed void http_parser::receive(fd f, event<http_message> done) {
             char mbuf[32768];
             ssize_t nread = fi.read(mbuf, sizeof(mbuf));
 
-            if (nread != (ssize_t) -1) {
+            if (nread != 0 && nread != (ssize_t) -1) {
                 hp_.data = &md;
                 size_t nconsumed =
                     http_parser_execute(&hp_, &settings, mbuf, nread);
@@ -421,7 +421,9 @@ tamed void http_parser::receive(fd f, event<http_message> done) {
                     copy_parser_status(md);
                     break;
                 }
-            } else if (errno == EAGAIN || errno == EWOULDBLOCK)
+            } else if (nread == 0)
+                break;
+            else if (errno == EAGAIN || errno == EWOULDBLOCK)
                 /* fall through to blocking */;
             else if (errno != EINTR) {
                 fi.close(errno);
