@@ -135,6 +135,7 @@ class http_parser : public tamed_class {
   public:
     http_parser(enum http_parser_type type);
 
+    void clear();
     inline bool ok() const;
     inline enum http_errno error() const;
     inline bool should_keep_alive() const;

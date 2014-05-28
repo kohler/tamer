@@ -315,6 +315,10 @@ http_parser::http_parser(enum http_parser_type hp_type) {
     http_parser_init(&hp_, hp_type);
 }
 
+void http_parser::clear() {
+    http_parser_init(&hp_, (enum http_parser_type) hp_.type);
+}
+
 inline void http_parser::copy_parser_status(message_data& md) {
     md.hm.major_ = hp_.http_major;
     md.hm.minor_ = hp_.http_minor;
