@@ -169,15 +169,17 @@ class driver_tamer : public driver {
 #if HAVE_SYS_EPOLL_H
     bool epoll_sig_pipe_;
     pid_t epoll_pid_;
+    int epoll_errcount_;
+    enum { EPOLL_MAX_ERRCOUNT = 32 };
 #endif
 
     static void fd_disinterest(void* arg);
     void update_fds();
     int find_bad_fds(xfd_setpair&);
 #if HAVE_SYS_EPOLL_H
-    static inline int epoll_fd_events(bool readable, bool writable);
-    inline void epoll_fd(int fd, int old_events, int events);
-    void epoll_recreate();
+    static inline int epoll_events(bool readable, bool writable);
+    inline void mark_epoll(int fd, int old_events, int events);
+    bool epoll_recreate();
 #endif
 };
 
@@ -185,9 +187,13 @@ class driver_tamer : public driver {
 driver_tamer::driver_tamer()
     : fdbound_(0), loop_state_(false) {
 #if HAVE_SYS_EPOLL_H
+    epollfd_ = -1;
+    epoll_errcount_ = EPOLL_MAX_ERRCOUNT;
     epollfd_ = epoll_create1(EPOLL_CLOEXEC);
     epoll_sig_pipe_ = false;
     epoll_pid_ = getpid();
+    if (epollfd_ >= 0)
+        epoll_errcount_ = 0;
 #endif
 }
 
@@ -226,12 +232,12 @@ void driver_tamer::kill_fd(int fd) {
 }
 
 #if HAVE_SYS_EPOLL_H
-inline int driver_tamer::epoll_fd_events(bool readable, bool writable) {
+inline int driver_tamer::epoll_events(bool readable, bool writable) {
     return (readable ? int(EPOLLIN) : 0) | (writable ? int(EPOLLOUT) : 0);
 }
 
-inline void driver_tamer::epoll_fd(int fd, int old_events, int events) {
-    if (old_events != events) {
+inline void driver_tamer::mark_epoll(int fd, int old_events, int events) {
+    if (old_events != events && epollfd_ >= 0) {
         struct epoll_event ev;
         memset(&ev, 0, sizeof(ev)); // avoid valgrind complaints
         ev.events = events;
@@ -244,28 +250,32 @@ inline void driver_tamer::epoll_fd(int fd, int old_events, int events) {
         else
             action = EPOLL_CTL_DEL;
         int r = epoll_ctl(epollfd_, action, fd, &ev);
-        if (r < 0 && (action != EPOLL_CTL_DEL || errno != EBADF)) {
+        if (r < 0
+            && !(action == EPOLL_CTL_DEL && errno == EBADF)
+            && !(action == EPOLL_CTL_DEL && errno == ENOENT)) {
+            // the epoll file descriptor has gone wonky
+            ++epoll_errcount_;
             close(epollfd_);
             epollfd_ = -1;
         }
     }
 }
 
-void driver_tamer::epoll_recreate() {
-    close(epollfd_);
-    epollfd_ = epoll_create1(EPOLL_CLOEXEC);
-    if (epollfd_ < 0)
-        return;
-    int max = std::min(fds_.size(), fdsets_.size());
-    for (int fd = 0; fd < max; ++fd) {
-        int events = epoll_fd_events(FD_ISSET(fd, &fdsets_[0]),
-                                     FD_ISSET(fd, &fdsets_[1]));
-        if (events)
-            epoll_fd(fd, 0, events);
+bool driver_tamer::epoll_recreate() {
+    while (epollfd_ < 0 && epoll_errcount_ < EPOLL_MAX_ERRCOUNT
+           && (epollfd_ = epoll_create1(EPOLL_CLOEXEC)) >= 0) {
+        int max = std::min(fds_.size(), fdsets_.size());
+        for (int fd = 0; fd < max; ++fd) {
+            int events = epoll_events(FD_ISSET(fd, &fdsets_[0]),
+                                      FD_ISSET(fd, &fdsets_[1]));
+            if (events)
+                mark_epoll(fd, 0, events);
+        }
+        if (epoll_sig_pipe_)
+            mark_epoll(sig_pipe[0], 0, EPOLLIN);
+        epoll_pid_ = getpid();
     }
-    if (epoll_sig_pipe_)
-        epoll_fd(sig_pipe[0], 0, EPOLLIN);
-    epoll_pid_ = getpid();
+    return epollfd_ >= 0;
 }
 #endif
 
@@ -286,8 +296,8 @@ void driver_tamer::update_fds() {
 
 #if HAVE_SYS_EPOLL_H
         if (epollfd_ >= 0)
-            epoll_fd(fd, epoll_fd_events(wasset[0], wasset[1]),
-                     epoll_fd_events(x.e[0], x.e[1]));
+            mark_epoll(fd, epoll_events(wasset[0], wasset[1]),
+                       epoll_events(x.e[0], x.e[1]));
 #else
         (void) wasset;
 #endif
@@ -326,8 +336,10 @@ void driver_tamer::loop(loop_flags flags)
     xfd_setpair fdnow;
 #if HAVE_SYS_EPOLL_H
     xepoll_eventset epollnow;
-    if (epollfd_ >= 0 && epoll_pid_ != getpid())
-        epoll_recreate();
+    if (epollfd_ >= 0 && epoll_pid_ != getpid()) {
+        close(epollfd_);
+        epollfd_ = -1;
+    }
 #endif
 
  again:
@@ -365,11 +377,11 @@ void driver_tamer::loop(loop_flags flags)
     int nfds = 0;
 #if HAVE_SYS_EPOLL_H
     int nepoll = 0;
-    if (epollfd_ >= 0 && !epoll_sig_pipe_ && sig_pipe[0] >= 0) {
-        epoll_fd(sig_pipe[0], 0, EPOLLIN);
-        epoll_sig_pipe_ = true;
-    }
-    if (epollfd_ >= 0 || !toptr || to.tv_sec != 0 || to.tv_usec != 0) {
+    if (epollfd_ >= 0 || epoll_recreate()) {
+        if (!epoll_sig_pipe_ && sig_pipe[0] >= 0) {
+            mark_epoll(sig_pipe[0], 0, EPOLLIN);
+            epoll_sig_pipe_ = true;
+        }
         int blockms;
         if (!toptr)
             blockms = -1;
@@ -380,6 +392,7 @@ void driver_tamer::loop(loop_flags flags)
         goto after_select;
     }
 #endif
+
     nfds = fdbound_;
     if (sig_pipe[0] > nfds) {
         fdsets_.ensure(sig_pipe[0]);
@@ -423,6 +436,7 @@ void driver_tamer::loop(loop_flags flags)
         goto after_fd;
     }
 #endif
+
     if (nfds > 0) {
 	for (unsigned fd = 0; fd < fdbound_; ++fd) {
 	    tamerpriv::driver_fd<fdp> &x = fds_[fd];
