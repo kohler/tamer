@@ -134,7 +134,7 @@ class xepoll_eventset {
 
 class driver_tamer : public driver {
   public:
-    driver_tamer();
+    driver_tamer(int flags);
     ~driver_tamer();
 
     virtual void at_fd(int fd, int action, event<int> e);
@@ -172,6 +172,7 @@ class driver_tamer : public driver {
     int epoll_errcount_;
     enum { EPOLL_MAX_ERRCOUNT = 32 };
 #endif
+    int flags_;
 
     static void fd_disinterest(void* arg);
     void update_fds();
@@ -184,14 +185,16 @@ class driver_tamer : public driver {
 };
 
 
-driver_tamer::driver_tamer()
-    : fdbound_(0), loop_state_(false) {
+driver_tamer::driver_tamer(int flags)
+    : fdbound_(0), loop_state_(false), flags_(flags) {
 #if HAVE_SYS_EPOLL_H
     epollfd_ = -1;
     epoll_errcount_ = EPOLL_MAX_ERRCOUNT;
-    epollfd_ = epoll_create1(EPOLL_CLOEXEC);
-    epoll_sig_pipe_ = false;
-    epoll_pid_ = getpid();
+    if (!(flags_ & initf::no_epoll)) {
+        epollfd_ = epoll_create1(EPOLL_CLOEXEC);
+        epoll_sig_pipe_ = false;
+        epoll_pid_ = getpid();
+    }
     if (epollfd_ >= 0)
         epoll_errcount_ = 0;
 #endif
@@ -255,6 +258,10 @@ inline void driver_tamer::mark_epoll(int fd, int old_events, int events) {
             && !(action == EPOLL_CTL_DEL && errno == ENOENT)) {
             // the epoll file descriptor has gone wonky
             ++epoll_errcount_;
+            if (flags_ & initf::verbose)
+                fprintf(stderr, "tamer: epoll_ctl: %s, %s\n", strerror(errno),
+                        epoll_errcount_ < EPOLL_MAX_ERRCOUNT
+                        ? "retrying" : "giving up");
             close(epollfd_);
             epollfd_ = -1;
         }
@@ -506,8 +513,8 @@ void driver_tamer::break_loop() {
 
 } // namespace
 
-driver *driver::make_tamer() {
-    return new driver_tamer;
+driver *driver::make_tamer(int flags) {
+    return new driver_tamer(flags);
 }
 
 } // namespace tamer

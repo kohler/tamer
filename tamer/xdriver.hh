@@ -74,7 +74,7 @@ class driver : public tamerpriv::simple_driver {
 
     void blocked_locations(std::vector<std::string>& x);
 
-    static driver* make_tamer();
+    static driver* make_tamer(int flags);
     static driver* make_libevent();
     static driver* make_libev();
 

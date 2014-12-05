@@ -58,26 +58,27 @@ bool initialize(int flags) {
     if (driver::main)
         return true;
 
-    if (!(flags & (use_tamer | use_libevent | use_libev))) {
+    if (!(flags & (initf::dtamer | initf::dlibevent | initf::dlibev
+                   | initf::dstrict))) {
         const char* dname = getenv("TAMER_DRIVER");
         if (dname && strcmp(dname, "libev") == 0)
-            flags |= use_libev;
+            flags |= initf::dlibev;
         else if (dname && strcmp(dname, "libevent") == 0)
-            flags |= use_libevent;
+            flags |= initf::dlibevent;
         else
-            flags |= use_tamer;
+            flags |= initf::dtamer;
     }
 
-    if (!driver::main && (flags & use_libev))
+    if (!driver::main && (flags & initf::dlibev))
         driver::main = driver::make_libev();
-    if (!driver::main && (flags & use_libevent))
+    if (!driver::main && (flags & initf::dlibevent))
         driver::main = driver::make_libevent();
-    if (!driver::main && !(flags & use_tamer) && (flags & no_fallback))
-        return false;
+    if (!driver::main && ((flags & initf::dtamer) || !(flags & initf::dstrict)))
+        driver::main = driver::make_tamer(flags);
     if (!driver::main)
-        driver::main = driver::make_tamer();
+        return false;
 
-    if (!(flags & keep_sigpipe))
+    if (!(flags & initf::keep_sigpipe))
         signal(SIGPIPE, SIG_IGN);
     return true;
 }
