@@ -21,28 +21,25 @@ namespace tamer {
  *  loop.
  */
 
-struct initf {
-    enum {
-        dtamer = 1,
-        dlibevent = 2,
-        dlibev = 4,
-        keep_sigpipe = 0x1000,
-        dstrict = 0x2000,
-        verbose = 0x4000,
-        no_epoll = 0x8000
-    };
+enum init_flags {
+    init_tamer = 1,
+    init_libevent = 2,
+    init_libev = 4,
+    init_sigpipe = 0x1000,
+    init_strict = 0x2000,
+    init_no_epoll = 0x4000
 };
 
 /** @brief  Initialize the Tamer event loop.
- *  @param  flags  Initialization flags, taken from initf.
+ *  @param  flags  Initialization flags, taken from init_flags.
  *
  *  Call tamer::initialize at least once before registering any primitive
  *  Tamer events. The @a flags argument may contain one or more
- *  constants to request a specific driver (dtamer, dlibevent, or
- *  dlibev).
+ *  constants to request a specific driver (init_tamer, init_libevent, or
+ *  init_libev).
  *
  *  By default Tamer ignores the SIGPIPE signal, which is generally what
- *  event-driven programs want. Add initf::keep_sigpipe to @a flags if you
+ *  event-driven programs want. Add init_sigpipe to @a flags if you
  *  want to turn off this behavior.
  */
 bool initialize(int flags = 0);

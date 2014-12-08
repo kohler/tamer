@@ -54,31 +54,33 @@ void driver::blocked_locations(std::vector<std::string>& x) {
             x.push_back(c->location_description());
 }
 
+void driver::set_error_handler(error_handler_type) {
+}
+
 bool initialize(int flags) {
     if (driver::main)
         return true;
 
-    if (!(flags & (initf::dtamer | initf::dlibevent | initf::dlibev
-                   | initf::dstrict))) {
+    if (!(flags & (init_tamer | init_libevent | init_libev | init_strict))) {
         const char* dname = getenv("TAMER_DRIVER");
         if (dname && strcmp(dname, "libev") == 0)
-            flags |= initf::dlibev;
+            flags |= init_libev;
         else if (dname && strcmp(dname, "libevent") == 0)
-            flags |= initf::dlibevent;
+            flags |= init_libevent;
         else
-            flags |= initf::dtamer;
+            flags |= init_tamer;
     }
 
-    if (!driver::main && (flags & initf::dlibev))
+    if (!driver::main && (flags & init_libev))
         driver::main = driver::make_libev();
-    if (!driver::main && (flags & initf::dlibevent))
+    if (!driver::main && (flags & init_libevent))
         driver::main = driver::make_libevent();
-    if (!driver::main && ((flags & initf::dtamer) || !(flags & initf::dstrict)))
+    if (!driver::main && ((flags & init_tamer) || !(flags & init_strict)))
         driver::main = driver::make_tamer(flags);
     if (!driver::main)
         return false;
 
-    if (!(flags & initf::keep_sigpipe))
+    if (!(flags & init_sigpipe))
         signal(SIGPIPE, SIG_IGN);
     return true;
 }

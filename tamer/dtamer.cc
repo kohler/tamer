@@ -143,6 +143,8 @@ class driver_tamer : public driver {
     virtual void at_preblock(event<> e);
     virtual void kill_fd(int fd);
 
+    virtual void set_error_handler(error_handler_type errh);
+
     virtual void loop(loop_flags flags);
     virtual void break_loop();
 
@@ -173,6 +175,7 @@ class driver_tamer : public driver {
     enum { EPOLL_MAX_ERRCOUNT = 32 };
 #endif
     int flags_;
+    error_handler_type errh_;
 
     static void fd_disinterest(void* arg);
     void update_fds();
@@ -186,11 +189,11 @@ class driver_tamer : public driver {
 
 
 driver_tamer::driver_tamer(int flags)
-    : fdbound_(0), loop_state_(false), flags_(flags) {
+    : fdbound_(0), loop_state_(false), flags_(flags), errh_(0) {
 #if HAVE_SYS_EPOLL_H
     epollfd_ = -1;
     epoll_errcount_ = EPOLL_MAX_ERRCOUNT;
-    if (!(flags_ & initf::no_epoll)) {
+    if (!(flags_ & init_no_epoll)) {
         epollfd_ = epoll_create1(EPOLL_CLOEXEC);
         epoll_sig_pipe_ = false;
         epoll_pid_ = getpid();
@@ -205,6 +208,10 @@ driver_tamer::~driver_tamer() {
     if (epollfd_ >= 0)
         close(epollfd_);
 #endif
+}
+
+void driver_tamer::set_error_handler(error_handler_type errh) {
+    errh_ = errh;
 }
 
 void driver_tamer::fd_disinterest(void* arg) {
@@ -257,11 +264,16 @@ inline void driver_tamer::mark_epoll(int fd, int old_events, int events) {
             && !(action == EPOLL_CTL_DEL && errno == EBADF)
             && !(action == EPOLL_CTL_DEL && errno == ENOENT)) {
             // the epoll file descriptor has gone wonky
+            int ctl_errno = errno;
             ++epoll_errcount_;
-            if (flags_ & initf::verbose)
-                fprintf(stderr, "tamer: epoll_ctl: %s, %s\n", strerror(errno),
-                        epoll_errcount_ < EPOLL_MAX_ERRCOUNT
-                        ? "retrying" : "giving up");
+            if (errh_) {
+                const char* msg;
+                if (epoll_errcount_ < EPOLL_MAX_ERRCOUNT)
+                    msg = "epoll_ctl failure, retrying";
+                else
+                    msg = "epoll_ctl failure, giving up";
+                errh_(fd, ctl_errno, msg);
+            }
             close(epollfd_);
             epollfd_ = -1;
         }
