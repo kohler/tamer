@@ -147,6 +147,7 @@ class driver_tamer : public driver {
 
     virtual void loop(loop_flags flags);
     virtual void break_loop();
+    virtual timeval next_wake() const;
 
   private:
 
@@ -521,6 +522,19 @@ int driver_tamer::find_bad_fds(xfd_setpair& fdnow) {
 
 void driver_tamer::break_loop() {
     loop_state_ = false;
+}
+
+timeval driver_tamer::next_wake() const {
+    struct timeval tv = { 0, 0 };
+    if (!asap_.empty()
+        || sig_any_active
+        || has_unblocked())
+        /* already zero */;
+    else if (timers_.empty())
+        tv.tv_sec = -1;
+    else
+        tv = timers_.expiry();
+    return tv;
 }
 
 } // namespace

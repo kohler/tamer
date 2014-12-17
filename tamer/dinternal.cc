@@ -134,6 +134,11 @@ void driver::at_delay(double delay, event<> e, bool bg)
     }
 }
 
+timeval driver::next_wake() const {
+    timeval unknown = { 0, 0 };
+    return unknown;
+}
+
 
 namespace tamerpriv {
 

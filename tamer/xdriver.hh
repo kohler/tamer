@@ -67,13 +67,14 @@ class driver : public tamerpriv::simple_driver {
     inline void at_delay_usec(int delay, event<> e, bool bg = false);
 
     static void at_signal(int signo, event<> e,
-			  signal_flags flags = signal_default);
+                          signal_flags flags = signal_default);
 
     typedef void (*error_handler_type)(int fd, int err, std::string msg);
     virtual void set_error_handler(error_handler_type errh);
 
     virtual void loop(loop_flags flag) = 0;
     virtual void break_loop() = 0;
+    virtual timeval next_wake() const;
 
     void blocked_locations(std::vector<std::string>& x);
 
