@@ -201,6 +201,8 @@ driver_tamer::driver_tamer(int flags)
     }
     if (epollfd_ >= 0)
         epoll_errcount_ = 0;
+#else
+    (void) flags_;
 #endif
 }
 
