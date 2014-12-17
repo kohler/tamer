@@ -130,7 +130,7 @@ const char* http_message::default_status_message(unsigned code) {
 }
 
 bool http_message::has_canonical_header(const std::string& key) const {
-    for (std::vector<http_header>::const_iterator it = raw_headers_.begin();
+    for (header_iterator it = raw_headers_.begin();
          it != raw_headers_.end(); ++it)
         if (it->is_canonical(key.data(), key.length()))
             return true;
@@ -149,47 +149,8 @@ void http_message::clear() {
         info_->flags = 0;
 }
 
-static inline bool string_equals(const std::string& s, const char* c_str, size_t len) {
-    return s.length() == len && memcmp(s.data(), c_str, len) == 0;
-}
-
-#define STRING_EQUALS(s, c_str) string_equals((s), (c_str), sizeof(c_str) - 1)
-
 void http_message::add_header(std::string key, std::string value) {
     raw_headers_.push_back(http_header(TAMER_MOVE(key), TAMER_MOVE(value)));
-#if 0
-    std::string lckey(raw_headers_[raw_headers_.size() - 2]);
-    for (std::string::iterator it = lckey.begin();
-         it != lckey.end(); ++it)
-        *it = tolower((unsigned char) *it);
-
-    if (STRING_EQUALS(lckey, "set-cookie")) {
-        cookies_.push_back(raw_headers_.back());
-        return;
-    }
-
-    header_map_type::iterator hit = headers_.lower_bound(lckey);
-    if (hit == headers_.end() || hit->first != lckey)
-        headers_.insert(hit, std::make_pair(TAMER_MOVE(lckey),
-                                            raw_headers_.back()));
-    else if (STRING_EQUALS(lckey, "content-type")
-             || STRING_EQUALS(lckey, "content-length")
-             || STRING_EQUALS(lckey, "user-agent")
-             || STRING_EQUALS(lckey, "referer")
-             || STRING_EQUALS(lckey, "host")
-             || STRING_EQUALS(lckey, "authorization")
-             || STRING_EQUALS(lckey, "proxy-authorization")
-             || STRING_EQUALS(lckey, "if-modified-since")
-             || STRING_EQUALS(lckey, "if-unmodified-since")
-             || STRING_EQUALS(lckey, "from")
-             || STRING_EQUALS(lckey, "location")
-             || STRING_EQUALS(lckey, "max-forwards"))
-        /* drop duplicate */;
-    else {
-        hit->second += ", ";
-        hit->second += raw_headers_.back();
-    }
-#endif
 }
 
 inline int xvalue(unsigned char ch) {
@@ -449,7 +410,7 @@ void http_parser::unparse_request_headers(std::ostringstream& buf,
     buf << http_method_str(m.method()) << " " << m.url()
         << " HTTP/" << m.http_major() << "." << m.http_minor() << "\r\n";
     bool need_content_length = !m.body_.empty();
-    for (std::vector<http_header>::const_iterator it = m.raw_headers_.begin();
+    for (http_message::header_iterator it = m.raw_headers_.begin();
          it != m.raw_headers_.end(); ++it) {
         buf << it->name << ": " << it->value << "\r\n";
         need_content_length = need_content_length && !it->is_content_length();
@@ -484,7 +445,7 @@ void http_parser::unparse_response_headers(std::ostringstream& buf,
         buf << m.status_message();
     buf << "\r\n";
     bool need_content_length = !m.body_.empty() && include_content_length;
-    for (std::vector<http_header>::const_iterator it = m.raw_headers_.begin();
+    for (http_message::header_iterator it = m.raw_headers_.begin();
          it != m.raw_headers_.end(); ++it) {
         buf << it->name << ": " << it->value << "\r\n";
         need_content_length = need_content_length && !it->is_content_length();
