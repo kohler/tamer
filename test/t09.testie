@@ -5,4 +5,4 @@ Check that tamer can recover from closed file descriptors.
 $VALGRIND $rundir/test/t09
 
 %stdout
--125 returned, 0 bytes read
+Operation cancel{{l?}}ed returned, 0 bytes read
