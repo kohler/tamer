@@ -138,8 +138,10 @@ void driver::at_delay(double delay, event<> e, bool bg)
 namespace tamerpriv {
 
 driver_asapset::~driver_asapset() {
-    while (!empty())
-	simple_event::unuse(ses_[head_ & capmask_]);
+    while (!empty()) {
+        simple_event::unuse(ses_[head_ & capmask_]);
+        ++head_;
+    }
     delete[] ses_;
 }
 
