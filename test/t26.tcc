@@ -44,7 +44,7 @@ int main(int, char**) {
 
     tamer::once();
 
-    printf("%06ld\n", tamer::recent().tv_usec);
+    printf("%06ld\n", (long) tamer::recent().tv_usec);
     assert(tamer::recent().tv_usec == 4002);
 
     tamer::loop();
