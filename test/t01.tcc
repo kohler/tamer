@@ -19,18 +19,28 @@
 #include <tamer/tamer.hh>
 #include <tamer/adapter.hh>
 
+static struct timeval start;
+
+static inline std::string recentstr(timeval now = tamer::recent()) {
+    timeval delta;
+    timersub(&now, &start, &delta);
+    char buf[200];
+    sprintf(buf, "%ld.%06d", (long) delta.tv_sec, (int) delta.tv_usec);
+    return buf;
+}
+
 tamed void delay1(int x, tamer::event<> e) {
     twait { tamer::at_delay_msec(x, make_event()); }
-    fprintf(stderr, "@%d: %ld.%06d\n", x, (long int) tamer::recent().tv_sec, (int) tamer::recent().tv_usec);
+    fprintf(stderr, "@%d: %s\n", x, recentstr().c_str());
     e.trigger();
 }
 
 tamed void stdiny() {
     tvars { int fail = -1; }
     twait {
-	tamer::at_fd_read(0, with_timeout(400, make_event(), fail));
-	//tamer::at_fd_read(0, with_signal(SIGINT, make_event(), fail));
-	//tamer::at_fd_read(0, make_event());
+        tamer::at_fd_read(0, with_timeout(400, make_event(), fail));
+        //tamer::at_fd_read(0, with_signal(SIGINT, make_event(), fail));
+        //tamer::at_fd_read(0, make_event());
     }
     fprintf(stderr, ":: stdin result %d\n", fail);
 }
@@ -45,11 +55,11 @@ tamed void waitr(tamer::rendezvous<int> &r) {
 tamed void waitsig() {
     tvars { int i (0); }
     while (i < 3) {
-	twait {
-	    tamer::at_signal(SIGINT, make_event());
-	}
-	fprintf(stderr, "== sig %d\n", i);
-	i++;
+        twait {
+            tamer::at_signal(SIGINT, make_event());
+        }
+        fprintf(stderr, "== sig %d\n", i);
+        i++;
     }
     fprintf(stderr, "== exit\n");
 }
@@ -59,13 +69,14 @@ tamed void scatter() {
     tamer::at_delay_msec(500, e = tamer::all(TAMER_MAKE_ANNOTATED_EVENT(r, i),
                                              TAMER_MAKE_ANNOTATED_EVENT(r, 2),
                                              TAMER_MAKE_ANNOTATED_EVENT(r, 3)));
-    tamer::at_delay_msec(502, tamer::all(TAMER_MAKE_ANNOTATED_EVENT(r, 0), e));
+    tamer::at_delay_msec(505, tamer::all(TAMER_MAKE_ANNOTATED_EVENT(r, 0), e));
     j = 0;
     while (r.has_events()) {
-	twait(r, i);
-	fprintf(stderr, "@%d: distributed %d\n", i ? 500 : 502, i);
-	assert(i == "1230"[j] - '0');
-	++j;
+        twait(r, i);
+        fprintf(stderr, "@%d: distributed %d ... %s\n",
+                i ? 500 : 505, i, recentstr().c_str());
+        assert(i == "1230"[j] - '0');
+        ++j;
     }
     // should print "== distributed 1, 2, 3, 0"
 
@@ -77,10 +88,11 @@ tamed void scatter() {
     // that event), then "== distributed 0, 1, 2, 3"
     j = 0;
     while (r.has_events()) {
-	twait(r, i);
-	fprintf(stderr, "@%d: distributed %d\n", i ? 1002 : 502, i);
-	assert(i == "0123"[j] - '0');
-	++j;
+        twait(r, i);
+        fprintf(stderr, "@%d: distributed %d ... %s\n",
+                i ? 1005 : 505, i, recentstr().c_str());
+        assert(i == "0123"[j] - '0');
+        ++j;
     }
 }
 
@@ -93,10 +105,10 @@ tamed void cancellina() {
     e.trigger();
     j = 0;
     while (r.has_events()) {
-	twait(r, i);
-	fprintf(stderr, "@0: triggered %d\n", i);
-	assert(i == "\001\144\145\146"[j]);
-	++j;
+        twait(r, i);
+        fprintf(stderr, "@0: triggered %d\n", i);
+        assert(i == "\001\144\145\146"[j]);
+        ++j;
     }
 }
 
@@ -104,7 +116,7 @@ tamed void cancellina2() {
     tvars { std::pair<int, int> ij = std::make_pair(1, 1);
         int k;
         tamer::rendezvous<std::pair<int, int> > r; tamer::event<> e1;
-	tamer::event<> e2; tamer::event<> e3; tamer::event<> e4; }
+        tamer::event<> e2; tamer::event<> e3; tamer::event<> e4; }
     e1 = TAMER_MAKE_ANNOTATED_EVENT(r, std::make_pair(1, 1));
     e2 = TAMER_MAKE_ANNOTATED_EVENT(r, std::make_pair(2, 2));
     e3 = TAMER_MAKE_ANNOTATED_EVENT(r, std::make_pair(3, 3));
@@ -114,32 +126,32 @@ tamed void cancellina2() {
     e2.trigger();
     e3.trigger();
     if (e4)
-	fprintf(stderr, "@0: SHOULD NOT HAVE e4\n");
+        fprintf(stderr, "@0: SHOULD NOT HAVE e4\n");
     assert(!e4);
     k = 0;
     while (r.has_events()) {
-	twait(r, ij);
-	fprintf(stderr, "@0: triggered %d %d\n", ij.first, ij.second);
-	assert(ij.first == ij.second);
-	assert(ij.first == "123"[k] - '0');
-	++k;
+        twait(r, ij);
+        fprintf(stderr, "@0: triggered %d %d\n", ij.first, ij.second);
+        assert(ij.first == ij.second);
+        assert(ij.first == "123"[k] - '0');
+        ++k;
     }
     fprintf(stderr, "@0: done cancellina2\n");
 }
 
 tamed void bindery() {
     tvars { int i(1); tamer::rendezvous<> r; tamer::event<int> e;
-	tamer::event<> ee; }
+        tamer::event<> ee; }
     twait {
-	tamer::at_delay_msec(600, tamer::bind(make_event(i), 2));
-	fprintf(stderr, "@0: before bindery %d\n", i);
+        tamer::at_delay_msec(600, tamer::bind(make_event(i), 2));
+        fprintf(stderr, "@0: before bindery %d\n", i);
     }
     fprintf(stderr, "@600: after bindery %d\n", i);
     tamer::at_delay_msec(600, tamer::bind(e = TAMER_MAKE_ANNOTATED_EVENT(r, i), 3));
     e.unblocker().trigger();
     while (r.has_events()) {
-	twait(r);
-	fprintf(stderr, "@600: got bindery\n");
+        twait(r);
+        fprintf(stderr, "@600: got bindery\n");
     }
     fprintf(stderr, "@600: after bindery 2 %d\n", i);
     // should print "after bindery 2 2", b/c e.unblocker() was triggered,
@@ -148,8 +160,8 @@ tamed void bindery() {
     tamer::at_delay_msec(600, ee = tamer::bind(TAMER_MAKE_ANNOTATED_EVENT(r, i), 4));
     ee.unblocker().trigger();
     while (r.has_events()) {
-	twait(r);
-	fprintf(stderr, "@600: got bindery\n");
+        twait(r);
+        fprintf(stderr, "@600: got bindery\n");
     }
     fprintf(stderr, "@600: after bindery 3 %d\n", i);
     // should print "after bindery 3 4", b/c ee.unblocker() == ee was
@@ -165,22 +177,22 @@ int add1(int x) {
 
 tamed void mappery() {
     tvars { int i(1); tamer::rendezvous<> r; tamer::event<int> e;
-	tamer::event<> ee; }
+        tamer::event<> ee; }
     twait {
-	tamer::at_delay_msec(700, tamer::bind(tamer::map<int>(make_event(i), add1), 2));
-	fprintf(stderr, "@0: before mappery %d\n", i);
+        tamer::at_delay_msec(700, tamer::bind(tamer::map<int>(make_event(i), add1), 2));
+        fprintf(stderr, "@0: before mappery %d\n", i);
     }
     fprintf(stderr, "@700: after mappery %d\n", i); // should be 3
     assert(i == 3);
     twait {
-	tamer::at_delay_msec(700, tamer::bind(tamer::map<int>(e = make_event(i), add1), 4));
-	e.unblocker().trigger();
-	fprintf(stderr, "@700: before mappery %d\n", i);
+        tamer::at_delay_msec(700, tamer::bind(tamer::map<int>(e = make_event(i), add1), 4));
+        e.unblocker().trigger();
+        fprintf(stderr, "@700: before mappery %d\n", i);
     }
     fprintf(stderr, "@700: after mappery %d\n", i); // should be 3, since the unblocker executed
     assert(i == 3);
     twait {
-	tamer::at_asap(tamer::bind(tamer::map<int>(e = make_event(i), add1), 10));
+        tamer::at_asap(tamer::bind(tamer::map<int>(e = make_event(i), add1), 10));
     }
     fprintf(stderr, "@700+: after mappery %d\n", i); // should be 11
     assert(i == 11);
@@ -188,13 +200,13 @@ tamed void mappery() {
 
 tamed void test_debug2(tamer::event<> a) {
     twait {
-	tamer::at_asap(make_event());
+        tamer::at_asap(make_event());
     }
 }
 
 tamed void test_debug1() {
     twait {
-	test_debug2(make_event());
+        test_debug2(make_event());
     }
 }
 
@@ -280,9 +292,20 @@ tamed void test_tamed_tvars() {
     assert(x == 1);
 }
 
+tamed void preblock_report() {
+    while (1) {
+        twait volatile { tamer::at_preblock(make_event()); }
+        timeval when = tamer::driver::main->next_wake();
+        if (when.tv_sec > 0)
+            fprintf(stderr, "... block until %s\n", recentstr(when).c_str());
+    }
+}
+
 int main(int, char **) {
     tamer::rendezvous<int> r;
-    tamer::initialize();
+    tamer::initialize(tamer::init_tamer);
+    start = tamer::recent();
+    preblock_report();
     waitr(r);
     delay1(100, tamer::event<>());
     delay1(1000, TAMER_MAKE_ANNOTATED_EVENT(r, 10));
