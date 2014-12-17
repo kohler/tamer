@@ -367,33 +367,34 @@ void driver_tamer::loop(loop_flags flags)
  again:
     // process asap events
     while (!preblock_.empty())
-	preblock_.pop_trigger();
+        preblock_.pop_trigger();
     run_unblocked();
 
     // fix file descriptors
     if (fds_.has_change())
-	update_fds();
+        update_fds();
 
     // determine timeout
-    struct timeval to, *toptr;
+    timeval to, *toptr, tnow;
     timers_.cull();
     if (!asap_.empty()
-	|| (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >))
-        || (!timers_.empty() && tamerpriv::time_type == time_virtual)
-	|| sig_any_active
-	|| has_unblocked()) {
-	timerclear(&to);
-	toptr = &to;
+        || sig_any_active
+        || has_unblocked()
+        || (!timers_.empty()
+            && (tamerpriv::time_type == time_virtual
+                || (tnow = now(), !timercmp(&timers_.expiry(), &tnow, >))))) {
+        timerclear(&to);
+        toptr = &to;
     } else if (!timers_.has_foreground()
                && fdbound_ == 0
                && sig_nforeground == 0)
         // no foreground events!
         return;
     else if (!timers_.empty()) {
-	timersub(&timers_.expiry(), &recent(), &to);
-	toptr = &to;
+        timersub(&timers_.expiry(), &tnow, &to);
+        toptr = &to;
     } else
-	toptr = 0;
+        toptr = 0;
 
     // select!
     int nfds = 0;
