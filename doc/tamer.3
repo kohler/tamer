@@ -526,16 +526,18 @@ These functions manipulate events generically, for example by returning
 one event that triggers two others.
 .sp
 .nf
-.B event<> distribute(const event<>& \fIe1\fB, const event<>& \fIe2\fB)
+.B event<> operator+(const event<>& \fIe1\fB, const event<>& \fIe2\fB)
 .fi
 .RS 5
-Returns an event that distributes trigger operations over
+Returns an event that combines
 .IR e1 " and " e2 .
 Triggering the returned event will trigger both
 .IR e1 " and " e2 .
 The returned event is empty if and only if both
 .IR e1 " and " e2
 are empty.
+.BI tamer::all( e1 ", " e2 )
+is a synonym for operator+.
 .RE
 .sp
 .nf

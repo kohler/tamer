@@ -422,7 +422,7 @@ tamed void resolver::failed_nameserver(nameserver n) {
 tamed void resolver::ready(event<> e) {
   if (!_is_init)
     twait { _init = (_init)
-      ? tamer::distribute(_init, make_event())
+      ? tamer::all(_init, make_event())
       : make_event(); }
   e.trigger();
 }

@@ -32,46 +32,12 @@ const int closed = -EPIPE;
 /** @brief  Create event that triggers @a e1 and @a e2 when triggered.
  *  @param  e1  First event.
  *  @param  e2  Second event.
- *  @return  Distributer event.
+ *  @return  Combination event.
  *
  *  Triggering the returned event instantly triggers @a e1 and @a e2 with the
  *  same values. The returned event is automatically triggered if @a e1 and @a
  *  e2 are both triggered separately.
  */
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> distribute(event<T0, T1, T2, T3> e1,
-                                        event<T0, T1, T2, T3> e2) {
-    return e1 += TAMER_MOVE(e2);
-}
-
-/** @brief  Create event that triggers @a e1, @a e2, and @a e3 when triggered.
- *  @param  e1  First event.
- *  @param  e2  Second event.
- *  @param  e3  Third event.
- *  @return  Distributer event.
- *
- *  Equivalent to distribute(distribute(@a e1, @a e2), @a e3).
- */
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> distribute(event<T0, T1, T2, T3> e1,
-                                        event<T0, T1, T2, T3> e2,
-                                        event<T0, T1, T2, T3> e3) {
-    e1 += TAMER_MOVE(e2);
-    return e1 += TAMER_MOVE(e3);
-}
-
-#if TAMER_HAVE_PREEVENT
-template <typename R, typename T0>
-inline event<T0> distribute(event<T0> e1, preevent<R, T0>&& e2) {
-    return e1 += TAMER_MOVE(e2);
-}
-
-template <typename R, typename T0>
-inline event<T0> distribute(preevent<R, T0>&& e1, event<T0> e2) {
-    return e2 += TAMER_MOVE(e1);
-}
-#endif
-
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> operator+(event<T0, T1, T2, T3> e1,
                                        event<T0, T1, T2, T3> e2) {
@@ -89,6 +55,62 @@ inline event<T0> operator+(preevent<R, T0>&& e1, event<T0> e2) {
     return e2 += TAMER_MOVE(e1);
 }
 #endif
+
+/** @brief  Create event that triggers @a e1 and @a e2 when triggered.
+ *  @param  e1  First event.
+ *  @param  e2  Second event.
+ *  @return  Combination event.
+ *
+ *  Triggering the returned event instantly triggers @a e1 and @a e2 with the
+ *  same values. The returned event is automatically triggered if @a e1 and @a
+ *  e2 are both triggered separately.
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> all(event<T0, T1, T2, T3> e1,
+                                 event<T0, T1, T2, T3> e2) {
+    return e1 += TAMER_MOVE(e2);
+}
+
+/** @brief  Create event that triggers @a e1, @a e2, and @a e3 when triggered.
+ *  @param  e1  First event.
+ *  @param  e2  Second event.
+ *  @param  e3  Third event.
+ *  @return  Combination event.
+ *
+ *  Equivalent to all(all(@a e1, @a e2), @a e3).
+ */
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> all(event<T0, T1, T2, T3> e1,
+                                 event<T0, T1, T2, T3> e2,
+                                 event<T0, T1, T2, T3> e3) {
+    e1 += TAMER_MOVE(e2);
+    return e1 += TAMER_MOVE(e3);
+}
+
+#if TAMER_HAVE_PREEVENT
+template <typename R, typename T0>
+inline event<T0> all(event<T0> e1, preevent<R, T0>&& e2) {
+    return e1 += TAMER_MOVE(e2);
+}
+
+template <typename R, typename T0>
+inline event<T0> all(preevent<R, T0>&& e1, event<T0> e2) {
+    return e2 += TAMER_MOVE(e1);
+}
+#endif
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> TAMER_DEPRECATEDATTR
+distribute(event<T0, T1, T2, T3> e1, event<T0, T1, T2, T3> e2) {
+    return all(e1, e2);
+}
+
+template <typename T0, typename T1, typename T2, typename T3>
+inline event<T0, T1, T2, T3> TAMER_DEPRECATEDATTR
+distribute(event<T0, T1, T2, T3> e1, event<T0, T1, T2, T3> e2,
+           event<T0, T1, T2, T3> e3) {
+    return all(e1, e2, e3);
+}
 
 /** @brief  Create bound event for @a e with @a v0.
  *  @param  e   Event.

@@ -56,10 +56,10 @@ tamed void waitsig() {
 
 tamed void scatter() {
     tvars { int i(1), j; tamer::rendezvous<int> r; tamer::event<> e, e2; }
-    tamer::at_delay_msec(500, e = tamer::distribute(TAMER_MAKE_ANNOTATED_EVENT(r, i),
-						    TAMER_MAKE_ANNOTATED_EVENT(r, 2),
-						    TAMER_MAKE_ANNOTATED_EVENT(r, 3)));
-    tamer::at_delay_msec(502, tamer::distribute(TAMER_MAKE_ANNOTATED_EVENT(r, 0), e));
+    tamer::at_delay_msec(500, e = tamer::all(TAMER_MAKE_ANNOTATED_EVENT(r, i),
+                                             TAMER_MAKE_ANNOTATED_EVENT(r, 2),
+                                             TAMER_MAKE_ANNOTATED_EVENT(r, 3)));
+    tamer::at_delay_msec(502, tamer::all(TAMER_MAKE_ANNOTATED_EVENT(r, 0), e));
     j = 0;
     while (r.has_events()) {
 	twait(r, i);
@@ -69,10 +69,10 @@ tamed void scatter() {
     }
     // should print "== distributed 1, 2, 3, 0"
 
-    tamer::at_delay_msec(500, e = tamer::distribute(TAMER_MAKE_ANNOTATED_EVENT(r, 1),
-						    TAMER_MAKE_ANNOTATED_EVENT(r, 2),
-						    TAMER_MAKE_ANNOTATED_EVENT(r, 3)));
-    (void) tamer::distribute(e, TAMER_MAKE_ANNOTATED_EVENT(r, 0));
+    tamer::at_delay_msec(500, e = tamer::all(TAMER_MAKE_ANNOTATED_EVENT(r, 1),
+                                             TAMER_MAKE_ANNOTATED_EVENT(r, 2),
+                                             TAMER_MAKE_ANNOTATED_EVENT(r, 3)));
+    (void) tamer::all(e, TAMER_MAKE_ANNOTATED_EVENT(r, 0));
     // should print "avoided leak of active event" (because we just threw away
     // that event), then "== distributed 0, 1, 2, 3"
     j = 0;
@@ -108,7 +108,7 @@ tamed void cancellina2() {
     e1 = TAMER_MAKE_ANNOTATED_EVENT(r, std::make_pair(1, 1));
     e2 = TAMER_MAKE_ANNOTATED_EVENT(r, std::make_pair(2, 2));
     e3 = TAMER_MAKE_ANNOTATED_EVENT(r, std::make_pair(3, 3));
-    e4 = tamer::distribute(e1, e2, e3);
+    e4 = e1 + e2 + e3;
     tamer::at_delay_msec(500, e4);
     e1.trigger();
     e2.trigger();
@@ -201,44 +201,44 @@ tamed void test_debug1() {
 tamed void test_distribute() {
     tvars { int i, j, k, l; };
     twait {
-	tamer::event<int> e1 = make_event(i);
-	tamer::event<int> e2 = make_event(j);
-	tamer::event<int> e3 = make_event(k);
-	tamer::at_asap(tamer::bind(tamer::distribute(e1, e2, e3), 10));
-	tamer::at_asap(tamer::bind(e1, 1));
-	tamer::at_asap(tamer::bind(e2, 2));
-	tamer::at_asap(tamer::bind(e3, 3));
-	e1.trigger(1);
+        tamer::event<int> e1 = make_event(i);
+        tamer::event<int> e2 = make_event(j);
+        tamer::event<int> e3 = make_event(k);
+        tamer::at_asap(tamer::bind(e1 + e2 + e3, 10));
+        tamer::at_asap(tamer::bind(e1, 1));
+        tamer::at_asap(tamer::bind(e2, 2));
+        tamer::at_asap(tamer::bind(e3, 3));
+        e1.trigger(1);
     }
     assert(i == 1 && j == 10 && k == 10);
     i = j = k = l = 0;
     twait {
-	tamer::event<int> ei = make_event(i),
-	    ej = make_event(j);
-	tamer::event<int> e1 = tamer::distribute(ei, ej);
-	e1.at_trigger(tamer::bind(make_event(k), 1));
-	e1 = tamer::distribute(TAMER_MOVE(e1), make_event(l));
-	assert(i == 0 && j == 0 && k == 0 && l == 0);
-	ei.trigger(1);
-	ej.trigger(1);
-	assert(i == 1 && j == 1 && k == 1 && l == 0);
-	e1.trigger(2);
-	assert(i == 1 && j == 1 && k == 1 && l == 2);
+        tamer::event<int> ei = make_event(i),
+            ej = make_event(j);
+        tamer::event<int> e1 = ei + ej;
+        e1.at_trigger(tamer::bind(make_event(k), 1));
+        e1 = TAMER_MOVE(e1) + make_event(l);
+        assert(i == 0 && j == 0 && k == 0 && l == 0);
+        ei.trigger(1);
+        ej.trigger(1);
+        assert(i == 1 && j == 1 && k == 1 && l == 0);
+        e1.trigger(2);
+        assert(i == 1 && j == 1 && k == 1 && l == 2);
     }
 }
 
 tamed void test_distribute_opt() {
     tvars { int i, j, k, l; };
     twait {
-	tamer::event<> e1;
-        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
-        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
-        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
-        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
-        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
-        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
-        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
-        e1 = tamer::distribute(TAMER_MOVE(e1), make_event());
+        tamer::event<> e1;
+        e1 = tamer::all(TAMER_MOVE(e1), make_event());
+        e1 = tamer::all(TAMER_MOVE(e1), make_event());
+        e1 = tamer::all(TAMER_MOVE(e1), make_event());
+        e1 = tamer::all(TAMER_MOVE(e1), make_event());
+        e1 = tamer::all(TAMER_MOVE(e1), make_event());
+        e1 = tamer::all(TAMER_MOVE(e1), make_event());
+        e1 = tamer::all(TAMER_MOVE(e1), make_event());
+        e1 = tamer::all(TAMER_MOVE(e1), make_event());
         //fprintf(stderr, "%d\n", static_cast<tamer::tamerpriv::distribute_rendezvous<>*>(e1.__get_simple()->rendezvous())->nchildren());
         e1();
     }
