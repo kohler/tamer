@@ -494,4 +494,32 @@ void http_parser::send_response_end(fd f, event<> done) {
     f.write("0\r\n\r\n", 5, done);
 }
 
+void http_parser::send(fd f, const http_message& m, event<> done) {
+    if (hp_.type == (int) HTTP_RESPONSE)
+        send_request(f, m, done);
+    else if (hp_.type == (int) HTTP_REQUEST) {
+        // If the response is marked `Connection: close`, then ensure
+        // should_keep_alive() returns 0
+        http_message::header_iterator connhdr;
+        const char* data;
+        if (should_keep_alive()
+            && (connhdr = m.find_canonical_header("connection")) != m.header_end()
+            && (connhdr->value.length() == 5
+                && (data = connhdr->value.data())
+                && (data[0] == 'C' || data[0] == 'c')
+                && (data[1] == 'L' || data[1] == 'l')
+                && (data[2] == 'O' || data[2] == 'o')
+                && (data[3] == 'S' || data[3] == 's')
+                && (data[4] == 'E' || data[4] == 'e'))) {
+            if (hp_.http_major > 0 && hp_.http_minor > 0)
+                hp_.flags |= F_CONNECTION_CLOSE;
+            else
+                hp_.flags &= ~F_CONNECTION_KEEP_ALIVE;
+        }
+
+        send_response(f, m, done);
+    } else
+        assert(0);
+}
+
 } // namespace tamer

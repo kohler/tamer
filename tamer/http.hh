@@ -145,7 +145,7 @@ class http_parser : public tamed_class {
     inline bool should_keep_alive() const;
 
     void receive(fd f, event<http_message> done);
-    inline void send(fd f, const http_message& m, event<> done);
+    void send(fd f, const http_message& m, event<> done);
     static void send_request(fd f, const http_message& m, event<> done);
     static void send_response(fd f, const http_message& m, event<> done);
     static void send_response_headers(fd f, const http_message& m, event<> done);
@@ -381,15 +381,6 @@ inline enum http_errno http_parser::error() const {
 
 inline bool http_parser::should_keep_alive() const {
     return http_should_keep_alive(&hp_);
-}
-
-inline void http_parser::send(fd f, const http_message& m, event<> done) {
-    if (hp_.type == (int) HTTP_RESPONSE)
-        send_request(f, m, done);
-    else if (hp_.type == (int) HTTP_REQUEST)
-        send_response(f, m, done);
-    else
-        assert(0);
 }
 
 } // namespace tamer
