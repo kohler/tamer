@@ -77,7 +77,7 @@ class http_message {
     inline header_iterator query_begin() const;
     inline header_iterator query_end() const;
 
-    void clear();
+    inline http_message& clear();
     void add_header(std::string key, std::string value);
 
     inline http_message& http_major(unsigned v);
@@ -128,6 +128,7 @@ class http_message {
     void make_info(unsigned f) const;
     inline bool has_url_field(int field) const;
     inline std::string url_field(int field) const;
+    void do_clear();
     friend class http_parser;
 };
 
@@ -276,6 +277,11 @@ inline http_message& http_message::http_major(unsigned v) {
 
 inline http_message& http_message::http_minor(unsigned v) {
     minor_ = v;
+    return *this;
+}
+
+inline http_message& http_message::clear() {
+    do_clear();
     return *this;
 }
 

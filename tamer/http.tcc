@@ -137,7 +137,7 @@ bool http_message::has_canonical_header(const std::string& key) const {
     return false;
 }
 
-void http_message::clear() {
+void http_message::do_clear() {
     major_ = minor_ = 1;
     status_code_ = 200;
     method_ = HTTP_GET;
