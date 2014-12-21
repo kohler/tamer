@@ -44,6 +44,8 @@ struct http_header {
 
 class http_message {
   public:
+    typedef std::vector<http_header>::const_iterator header_iterator;
+
     inline http_message();
 
     inline bool ok() const;
@@ -57,7 +59,9 @@ class http_message {
     inline const std::string& status_message() const;
     inline enum http_method method() const;
     inline const std::string& url() const;
-    bool has_canonical_header(const std::string& name) const;
+    header_iterator find_canonical_header(const std::string& name) const;
+    inline header_iterator find_header(const std::string& name) const;
+    inline bool has_canonical_header(const std::string& name) const;
     inline bool has_header(const std::string& name) const;
     inline const std::string& body() const;
 
@@ -71,7 +75,6 @@ class http_message {
     bool has_query(const std::string& name) const;
     std::string query(const std::string& name) const;
 
-    typedef std::vector<http_header>::const_iterator header_iterator;
     inline header_iterator header_begin() const;
     inline header_iterator header_end() const;
     inline header_iterator query_begin() const;
@@ -227,6 +230,14 @@ inline enum http_method http_message::method() const {
 
 inline const std::string& http_message::url() const {
     return url_;
+}
+
+inline http_message::header_iterator http_message::find_header(const std::string& key) const {
+    return find_canonical_header(canonicalize(key));
+}
+
+inline bool http_message::has_canonical_header(const std::string& key) const {
+    return find_canonical_header(key) != header_end();
 }
 
 inline bool http_message::has_header(const std::string& key) const {

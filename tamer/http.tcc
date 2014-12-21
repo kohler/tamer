@@ -129,12 +129,12 @@ const char* http_message::default_status_message(unsigned code) {
         return "unknown";
 }
 
-bool http_message::has_canonical_header(const std::string& key) const {
-    for (header_iterator it = raw_headers_.begin();
-         it != raw_headers_.end(); ++it)
-        if (it->is_canonical(key.data(), key.length()))
-            return true;
-    return false;
+http_message::header_iterator http_message::find_canonical_header(const std::string& key) const {
+    header_iterator it = raw_headers_.begin();
+    while (it != raw_headers_.end()
+           && !it->is_canonical(key.data(), key.length()))
+        ++it;
+    return it;
 }
 
 void http_message::do_clear() {
