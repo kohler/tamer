@@ -21,6 +21,9 @@
 #include <string.h>
 #if HAVE_SYS_EPOLL_H
 # include <sys/epoll.h>
+# ifndef EPOLLRDHUP
+#  define EPOLLRDHUP 0
+# endif
 #endif
 
 namespace tamer {
@@ -246,7 +249,7 @@ void driver_tamer::kill_fd(int fd) {
 
 #if HAVE_SYS_EPOLL_H
 inline int driver_tamer::epoll_events(bool readable, bool writable) {
-    return (readable ? int(EPOLLIN) : 0) | (writable ? int(EPOLLOUT) : 0);
+    return (readable ? int(EPOLLIN | EPOLLRDHUP) : 0) | (writable ? int(EPOLLOUT) : 0);
 }
 
 inline void driver_tamer::mark_epoll(int fd, int old_events, int events) {
@@ -294,7 +297,7 @@ bool driver_tamer::epoll_recreate() {
                 mark_epoll(fd, 0, events);
         }
         if (epoll_sig_pipe_)
-            mark_epoll(sig_pipe[0], 0, EPOLLIN);
+            mark_epoll(sig_pipe[0], 0, epoll_events(true, false));
         epoll_pid_ = getpid();
     }
     return epollfd_ >= 0;
@@ -402,7 +405,7 @@ void driver_tamer::loop(loop_flags flags)
     int nepoll = 0;
     if (epollfd_ >= 0 || epoll_recreate()) {
         if (!epoll_sig_pipe_ && sig_pipe[0] >= 0) {
-            mark_epoll(sig_pipe[0], 0, EPOLLIN);
+            mark_epoll(sig_pipe[0], 0, epoll_events(true, false));
             epoll_sig_pipe_ = true;
         }
         int blockms;
@@ -446,7 +449,7 @@ void driver_tamer::loop(loop_flags flags)
             struct epoll_event& e = epollnow[i];
             if (e.data.fd == sig_pipe[0])
                 continue;
-            if (e.events & EPOLLIN)
+            if (e.events & (EPOLLIN | EPOLLRDHUP))
                 fds_[e.data.fd].e[0].trigger(0);
             else if (e.events & (EPOLLERR | EPOLLHUP))
                 fds_[e.data.fd].e[0].trigger(-1);
