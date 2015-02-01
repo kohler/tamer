@@ -152,6 +152,8 @@ class http_parser : public tamed_class {
     static void send_response_chunk(fd f, std::string s, event<> done);
     static void send_response_end(fd f, event<> done);
 
+    inline void clear_should_keep_alive();
+
   private:
     ::http_parser hp_;
 
@@ -381,6 +383,10 @@ inline enum http_errno http_parser::error() const {
 
 inline bool http_parser::should_keep_alive() const {
     return http_should_keep_alive(&hp_);
+}
+
+inline void http_parser::clear_should_keep_alive() {
+    hp_.flags = (hp_.flags & ~F_CONNECTION_KEEP_ALIVE) | F_CONNECTION_CLOSE;
 }
 
 } // namespace tamer
