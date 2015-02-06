@@ -1231,7 +1231,7 @@ inline event<T0, T1, T2, T3> make_event(one_argument_rendezvous_tag<R>& r, const
 template <typename R, typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> make_event(zero_argument_rendezvous_tag<R>& r, T0& x0, T1& x1, T2& x2, T3& x3)
 {
-    return event<T0, T1, T2, T3>(x0, x1, x2, x3).__instantiate(static_cast<R&>(r), x0, x1, x2, x3);
+    return event<T0, T1, T2, T3>(x0, x1, x2, x3).__instantiate(static_cast<R&>(r), 0);
 }
 
 template <typename R, typename T0, typename T1, typename T2, typename T3>
