@@ -1,6 +1,6 @@
 #ifndef TAMER_ADAPTER_HH
 #define TAMER_ADAPTER_HH
-/* Copyright (c) 2007-2014, Eddie Kohler
+/* Copyright (c) 2007-2015, Eddie Kohler
  * Copyright (c) 2007, Regents of the University of California
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
