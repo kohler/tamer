@@ -36,9 +36,30 @@ union xfd_set {
     fd_set fds;
     char s[1];
     uint64_t q[1];
+#if SIZEOF_FD_SET_ELEMENT == 1
+    typedef uint8_t elt_type;
+#elif SIZEOF_FD_SET_ELEMENT == 2
+    typedef uint16_t elt_type;
+#elif SIZEOF_FD_SET_ELEMENT == 4
+    typedef uint32_t elt_type;
+#elif SIZEOF_FD_SET_ELEMENT == 8
+    typedef uint64_t elt_type;
+#else
+# undef SIZEOF_FD_SET_ELEMENT
+    typedef uint8_t elt_type;
+#endif
+    elt_type elt[1];
 };
 
 class xfd_setpair {
+    typedef xfd_set::elt_type elt_type;
+    enum { elt_bits = sizeof(elt_type) * 8 };
+    static inline unsigned elt_index(unsigned fd) {
+        return fd / elt_bits;
+    }
+    static inline elt_type elt_bit(unsigned fd) {
+        return elt_type(1) << (fd % elt_bits);
+    }
   public:
     inline xfd_setpair() {
         f_[0] = f_[1] = 0;
@@ -58,13 +79,33 @@ class xfd_setpair {
     inline void copy_combined(const xfd_setpair& x, int bound);
     inline void transfer_segment(int lb, int rb);
     inline void clear();
-    inline fd_set& operator[](int action) {
-        assert(unsigned(action) < 2);
-        return f_[action]->fds;
+    inline bool isset(int action, int fd) const {
+        assert(unsigned(action) < 2 && unsigned(fd) < cap_);
+#if SIZEOF_FD_SET_ELEMENT
+        return f_[action]->elt[elt_index(fd)] & elt_bit(fd);
+#else
+        return FD_ISSET(fd, &f_[action]->fds);
+#endif
     }
-    inline const fd_set& operator[](int action) const {
+    inline void set(int action, int fd) {
+        assert(unsigned(action) < 2 && unsigned(fd) < cap_);
+#if SIZEOF_FD_SET_ELEMENT
+        f_[action]->elt[elt_index(fd)] |= elt_bit(fd);
+#else
+        FD_SET(fd, &f_[action]->fds);
+#endif
+    }
+    inline void clear(int action, int fd) {
+        assert(unsigned(action) < 2 && unsigned(fd) < cap_);
+#if SIZEOF_FD_SET_ELEMENT
+        f_[action]->elt[elt_index(fd)] &= ~elt_bit(fd);
+#else
+        FD_CLR(fd, &f_[action]->fds);
+#endif
+    }
+    inline fd_set* get_fd_set(int action) {
         assert(unsigned(action) < 2);
-        return f_[action]->fds;
+        return &f_[action]->fds;
     }
   private:
     xfd_set* f_[2];
@@ -291,8 +332,8 @@ bool driver_tamer::epoll_recreate() {
            && (epollfd_ = epoll_create1(EPOLL_CLOEXEC)) >= 0) {
         int max = std::min(fds_.size(), fdsets_.size());
         for (int fd = 0; fd < max; ++fd) {
-            int events = epoll_events(FD_ISSET(fd, &fdsets_[0]),
-                                      FD_ISSET(fd, &fdsets_[1]));
+            int events = epoll_events(fdsets_.isset(0, fd),
+                                      fdsets_.isset(1, fd));
             if (events)
                 mark_epoll(fd, 0, events);
         }
@@ -312,11 +353,11 @@ void driver_tamer::update_fds() {
 
         bool wasset[2] = { false, false };
         for (int action = 0; action < 2; ++action) {
-            wasset[action] = FD_ISSET(fd, &fdsets_[action]);
+            wasset[action] = fdsets_.isset(action, fd);
             if (x.e[action])
-                FD_SET(fd, &fdsets_[action]);
+                fdsets_.set(action, fd);
             else
-                FD_CLR(fd, &fdsets_[action]);
+                fdsets_.clear(action, fd);
         }
 
 #if HAVE_SYS_EPOLL_H
@@ -427,10 +468,10 @@ void driver_tamer::loop(loop_flags flags)
     if (nfds > 0) {
         fdnow.copy(fdsets_, nfds);
         if (sig_pipe[0] >= 0)
-            FD_SET(sig_pipe[0], &fdnow[0]);
+            fdnow.set(0, sig_pipe[0]);
     }
     if (nfds > 0 || !toptr || to.tv_sec != 0 || to.tv_usec != 0) {
-        nfds = select(nfds, &fdnow[0], &fdnow[1], 0, toptr);
+        nfds = select(nfds, fdnow.get_fd_set(0), fdnow.get_fd_set(1), 0, toptr);
         if (nfds == -1 && errno == EBADF)
             nfds = find_bad_fds(fdnow);
         goto after_select;
@@ -467,7 +508,7 @@ void driver_tamer::loop(loop_flags flags)
         for (unsigned fd = 0; fd < fdbound_; ++fd) {
             tamerpriv::driver_fd<fdp> &x = fds_[fd];
             for (int action = 0; action < 2; ++action)
-                if (FD_ISSET(fd, &fdnow[action]))
+                if (fdnow.isset(action, fd))
                     x.e[action].trigger(0);
         }
         run_unblocked();
@@ -501,7 +542,7 @@ int driver_tamer::find_bad_fds(xfd_setpair& fdnow) {
         int m = l + ((r - l) >> 1);
         fdnow.transfer_segment(l, m);
         struct timeval tv = {0, 0};
-        int nfds = select(m << 3, &fdnow[1], 0, 0, &tv);
+        int nfds = select(m << 3, fdnow.get_fd_set(1), 0, 0, &tv);
         if (nfds == -1 && errno == EBADF)
             r = m;
         else if (nfds != -1)
@@ -513,13 +554,13 @@ int driver_tamer::find_bad_fds(xfd_setpair& fdnow) {
     // set up result sets
     int nfds = 0;
     for (int f = l * 8; f != r * 8; ++f) {
-        int fr = FD_ISSET(f, &fdsets_[0]);
-        int fw = FD_ISSET(f, &fdsets_[1]);
+        int fr = fdsets_.isset(0, f);
+        int fw = fdsets_.isset(1, f);
         if ((fr || fw) && fcntl(f, F_GETFL) == -1 && errno == EBADF) {
             if (fr)
-                FD_SET(f, &fdnow[0]);
+                fdnow.set(0, f);
             if (fw)
-                FD_SET(f, &fdnow[1]);
+                fdnow.set(1, f);
             ++nfds;
         }
     }

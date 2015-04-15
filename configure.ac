@@ -295,6 +295,23 @@ CXX="$SAVE_CXX"
 
 
 dnl
+dnl select information
+dnl
+
+AC_MSG_CHECKING([size of fd_set element])
+AC_COMPUTE_INT([ac_fd_set_element_size], [[sizeof(fds.fds_bits[0])]],
+               [AC_INCLUDES_DEFAULT
+[static fd_set fds;]], [ac_fd_set_element_size=-1])
+if test "$ac_fd_set_element_size" = -1; then
+    AC_COMPUTE_INT([ac_fd_set_element_size], [[sizeof(fds.__fds_bits[0])]],
+                   [AC_INCLUDES_DEFAULT
+[static fd_set fds;]], [ac_fd_set_element_size=-1])
+fi
+AC_MSG_RESULT([$ac_fd_set_element_size])
+AC_DEFINE_UNQUOTED([SIZEOF_FD_SET_ELEMENT], [$ac_fd_set_element_size], [The size of an `fd_set` element, as computed by sizeof.])
+
+
+dnl
 dnl libevent support
 dnl
 
