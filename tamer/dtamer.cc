@@ -155,8 +155,8 @@ class driver_tamer : public driver {
   private:
 
     struct fdp {
-	inline fdp(driver_tamer*, int) {
-	}
+        inline fdp(driver_tamer*, int) {
+        }
     };
 
     tamerpriv::driver_fdset<fdp> fds_;
@@ -228,22 +228,22 @@ void driver_tamer::fd_disinterest(void* arg) {
 void driver_tamer::at_fd(int fd, int action, event<int> e) {
     assert(fd >= 0);
     if (e && (action == 0 || action == 1)) {
-	fds_.expand(this, fd);
-	tamerpriv::driver_fd<fdp>& x = fds_[fd];
+        fds_.expand(this, fd);
+        tamerpriv::driver_fd<fdp>& x = fds_[fd];
         x.e[action] += TAMER_MOVE(e);
-	tamerpriv::simple_event::at_trigger(x.e[action].__get_simple(),
+        tamerpriv::simple_event::at_trigger(x.e[action].__get_simple(),
                                             fd_disinterest,
                                             make_fd_callback(this, fd));
-	fds_.push_change(fd);
+        fds_.push_change(fd);
     }
 }
 
 void driver_tamer::kill_fd(int fd) {
     if (fd >= 0 && fd < fds_.size()) {
-	tamerpriv::driver_fd<fdp> &x = fds_[fd];
+        tamerpriv::driver_fd<fdp> &x = fds_[fd];
         x.e[0].trigger(-ECANCELED);
         x.e[1].trigger(-ECANCELED);
-	fds_.push_change(fd);
+        fds_.push_change(fd);
     }
 }
 
@@ -307,16 +307,16 @@ bool driver_tamer::epoll_recreate() {
 void driver_tamer::update_fds() {
     int fd;
     while ((fd = fds_.pop_change()) >= 0) {
-	tamerpriv::driver_fd<fdp>& x = fds_[fd];
+        tamerpriv::driver_fd<fdp>& x = fds_[fd];
         fdsets_.ensure(fd);
 
         bool wasset[2] = { false, false };
-	for (int action = 0; action < 2; ++action) {
+        for (int action = 0; action < 2; ++action) {
             wasset[action] = FD_ISSET(fd, &fdsets_[action]);
-	    if (x.e[action])
-		FD_SET(fd, &fdsets_[action]);
-	    else
-		FD_CLR(fd, &fdsets_[action]);
+            if (x.e[action])
+                FD_SET(fd, &fdsets_[action]);
+            else
+                FD_CLR(fd, &fdsets_[action]);
         }
 
 #if HAVE_SYS_EPOLL_H
@@ -327,31 +327,31 @@ void driver_tamer::update_fds() {
         (void) wasset;
 #endif
 
-	if (x.e[0] || x.e[1]) {
-	    if ((unsigned) fd >= fdbound_)
-		fdbound_ = fd + 1;
-	} else if ((unsigned) fd + 1 == fdbound_)
-	    do {
-		--fdbound_;
-	    } while (fdbound_ > 0
-		     && !fds_[fdbound_ - 1].e[0]
-		     && !fds_[fdbound_ - 1].e[1]);
+        if (x.e[0] || x.e[1]) {
+            if ((unsigned) fd >= fdbound_)
+                fdbound_ = fd + 1;
+        } else if ((unsigned) fd + 1 == fdbound_)
+            do {
+                --fdbound_;
+            } while (fdbound_ > 0
+                     && !fds_[fdbound_ - 1].e[0]
+                     && !fds_[fdbound_ - 1].e[1]);
     }
 }
 
 void driver_tamer::at_time(const timeval &expiry, event<> e, bool bg) {
     if (e)
-	timers_.push(expiry, e.__release_simple(), bg);
+        timers_.push(expiry, e.__release_simple(), bg);
 }
 
 void driver_tamer::at_asap(event<> e) {
     if (e)
-	asap_.push(e.__release_simple());
+        asap_.push(e.__release_simple());
 }
 
 void driver_tamer::at_preblock(event<> e) {
     if (e)
-	preblock_.push(e.__release_simple());
+        preblock_.push(e.__release_simple());
 }
 
 void driver_tamer::loop(loop_flags flags)
@@ -430,7 +430,7 @@ void driver_tamer::loop(loop_flags flags)
             FD_SET(sig_pipe[0], &fdnow[0]);
     }
     if (nfds > 0 || !toptr || to.tv_sec != 0 || to.tv_usec != 0) {
-	nfds = select(nfds, &fdnow[0], &fdnow[1], 0, toptr);
+        nfds = select(nfds, &fdnow[0], &fdnow[1], 0, toptr);
         if (nfds == -1 && errno == EBADF)
             nfds = find_bad_fds(fdnow);
         goto after_select;
@@ -440,7 +440,7 @@ void driver_tamer::loop(loop_flags flags)
     // process signals
     set_recent();
     if (sig_any_active)
-	dispatch_signals();
+        dispatch_signals();
 
     // process fd events
 #if HAVE_SYS_EPOLL_H
@@ -464,12 +464,12 @@ void driver_tamer::loop(loop_flags flags)
 #endif
 
     if (nfds > 0) {
-	for (unsigned fd = 0; fd < fdbound_; ++fd) {
-	    tamerpriv::driver_fd<fdp> &x = fds_[fd];
-	    for (int action = 0; action < 2; ++action)
-		if (FD_ISSET(fd, &fdnow[action]))
-		    x.e[action].trigger(0);
-	}
+        for (unsigned fd = 0; fd < fdbound_; ++fd) {
+            tamerpriv::driver_fd<fdp> &x = fds_[fd];
+            for (int action = 0; action < 2; ++action)
+                if (FD_ISSET(fd, &fdnow[action]))
+                    x.e[action].trigger(0);
+        }
         run_unblocked();
         goto after_fd;
     }
@@ -479,17 +479,17 @@ void driver_tamer::loop(loop_flags flags)
     if (!timers_.empty() && tamerpriv::time_type == time_virtual && nfds == 0)
         tamerpriv::recent = timers_.expiry();
     while (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >))
-	timers_.pop_trigger();
+        timers_.pop_trigger();
     run_unblocked();
 
     // process asap events
     while (!asap_.empty())
-	asap_.pop_trigger();
+        asap_.pop_trigger();
     run_unblocked();
 
     // check flags
     if (loop_state_)
-	goto again;
+        goto again;
 }
 
 int driver_tamer::find_bad_fds(xfd_setpair& fdnow) {
