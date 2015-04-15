@@ -465,7 +465,7 @@ inline bool blocking_rendezvous::blocked() const {
 
 inline void blocking_rendezvous::block(simple_driver* driver, closure& c,
 				       unsigned position) {
-    assert(&c && !c.tamer_blocked_driver_);
+    assert(!c.tamer_blocked_driver_);
     blocked_closure_ = &c;
     c.tamer_block_position_ = position;
     c.tamer_blocked_driver_ = driver;
