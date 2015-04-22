@@ -1,4 +1,4 @@
-Tamer
+Tamer [![Build Status](https://travis-ci.org/kohler/tamer.svg?branch=master)](https://travis-ci.org/kohler/tamer)
 =====
 
    Tamer is a C++ language extension and library that simplifies
