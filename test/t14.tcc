@@ -33,11 +33,12 @@ tamed void child(struct sockaddr_in* saddr, socklen_t saddr_len) {
                 ++write_rounds;
                 if (write_rounds <= 6)
                     printf("W 0: Hello\n");
-            }
+            } else if (wret == 0)
+                wret = -ECANCELED;
         }
         twait { buf.take_until(cfd, '\n', 1024, str, make_event(ret)); }
         if (ret != 0) {
-            printf("W error %s after %d\n", strerror(-ret), write_rounds);
+            printf("W error %s after %d\n", strerror(-wret), write_rounds);
             break;
         } else if (str.length())
             printf("R %d: %s", ret, str.c_str());
