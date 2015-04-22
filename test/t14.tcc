@@ -26,17 +26,19 @@ tamed void child(struct sockaddr_in* saddr, socklen_t saddr_len) {
         int n = 0; }
     cfd = tamer::fd::socket(AF_INET, SOCK_STREAM, 0);
     twait { cfd.connect((struct sockaddr*) saddr, saddr_len, make_event(ret)); }
-    while (cfd && n < 6) {
-        ++n;
-        twait { buf.take_until(cfd, '\n', 1024, str, make_event(ret)); }
-        assert(ret == 0);
-        str = "Ret " + str;
-        twait { cfd.write(str, make_event()); }
-    }
-    cfd.shutdown(SHUT_RD);
     while (cfd && n < 12) {
         ++n;
-        twait { cfd.write("Heh\n", 4, make_event(ret)); }
+        if (n <= 6) {
+            twait { buf.take_until(cfd, '\n', 1024, str, make_event(ret)); }
+            assert(ret == 0);
+            str = "Ret " + str;
+            if (n == 6)
+                cfd.shutdown(SHUT_RD);
+        } else {
+            twait { tamer::at_delay_msec(1, make_event()); }
+            str = "Heh\n";
+        }
+        twait { cfd.write(str, make_event(ret)); }
         assert(ret == 0);
     }
     cfd.shutdown(SHUT_WR);
@@ -50,11 +52,16 @@ tamed void parent(tamer::fd& listenfd) {
     twait { listenfd.accept(make_event(cfd)); }
     while (cfd) {
         if (wret == 0) {
-            twait { cfd.write("Hello\n", 6, nwritten, make_event(wret)); }
-            if (wret == 0 && nwritten == 6) {
+            {
+                char xbuf[100];
+                sprintf(xbuf, "Hello %d\n", write_rounds);
+                str = xbuf;
+            }
+            twait { cfd.write(str, nwritten, make_event(wret)); }
+            if (wret == 0 && nwritten == str.length()) {
                 ++write_rounds;
                 if (write_rounds <= 6)
-                    printf("W 0: Hello\n");
+                    printf("W 0: %s", str.c_str());
             } else if (wret == 0)
                 wret = -ECANCELED;
         }
