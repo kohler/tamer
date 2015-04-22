@@ -32,7 +32,7 @@ tamed void child(struct sockaddr_in* saddr, socklen_t saddr_len) {
             if (wret == 0 && nwritten == 6) {
                 ++write_rounds;
                 if (write_rounds <= 6)
-                    printf("W %d: %.*s\n", ret, nwritten == 6 ? 5 : (int) nwritten, "Hello");
+                    printf("W 0: Hello\n");
             }
         }
         twait { buf.take_until(cfd, '\n', 1024, str, make_event(ret)); }
@@ -52,13 +52,15 @@ tamed void parent(tamer::fd& listenfd) {
     while (cfd && n < 6) {
         ++n;
         twait { buf.take_until(cfd, '\n', 1024, str, make_event(ret)); }
+        assert(ret == 0);
         str = "Ret " + str;
         twait { cfd.write(str, make_event()); }
     }
     cfd.shutdown(SHUT_RD);
     while (cfd && n < 12) {
         ++n;
-        twait { cfd.write("Heh\n", 4, make_event()); }
+        twait { cfd.write("Heh\n", 4, make_event(ret)); }
+        assert(ret == 0);
     }
     cfd.close();
     listenfd.close();
