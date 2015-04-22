@@ -22,10 +22,32 @@
 using namespace tamer;
 
 tamed void child(struct sockaddr_in* saddr, socklen_t saddr_len) {
-    tvars { tamer::fd cfd; int ret; tamer::buffer buf; size_t nwritten;
-        int write_rounds = 0; int wret = 0; std::string str; }
+    tvars { tamer::fd cfd; int ret; tamer::buffer buf; std::string str;
+        int n = 0; }
     cfd = tamer::fd::socket(AF_INET, SOCK_STREAM, 0);
     twait { cfd.connect((struct sockaddr*) saddr, saddr_len, make_event(ret)); }
+    while (cfd && n < 6) {
+        ++n;
+        twait { buf.take_until(cfd, '\n', 1024, str, make_event(ret)); }
+        assert(ret == 0);
+        str = "Ret " + str;
+        twait { cfd.write(str, make_event()); }
+    }
+    cfd.shutdown(SHUT_RD);
+    while (cfd && n < 12) {
+        ++n;
+        twait { cfd.write("Heh\n", 4, make_event(ret)); }
+        assert(ret == 0);
+    }
+    cfd.shutdown(SHUT_WR);
+    twait { tamer::at_delay(2, make_event()); }
+    cfd.close();
+}
+
+tamed void parent(tamer::fd& listenfd) {
+    tvars { tamer::fd cfd; int ret; tamer::buffer buf; std::string str;
+        size_t nwritten; int write_rounds = 0; int wret = 0; }
+    twait { listenfd.accept(make_event(cfd)); }
     while (cfd) {
         if (wret == 0) {
             twait { cfd.write("Hello\n", 6, nwritten, make_event(wret)); }
@@ -42,29 +64,9 @@ tamed void child(struct sockaddr_in* saddr, socklen_t saddr_len) {
             break;
         } else if (str.length())
             printf("R %d: %s", ret, str.c_str());
+        else
+            printf("EOF\n");
     }
-    cfd.close();
-}
-
-tamed void parent(tamer::fd& listenfd) {
-    tvars { tamer::fd cfd; int ret; tamer::buffer buf;
-        int n = 0; std::string str; }
-    twait { listenfd.accept(make_event(cfd)); }
-    while (cfd && n < 6) {
-        ++n;
-        twait { buf.take_until(cfd, '\n', 1024, str, make_event(ret)); }
-        assert(ret == 0);
-        str = "Ret " + str;
-        twait { cfd.write(str, make_event()); }
-    }
-    cfd.shutdown(SHUT_RD);
-    while (cfd && n < 12) {
-        ++n;
-        twait { cfd.write("Heh\n", 4, make_event(ret)); }
-        assert(ret == 0);
-    }
-    cfd.close();
-    listenfd.close();
 }
 
 int main(int, char *[]) {
@@ -79,14 +81,17 @@ int main(int, char *[]) {
     assert(r == 0);
 
     pid_t p = fork();
-    if (p != 0) {
+    if (p != 0)
+        parent(listenfd);
+    else {
         listenfd.close();
         child(&saddr, saddr_len);
-    } else
-        parent(listenfd);
+    }
 
     tamer::loop();
     tamer::cleanup();
-    if (p != 0)
+    if (p != 0) {
+        kill(p, 9);
         printf("Done\n");
+    }
 }
