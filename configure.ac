@@ -231,7 +231,7 @@ if test -n "$GCC"; then CXX="$CXX -Werror"; fi
 AC_CACHE_CHECK([whether the C++ compiler understands rvalue references], [ac_cv_cxx_rvalue_references], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int &) { return 1; } int f(int &&) { return 0; }]], [[return f(int());]])],
 	[ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])])
-if test "$ac_cv_cxx_rvalue_references" != yes -a -z "$ac_user_cxx"; then
+if test "$ac_cv_cxx_rvalue_references" != yes; then
     SAVE_CXX="${SAVE_CXX} -std=gnu++0x"
     CXX="${SAVE_CXX} -Werror"
     AC_MSG_CHECKING([whether the C++ compiler with -std=gnu++0x understands rvalue refs])
