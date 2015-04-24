@@ -473,20 +473,21 @@ void distribute_rendezvous<T0, T1, T2, T3>::clear_hook(void* arg) {
 
 class tamed_class {
   public:
-    inline tamed_class();
+    inline tamed_class() : tamer_closures_() {}
+    inline tamed_class(const tamed_class&) : tamer_closures_() {}
+    inline tamed_class& operator=(const tamed_class&) { return *this; }
     inline ~tamed_class();
+
+#if TAMER_HAVE_CXX_RVALUE_REFERENCES
+    inline tamed_class(tamed_class&&) : tamer_closures_() {}
+    inline tamed_class& operator=(tamed_class&&) { return *this; }
+#endif
 
   private:
     tamerpriv::closure* tamer_closures_;
 
-    tamed_class(const tamed_class&);
-    tamed_class& operator=(const tamed_class&);
     friend class tamerpriv::closure;
 };
-
-inline tamed_class::tamed_class()
-    : tamer_closures_(0) {
-}
 
 inline tamed_class::~tamed_class() {
     while (tamerpriv::closure* tc = tamer_closures_) {
