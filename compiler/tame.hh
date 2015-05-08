@@ -326,8 +326,8 @@ class initializer_t {
     unsigned constructor_lineno() const { return _value.lineno(); }
     virtual void finish_type(strbuf& b) const;
     virtual void initializer(strbuf& b, bool is_ref) const;
-    virtual const char* ref_prefix() const;
-    virtual str ref_suffix() const;
+    virtual const char* ref_prefix(bool noref) const;
+    virtual str ref_suffix(bool noref) const;
   protected:
     lstr _value;
 };
@@ -345,8 +345,8 @@ class array_initializer_t : public initializer_t {
     array_initializer_t(const lstr& v) : initializer_t(v) {}
     void append_array(const lstr& v);
     void finish_type(strbuf& b) const;
-    const char* ref_prefix() const;
-    str ref_suffix() const;
+    const char* ref_prefix(bool noref) const;
+    str ref_suffix(bool noref) const;
 };
 
 class declarator_t;
@@ -377,7 +377,7 @@ public:
 
     str param_decl(bool move, bool escape) const;
     str decl(bool include_name) const;
-    str ref_decl() const;
+    str ref_decl(bool noref) const;
     void reference_declaration(strbuf& b, const str& padding) const;
     str _name;
 

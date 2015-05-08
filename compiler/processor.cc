@@ -152,13 +152,13 @@ str var_t::name(bool move, bool escape) const
         return _name;
 }
 
-str var_t::ref_decl() const {
+str var_t::ref_decl(bool noref) const {
     strbuf b;
     const char* refit;
     if (_type.is_ref())
         refit = "";
     else if (_initializer)
-        refit = _initializer->ref_prefix();
+        refit = _initializer->ref_prefix(noref);
     else
         refit = "&";
     b << _type.to_str();
@@ -170,34 +170,37 @@ str var_t::ref_decl() const {
     } else
         b << refit << " " << _name;
     if (_initializer)
-        b << _initializer->ref_suffix();
+        b << _initializer->ref_suffix(noref);
     return b.str();
 }
 
-const char* initializer_t::ref_prefix() const {
+const char* initializer_t::ref_prefix(bool) const {
     return "&";
 }
 
-str initializer_t::ref_suffix() const {
+str initializer_t::ref_suffix(bool) const {
     return "";
 }
 
-const char* array_initializer_t::ref_prefix() const {
-    if (_value.find('[') == lstr::npos)
+const char* array_initializer_t::ref_prefix(bool noref) const {
+    if (!noref)
+        return "(&";
+    else if (_value.find('[') == lstr::npos)
         return "*";
     else
         return "(*";
 }
 
-str array_initializer_t::ref_suffix() const {
-    lstr::size_type pos = _value.find('[');
-    if (pos == lstr::npos)
-        return "";
+str array_initializer_t::ref_suffix(bool noref) const {
+    strbuf b;
+    if (!noref)
+        b << ")[" << _value << "]";
     else {
-        strbuf b;
-        b << ")" << _value.substr(pos) << "]";
-        return b.str();
+        lstr::size_type pos = _value.find('[');
+        if (pos != lstr::npos)
+            b << ")" << _value.substr(pos) << "]";
     }
+    return b.str();
 }
 
 str mangle(const str &in)
@@ -812,7 +815,7 @@ tame_fn_t::output_closure(outputter_t *o)
 
 void var_t::reference_declaration(strbuf& b, const str& padding) const {
     if (!name().empty()) {
-        b << padding << ref_decl() << " TAMER_CLOSUREVARATTR = ";
+        b << padding << ref_decl(false) << " TAMER_CLOSUREVARATTR = ";
         if (type().is_ref())
             b << "*";
         b << TAME_CLOSURE_NAME "." << name() << ";\n";
@@ -870,7 +873,7 @@ tame_fn_t::closure_signature() const
     if ((_opts & STATIC_DECL) && !_class.length())
         b << "static ";
     b << _ret_type.to_str() << " " << _name << "("
-      << mk_closure(true, true).ref_decl() << ")";
+      << mk_closure(true, true).ref_decl(true) << ")";
     if (_isconst)
         b << " const";
     return b.str();
