@@ -18,8 +18,10 @@ class channel {
     inline size_type wait_size() const;
     inline bool wait_empty() const;
 
+    inline void push_front(T x);
     inline void push_back(T x);
     inline void pop_front(tamer::event<T> e);
+    inline void pop_back(tamer::event<T> e);
 
   private:
     std::deque<T> q_;
@@ -52,6 +54,17 @@ inline bool channel<T>::wait_empty() const {
 }
 
 template <typename T>
+inline void channel<T>::push_front(T x) {
+    while (!waitq_.empty() && !waitq_.front())
+        waitq_.pop_front();
+    if (!waitq_.empty()) {
+        waitq_.front()(TAMER_MOVE(x));
+        waitq_.pop_front();
+    } else
+        q_.push_front(TAMER_MOVE(x));
+}
+
+template <typename T>
 inline void channel<T>::push_back(T x) {
     while (!waitq_.empty() && !waitq_.front())
         waitq_.pop_front();
@@ -67,6 +80,15 @@ inline void channel<T>::pop_front(tamer::event<T> e) {
     if (!q_.empty()) {
         e(q_.front());
         q_.pop_front();
+    } else
+        waitq_.push_back(TAMER_MOVE(e));
+}
+
+template <typename T>
+inline void channel<T>::pop_back(tamer::event<T> e) {
+    if (!q_.empty()) {
+        e(q_.back());
+        q_.pop_back();
     } else
         waitq_.push_back(TAMER_MOVE(e));
 }
