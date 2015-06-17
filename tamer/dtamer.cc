@@ -227,6 +227,7 @@ class driver_tamer : public driver {
     int find_bad_fds(xfd_setpair&);
 #if HAVE_SYS_EPOLL_H
     static inline int epoll_events(bool readable, bool writable);
+    void report_epoll_error(int fd, int old_events, int events);
     inline void mark_epoll(int fd, int old_events, int events);
     bool epoll_recreate();
 #endif
@@ -293,6 +294,23 @@ inline int driver_tamer::epoll_events(bool readable, bool writable) {
     return (readable ? int(EPOLLIN | EPOLLRDHUP) : 0) | (writable ? int(EPOLLOUT) : 0);
 }
 
+void driver_tamer::report_epoll_error(int fd, int old_events, int events) {
+    if (!events && (errno == EBADF || errno == ENOENT))
+        return;
+    // the epoll file descriptor has gone wonky
+    int ctl_errno = errno;
+    ++epoll_errcount_;
+    if (errh_) {
+        char msg[1024];
+        sprintf(msg, "epoll_ctl(%d, %x->%x) failure, %s",
+                fd, old_events, events,
+                epoll_errcount_ < EPOLL_MAX_ERRCOUNT ? "retrying" : "giving up");
+        errh_(fd, ctl_errno, msg);
+    }
+    close(epollfd_);
+    epollfd_ = -1;
+}
+
 inline void driver_tamer::mark_epoll(int fd, int old_events, int events) {
     if (old_events != events && epollfd_ >= 0) {
         struct epoll_event ev;
@@ -307,23 +325,8 @@ inline void driver_tamer::mark_epoll(int fd, int old_events, int events) {
         else
             action = EPOLL_CTL_DEL;
         int r = epoll_ctl(epollfd_, action, fd, &ev);
-        if (r < 0
-            && !(action == EPOLL_CTL_DEL && errno == EBADF)
-            && !(action == EPOLL_CTL_DEL && errno == ENOENT)) {
-            // the epoll file descriptor has gone wonky
-            int ctl_errno = errno;
-            ++epoll_errcount_;
-            if (errh_) {
-                const char* msg;
-                if (epoll_errcount_ < EPOLL_MAX_ERRCOUNT)
-                    msg = "epoll_ctl failure, retrying";
-                else
-                    msg = "epoll_ctl failure, giving up";
-                errh_(fd, ctl_errno, msg);
-            }
-            close(epollfd_);
-            epollfd_ = -1;
-        }
+        if (r < 0)
+            report_epoll_error(fd, old_events, events);
     }
 }
 
