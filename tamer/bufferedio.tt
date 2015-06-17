@@ -33,7 +33,7 @@ buffer::~buffer()
     delete[] _buf;
 }
 
-ssize_t buffer::fill_more(fd f, const event<int> &done)
+ssize_t buffer::fill_more(fd f, const event<int>& done)
 {
     if (!done || !f)
 	return -ECANCELED;
@@ -55,9 +55,9 @@ ssize_t buffer::fill_more(fd f, const event<int> &done)
     size_t headpos = _head & (_size - 1);
     size_t tailpos = _tail & (_size - 1);
     if (headpos <= tailpos)
-	amt = ::read(f.value(), _buf + tailpos, _size - tailpos);
+	amt = ::read(f.fdnum(), _buf + tailpos, _size - tailpos);
     else
-	amt = ::read(f.value(), _buf + tailpos, headpos - tailpos);
+	amt = ::read(f.fdnum(), _buf + tailpos, headpos - tailpos);
 
     if (amt != (ssize_t) -1)
 	return amt;
@@ -94,7 +94,7 @@ tamed void buffer::fill_until(fd f, char c, size_t max_size, size_t &out_size, e
 	amt = fill_more(f, done);
 	pos = _tail;
 	if (amt == -EAGAIN) {
-	    twait volatile { tamer::at_fd_read(f.value(), make_event()); }
+	    twait volatile { tamer::at_fd_read(f.fdnum(), make_event()); }
 	} else if (amt <= 0) {
 	    ret = (amt == 0 ? tamer::outcome::closed : amt);
 	    break;

@@ -212,11 +212,11 @@ int fd::pipe(fd& rfd, fd& wfd)
 void fd::fstat(struct stat &stat_out, event<int> done)
 {
     fdimp *fi = _p;
-    if (fi && fi->_fd >= 0) {
+    if (fi && fi->fde_ >= 0) {
 #if HAVE_TAMER_FDHELPER
-	_fdhm.fstat(fi->_fd, stat_out, done);
+	_fdhm.fstat(fi->fdv_, stat_out, done);
 #else
-	int x = ::fstat(fi->_fd, &stat_out);
+	int x = ::fstat(fi->fdv_, &stat_out);
 	done.trigger(x == -1 ? -errno : 0);
 #endif
     } else
@@ -241,7 +241,7 @@ tamed void fd::read(void *buf, size_t size, size_t* nread_ptr, event<int> done)
 
 #if HAVE_TAMER_FDHELPER
     if (fi.imp_->_is_file) {
-	_fdhm.read(fi.value(), buf, size, nread, done);
+	_fdhm.read(fi.fdnum(), buf, size, nread, done);
 	return;
     }
 #endif
@@ -257,7 +257,7 @@ tamed void fd::read(void *buf, size_t size, size_t* nread_ptr, event<int> done)
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(fi.value(), make_event()); }
+	    twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -289,7 +289,7 @@ tamed void fd::read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<i
 
 #if HAVE_TAMER_FDHELPER
     if (fi.imp_->_is_file) {
-	_fdhm.read(fi.value(), buf, size, nread, done);
+	_fdhm.read(fi.fdnum(), buf, size, nread, done);
 	return;
     }
 #endif
@@ -297,7 +297,7 @@ tamed void fd::read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<i
     twait { fi.acquire_read(make_event()); }
 
     while (pos != size && done && fi) {
-	amt = ::readv(fi.value(), iov, iov_count);
+	amt = ::readv(fi.fdnum(), iov, iov_count);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
 	    if (nread_ptr)
@@ -315,7 +315,7 @@ tamed void fd::read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<i
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(fi.value(), make_event()); }
+	    twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -347,7 +347,7 @@ tamed void fd::read_once(void* buf, size_t size, size_t& nread, event<int> done)
             nread = amt;
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(fi.value(), make_event()); }
+	    twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -374,12 +374,12 @@ tamed void fd::read_once(const struct iovec* iov, int iov_count, size_t& nread, 
     twait { fi.acquire_read(make_event()); }
 
     while (done && fi) {
-	amt = ::readv(fi.value(), iov, iov_count);
+	amt = ::readv(fi.fdnum(), iov, iov_count);
 	if (amt != (ssize_t) -1) {
             nread = amt;
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(fi.value(), make_event()); }
+	    twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -408,7 +408,7 @@ tamed void fd::write(const void* buf, size_t size, size_t* nwritten_ptr,
 
 #if HAVE_TAMER_FDHELPER
     if (fi.imp_->_is_file) {
-	_fdhm.write(fi.value(), buf, size, nwritten, done);
+	_fdhm.write(fi.fdnum(), buf, size, nwritten, done);
 	return;
     }
 #endif
@@ -424,7 +424,7 @@ tamed void fd::write(const void* buf, size_t size, size_t* nwritten_ptr,
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(fi.value(), make_event()); }
+	    twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -462,7 +462,7 @@ tamed void fd::write(struct iovec* iov, int iov_count, size_t* nwritten_ptr,
 
 #if HAVE_TAMER_FDHELPER
     if (fi.imp_->_is_file) {
-	_fdhm.write(fi.value(), buf, size, nwritten, done);
+	_fdhm.write(fi.fdnum(), buf, size, nwritten, done);
 	return;
     }
 #endif
@@ -473,7 +473,7 @@ tamed void fd::write(struct iovec* iov, int iov_count, size_t* nwritten_ptr,
     twait { fi.acquire_write(make_event()); }
 
     while (pos != size && done && fi) {
-	amt = ::writev(fi.value(), iov, iov_count);
+	amt = ::writev(fi.fdnum(), iov, iov_count);
 	if (amt != 0 && amt != (ssize_t) -1) {
 	    pos += amt;
 	    if (nwritten_ptr)
@@ -491,7 +491,7 @@ tamed void fd::write(struct iovec* iov, int iov_count, size_t* nwritten_ptr,
 	} else if (amt == 0)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(fi.value(), make_event()); }
+	    twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -538,7 +538,7 @@ tamed void fd::write_once(const void *buf, size_t size, size_t &nwritten, event<
 	    nwritten = amt;
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(fi.value(), make_event()); }
+	    twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -581,12 +581,12 @@ tamed void fd::write_once(const struct iovec* iov, int iov_count, size_t& nwritt
     twait { fi.acquire_write(make_event()); }
 
     while (done && fi) {
-	amt = ::writev(fi.value(), iov, iov_count);
+	amt = ::writev(fi.fdnum(), iov, iov_count);
 	if (amt != (ssize_t) -1) {
 	    nwritten = amt;
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(fi.value(), make_event()); }
+	    twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
 	} else if (errno != EINTR) {
 	    done.trigger(-errno);
 	    break;
@@ -598,8 +598,8 @@ tamed void fd::write_once(const struct iovec* iov, int iov_count, size_t& nwritt
 
 ssize_t fd::direct_read(void* buf, size_t size) {
     fdimp* fi = _p;
-    if (fi && fi->_fd >= 0)
-        return ::read(fi->_fd, buf, size);
+    if (fi && fi->fde_ >= 0)
+        return ::read(fi->fdv_, buf, size);
     else {
         errno = EBADF;
         return (ssize_t) -1;
@@ -608,8 +608,8 @@ ssize_t fd::direct_read(void* buf, size_t size) {
 
 ssize_t fd::direct_write(const void* buf, size_t size) {
     fdimp* fi = _p;
-    if (fi && fi->_fd >= 0)
-        return ::write(fi->_fd, buf, size);
+    if (fi && fi->fde_ >= 0)
+        return ::write(fi->fdv_, buf, size);
     else {
         errno = EBADF;
         return (ssize_t) -1;
@@ -662,11 +662,11 @@ tamed void fd::sendmsg(const void *buf, size_t size, int transfer_fd,
 
     // send message
     while (done && fi) {
-	amt = ::sendmsg(fi.value(), &msg, 0);
+	amt = ::sendmsg(fi.fdnum(), &msg, 0);
 	if (amt != (ssize_t) -1)
 	    break;
 	else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_write(fi.value(), make_event()); }
+	    twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
 	} else if (errno != EINTR)
 	    done.trigger(-errno);
     }
@@ -700,7 +700,7 @@ fd fd::socket(int domain, int type, int protocol)
 int fd::listen(int backlog)
 {
     if (*this)
-	return (::listen(_p->_fd, backlog) == 0 ? 0 : -errno);
+	return (::listen(_p->fdv_, backlog) == 0 ? 0 : -errno);
     else
 	return -EBADF;
 }
@@ -714,7 +714,7 @@ int fd::listen(int backlog)
 int fd::bind(const struct sockaddr *addr, socklen_t addrlen)
 {
     if (*this)
-	return (::bind(_p->_fd, addr, addrlen) == 0 ? 0 : -errno);
+	return (::bind(_p->fdv_, addr, addrlen) == 0 ? 0 : -errno);
     else
 	return -EBADF;
 }
@@ -751,12 +751,12 @@ tamed void fd::accept(struct sockaddr *addr_out, socklen_t *addrlen_out,
     twait { fi.acquire_read(make_event()); }
 
     while (done && fi) {
-	f = ::accept(fi.value(), addr_out, addrlen_out);
+	f = ::accept(fi.fdnum(), addr_out, addrlen_out);
 	if (f >= 0) {
 	    make_nonblocking(f);
 	    break;
 	} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-	    twait { tamer::at_fd_read(fi.value(), make_event()); }
+	    twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
 	} else if (errno != EINTR) {
 	    f = -errno;
 	    break;
@@ -790,15 +790,15 @@ tamed void fd::connect(const struct sockaddr *addr, socklen_t addrlen,
 
     twait { fi.acquire_write(make_event()); }
 
-    x = ::connect(fi.value(), addr, addrlen);
+    x = ::connect(fi.fdnum(), addr, addrlen);
     if (x == -1 && errno != EINPROGRESS)
 	ret = -errno;
     else if (x == -1) {
-	twait { tamer::at_fd_write(fi.value(), make_event()); }
+	twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
 	socklen_t socklen = sizeof(x);
-	if (!done || fi.value() < 0)
+	if (!done || fi.fdnum() < 0)
 	    ret = -ECANCELED;
-	else if (getsockopt(fi.value(), SOL_SOCKET, SO_ERROR,
+	else if (getsockopt(fi.fdnum(), SOL_SOCKET, SO_ERROR,
                             (void *) &x, &socklen) == -1)
 	    ret = -errno;
 	else if (x != 0)
@@ -814,23 +814,23 @@ tamed void fd::connect(const struct sockaddr *addr, socklen_t addrlen,
  *  Equivalent to close(event<int>()).
  */
 int fd::fdimp::close(int leave_error) {
-    int my_fd = _fd;
+    int my_fd = fde_ < 0 ? fde_ : fdv_;
     if (leave_error >= 0)
         leave_error = -EBADF;
     if (my_fd >= 0 || leave_error != -EBADF)
-	_fd = leave_error;
+	fde_ = leave_error;
     if (my_fd >= 0) {
 	int x = ::close(my_fd);
 	if (x == -1) {
 	    x = -errno;
-	    if (_fd == -EBADF)
-		_fd = x;
+	    if (fde_ == -EBADF)
+		fde_ = x;
 	}
         if (driver::main)
             driver::main->kill_fd(my_fd);
 	_at_close.trigger();
     }
-    return _fd;
+    return fde_ < 0 ? fde_ : fdv_;
 }
 
 
@@ -882,7 +882,7 @@ fd tcp_listen(int port, int backlog)
     if (f) {
 	// Default to reusing port addresses.  Don't worry if it fails
 	int yes = 1;
-	(void) setsockopt(f.value(), SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+	(void) setsockopt(f.fdnum(), SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 
 	struct sockaddr_in saddr;
 	saddr.sin_family = AF_INET;
@@ -999,8 +999,8 @@ tamed void unix_stream_connect(std::string path, event<fd> result) {
 }
 
 
-static int kill_exec_fds(std::vector<exec_fd> &exec_fds,
-			 std::vector<int> &inner_fds, int error) {
+static int kill_exec_fds(std::vector<exec_fd>& exec_fds,
+			 std::vector<int>& inner_fds, int error) {
     assert(error < 0);
     for (std::vector<exec_fd>::size_type i = 0; i != exec_fds.size(); ++i) {
 	exec_fds[i].f = fd(error);
@@ -1012,8 +1012,8 @@ static int kill_exec_fds(std::vector<exec_fd> &exec_fds,
     return error;
 }
 
-pid_t exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
-	   const std::vector<const char *> &argv, char * const envp[])
+pid_t exec(std::vector<exec_fd>& exec_fds, const char* program, bool path,
+	   const std::vector<const char*>& argv, char* const envp[])
 {
     std::vector<int> inner_fds(exec_fds.size(), -1);
     int r, pfd[2];
@@ -1026,10 +1026,10 @@ pid_t exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
 		return kill_exec_fds(exec_fds, inner_fds, -errno);
 	    bool isoutput = (exec_fds[i].type == exec_fd::fdtype_newout);
 	    exec_fds[i].f = fd(pfd[!isoutput]);
-	    (void) fd::make_nonblocking(exec_fds[i].f.value());
+	    (void) fd::make_nonblocking(exec_fds[i].f.fdnum());
 	    inner_fds[i] = pfd[isoutput];
 	} else
-	    inner_fds[i] = exec_fds[i].f.value();
+	    inner_fds[i] = exec_fds[i].f.fdnum();
 
     // create child
     pid_t child = fork();
@@ -1086,7 +1086,7 @@ pid_t exec(std::vector<exec_fd> &exec_fds, const char *program, bool path,
 	if (exec_fds[i].type == exec_fd::fdtype_newin
 	    || exec_fds[i].type == exec_fd::fdtype_newout) {
 	    ::close(inner_fds[i]);
-	    (void) ::fcntl(exec_fds[i].f.value(), F_SETFD, FD_CLOEXEC);
+	    (void) ::fcntl(exec_fds[i].f.fdnum(), F_SETFD, FD_CLOEXEC);
 	} else if (exec_fds[i].type == exec_fd::fdtype_transfer)
 	    exec_fds[i].f.close();
 

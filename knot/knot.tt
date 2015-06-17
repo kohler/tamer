@@ -362,7 +362,7 @@ process_client(tamer::fd client)
     }
     */
 
-    http_init(&request, client.value());
+    http_init(&request, client.fdnum());
     
     while (!done)
     {
@@ -390,7 +390,7 @@ process_client(tamer::fd client)
         if (!success && !request.closed)
         {
             int len = strlen(HEADER_404);
-            if (::write(client.value(), HEADER_404, len) != len)
+            if (::write(client.fdnum(), HEADER_404, len) != len)
             {
                 ;
             } else {
@@ -477,7 +477,7 @@ accept_loop(tamer::fd s)
 	    }
 #endif
             //if (setsockopt (sock, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof (optval)) < 0)
-            if (setsockopt(c.value(), sol, TCP_NODELAY, &optval, sizeof (optval)) < 0)
+            if (setsockopt(c.fdnum(), sol, TCP_NODELAY, &optval, sizeof (optval)) < 0)
             {
                 perror("setsockopt");
                 continue;

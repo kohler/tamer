@@ -45,20 +45,21 @@ class fd {
     inline fd& operator=(const fd& f);
     inline fd& operator=(fd&& f);
 
-    static void open(const char *filename, int flags, mode_t mode,
+    static void open(const char* filename, int flags, mode_t mode,
 		     event<fd> result);
-    static inline void open(const char *filename, int flags, event<fd> result);
-    static fd open(const char *filename, int flags, mode_t mode = 0777);
+    static inline void open(const char* filename, int flags, event<fd> result);
+    static fd open(const char* filename, int flags, mode_t mode = 0777);
 
     static fd socket(int domain, int type, int protocol);
-    static int pipe(fd &rfd, fd &wfd);
+    static int pipe(fd& rfd, fd& wfd);
     static inline int pipe(fd pfd[2]);
 
     inline bool valid() const;
     inline operator unspecified_bool_type() const;
     inline bool operator!() const;
     inline int error() const;
-    inline int value() const;
+    inline int fdnum() const;
+    inline int recent_fdnum() const;
 
     inline void at_close(event<> e);
     event<> closer();
@@ -124,9 +125,10 @@ class fd {
 
   private:
     struct fdimp {
-	int _fd;
-	mutex _rlock;
-	mutex _wlock;
+        int fde_;
+	int fdv_;
+	mutex rlock_;
+	mutex wlock_;
 	event<> _at_close;
 #if HAVE_TAMER_FDHELPER
 	bool _is_file;
@@ -135,7 +137,7 @@ class fd {
         unsigned weak_count_;
 
 	fdimp(int fd)
-	    : _fd(fd)
+	    : fde_(fd < 0 ? fd : 0), fdv_(fd)
 #if HAVE_TAMER_FDHELPER
 	    , _is_file(false)
 #endif
@@ -203,7 +205,7 @@ class fdref {
 
     inline operator unspecified_bool_type() const;
     inline bool operator!() const;
-    inline int value() const;
+    inline int fdnum() const;
 
     inline void acquire_read(event<> done);
     inline void release_read();
@@ -362,21 +364,21 @@ inline int fd::pipe(fd pfd[2]) {
  *  @return  True if file descriptor is valid, false if not.
  */
 inline bool fd::valid() const {
-    return _p && _p->_fd >= 0;
+    return _p && _p->fde_ >= 0;
 }
 
 /** @brief  Test if file descriptor is valid.
  *  @return  True if file descriptor is valid, false if not.
  */
 inline fd::operator unspecified_bool_type() const {
-    return _p && _p->_fd >= 0 ? &fd::valid : 0;
+    return _p && _p->fde_ >= 0 ? &fd::valid : 0;
 }
 
 /** @brief  Test if file descriptor is invalid.
  *  @return  False if file descriptor is valid, true if not.
  */
 inline bool fd::operator!() const {
-    return !_p || _p->_fd < 0;
+    return !_p || _p->fde_ < 0;
 }
 
 /** @brief  Check for file descriptor error.
@@ -384,18 +386,23 @@ inline bool fd::operator!() const {
  *          error code.
  */
 inline int fd::error() const {
-    if (_p)
-	return (_p->_fd >= 0 ? 0 : _p->_fd);
-    else
-	return -EBADF;
+    return _p ? _p->fde_ : -EBADF;
 }
 
-/** @brief  Return file descriptor value.
- *  @return  File descriptor value if file descriptor is valid, otherwise
- *          a negative error code.
+/** @brief  Return file descriptor number.
+ *  @pre    valid()
+ *  @return  File descriptor number.
  */
-inline int fd::value() const {
-    return (_p ? _p->_fd : -EBADF);
+inline int fd::fdnum() const {
+    assert(_p && _p->fde_ >= 0);
+    return _p->fdv_;
+}
+
+/** @brief  Return most recent file descriptor number.
+ *  @return  File descriptor number.
+ */
+inline int fd::recent_fdnum() const {
+    return _p ? _p->fdv_ : -EBADF;
 }
 
 /** @brief  Register a close notifier.
@@ -442,18 +449,18 @@ inline void fd::accept(event<fd> result) {
 /** @brief  Shut down a socket file descriptor for reading and/or writing.
     @param  how  SHUT_RD, SHUT_WR, or SHUT_RDWR */
 inline int fd::shutdown(int how) {
-    if (_p && _p->_fd >= 0)
-        return ::shutdown(_p->_fd, how);
+    if (_p && _p->fde_ >= 0)
+        return ::shutdown(_p->fdv_, how);
     else
         return -EBADF;
 }
 
 /** @brief  Return any socket error state for this file descriptor. */
 inline int fd::socket_error() const {
-    if (_p && _p->_fd >= 0) {
+    if (_p && _p->fde_ >= 0) {
         int error = 0;
         socklen_t len = sizeof(error);
-        int r = getsockopt(_p->_fd, SOL_SOCKET, SO_ERROR, &error, &len);
+        int r = getsockopt(_p->fdv_, SOL_SOCKET, SO_ERROR, &error, &len);
         return r ? -error : 0;
     } else
         return -EBADF;
@@ -679,7 +686,7 @@ inline void fd::error_close(int errcode) {
 /** @brief  Make this file descriptor use nonblocking I/O.
  */
 inline int fd::make_nonblocking() {
-    return make_nonblocking(_p ? _p->_fd : -EBADF);
+    return make_nonblocking(_p ? _p->fde_ : -EBADF);
 }
 
 /** @brief  Test whether two file descriptors refer to the same object.
@@ -735,9 +742,9 @@ inline fdref::fdref(fd&& f, ref_type ref)
 
 inline fdref::~fdref() {
     if (imp_ && (flags_ & read_locked))
-        imp_->_rlock.release();
+        imp_->rlock_.release();
     if (imp_ && (flags_ & write_locked))
-        imp_->_wlock.release();
+        imp_->wlock_.release();
     if (imp_ && (flags_ & weak))
         imp_->weak_deref();
     else if (imp_)
@@ -745,22 +752,23 @@ inline fdref::~fdref() {
 }
 
 inline fdref::operator unspecified_bool_type() const {
-    return imp_ && imp_->_fd >= 0 ? &fd::valid : 0;
+    return imp_ && imp_->fde_ >= 0 ? &fd::valid : 0;
 }
 
 inline bool fdref::operator!() const {
-    return !imp_ || imp_->_fd < 0;
+    return !imp_ || imp_->fde_ < 0;
 }
 
-inline int fdref::value() const {
-    return imp_ ? imp_->_fd : -EBADF;
+inline int fdref::fdnum() const {
+    assert(imp_ && imp_->fde_ >= 0);
+    return imp_->fdv_;
 }
 
 inline void fdref::acquire_read(event<> done) {
     assert(!(flags_ & read_locked));
     flags_ |= read_locked;
     if (imp_)
-        imp_->_rlock.acquire(std::move(done));
+        imp_->rlock_.acquire(std::move(done));
     else
         done();
 }
@@ -769,13 +777,13 @@ inline void fdref::release_read() {
     assert(flags_ & read_locked);
     flags_ &= ~read_locked;
     if (imp_)
-        imp_->_rlock.release();
+        imp_->rlock_.release();
 }
 
 inline ssize_t fdref::read(void* buf, size_t size) {
     assert(flags_ & read_locked);
-    if (imp_ && imp_->_fd >= 0)
-        return ::read(imp_->_fd, buf, size);
+    if (imp_ && imp_->fde_ >= 0)
+        return ::read(imp_->fdv_, buf, size);
     else {
         errno = EBADF;
         return -1;
@@ -786,7 +794,7 @@ inline void fdref::acquire_write(event<> done) {
     assert(!(flags_ & write_locked));
     flags_ |= write_locked;
     if (imp_)
-        imp_->_wlock.acquire(std::move(done));
+        imp_->wlock_.acquire(std::move(done));
     else
         done();
 }
@@ -795,13 +803,13 @@ inline void fdref::release_write() {
     assert(flags_ & write_locked);
     flags_ &= ~write_locked;
     if (imp_)
-        imp_->_wlock.release();
+        imp_->wlock_.release();
 }
 
 inline ssize_t fdref::write(const void* buf, size_t size) {
     assert(flags_ & write_locked);
-    if (imp_ && imp_->_fd >= 0)
-        return ::write(imp_->_fd, buf, size);
+    if (imp_ && imp_->fde_ >= 0)
+        return ::write(imp_->fdv_, buf, size);
     else {
         errno = EBADF;
         return -1;

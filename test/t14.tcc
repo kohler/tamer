@@ -84,7 +84,7 @@ int main(int, char *[]) {
     assert(listenfd);
     struct sockaddr_in saddr;
     socklen_t saddr_len = sizeof(saddr);
-    int r = getsockname(listenfd.value(), (struct sockaddr*) &saddr, &saddr_len);
+    int r = getsockname(listenfd.fdnum(), (struct sockaddr*) &saddr, &saddr_len);
     assert(r == 0);
 
     pid_t p = fork();

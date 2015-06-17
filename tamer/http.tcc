@@ -397,7 +397,7 @@ tamed void http_parser::receive(fd f, event<http_message> done) {
                 continue;
         }
 
-        twait { tamer::at_fd_read(fi.value(), make_event()); }
+        twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
     }
 
     if (done && !md.done && !md.hm.error_)
