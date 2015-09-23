@@ -43,14 +43,17 @@ tamed void A::helper(int foo, tamer::event<> done) {
     done();
 }
 
-tamed void B::passit(A* a, tamer::event<> done) {
 #if TAMER_HAVE_CXX_LAMBDAS
+tamed void B::passit(A* a, tamer::event<> done) {
     twait { a->doit([=](int b){ return b * 2; }, make_event()); }
-#else
-    printf("no c++11 lambda support\n");
-#endif
     done();
 }
+#else
+tamed void B::passit(A* a, tamer::event<> done) {
+    printf("no c++11 lambda support\n");
+    done();
+}
+#endif
 
 
 tamed void function() {
