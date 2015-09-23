@@ -105,7 +105,9 @@ const http_parser_settings http_parser::settings = {
     /* on_header_value */     &http_parser::on_header_value,
     /* on_headers_complete */ &http_parser::on_headers_complete,
     /* on_body */             &http_parser::on_body,
-    /* on_message_complete */ &http_parser::on_message_complete
+    /* on_message_complete */ &http_parser::on_message_complete,
+    /* on_chunk_header */     0,
+    /* on_chunk_complete */   0
 };
 
 
