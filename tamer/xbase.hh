@@ -236,7 +236,7 @@ class blocking_rendezvous : public abstract_rendezvous {
 
     friend class abstract_rendezvous;
     friend class simple_driver;
-    friend class driver_timerset;
+    friend struct driver_timerset;
 };
 
 class explicit_rendezvous : public blocking_rendezvous {
