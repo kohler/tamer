@@ -414,6 +414,12 @@ fi
 AC_SUBST([MALLOC_LIBS])
 
 
+AC_ARG_ENABLE([epoll], [AS_HELP_STRING([--disable-epoll], [do not use epoll])], [], [enable_epoll=yes])
+if test "$enable_epoll" = no; then
+    AC_DEFINE([TAMER_NOEPOLL], [1], [Define to disable epoll.])
+fi
+
+
 dnl
 dnl file descriptor helper support
 dnl
