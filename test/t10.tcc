@@ -29,17 +29,22 @@ tamed void passoff(tamer::fd& r, tamer::fd& w, int n) {
 	assert(r && w);
     }
     while (1) {
+        fprintf(stderr, "pipe %d waits\n", n);
         twait { r.read(&c, 1, x, make_event(ret)); }
+        fprintf(stderr, "pipe %d read %zd\n", n, x);
         if (x) {
             ++npass;
             twait { w.write(&c, 1, x, make_event(ret)); }
+            fprintf(stderr, "pipe %d wrote %zd\n", n, x);
         }
     }
 }
 
 tamed void writeit(tamer::fd& w) {
     tvars { char c = 'A'; size_t x; int ret; }
+    fprintf(stderr, "pipe 1 prepares\n");
     twait { w.write(&c, 1, x, make_event(ret)); }
+    fprintf(stderr, "pipe 1 wrote %zd\n", x);
 }
 
 tamed void readandexit(tamer::fd& r, size_t expected_npass) {
@@ -53,9 +58,13 @@ tamed void readandexit(tamer::fd& r, size_t expected_npass) {
     exit(0);
 }
 
-int main(int, char**) {
+int main(int argc, char** argv) {
     tamer::initialize();
-    int n = (tamer::fd::open_limit(510) - 10) & ~1;
+    int n = 0, max_n = tamer::fd::open_limit(510) - 10;
+    if (argc == 2)
+        n = strtol(argv[1], 0, 10) & ~1;
+    if (n <= 0 || n >= max_n)
+        n = max_n & ~1;
     tamer::fd* fds = new tamer::fd[n];
     for (int i = 0; i < n; i += 2)
         tamer::fd::pipe(fds[i], fds[i+1]);
