@@ -172,13 +172,22 @@ driver_timerset::~driver_timerset() {
 void driver_timerset::check() {
 #if 0
     fprintf(stderr, "---");
-    for (unsigned k = 0; k != nts_; ++k)
+    for (unsigned k = 0; k != nts_; ++k) {
+        std::string location;
 	if (ts_[k].se->empty())
-	    fprintf(stderr, " %3u: %ld.%06ld: EMPTY\n", k, ts_[k].when.tv_sec, ts_[k].when.tv_usec);
+            location = "EMPTY";
 	else {
-	    tamer_debug_closure *dc = ts_[k].se->rendezvous()->linked_debug_closure();
-	    fprintf(stderr, " %3u: %ld.%06ld: @%s:%d\n", k, ts_[k].when.tv_sec, ts_[k].when.tv_usec, dc ? dc->tamer_blocked_file_ : "?", dc ? dc->tamer_blocked_line_ : 0);
-	}
+            abstract_rendezvous* r = ts_[k].se->rendezvous();
+            location = "?";
+            if (r->rtype() == rgather || r->rtype() == rexplicit) {
+                blocking_rendezvous* br = static_cast<blocking_rendezvous*>(r);
+                if (br->blocked_closure_)
+                    location = "@" + br->blocked_closure_->location_description();
+            }
+        }
+        fprintf(stderr, " %3u: %ld.%06ld%s: %s\n", k, ts_[k].when.tv_sec, ts_[k].when.tv_usec,
+                ts_[k].order & 1 ? "" : "-", location.c_str());
+    }
     fprintf(stderr, "\n");
 
     for (unsigned i = 0; true; ++i) {
