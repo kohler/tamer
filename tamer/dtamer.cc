@@ -52,6 +52,7 @@ union xfd_set {
 };
 
 class xfd_setpair {
+#if SIZEOF_FD_SET_ELEMENT
     typedef xfd_set::elt_type elt_type;
     enum { elt_bits = sizeof(elt_type) * 8 };
     static inline unsigned elt_index(unsigned fd) {
@@ -60,6 +61,7 @@ class xfd_setpair {
     static inline elt_type elt_bit(unsigned fd) {
         return elt_type(1) << (fd % elt_bits);
     }
+#endif
   public:
     inline xfd_setpair() {
         f_[0] = f_[1] = 0;
@@ -118,14 +120,20 @@ void xfd_setpair::hard_ensure(int fd) {
     while (unsigned(fd) >= ncap)
         ncap *= 2;
     assert((ncap % 64) == 0);
-    xfd_set* nf = reinterpret_cast<xfd_set*>(new char[ncap / 4]);
-    memcpy(&nf->s[0], f_[0], cap_ / 8);
-    memset(&nf->s[cap_ / 8], 0, (ncap - cap_) / 8);
-    memcpy(&nf->s[ncap / 8], f_[1], cap_ / 8);
-    memset(&nf->s[(ncap + cap_) / 8], 0, (ncap - cap_) / 8);
+    char* ndata = new char[ncap / 4];
+    xfd_set* nf[2] = {
+        reinterpret_cast<xfd_set*>(ndata),
+        reinterpret_cast<xfd_set*>(&ndata[ncap / 8])
+    };
+    if (f_[0]) {
+        memcpy(nf[0], f_[0], cap_ / 8);
+        memcpy(nf[1], f_[1], cap_ / 8);
+    }
+    memset(&nf[0]->s[cap_ / 8], 0, (ncap - cap_) / 8);
+    memset(&nf[1]->s[cap_ / 8], 0, (ncap - cap_) / 8);
     delete[] reinterpret_cast<char*>(f_[0]);
-    f_[0] = nf;
-    f_[1] = reinterpret_cast<xfd_set*>(&nf->s[ncap / 8]);
+    f_[0] = nf[0];
+    f_[1] = nf[1];
     cap_ = ncap;
 }
 
