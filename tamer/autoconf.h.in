@@ -87,12 +87,14 @@
 #define TAMER_NOEXCEPT noexcept
 #else
 #define TAMER_NOEXCEPT
+#define noexcept
 #endif
 
 #if TAMER_HAVE_CXX_CONSTEXPR
 #define TAMER_CONSTEXPR constexpr
 #else
 #define TAMER_CONSTEXPR
+#define constexpr
 #endif
 
 #if TAMER_HAVE_CXX_RVALUE_REFERENCES

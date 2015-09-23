@@ -885,6 +885,8 @@ tame_fn_t::output_firstfn(outputter_t *o)
     state->set_fn(this);
     output_mode_t om = o->switch_to_mode(OUTPUT_PASSTHROUGH);
     str closure_type = closure(true).type().base_type();
+    if (class_template_.length() || function_template_.length())
+        closure_type = "typename " + closure_type;
 
     strbuf b;
     b << signature() << "\n{\n";
@@ -892,7 +894,7 @@ tame_fn_t::output_firstfn(outputter_t *o)
     b << "  " << closure(true).decl(true) << " = "
       << "std::allocator< " << closure(true).type().base_type() << " >()."
       << "allocate(1);\n"
-      << "  ((typename " << closure_type << "::tamer_closure_type*) " TAME_CLOSURE_NAME ")->initialize_closure("
+      << "  ((" << closure_type << "::tamer_closure_type*) " TAME_CLOSURE_NAME ")->initialize_closure("
       << closure(true).type().base_type() << "::tamer_activator_";
     if (_class.length() && !(_opts & STATIC_DECL))
         b << ", this";
