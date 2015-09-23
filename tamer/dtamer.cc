@@ -422,26 +422,26 @@ void driver_tamer::loop(loop_flags flags)
         update_fds();
 
     // determine timeout
-    timeval to, *toptr, tnow;
     timers_.cull();
-    if (!asap_.empty()
-        || sig_any_active
-        || has_unblocked()
-        || (!timers_.empty()
-            && (tamerpriv::time_type == time_virtual
-                || (tnow = now(), !timercmp(&timers_.expiry(), &tnow, >))))) {
-        timerclear(&to);
-        toptr = &to;
-    } else if (!timers_.has_foreground()
-               && fdbound_ == 0
-               && sig_nforeground == 0)
-        // no foreground events!
-        return;
-    else if (!timers_.empty()) {
-        timersub(&timers_.expiry(), &tnow, &to);
-        toptr = &to;
-    } else
-        toptr = 0;
+    timeval to, *toptr = &to;
+    timerclear(&to);
+    if (asap_.empty() && !sig_any_active && !has_unblocked()) {
+        if (timers_.empty()) {
+            if (fdbound_ == 0 && sig_nforeground == 0)
+                // no foreground events!
+                return;
+            toptr = 0;
+        } else {
+            timeval tnow = now();
+            if (!timers_.has_foreground() && fdbound_ == 0 && sig_nforeground == 0
+                && timercmp(&timers_.expiry(), &tnow, >))
+                // no foreground events!
+                return;
+            if (tamerpriv::time_type != time_virtual
+                && timercmp(&timers_.expiry(), &tnow, >))
+                timersub(&timers_.expiry(), &tnow, &to);
+        }
+    }
 
     // select!
     int nfds = 0;
@@ -456,7 +456,7 @@ void driver_tamer::loop(loop_flags flags)
         if (!toptr)
             blockms = -1;
         else
-            blockms = to.tv_sec * 1000 + (to.tv_usec + 250) / 1000;
+            blockms = toptr->tv_sec * 1000 + (toptr->tv_usec + 250) / 1000;
         nepoll = epoll_wait(epollfd_, epollnow.data(), epollnow.size(),
                             blockms);
         goto after_select;
