@@ -221,6 +221,7 @@ void driver_timerset::push(timeval when, simple_event* se, bool bg) {
     ts_[pos].order = order_ + !bg;
     ts_[pos].se = se;
     ++nts_;
+    nfg_ += !bg;
 
     // Swap trec to proper position in heap
     while (pos != 0) {
@@ -255,6 +256,7 @@ void driver_timerset::hard_cull(unsigned pos) const {
         ts_[pos].clean();
 
     --nts_;
+    nfg_ -= ts_[pos].order & 1;
     if (nts_ == pos)
         return;
     swap(ts_[nts_], ts_[pos]);

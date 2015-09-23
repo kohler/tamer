@@ -87,6 +87,7 @@ struct driver_timerset {
     enum { arity = 4 };
     trec *ts_;
     mutable unsigned nts_;
+    mutable unsigned nfg_;
     unsigned rand_;
     unsigned tcap_;
     unsigned order_;
@@ -242,7 +243,7 @@ inline void driver_asapset::pop_trigger() {
 }
 
 inline driver_timerset::driver_timerset()
-    : ts_(0), nts_(0), rand_(8173), tcap_(0), order_(0) {
+    : ts_(0), nts_(0), nfg_(0), rand_(8173), tcap_(0), order_(0) {
 }
 
 inline bool driver_timerset::empty() const {
@@ -250,10 +251,7 @@ inline bool driver_timerset::empty() const {
 }
 
 inline bool driver_timerset::has_foreground() const {
-    for (unsigned i = 0; i != nts_; ++i)
-        if (ts_[i].order & 1)
-            return true;
-    return false;
+    return nfg_ != 0;
 }
 
 inline const timeval &driver_timerset::expiry() const {
