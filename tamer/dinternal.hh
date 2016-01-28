@@ -77,11 +77,11 @@ struct driver_timerset {
 
   private:
     struct trec {
-	timeval when;
-	unsigned order;
-	simple_event* se;
-	inline bool operator<(const trec &x) const;
-	inline void clean();
+        timeval when;
+        unsigned order;
+        simple_event* se;
+        inline bool operator<(const trec &x) const;
+        inline void clean();
     };
 
     enum { arity = 4 };
@@ -129,7 +129,7 @@ inline driver_fdset<T>::driver_fdset()
 template <typename T>
 inline driver_fdset<T>::~driver_fdset() {
     for (unsigned i = 0; i < nfds_; ++i)
-	at(i).~driver_fd<T>();
+        at(i).~driver_fd<T>();
     for (unsigned i = 1; i < fdcap_ / fdblksiz; ++i)
         delete[] reinterpret_cast<char*>(fdblk_[i]);
     if (fdcap_ > fdblksiz)
@@ -139,7 +139,7 @@ inline driver_fdset<T>::~driver_fdset() {
 template <typename T> template <typename O>
 void driver_fdset<T>::expand(O owner, int need_fd) {
     if (need_fd >= (int) nfds_)
-	hard_expand(owner, need_fd);
+        hard_expand(owner, need_fd);
 }
 
 template <typename T> template <typename O>
@@ -159,8 +159,8 @@ void driver_fdset<T>::hard_expand(O owner, int need_fd) {
     }
 
     while (need_fd >= (int) nfds_) {
-	new((void *) &at(nfds_)) driver_fd<T>(owner, nfds_);
-	++nfds_;
+        new((void *) &at(nfds_)) driver_fd<T>(owner, nfds_);
+        ++nfds_;
     }
 }
 
@@ -173,8 +173,8 @@ template <typename T>
 inline void driver_fdset<T>::push_change(int fd) {
     assert(fd >= 0 && (unsigned) fd < nfds_);
     if (at(fd).next_changedfd1 == 0) {
-	at(fd).next_changedfd1 = changedfd1_;
-	changedfd1_ = fd + 1;
+        at(fd).next_changedfd1 = changedfd1_;
+        changedfd1_ = fd + 1;
     }
 }
 
@@ -182,8 +182,8 @@ template <typename T>
 inline int driver_fdset<T>::pop_change() {
     int fd = changedfd1_ - 1;
     if (fd >= 0) {
-	changedfd1_ = at(fd).next_changedfd1;
-	at(fd).next_changedfd1 = 0;
+        changedfd1_ = at(fd).next_changedfd1;
+        at(fd).next_changedfd1 = 0;
     }
     return fd;
 }
@@ -230,7 +230,7 @@ inline bool driver_asapset::empty() const {
 
 inline void driver_asapset::push(simple_event *se) {
     if (tail_ - head_ == capmask_ + 1)
-	expand();
+        expand();
     ses_[tail_ & capmask_] = se;
     ++tail_;
 }
@@ -261,15 +261,15 @@ inline const timeval &driver_timerset::expiry() const {
 
 inline void driver_timerset::cull() {
     while (nts_ != 0 && ts_[0].se->empty())
-	hard_cull(0);
+        hard_cull(0);
 }
 
 inline bool driver_timerset::trec::operator<(const trec &x) const {
     return when.tv_sec < x.when.tv_sec
-	|| (when.tv_sec == x.when.tv_sec
-	    && (when.tv_usec < x.when.tv_usec
-		|| (when.tv_usec == x.when.tv_usec
-		    && (int) (order - x.order) < 0)));
+        || (when.tv_sec == x.when.tv_sec
+            && (when.tv_usec < x.when.tv_usec
+                || (when.tv_usec == x.when.tv_usec
+                    && (int) (order - x.order) < 0)));
 }
 
 inline void driver_timerset::trec::clean() {

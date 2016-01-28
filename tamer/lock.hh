@@ -32,9 +32,9 @@ class mutex {
 
   private:
     struct wait {
-	wait **pprev;
-	wait *next;
-	event<> e;
+        wait **pprev;
+        wait *next;
+        event<> e;
     };
 
     int locked_;
@@ -46,8 +46,8 @@ class mutex {
     void acquire(closure__acquire__iQ_ &);
 
     void wake() {
-	if (wait_)
-	    wait_->e.trigger();
+        if (wait_)
+            wait_->e.trigger();
     }
 
     mutex(const mutex &);

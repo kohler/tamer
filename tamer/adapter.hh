@@ -124,7 +124,7 @@ distribute(event<T0, T1, T2, T3> e1, event<T0, T1, T2, T3> e2,
 template <typename T0, typename V0>
 event<> bind(event<T0> e, V0 v0) {
     tamerpriv::bind_rendezvous<T0, V0>* r =
-	new tamerpriv::bind_rendezvous<T0, V0>(e, TAMER_MOVE(v0));
+        new tamerpriv::bind_rendezvous<T0, V0>(e, TAMER_MOVE(v0));
     event<> bound = TAMER_MAKE_FN_ANNOTATED_EVENT(*r);
     e.at_trigger(bound);
     return bound;
@@ -182,7 +182,7 @@ inline event<T0> rebind(preevent<R>&& pe, T0& s0) {
 template <typename S0, typename T0, typename F>
 event<S0> map(event<T0> e, F f) {
     tamerpriv::map_rendezvous<S0, T0, F> *r =
-	new tamerpriv::map_rendezvous<S0, T0, F>(TAMER_MOVE(f), e);
+        new tamerpriv::map_rendezvous<S0, T0, F>(TAMER_MOVE(f), e);
     event<S0> mapped = TAMER_MAKE_FN_ANNOTATED_EVENT(*r, r->result0());
     e.at_trigger(mapped.unblocker());
     return mapped;
@@ -193,7 +193,7 @@ template <typename S0, typename R, typename T0, typename F>
 event<S0> map(preevent<R, T0>&& pe, F f) {
     event<T0> e(std::move(pe));
     tamerpriv::map_rendezvous<S0, T0, F> *r =
-	new tamerpriv::map_rendezvous<S0, T0, F>(TAMER_MOVE(f), e);
+        new tamerpriv::map_rendezvous<S0, T0, F>(TAMER_MOVE(f), e);
     event<S0> mapped = TAMER_MAKE_FN_ANNOTATED_EVENT(*r, r->result0());
     e.at_trigger(mapped.unblocker());
     return mapped;
@@ -358,7 +358,7 @@ template <typename T0, typename SigInputIterator>
 inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, event<T0> e, T0 v) {
     event<> x = tamer::bind(e, TAMER_MOVE(v));
     for (; first != last; ++first)
-	at_signal(*first, x);
+        at_signal(*first, x);
     return e;
 }
 
@@ -403,7 +403,7 @@ inline event<T0> add_signal(int signo, preevent<R, T0>&& pe) {
 template <typename T0, typename SigInputIterator>
 inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, event<T0> e) {
     for (; first != last; ++first)
-	at_signal(*first, e);
+        at_signal(*first, e);
     return e;
 }
 
@@ -509,7 +509,7 @@ template <typename T0, typename T1, typename T2, typename T3, typename SigInputI
 inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e) {
     event<> x = e.unblocker();
     for (; first != last; ++first)
-	at_signal(*first, x);
+        at_signal(*first, x);
     return e;
 }
 
@@ -622,7 +622,7 @@ template <typename T0, typename T1, typename T2, typename T3, typename SigInputI
 inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e, int &result) {
     event<> x = tamerpriv::with_helper(e, &result, outcome::signal);
     for (; first != last; ++first)
-	at_signal(*first, x);
+        at_signal(*first, x);
     return e;
 }
 
@@ -645,7 +645,7 @@ inline event<T0> with_signal(SigInputIterator first, SigInputIterator last, pree
 template <typename F>
 inline event<> fun_event(F f) {
     tamerpriv::function_rendezvous<F> *innerr =
-	new tamerpriv::function_rendezvous<F>(TAMER_MOVE(f));
+        new tamerpriv::function_rendezvous<F>(TAMER_MOVE(f));
     return tamer::make_event(*innerr);
 }
 
@@ -661,8 +661,8 @@ inline event<> fun_event(F f) {
 template <typename F, typename A>
 inline event<> fun_event(F f, A arg) {
     tamerpriv::function_rendezvous<F, A> *innerr =
-	new tamerpriv::function_rendezvous<F, A>(TAMER_MOVE(f),
-						 TAMER_MOVE(arg));
+        new tamerpriv::function_rendezvous<F, A>(TAMER_MOVE(f),
+                                                 TAMER_MOVE(arg));
     return TAMER_MAKE_FN_ANNOTATED_EVENT(*innerr);
 }
 
@@ -679,9 +679,9 @@ inline event<> fun_event(F f, A arg) {
 template <typename F, typename A1, typename A2>
 inline event<> fun_event(F f, A1 arg1, A2 arg2) {
     tamerpriv::function_rendezvous<F, A1, A2> *innerr =
-	new tamerpriv::function_rendezvous<F, A1, A2>(TAMER_MOVE(f),
-						      TAMER_MOVE(arg1),
-						      TAMER_MOVE(arg2));
+        new tamerpriv::function_rendezvous<F, A1, A2>(TAMER_MOVE(f),
+                                                      TAMER_MOVE(arg1),
+                                                      TAMER_MOVE(arg2));
     return TAMER_MAKE_FN_ANNOTATED_EVENT(*innerr);
 }
 

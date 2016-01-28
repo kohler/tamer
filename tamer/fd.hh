@@ -46,7 +46,7 @@ class fd {
     inline fd& operator=(fd&& f);
 
     static void open(const char* filename, int flags, mode_t mode,
-		     event<fd> result);
+                     event<fd> result);
     static inline void open(const char* filename, int flags, event<fd> result);
     static fd open(const char* filename, int flags, mode_t mode = 0777);
 
@@ -109,7 +109,7 @@ class fd {
     void accept(struct sockaddr* addr, socklen_t* addrlen, event<fd> result);
     inline void accept(event<fd> result);
     void connect(const struct sockaddr* addr, socklen_t addrlen,
-		 event<int> done);
+                 event<int> done);
     inline int shutdown(int how);
     inline int socket_error() const;
 
@@ -126,23 +126,23 @@ class fd {
   private:
     struct fdimp {
         int fde_;
-	int fdv_;
-	mutex rlock_;
-	mutex wlock_;
-	event<> _at_close;
+        int fdv_;
+        mutex rlock_;
+        mutex wlock_;
+        event<> _at_close;
 #if HAVE_TAMER_FDHELPER
-	bool _is_file;
+        bool _is_file;
 #endif
         unsigned ref_count_;
         unsigned weak_count_;
 
-	fdimp(int fd)
-	    : fde_(fd < 0 ? fd : 0), fdv_(fd)
+        fdimp(int fd)
+            : fde_(fd < 0 ? fd : 0), fdv_(fd)
 #if HAVE_TAMER_FDHELPER
-	    , _is_file(false)
+            , _is_file(false)
 #endif
             , ref_count_(1), weak_count_(0) {
-	}
+        }
         void deref() {
             if (!--ref_count_)
                 close();
@@ -153,20 +153,20 @@ class fd {
             if (!--weak_count_ && !ref_count_)
                 delete this;
         }
-	int close(int leave_error = -EBADF);
+        int close(int leave_error = -EBADF);
     };
 
     struct fdcloser {
-	fdcloser(fd::fdimp* imp)
-	    : imp_(imp) {
+        fdcloser(fd::fdimp* imp)
+            : imp_(imp) {
             ++imp_->weak_count_;
-	}
+        }
         ~fdcloser() {
             imp_->weak_deref();
         }
-	void operator()() {
-	    imp_->close();
-	}
+        void operator()() {
+            imp_->close();
+        }
         fd::fdimp* imp_;
     };
 
@@ -245,7 +245,7 @@ void unix_stream_connect(std::string path, event<fd> result);
 
 struct exec_fd {
     enum fdtype {
-	fdtype_newin, fdtype_newout, fdtype_share, fdtype_transfer
+        fdtype_newin, fdtype_newout, fdtype_share, fdtype_transfer
     };
     int child_fd;
     fdtype type;
@@ -254,15 +254,15 @@ struct exec_fd {
 };
 
 pid_t exec(std::vector<exec_fd>& exec_fds, const char* program, bool path,
-	   const std::vector<const char*> &argv, char* const envp[]);
+           const std::vector<const char*> &argv, char* const envp[]);
 inline pid_t execv(fd& in, fd& out, const char* program,
-		   const std::vector<const char*>& argv);
+                   const std::vector<const char*>& argv);
 inline pid_t execv(fd& in, fd& out, fd& err, const char* program,
-		   const std::vector<const char*>& argv);
+                   const std::vector<const char*>& argv);
 inline pid_t execvp(fd& in, fd& out, const char* program,
-		    const std::vector<const char*>& argv);
+                    const std::vector<const char*>& argv);
 inline pid_t execvp(fd& in, fd& out, fd& err, const char* program,
-		    const std::vector<const char*>& argv);
+                    const std::vector<const char*>& argv);
 
 
 /** @brief  Construct an invalid file descriptor.
@@ -414,9 +414,9 @@ inline int fd::recent_fdnum() const {
  */
 inline void fd::at_close(event<> e) {
     if (*this)
-	_p->_at_close += TAMER_MOVE(e);
+        _p->_at_close += TAMER_MOVE(e);
     else
-	e();
+        e();
 }
 
 /** @brief  Close file descriptor.
@@ -434,7 +434,7 @@ inline void fd::close(event<int> done)
 inline void fd::close()
 {
     if (_p)
-	_p->close();
+        _p->close();
 }
 
 /** @brief  Accept new connection on listening socket file descriptor.
@@ -672,9 +672,9 @@ inline void fd::sendmsg(const void *buf, size_t size, event<int> done) {
  */
 inline void fd::close(int errcode) {
     if (_p)
-	_p->close(errcode);
+        _p->close(errcode);
     else if (errcode < 0 && errcode != -EBADF)
-	_p = new fdimp(errcode);
+        _p = new fdimp(errcode);
 }
 
 /** @cond never */
@@ -876,7 +876,7 @@ inline exec_fd::exec_fd(int child_fd, fdtype type, fd f)
 }
 
 inline pid_t execv(fd &in, fd &out, const char *program,
-		   const std::vector<const char *> &argv) {
+                   const std::vector<const char *> &argv) {
     std::vector<exec_fd> efd;
     efd.push_back(exec_fd(STDIN_FILENO, exec_fd::fdtype_newin));
     efd.push_back(exec_fd(STDOUT_FILENO, exec_fd::fdtype_newout));
@@ -887,7 +887,7 @@ inline pid_t execv(fd &in, fd &out, const char *program,
 }
 
 inline pid_t execv(fd &in, fd &out, fd &err, const char *program,
-		   const std::vector<const char *> &argv) {
+                   const std::vector<const char *> &argv) {
     std::vector<exec_fd> efd;
     efd.push_back(exec_fd(STDIN_FILENO, exec_fd::fdtype_newin));
     efd.push_back(exec_fd(STDOUT_FILENO, exec_fd::fdtype_newout));
@@ -900,7 +900,7 @@ inline pid_t execv(fd &in, fd &out, fd &err, const char *program,
 }
 
 inline pid_t execvp(fd &in, fd &out, const char *program,
-		    const std::vector<const char *> &argv) {
+                    const std::vector<const char *> &argv) {
     std::vector<exec_fd> efd;
     efd.push_back(exec_fd(STDIN_FILENO, exec_fd::fdtype_newin));
     efd.push_back(exec_fd(STDOUT_FILENO, exec_fd::fdtype_newout));
@@ -911,7 +911,7 @@ inline pid_t execvp(fd &in, fd &out, const char *program,
 }
 
 inline pid_t execvp(fd &in, fd &out, fd &err, const char *program,
-		    const std::vector<const char *> &argv) {
+                    const std::vector<const char *> &argv) {
     std::vector<exec_fd> efd;
     efd.push_back(exec_fd(STDIN_FILENO, exec_fd::fdtype_newin));
     efd.push_back(exec_fd(STDOUT_FILENO, exec_fd::fdtype_newout));

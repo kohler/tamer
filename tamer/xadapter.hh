@@ -28,15 +28,15 @@ typedef union {
 extern placeholder_buffer_type placeholder_buffer;
 
 class with_helper_rendezvous : public functional_rendezvous,
-			       public zero_argument_rendezvous_tag<with_helper_rendezvous> {
+                               public zero_argument_rendezvous_tag<with_helper_rendezvous> {
   public:
     with_helper_rendezvous(simple_event *e, int *s0, int v0)
-	: functional_rendezvous(hook), e_(e), s0_(s0), v0_(v0) {
+        : functional_rendezvous(hook), e_(e), s0_(s0), v0_(v0) {
     }
   private:
-    simple_event *e_;		// An e_->at_trigger() holds a reference
-    int *s0_;			// to this rendezvous, so this rendezvous
-    int v0_;			// doesn't hold a reference to e_.
+    simple_event *e_;           // An e_->at_trigger() holds a reference
+    int *s0_;                   // to this rendezvous, so this rendezvous
+    int v0_;                    // doesn't hold a reference to e_.
     static void hook(functional_rendezvous *fr, simple_event *, bool) TAMER_NOEXCEPT;
 };
 
@@ -51,10 +51,10 @@ inline event<> with_helper(event<T0, T1, T2, T3> e, int *result, int value) {
 
 template <typename T0, typename V0>
 class bind_rendezvous : public functional_rendezvous,
-			public zero_argument_rendezvous_tag<bind_rendezvous<T0, V0> > {
+                        public zero_argument_rendezvous_tag<bind_rendezvous<T0, V0> > {
   public:
     bind_rendezvous(const event<T0>& e, V0 v0)
-	: functional_rendezvous(hook), e_(e), v0_(TAMER_MOVE(v0)) {
+        : functional_rendezvous(hook), e_(e), v0_(TAMER_MOVE(v0)) {
     }
   private:
     event<T0> e_;
@@ -64,7 +64,7 @@ class bind_rendezvous : public functional_rendezvous,
 
 template <typename T0, typename V0>
 void bind_rendezvous<T0, V0>::hook(functional_rendezvous *fr,
-				   simple_event *, bool) TAMER_NOEXCEPT {
+                                   simple_event *, bool) TAMER_NOEXCEPT {
     bind_rendezvous<T0, V0>* self = static_cast<bind_rendezvous<T0, V0>*>(fr);
     self->e_.trigger(self->v0_);
     delete self;
@@ -103,13 +103,13 @@ template <typename T0, typename T1> struct decay<T0(T1)> { public: typedef T0 (*
 
 template <typename S0, typename T0, typename F>
 class map_rendezvous : public functional_rendezvous,
-		       public zero_argument_rendezvous_tag<map_rendezvous<S0, T0, F> > {
+                       public zero_argument_rendezvous_tag<map_rendezvous<S0, T0, F> > {
   public:
     map_rendezvous(const F& f, const event<T0>& e)
-	: functional_rendezvous(hook), f_(f), e_(e) {
+        : functional_rendezvous(hook), f_(f), e_(e) {
     }
     S0& result0() {
-	return s0_;
+        return s0_;
     }
   private:
     S0 s0_;
@@ -120,12 +120,12 @@ class map_rendezvous : public functional_rendezvous,
 
 template <typename S0, typename T0, typename F>
 void map_rendezvous<S0, T0, F>::hook(functional_rendezvous *fr,
-				     simple_event *, bool values) TAMER_NOEXCEPT {
+                                     simple_event *, bool values) TAMER_NOEXCEPT {
     map_rendezvous *self = static_cast<map_rendezvous *>(fr);
     if (values)
-	self->e_.trigger(self->f_(self->s0_));
+        self->e_.trigger(self->f_(self->s0_));
     else if (self->e_)
-	self->e_.unblocker().trigger();
+        self->e_.unblocker().trigger();
     delete self;
 }
 
@@ -135,11 +135,11 @@ class function_rendezvous;
 
 template <typename F, typename A1, typename A2>
 class function_rendezvous : public functional_rendezvous,
-			    public zero_argument_rendezvous_tag<function_rendezvous<F, A1, A2> > {
+                            public zero_argument_rendezvous_tag<function_rendezvous<F, A1, A2> > {
   public:
     function_rendezvous(F f, A1 arg1, A2 arg2)
-	: functional_rendezvous(hook), f_(TAMER_MOVE(f)),
-	  arg1_(TAMER_MOVE(arg1)), arg2_(TAMER_MOVE(arg2)) {
+        : functional_rendezvous(hook), f_(TAMER_MOVE(f)),
+          arg1_(TAMER_MOVE(arg1)), arg2_(TAMER_MOVE(arg2)) {
     }
   private:
     F f_;
@@ -150,8 +150,8 @@ class function_rendezvous : public functional_rendezvous,
 
 template <typename F, typename A1, typename A2>
 void function_rendezvous<F, A1, A2>::hook(functional_rendezvous* fr,
-					  simple_event*,
-					  bool) TAMER_NOEXCEPT {
+                                          simple_event*,
+                                          bool) TAMER_NOEXCEPT {
     function_rendezvous<F, A1, A2>* self = static_cast<function_rendezvous<F, A1, A2>*>(fr);
     // in case f_() refers to an event on this rendezvous:
     self->remove_waiting();
@@ -162,11 +162,11 @@ void function_rendezvous<F, A1, A2>::hook(functional_rendezvous* fr,
 
 template <typename F, typename A>
 class function_rendezvous<F, A> : public functional_rendezvous,
-				  public zero_argument_rendezvous_tag<function_rendezvous<F, A> > {
+                                  public zero_argument_rendezvous_tag<function_rendezvous<F, A> > {
   public:
     function_rendezvous(F f, A arg)
-	: functional_rendezvous(hook), f_(TAMER_MOVE(f)),
-	  arg_(TAMER_MOVE(arg)) {
+        : functional_rendezvous(hook), f_(TAMER_MOVE(f)),
+          arg_(TAMER_MOVE(arg)) {
     }
   private:
     F f_;
@@ -176,8 +176,8 @@ class function_rendezvous<F, A> : public functional_rendezvous,
 
 template <typename F, typename A>
 void function_rendezvous<F, A, void>::hook(functional_rendezvous* fr,
-					   simple_event*,
-					   bool) TAMER_NOEXCEPT {
+                                           simple_event*,
+                                           bool) TAMER_NOEXCEPT {
     function_rendezvous<F, A, void>* self = static_cast<function_rendezvous<F, A, void>*>(fr);
     // in case f_() refers to an event on this rendezvous:
     self->remove_waiting();
@@ -188,10 +188,10 @@ void function_rendezvous<F, A, void>::hook(functional_rendezvous* fr,
 
 template <typename F>
 class function_rendezvous<F> : public functional_rendezvous,
-			       public zero_argument_rendezvous_tag<function_rendezvous<F> > {
+                               public zero_argument_rendezvous_tag<function_rendezvous<F> > {
   public:
     function_rendezvous(F f)
-	: functional_rendezvous(hook), f_(TAMER_MOVE(f)) {
+        : functional_rendezvous(hook), f_(TAMER_MOVE(f)) {
     }
   private:
     F f_;
@@ -200,8 +200,8 @@ class function_rendezvous<F> : public functional_rendezvous,
 
 template <typename F>
 void function_rendezvous<F, void, void>::hook(functional_rendezvous* fr,
-					      simple_event*,
-					      bool) TAMER_NOEXCEPT {
+                                              simple_event*,
+                                              bool) TAMER_NOEXCEPT {
     function_rendezvous<F>* self = static_cast<function_rendezvous<F>*>(fr);
     // in case f_() refers to an event on this rendezvous:
     self->remove_waiting();
@@ -216,7 +216,7 @@ class push_back_rendezvous : public functional_rendezvous,
   public:
     typedef typename C::value_type value_type;
     push_back_rendezvous(C& c)
-	: functional_rendezvous(hook), c_(c) {
+        : functional_rendezvous(hook), c_(c) {
     }
     value_type& slot() {
         return slot_;
@@ -245,7 +245,7 @@ class output_rendezvous : public functional_rendezvous,
   public:
     typedef typename std::iterator_traits<It>::value_type value_type;
     output_rendezvous(It& it)
-	: functional_rendezvous(hook), it_(it) {
+        : functional_rendezvous(hook), it_(it) {
     }
     value_type& slot() {
         return slot_;
