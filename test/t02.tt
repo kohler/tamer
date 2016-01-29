@@ -24,7 +24,7 @@ int n;
 tamed void asap(tamer::event<> e) {
     tvars { int i; }
     for (i = 0; i < 50000000; ++i)
-	twait { tamer::at_asap(make_event()); }
+        twait { tamer::at_asap(make_event()); }
     e.trigger();
 }
 
@@ -33,10 +33,10 @@ tamed void asapt(tamer::event<> e) {
     tamer::at_delay_sec(1, make_event(r));
     tamer::at_delay_sec(100, make_event(r));
     for (i = 0; i < 1000000; ++i)
-	twait {
-	    for (int j = 0; j < 4; ++j)
-		tamer::at_asap(tamer::with_timeout_sec(10, make_event()));
-	}
+        twait {
+            for (int j = 0; j < 4; ++j)
+                tamer::at_asap(tamer::with_timeout_sec(10, make_event()));
+        }
     e.trigger();
 }
 
@@ -45,11 +45,11 @@ int main(int argc, char **argv) {
     tamer::rendezvous<> r;
     tamer::event<> e = make_event(r);
     if (argc == 2 && strcmp(argv[1], "-t") == 0)
-	asapt(e);
+        asapt(e);
     else if (argc == 1)
-	asap(e);
+        asap(e);
     else
-	fprintf(stderr, "Usage: ./t02 [-t]\n");
+        fprintf(stderr, "Usage: ./t02 [-t]\n");
     tamer::loop();
     tamer::cleanup();
 }

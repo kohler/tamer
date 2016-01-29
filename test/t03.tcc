@@ -22,17 +22,17 @@
 
 tamed void read_sucka(tamer::fd &f) {
     tvars {
-	int ret(-1);
-	char buf[40];
-	size_t amt(0);
+        int ret(-1);
+        char buf[40];
+        size_t amt(0);
     }
     twait {
-	f.read(buf, 40, amt, tamer::add_timeout(0.5, make_event(ret), -ETIMEDOUT));
+        f.read(buf, 40, amt, tamer::add_timeout(0.5, make_event(ret), -ETIMEDOUT));
     }
     if (ret < 0)
-	printf("got error %d (%s): %ld: %.*s\n", ret, strerror(-ret), (long) amt, (int) amt, buf);
+        printf("got error %d (%s): %ld: %.*s\n", ret, strerror(-ret), (long) amt, (int) amt, buf);
     else
-	printf("got %d: %ld: %.*s\n", ret, (long) amt, (int) amt, buf);
+        printf("got %d: %ld: %.*s\n", ret, (long) amt, (int) amt, buf);
 }
 
 tamed void time_sucka() {

@@ -20,19 +20,19 @@
 
 tamed void run_signals() {
     tvars {
-	tamer::rendezvous<int> r(tamer::rvolatile);
-	int n = 0, what;
+        tamer::rendezvous<int> r(tamer::rvolatile);
+        int n = 0, what;
     }
     tamer::at_signal(SIGINT, make_event(r, 1));
     tamer::at_signal(SIGUSR1, make_event(r, 2));
     tamer::at_delay(100000, make_event(r, 3));
     while (1) {
-	twait(r, what);
-	if (what == 1) {
-	    ++n;
-	    tamer::at_signal(SIGINT, make_event(r, 1));
-	} else
-	    break;
+        twait(r, what);
+        if (what == 1) {
+            ++n;
+            tamer::at_signal(SIGINT, make_event(r, 1));
+        } else
+            break;
     }
     fprintf(stdout, "received %d SIGINT\n", n);
     fflush(stdout);
@@ -42,13 +42,13 @@ int main(int, char **) {
     tamer::initialize();
     run_signals();
     if (fork() == 0) {
-	pid_t x = getppid();
-	for (int i = 0; i < 10000; ++i) {
-	    kill(x, SIGINT);
-	    usleep(1);
-	}
-	kill(x, SIGUSR1);
-	exit(0);
+        pid_t x = getppid();
+        for (int i = 0; i < 10000; ++i) {
+            kill(x, SIGINT);
+            usleep(1);
+        }
+        kill(x, SIGUSR1);
+        exit(0);
     }
     tamer::loop();
     tamer::cleanup();

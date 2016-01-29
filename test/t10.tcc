@@ -25,8 +25,8 @@ size_t npass = 0;
 tamed void passoff(tamer::fd& r, tamer::fd& w, int n) {
     tvars { char c; size_t x; int ret; }
     if (!(r && w)) {
-	std::cerr << "Error: pipe " << n << " or thereabouts failed\n";
-	assert(r && w);
+        std::cerr << "Error: pipe " << n << " or thereabouts failed\n";
+        assert(r && w);
     }
     while (1) {
         fprintf(stderr, "pipe %d waits\n", n);
@@ -51,10 +51,10 @@ tamed void readandexit(tamer::fd& r, size_t expected_npass) {
     tvars { char c; size_t x; int ret; }
     twait { r.read(&c, 1, x, make_event(ret)); }
     if (npass == expected_npass)
-	std::cout << "GOOD: Got character " << c << " after " << npass << " passes\n";
+        std::cout << "GOOD: Got character " << c << " after " << npass << " passes\n";
     else
-	std::cout << "BAD: Got character " << c << " after " << npass << "!="
-		  << expected_npass << " passes\n";
+        std::cout << "BAD: Got character " << c << " after " << npass << "!="
+                  << expected_npass << " passes\n";
     exit(0);
 }
 
