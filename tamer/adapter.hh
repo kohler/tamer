@@ -146,9 +146,9 @@ inline event<> bind(preevent<R, T0>&& pe, V0 v0) {
  *  result's @c T0 trigger value is ignored.) Triggering @a e instantly
  *  triggers the result's unblocker.
  */
-template <typename T0>
-inline event<T0> rebind(event<> e) {
-    return tamerpriv::rebinder<T0>::make(e);
+template <typename... TS>
+inline event<TS...> rebind(event<> e) {
+    return tamerpriv::rebinder<TS...>::make(e);
 }
 
 template <typename T0>

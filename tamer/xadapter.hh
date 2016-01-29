@@ -21,11 +21,7 @@
 namespace tamer {
 namespace tamerpriv {
 
-typedef union {
-    int i;
-    bool b;
-} placeholder_buffer_type;
-extern placeholder_buffer_type placeholder_buffer;
+extern char placeholder_buffer[64];
 
 class with_helper_rendezvous : public functional_rendezvous,
                                public zero_argument_rendezvous_tag<with_helper_rendezvous> {
@@ -73,29 +69,52 @@ void bind_rendezvous<I, VI, TS...>::hook(functional_rendezvous *fr, simple_event
 }
 
 
-template <typename T0>
-struct rebinder {
-    static event<T0> make(event<> e) {
-        T0* v0 = new T0;
-        simple_event::at_trigger(e.__get_simple(), deleter, v0);
-        return event<T0>(TAMER_MOVE(e), *v0);
+template <typename T, typename U> struct tuple_cons;
+template <typename T, typename... TS> struct tuple_cons<T, std::tuple<TS...> > {
+    typedef std::tuple<T, TS...> type;
+};
+
+template <typename... TS> struct ignore_analysis;
+template <> struct ignore_analysis<> {
+    typedef std::tuple<> type;
+    static const bool use_placeholder = true;
+    static const bool empty = true;
+};
+template <typename... TS> struct ignore_analysis<void, TS...> {
+    typedef typename ignore_analysis<TS...>::type type;
+    static const bool use_placeholder = ignore_analysis<TS...>::use_placeholder;
+    static const bool empty = ignore_analysis<TS...>::empty;
+};
+template <typename T, typename... TS> struct ignore_analysis<T, TS...> {
+    typedef typename tuple_cons<T, typename ignore_analysis<TS...>::type>::type type;
+    static const bool use_placeholder = ignore_analysis<TS...>::use_placeholder && std::is_trivial<T>::value && sizeof(type) <= sizeof(placeholder_buffer);
+    static const bool empty = false;
+};
+
+template <bool USE_PLACEHOLDER, typename... TS> struct ignore_binder;
+
+template <typename... TS> struct ignore_binder<false, TS...> {
+    typedef typename ignore_analysis<TS...>::type arguments_type;
+    static event<TS...> make(event<> e) {
+        arguments_type* vs = new arguments_type;
+        simple_event::at_trigger(e.__get_simple(), deleter, vs);
+        return event<TS...>(TAMER_MOVE(e), *vs);
     }
     static void deleter(void* x) {
-        delete static_cast<T0*>(x);
+        delete static_cast<arguments_type*>(x);
     }
 };
 
-template <>
-struct rebinder<int> {
-    static event<int> make(event<> e) {
-        return event<int>(TAMER_MOVE(e), placeholder_buffer.i);
+template <typename... TS> struct ignore_binder<true, TS...> {
+    typedef typename ignore_analysis<TS...>::type arguments_type;
+    static event<TS...> make(event<> e) {
+        return event<TS...>(TAMER_MOVE(e), *new(placeholder_buffer) arguments_type);
     }
 };
 
-template <>
-struct rebinder<bool> {
-    static event<bool> make(event<> e) {
-        return event<bool>(TAMER_MOVE(e), placeholder_buffer.b);
+template <typename... TS> struct rebinder {
+    static event<TS...> make(event<> e) {
+        return ignore_binder<ignore_analysis<TS...>::use_placeholder, TS...>::make(e);
     }
 };
 

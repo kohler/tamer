@@ -92,7 +92,7 @@ class driver : public tamerpriv::simple_driver {
 
   private:
     unsigned index_;
-    int int_placeholder_;
+    std::tuple<int> int_placeholder_;
 
     static driver* indexed[capacity];
     static int next_index;
