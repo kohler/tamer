@@ -126,12 +126,13 @@ class event {
     typedef T1 second_argument_type;
     typedef T2 third_argument_type;
     typedef T3 fourth_argument_type;
+    typedef std::tuple<T0, T1, T2, T3> arguments_type;
 
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     inline event() noexcept;
     inline event(T0& x0, T1& x1, T2& x2, T3& x3) noexcept;
-    inline event(value_pack<T0, T1, T2, T3>& x) noexcept;
+    inline event(arguments_type& xs) noexcept;
     inline event(const event<T0, T1, T2, T3>& x) noexcept;
     inline event(event<T0, T1, T2, T3>&& x) noexcept;
     inline ~event() noexcept;
@@ -140,10 +141,10 @@ class event {
     inline bool operator!() const;
     inline bool empty() const;
 
-    inline void trigger(T0 v0, T1 v1, T2 v2, T3 v3);
-    inline void trigger(const value_pack<T0, T1, T2, T3>& v);
     inline void operator()(T0 v0, T1 v1, T2 v2, T3 v3);
-    inline void operator()(const value_pack<T0, T1, T2, T3>& v);
+    inline void operator()(const arguments_type& vs);
+    inline void trigger(T0 v0, T1 v1, T2 v2, T3 v3);
+    inline void trigger(const arguments_type& vs);
     inline void unblock() noexcept;
 
     inline void at_trigger(const event<>& e);
@@ -166,10 +167,7 @@ class event {
 
   private:
     tamerpriv::simple_event* se_;
-    T0* s0_;
-    T1* s1_;
-    T2* s2_;
-    T3* s3_;
+    std::tuple<T0*, T1*, T2*, T3*> sv_;
 };
 
 
@@ -184,25 +182,25 @@ class event {
 
 template <typename T0, typename T1, typename T2>
 class event<T0, T1, T2, void> { public:
-
     typedef void result_type;
     typedef T0 first_argument_type;
     typedef T1 second_argument_type;
     typedef T2 third_argument_type;
+    typedef std::tuple<T0, T1, T2> arguments_type;
 
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     inline event() noexcept;
     inline event(T0& x0, T1& x1, T2& x2) noexcept;
-    inline event(value_pack<T0, T1, T2>& x) noexcept;
+    inline event(arguments_type& xs) noexcept;
 
     event(const event<T0, T1, T2>& x) noexcept
-        : se_(x.se_), s0_(x.s0_), s1_(x.s1_), s2_(x.s2_) {
+        : se_(x.se_), sv_(x.sv_) {
         tamerpriv::simple_event::use(se_);
     }
 
     event(event<T0, T1, T2>&& x) noexcept
-        : se_(x.se_), s0_(x.s0_), s1_(x.s1_), s2_(x.s2_) {
+        : se_(x.se_), sv_(x.sv_) {
         x.se_ = 0;
     }
 
@@ -222,10 +220,10 @@ class event<T0, T1, T2, void> { public:
         return !se_ || se_->empty();
     }
 
-    inline void trigger(T0 v0, T1 v1, T2 v2);
-    inline void trigger(const value_pack<T0, T1, T2>& v);
     inline void operator()(T0 v0, T1 v1, T2 v2);
-    inline void operator()(const value_pack<T0, T1, T2>& v);
+    inline void operator()(const arguments_type& v);
+    inline void trigger(T0 v0, T1 v1, T2 v2);
+    inline void trigger(const arguments_type& v);
     inline void unblock() noexcept;
 
     inline void at_trigger(const event<>& e);
@@ -238,18 +236,14 @@ class event<T0, T1, T2, void> { public:
         tamerpriv::simple_event::use(x.se_);
         tamerpriv::simple_event::unuse(se_);
         se_ = x.se_;
-        s0_ = x.s0_;
-        s1_ = x.s1_;
-        s2_ = x.s2_;
+        sv_ = x.sv_;
         return *this;
     }
 
     event<T0, T1, T2>& operator=(event<T0, T1, T2>&& x) noexcept {
         tamerpriv::simple_event *se = se_;
         se_ = x.se_;
-        s0_ = x.s0_;
-        s1_ = x.s1_;
-        s2_ = x.s2_;
+        sv_ = x.sv_;
         x.se_ = se;
         return *this;
     }
@@ -274,32 +268,28 @@ class event<T0, T1, T2, void> { public:
     }
 
   private:
-
     tamerpriv::simple_event* se_;
-    T0* s0_;
-    T1* s1_;
-    T2* s2_;
-
+    std::tuple<T0*, T1*, T2*> sv_;
 };
 
 
 template <typename T0, typename T1>
 class event<T0, T1, void, void>
     : public std::binary_function<T0, T1, void> { public:
-
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
+    typedef std::tuple<T0, T1> arguments_type;
 
     inline event() noexcept;
     inline event(T0& x0, T1& x1) noexcept;
-    inline event(value_pack<T0, T1>& x) noexcept;
+    inline event(arguments_type& xs) noexcept;
 
     event(const event<T0, T1>& x) noexcept
-        : se_(x.se_), s0_(x.s0_), s1_(x.s1_) {
+        : se_(x.se_), sv_(x.sv_) {
         tamerpriv::simple_event::use(se_);
     }
 
     event(event<T0, T1>&& x) noexcept
-        : se_(x.se_), s0_(x.s0_), s1_(x.s1_) {
+        : se_(x.se_), sv_(x.sv_) {
         x.se_ = 0;
     }
 
@@ -319,10 +309,10 @@ class event<T0, T1, void, void>
         return !se_ || se_->empty();
     }
 
-    inline void trigger(T0 v0, T1 v1);
-    inline void trigger(const value_pack<T0, T1>& v);
     inline void operator()(T0 v0, T1 v1);
-    inline void operator()(const value_pack<T0, T1>& v);
+    inline void operator()(const arguments_type& vs);
+    inline void trigger(T0 v0, T1 v1);
+    inline void trigger(const arguments_type& vs);
     inline void unblock() noexcept;
 
     inline void at_trigger(const event<>& e);
@@ -335,16 +325,14 @@ class event<T0, T1, void, void>
         tamerpriv::simple_event::use(x.se_);
         tamerpriv::simple_event::unuse(se_);
         se_ = x.se_;
-        s0_ = x.s0_;
-        s1_ = x.s1_;
+        sv_ = x.sv_;
         return *this;
     }
 
     event<T0, T1>& operator=(event<T0, T1>&& x) noexcept {
         tamerpriv::simple_event *se = se_;
         se_ = x.se_;
-        s0_ = x.s0_;
-        s1_ = x.s1_;
+        sv_ = x.sv_;
         x.se_ = se;
         return *this;
     }
@@ -369,23 +357,20 @@ class event<T0, T1, void, void>
     }
 
   private:
-
     tamerpriv::simple_event* se_;
-    T0* s0_;
-    T1* s1_;
-
+    std::tuple<T0*, T1*> sv_;
 };
 
 
 template <typename T0>
 class event<T0, void, void, void>
     : public std::unary_function<T0, void> { public:
-
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
+    typedef std::tuple<T0> arguments_type;
 
     inline event() noexcept;
     inline event(T0& x0) noexcept;
-    inline event(value_pack<T0>& x) noexcept;
+    inline event(arguments_type& xs) noexcept;
 
     event(const event<T0>& x) noexcept
         : se_(x.se_), s0_(x.s0_) {
@@ -420,10 +405,10 @@ class event<T0, void, void, void>
         return !se_ || se_->empty();
     }
 
-    inline void trigger(T0 v0);
-    inline void trigger(const value_pack<T0>& v);
     inline void operator()(T0 v0);
-    inline void operator()(const value_pack<T0>& v);
+    inline void operator()(const arguments_type& vs);
+    inline void trigger(T0 v0);
+    inline void trigger(const arguments_type& vs);
     inline void unblock() noexcept;
 
     inline T0& result() const noexcept;
@@ -481,7 +466,6 @@ class event<T0, void, void, void>
     }
 
   private:
-
     tamerpriv::simple_event* se_;
     T0* s0_;
 
@@ -489,19 +473,18 @@ class event<T0, void, void, void>
     inline event(const take_marker &, tamerpriv::simple_event* se, T0* s0)
         : se_(se), s0_(s0) {
     }
-
 };
 
 
 template <>
 class event<void, void, void, void> { public:
-
     typedef void result_type;
+    typedef std::tuple<> arguments_type;
 
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     inline event() noexcept;
-    inline event(value_pack<>& x) noexcept;
+    inline event(arguments_type& xs) noexcept;
 
     event(const event<>& x) noexcept
         : se_(x.se_) {
@@ -538,10 +521,10 @@ class event<void, void, void, void> { public:
         return !se_ || se_->empty();
     }
 
-    inline void trigger() noexcept;
-    inline void trigger(const value_pack<>& v) noexcept;
     inline void operator()() noexcept;
-    inline void operator()(const value_pack<>& v) noexcept;
+    inline void operator()(const arguments_type& vs) noexcept;
+    inline void trigger() noexcept;
+    inline void trigger(const arguments_type& vs) noexcept;
     inline void unblock() noexcept;
 
     inline void at_trigger(const event<>& e) {
@@ -624,6 +607,7 @@ template <typename R, typename T0>
 class preevent : public std::unary_function<const T0&, void> {
   public:
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
+    typedef std::tuple<T0> arguments_type;
 
     inline constexpr preevent(R& r, T0& x0, const char* file = 0, int line = 0) noexcept;
     inline preevent(preevent<R, T0>&& x) noexcept;
@@ -638,20 +622,20 @@ class preevent : public std::unary_function<const T0&, void> {
         return !r_;
     }
 
-    inline void trigger(T0 v0) {
+    inline void operator()(T0 v0) {
         if (r_) {
-            *s0_ = TAMER_MOVE(v0);
+            *s0_ = std::move(v0);
             r_ = 0;
         }
     }
-    inline void trigger(const value_pack<T0>& v) {
-        trigger(v.v0);
+    inline void operator()(const arguments_type& vs) {
+        operator()(std::get<0>(vs));
     }
-    inline void operator()(T0 v0) {
-        trigger(v0);
+    inline void trigger(T0 v0) {
+        operator()(v0);
     }
-    inline void operator()(const value_pack<T0>& v) {
-        trigger(v.v0);
+    inline void trigger(const arguments_type& vs) {
+        operator()(vs);
     }
     inline void unblock() noexcept {
         r_ = 0;
@@ -682,6 +666,7 @@ template <typename R>
 class preevent<R, void> {
   public:
     typedef void result_type;
+    typedef std::tuple<> arguments_type;
     typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     inline constexpr preevent(R& r, const char* file = 0, int line = 0) noexcept;
@@ -697,17 +682,17 @@ class preevent<R, void> {
         return !r_;
     }
 
-    inline void trigger() {
+    inline void operator()() {
         r_ = 0;
     }
-    inline void trigger(const value_pack<>&) {
-        trigger();
+    inline void operator()(const arguments_type&) {
+        operator()();
     }
-    inline void operator()() {
-        trigger();
+    inline void trigger() {
+        operator()();
     }
-    inline void operator()(const value_pack<>&) {
-        trigger();
+    inline void trigger(const arguments_type& vs) {
+        operator()(vs);
     }
     inline void unblock() noexcept {
         r_ = 0;
@@ -732,7 +717,7 @@ class preevent<R, void> {
 /** @brief  Default constructor creates an empty event. */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3>::event() noexcept
-    : se_(0), s0_(0), s1_(0), s2_(0), s3_(0) {
+    : se_(0), sv_(nullptr, nullptr, nullptr, nullptr) {
 }
 
 /** @brief  Construct an empty four-result event on rendezvous @a r.
@@ -743,7 +728,7 @@ inline event<T0, T1, T2, T3>::event() noexcept
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3>::event(T0& x0, T1& x1, T2& x2, T3& x3) noexcept
-    : se_(0), s0_(&x0), s1_(&x1), s2_(&x2), s3_(&x3) {
+    : se_(0), sv_(&x0, &x1, &x2, &x3) {
 }
 
 /** @brief  Construct an empty four-result event on rendezvous @a r.
@@ -753,8 +738,8 @@ inline event<T0, T1, T2, T3>::event(T0& x0, T1& x1, T2& x2, T3& x3) noexcept
  *  @param  x3  Fourth result.
  */
 template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3>::event(value_pack<T0, T1, T2, T3>& s) noexcept
-    : se_(0), s0_(&s.v0), s1_(&s.v1), s2_(&s.v2), s3_(&s.v3) {
+inline event<T0, T1, T2, T3>::event(arguments_type& xs) noexcept
+    : se_(0), sv_(&std::get<0>(xs), &std::get<1>(xs), &std::get<2>(xs), &std::get<3>(xs)) {
 }
 
 /** @brief  Copy-construct event from @a x.
@@ -762,7 +747,7 @@ inline event<T0, T1, T2, T3>::event(value_pack<T0, T1, T2, T3>& s) noexcept
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3>::event(const event<T0, T1, T2, T3>& x) noexcept
-    : se_(x.se_), s0_(x.s0_), s1_(x.s1_), s2_(x.s2_), s3_(x.s3_) {
+    : se_(x.se_), sv_(x.sv_) {
     tamerpriv::simple_event::use(se_);
 }
 
@@ -771,7 +756,7 @@ inline event<T0, T1, T2, T3>::event(const event<T0, T1, T2, T3>& x) noexcept
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3>::event(event<T0, T1, T2, T3>&& x) noexcept
-    : se_(x.se_), s0_(x.s0_), s1_(x.s1_), s2_(x.s2_), s3_(x.s3_) {
+    : se_(x.se_), sv_(x.sv_) {
     x.se_ = 0;
 }
 
@@ -814,12 +799,12 @@ inline bool event<T0, T1, T2, T3>::empty() const {
  *  Does nothing if event is empty.
  */
 template <typename T0, typename T1, typename T2, typename T3>
-inline void event<T0, T1, T2, T3>::trigger(T0 v0, T1 v1, T2 v2, T3 v3) {
+inline void event<T0, T1, T2, T3>::operator()(T0 v0, T1 v1, T2 v2, T3 v3) {
     if (se_ && *se_) {
-        *s0_ = TAMER_MOVE(v0);
-        *s1_ = TAMER_MOVE(v1);
-        *s2_ = TAMER_MOVE(v2);
-        *s3_ = TAMER_MOVE(v3);
+        *std::get<0>(sv_) = std::move(v0);
+        *std::get<1>(sv_) = std::move(v1);
+        *std::get<2>(sv_) = std::move(v2);
+        *std::get<3>(sv_) = std::move(v3);
         se_->simple_trigger(true);
         se_ = 0;
     }
@@ -831,8 +816,8 @@ inline void event<T0, T1, T2, T3>::trigger(T0 v0, T1 v1, T2 v2, T3 v3) {
  *  Does nothing if event is empty.
  */
 template <typename T0, typename T1, typename T2, typename T3>
-inline void event<T0, T1, T2, T3>::trigger(const value_pack<T0, T1, T2, T3>& v) {
-    trigger(v.v0, v.v1, v.v2, v.v3);
+inline void event<T0, T1, T2, T3>::operator()(const arguments_type& vs) {
+    operator()(std::get<0>(vs), std::get<1>(vs), std::get<2>(vs), std::get<3>(vs));
 }
 
 /** @brief  Trigger event.
@@ -843,11 +828,11 @@ inline void event<T0, T1, T2, T3>::trigger(const value_pack<T0, T1, T2, T3>& v) 
  *
  *  Does nothing if event is empty.
  *
- *  @note   This is a synonym for trigger().
+ *  @note   This is a synonym for operator()().
  */
 template <typename T0, typename T1, typename T2, typename T3>
-inline void event<T0, T1, T2, T3>::operator()(T0 v0, T1 v1, T2 v2, T3 v3) {
-    trigger(v0, v1, v2, v3);
+inline void event<T0, T1, T2, T3>::trigger(T0 v0, T1 v1, T2 v2, T3 v3) {
+    operator()(v0, v1, v2, v3);
 }
 
 /** @brief  Trigger event.
@@ -858,8 +843,8 @@ inline void event<T0, T1, T2, T3>::operator()(T0 v0, T1 v1, T2 v2, T3 v3) {
  *  @note   This is a synonym for trigger().
  */
 template <typename T0, typename T1, typename T2, typename T3>
-inline void event<T0, T1, T2, T3>::operator()(const value_pack<T0, T1, T2, T3>& v) {
-    trigger(v);
+inline void event<T0, T1, T2, T3>::trigger(const arguments_type& vs) {
+    operator()(vs);
 }
 
 /** @brief  Unblock event.
@@ -919,10 +904,7 @@ inline event<T0, T1, T2, T3>& event<T0, T1, T2, T3>::operator=(const event<T0, T
     tamerpriv::simple_event::use(x.se_);
     tamerpriv::simple_event::unuse(se_);
     se_ = x.se_;
-    s0_ = x.s0_;
-    s1_ = x.s1_;
-    s2_ = x.s2_;
-    s3_ = x.s3_;
+    sv_ = x.sv_;
     return *this;
 }
 
@@ -933,10 +915,7 @@ template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3>& event<T0, T1, T2, T3>::operator=(event<T0, T1, T2, T3>&& x) noexcept {
     tamerpriv::simple_event *se = se_;
     se_ = x.se_;
-    s0_ = x.s0_;
-    s1_ = x.s1_;
-    s2_ = x.s2_;
-    s3_ = x.s3_;
+    sv_ = x.sv_;
     x.se_ = se;
     return *this;
 }
@@ -977,43 +956,43 @@ inline tamerpriv::simple_event* event<T0, T1, T2, T3>::__release_simple() {
 
 template <typename T0, typename T1, typename T2>
 inline event<T0, T1, T2>::event() noexcept
-    : se_(0), s0_(0), s1_(0), s2_(0) {
+    : se_(0), sv_(nullptr, nullptr, nullptr) {
 }
 
 template <typename T0, typename T1, typename T2>
 inline event<T0, T1, T2>::event(T0& x0, T1& x1, T2& x2) noexcept
-    : se_(0), s0_(&x0), s1_(&x1), s2_(&x2) {
+    : se_(0), sv_(&x0, &x1, &x2) {
 }
 
 template <typename T0, typename T1, typename T2>
-inline event<T0, T1, T2>::event(value_pack<T0, T1, T2>& s) noexcept
-    : se_(0), s0_(&s.v0), s1_(&s.v1), s2_(&s.v2) {
+inline event<T0, T1, T2>::event(arguments_type& xs) noexcept
+    : se_(0), sv_(&std::get<0>(xs), &std::get<1>(xs), &std::get<2>(xs)) {
 }
 
 template <typename T0, typename T1, typename T2>
-inline void event<T0, T1, T2>::trigger(T0 v0, T1 v1, T2 v2) {
+inline void event<T0, T1, T2>::operator()(T0 v0, T1 v1, T2 v2) {
     if (se_ && *se_) {
-        *s0_ = TAMER_MOVE(v0);
-        *s1_ = TAMER_MOVE(v1);
-        *s2_ = TAMER_MOVE(v2);
+        *std::get<0>(sv_) = std::move(v0);
+        *std::get<1>(sv_) = std::move(v1);
+        *std::get<2>(sv_) = std::move(v2);
         se_->simple_trigger(true);
         se_ = 0;
     }
 }
 
 template <typename T0, typename T1, typename T2>
-inline void event<T0, T1, T2>::trigger(const value_pack<T0, T1, T2>& v) {
-    trigger(v.v0, v.v1, v.v2);
+inline void event<T0, T1, T2>::operator()(const arguments_type& vs) {
+    operator()(std::get<0>(vs), std::get<1>(vs), std::get<2>(vs));
 }
 
 template <typename T0, typename T1, typename T2>
-inline void event<T0, T1, T2>::operator()(T0 v0, T1 v1, T2 v2) {
-    trigger(v0, v1, v2);
+inline void event<T0, T1, T2>::trigger(T0 v0, T1 v1, T2 v2) {
+    operator()(v0, v1, v2);
 }
 
 template <typename T0, typename T1, typename T2>
-inline void event<T0, T1, T2>::operator()(const value_pack<T0, T1, T2>& v) {
-    trigger(v);
+inline void event<T0, T1, T2>::trigger(const arguments_type& vs) {
+    operator()(vs);
 }
 
 template <typename T0, typename T1, typename T2>
@@ -1025,42 +1004,42 @@ inline void event<T0, T1, T2>::unblock() noexcept {
 
 template <typename T0, typename T1>
 inline event<T0, T1>::event() noexcept
-    : se_(0), s0_(0), s1_(0) {
+    : se_(0), sv_(nullptr, nullptr) {
 }
 
 template <typename T0, typename T1>
 inline event<T0, T1>::event(T0& x0, T1& x1) noexcept
-    : se_(0), s0_(&x0), s1_(&x1) {
+    : se_(0), sv_(&x0, &x1) {
 }
 
 template <typename T0, typename T1>
-inline event<T0, T1>::event(value_pack<T0, T1>& s) noexcept
-    : se_(0), s0_(&s.v0), s1_(&s.v1) {
+inline event<T0, T1>::event(arguments_type& xs) noexcept
+    : se_(0), sv_(&std::get<0>(xs), &std::get<1>(xs)) {
 }
 
 template <typename T0, typename T1>
-inline void event<T0, T1>::trigger(T0 v0, T1 v1) {
+inline void event<T0, T1>::operator()(T0 v0, T1 v1) {
     if (se_ && *se_) {
-        *s0_ = TAMER_MOVE(v0);
-        *s1_ = TAMER_MOVE(v1);
+        *std::get<0>(sv_) = std::move(v0);
+        *std::get<1>(sv_) = std::move(v1);
         se_->simple_trigger(true);
         se_ = 0;
     }
 }
 
 template <typename T0, typename T1>
-inline void event<T0, T1>::trigger(const value_pack<T0, T1>& v) {
-    trigger(v.v0, v.v1);
+inline void event<T0, T1>::operator()(const arguments_type& vs) {
+    operator()(std::get<0>(vs), std::get<1>(vs));
 }
 
 template <typename T0, typename T1>
-inline void event<T0, T1>::operator()(T0 v0, T1 v1) {
-    trigger(v0, v1);
+inline void event<T0, T1>::trigger(T0 v0, T1 v1) {
+    operator()(v0, v1);
 }
 
 template <typename T0, typename T1>
-inline void event<T0, T1>::operator()(const value_pack<T0, T1>& v) {
-    trigger(v);
+inline void event<T0, T1>::trigger(const arguments_type& vs) {
+    operator()(vs);
 }
 
 template <typename T0, typename T1>
@@ -1081,32 +1060,32 @@ inline event<T0>::event(T0& x0) noexcept
 }
 
 template <typename T0>
-inline event<T0>::event(value_pack<T0>& s) noexcept
-    : se_(0), s0_(&s.v0) {
+inline event<T0>::event(arguments_type& xs) noexcept
+    : se_(0), s0_(&std::get<0>(xs)) {
 }
 
 template <typename T0>
-inline void event<T0>::trigger(T0 v0) {
+inline void event<T0>::operator()(T0 v0) {
     if (se_ && *se_) {
-        *s0_ = TAMER_MOVE(v0);
+        *s0_ = std::move(v0);
         se_->simple_trigger(true);
         se_ = 0;
     }
 }
 
 template <typename T0>
-inline void event<T0>::trigger(const value_pack<T0>& v) {
-    trigger(v.v0);
+inline void event<T0>::operator()(const arguments_type& vs) {
+    operator()(std::get<0>(vs));
 }
 
 template <typename T0>
-inline void event<T0>::operator()(T0 v0) {
-    trigger(v0);
+inline void event<T0>::trigger(T0 v0) {
+    operator()(v0);
 }
 
 template <typename T0>
-inline void event<T0>::operator()(const value_pack<T0>& v) {
-    trigger(v);
+inline void event<T0>::trigger(const arguments_type& vs) {
+    operator()(vs);
 }
 
 template <typename T0>
@@ -1120,29 +1099,29 @@ inline event<>::event() noexcept
     : se_(0) {
 }
 
-inline event<>::event(value_pack<>&) noexcept
+inline event<>::event(arguments_type&) noexcept
     : se_(0) {
 }
 
-inline void event<>::trigger() noexcept {
+inline void event<>::operator()() noexcept {
     tamerpriv::simple_event::simple_trigger(se_, false);
     se_ = 0;
 }
 
-inline void event<>::trigger(const value_pack<>&) noexcept {
-    trigger();
+inline void event<>::operator()(const arguments_type&) noexcept {
+    operator()();
 }
 
-inline void event<>::operator()() noexcept {
-    trigger();
+inline void event<>::trigger() noexcept {
+    operator()();
 }
 
-inline void event<>::operator()(const value_pack<>& v) noexcept {
-    trigger(v);
+inline void event<>::trigger(const arguments_type& vs) noexcept {
+    operator()(vs);
 }
 
 inline void event<>::unblock() noexcept {
-    trigger();
+    operator()();
 }
 
 /** @endcond */
@@ -1223,9 +1202,9 @@ inline event<T0, T1, T2, T3> make_event(one_argument_rendezvous_tag<R>& r, const
 }
 
 template <typename R, typename I, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_event(one_argument_rendezvous_tag<R>& r, const I& eid, value_pack<T0, T1, T2, T3>& sp)
+inline event<T0, T1, T2, T3> make_event(one_argument_rendezvous_tag<R>& r, const I& eid, typename event<T0, T1, T2, T3>::arguments_type& xs)
 {
-    return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid));
+    return event<T0, T1, T2, T3>(xs).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid));
 }
 
 template <typename R, typename T0, typename T1, typename T2, typename T3>
@@ -1235,9 +1214,9 @@ inline event<T0, T1, T2, T3> make_event(zero_argument_rendezvous_tag<R>& r, T0& 
 }
 
 template <typename R, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_event(zero_argument_rendezvous_tag<R>& r, value_pack<T0, T1, T2, T3>& sp)
+inline event<T0, T1, T2, T3> make_event(zero_argument_rendezvous_tag<R>& r, typename event<T0, T1, T2, T3>::arguments_type& xs)
 {
-    return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), 0);
+    return event<T0, T1, T2, T3>(xs).__instantiate(static_cast<R&>(r), 0);
 }
 
 template <typename R, typename I, typename T0, typename T1, typename T2>
@@ -1493,9 +1472,9 @@ inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, on
 }
 
 template <typename R, typename I, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, value_pack<T0, T1, T2, T3>& sp)
+inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, typename event<T0, T1, T2, T3>::arguments_type& xs)
 {
-    return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
+    return event<T0, T1, T2, T3>(xs).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
 template <typename R, typename T0, typename T1, typename T2, typename T3>
@@ -1505,9 +1484,9 @@ inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, ze
 }
 
 template <typename R, typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<T0, T1, T2, T3>& sp)
+inline event<T0, T1, T2, T3> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, typename event<T0, T1, T2, T3>::arguments_type& xs)
 {
-    return event<T0, T1, T2, T3>(sp).__instantiate(static_cast<R&>(r), 0, file, line);
+    return event<T0, T1, T2, T3>(xs).__instantiate(static_cast<R&>(r), 0, file, line);
 }
 
 template <typename R, typename I, typename T0, typename T1, typename T2>
@@ -1517,9 +1496,9 @@ inline event<T0, T1, T2> make_annotated_event(const char *file, int line, one_ar
 }
 
 template <typename R, typename I, typename T0, typename T1, typename T2>
-inline event<T0, T1, T2> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, value_pack<T0, T1, T2>& sp)
+inline event<T0, T1, T2> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, typename event<T0, T1, T2>::arguments_type& xs)
 {
-    return event<T0, T1, T2>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
+    return event<T0, T1, T2>(xs).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
 template <typename R, typename T0, typename T1, typename T2>
@@ -1529,9 +1508,9 @@ inline event<T0, T1, T2> make_annotated_event(const char *file, int line, zero_a
 }
 
 template <typename R, typename T0, typename T1, typename T2>
-inline event<T0, T1, T2> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<T0, T1, T2>& sp)
+inline event<T0, T1, T2> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, typename event<T0, T1, T2>::arguments_type& xs)
 {
-    return event<T0, T1, T2>(sp).__instantiate(static_cast<R&>(r), 0, file, line);
+    return event<T0, T1, T2>(xs).__instantiate(static_cast<R&>(r), 0, file, line);
 }
 
 template <typename R, typename I, typename T0, typename T1>
@@ -1541,9 +1520,9 @@ inline event<T0, T1> make_annotated_event(const char *file, int line, one_argume
 }
 
 template <typename R, typename I, typename T0, typename T1>
-inline event<T0, T1> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, value_pack<T0, T1>& sp)
+inline event<T0, T1> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, typename event<T0, T1>::arguments_type& xs)
 {
-    return event<T0, T1>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
+    return event<T0, T1>(xs).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
 template <typename R, typename T0, typename T1>
@@ -1553,9 +1532,9 @@ inline event<T0, T1> make_annotated_event(const char *file, int line, zero_argum
 }
 
 template <typename R, typename T0, typename T1>
-inline event<T0, T1> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<T0, T1>& sp)
+inline event<T0, T1> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, typename event<T0, T1>::arguments_type& xs)
 {
-    return event<T0, T1>(sp).__instantiate(static_cast<R&>(r), 0, file, line);
+    return event<T0, T1>(xs).__instantiate(static_cast<R&>(r), 0, file, line);
 }
 
 template <typename R, typename I, typename T0>
@@ -1565,9 +1544,9 @@ inline event<T0> make_annotated_event(const char *file, int line, one_argument_r
 }
 
 template <typename R, typename I, typename T0>
-inline event<T0> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, value_pack<T0>& sp)
+inline event<T0> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, std::tuple<T0>& xs)
 {
-    return event<T0>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
+    return event<T0>(xs).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
 #if !TAMER_HAVE_PREEVENT || !TAMER_PREFER_PREEVENT
@@ -1578,9 +1557,9 @@ inline event<T0> make_annotated_event(const char *file, int line, zero_argument_
 }
 
 template <typename R, typename T0>
-inline event<T0> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<T0>& sp)
+inline event<T0> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, std::tuple<T0>& xs)
 {
-    return event<T0>(sp).__instantiate(static_cast<R&>(r), 0, file, line);
+    return event<T0>(xs).__instantiate(static_cast<R&>(r), 0, file, line);
 }
 #else
 template <typename R, typename T0>
@@ -1590,9 +1569,9 @@ inline preevent<R, T0> make_annotated_event(const char *file, int line, zero_arg
 }
 
 template <typename R, typename T0>
-inline preevent<T0> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<T0>& sp)
+inline preevent<T0> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, std::tuple<T0>& xs)
 {
-    return preevent<R, T0>(static_cast<R&>(r), sp, file, line);
+    return preevent<R, T0>(static_cast<R&>(r), xs, file, line);
 }
 #endif
 
@@ -1604,9 +1583,9 @@ inline preevent<R, T0> make_annotated_preevent(const char *file, int line, zero_
 }
 
 template <typename R, typename T0>
-inline preevent<R, T0> make_annotated_preevent(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<T0>& sp)
+inline preevent<R, T0> make_annotated_preevent(const char *file, int line, zero_argument_rendezvous_tag<R>& r, std::tuple<T0>& xs)
 {
-    return preevent<R, T0>(static_cast<R&>(r), sp, file, line);
+    return preevent<R, T0>(static_cast<R&>(r), xs, file, line);
 }
 #endif
 
@@ -1617,9 +1596,9 @@ inline event<> make_annotated_event(const char *file, int line, one_argument_ren
 }
 
 template <typename R, typename I>
-inline event<> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, value_pack<>& sp)
+inline event<> make_annotated_event(const char *file, int line, one_argument_rendezvous_tag<R>& r, const I& eid, typename event<>::arguments_type& xs)
 {
-    return event<>(sp).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
+    return event<>(xs).__instantiate(static_cast<R&>(r), static_cast<R&>(r).make_rid(eid), file, line);
 }
 
 #if !TAMER_HAVE_PREEVENT || !TAMER_PREFER_PREEVENT
@@ -1630,9 +1609,9 @@ inline event<> make_annotated_event(const char *file, int line, zero_argument_re
 }
 
 template <typename R>
-inline event<> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<>& sp)
+inline event<> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, typename event<>::arguments_type& xs)
 {
-    return event<>(sp).__instantiate(static_cast<R&>(r), 0, file, line);
+    return event<>(xs).__instantiate(static_cast<R&>(r), 0, file, line);
 }
 #else
 template <typename R>
@@ -1642,9 +1621,9 @@ inline preevent<R> make_annotated_event(const char *file, int line, zero_argumen
 }
 
 template <typename R>
-inline preevent<R> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<>& sp)
+inline preevent<R> make_annotated_event(const char *file, int line, zero_argument_rendezvous_tag<R>& r, typename event<>::arguments_type& xs)
 {
-    (void) sp;
+    (void) xs;
     return preevent<R>(static_cast<R&>(r), file, line);
 }
 #endif
@@ -1657,9 +1636,9 @@ inline preevent<R> make_annotated_preevent(const char *file, int line, zero_argu
 }
 
 template <typename R>
-inline event<> make_annotated_preevent(const char *file, int line, zero_argument_rendezvous_tag<R>& r, value_pack<>& sp)
+inline event<> make_annotated_preevent(const char *file, int line, zero_argument_rendezvous_tag<R>& r, typename event<>::arguments_type& xs)
 {
-    (void) sp;
+    (void) xs;
     return preevent<R>(static_cast<R&>(r), file, line);
 }
 #endif
