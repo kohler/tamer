@@ -385,7 +385,6 @@ void vartab_t::mangle(strbuf &b) const
 }
 
 class mangler { public:
-
     mangler(const str &s);
 
     void make_base(const str & = str());
@@ -395,29 +394,71 @@ class mangler { public:
 
     str s();
 
+private:
     int _cvflag;
     int _lflag;
     str _base;
     str _ptr;
     strbuf _result;
+    enum { cv_const = 1, cv_volatile = 2, cv_restrict = 4, cv_complex_type = 8 };
+    enum { l_signed = 1, l_unsigned = 2, l_short = 4, l_long = 8, l_long_long = 16 };
 };
+
+// TYPE MANGLER DOCUMENTATION
+//   a      base       signed char
+//   b      base       bool
+//   c      base       char
+//   d      base       double
+//   e      base       long double
+//   f      base       float
+//   g      base       ssize_t
+//   h      base       unsigned char
+//   i      base       int
+//   j      base       unsigned int
+//   k      base       size_t
+//   l      base       long
+//   m      base       unsigned long
+//   r      modifier   restrict
+//   s      base       short
+//   t      base       unsigned short
+//   v      base       void
+//   vv     base       encoding confusion
+//   w      base       wchar_t
+//   x      base       long long
+//   y      base       unsigned long long
+//   z      base       `...`
+//   Annn_  modifier   array
+//   E      modifier   following type is complicated?
+//   IxxxE  modifier   template arguments `xxx`
+//   K      modifier   const
+//   N      modifier   following type is complicated?
+//   Q      base       `tamer::event`
+//   P      modifier   pointer
+//   R      modifier   reference
+//   Sa     base       `std::allocator`
+//   Sb     base       `std::basic_string`
+//   Sf     base       `tamer::fd`
+//   Ss     base       `std::string`
+//   St     base       `std::`
+//   Sx     base       `tamer::`
+//   V      modifier   volatile
 
 str mangler::cv(int cvflag)
 {
     if (!cvflag)
         return str();
-    if (cvflag == 1)
+    if (cvflag == cv_const)
         return "K";
-    else if (cvflag == 2)
+    else if (cvflag == cv_volatile)
         return "V";
     str s;
-    if (cvflag & 4)
+    if (cvflag & cv_restrict)
         s += "r";
-    if (cvflag & 2)
+    if (cvflag & cv_volatile)
         s += "V";
-    if (cvflag & 1)
+    if (cvflag & cv_const)
         s += "K";
-    if (cvflag & 8)
+    if (cvflag & cv_complex_type)
         s += "N";
     return s;
 }
@@ -425,26 +466,28 @@ str mangler::cv(int cvflag)
 void mangler::make_base(const str &nnn)
 {
     if (!_base.length()) {
-        if (((_lflag & 4) && nnn != "i" && nnn != "d")
-            || ((_lflag & 3) && nnn != "c" && nnn != "s" && nnn != "i"))
+        if (((_lflag & (l_short | l_long | l_long_long)) && nnn != "i" && nnn != "d")
+            || ((_lflag & (l_signed | l_unsigned)) && nnn != "c" && nnn != "s" && nnn != "i"))
             _base = "i";
     }
     if (!_base.length() && !nnn.length())
         _base = "vv";
     if (_base.length()) {
-        if ((_lflag & 8) && _base == "i")
+        if ((_lflag & l_long_long) && _base == "i")
             _base = "x";
-        else if ((_lflag & 4) && _base == "i")
+        else if ((_lflag & l_long) && _base == "i")
             _base = "l";
-        else if ((_lflag & 4) && _base == "d")
+        else if ((_lflag & l_short) && _base == "i")
+            _base = "s";
+        else if ((_lflag & l_long) && _base == "d")
             _base = "e";
-        if ((_lflag & 1) && _base == "c")
+        if ((_lflag & l_signed) && _base == "c")
             _base = "a";
-        else if ((_lflag & 2) && _base == "c")
+        else if ((_lflag & l_unsigned) && _base == "c")
             _base = "h";
-        else if ((_lflag & 2) && (_base == "s" || _base == "i" || _base == "l" || _base == "x"))
+        else if ((_lflag & l_unsigned) && (_base == "s" || _base == "i" || _base == "l" || _base == "x"))
             _base[0]++;
-        if (_cvflag & 8)
+        if (_cvflag & cv_complex_type)
             _base += "E";
         _base = _ptr + cv(_cvflag) + _base;
         _cvflag = 0;
@@ -490,29 +533,33 @@ mangler::mangler(const str &s)
                     break;
             str s(j, i);
             if (s == "restrict")
-                _cvflag |= 4;
+                _cvflag |= cv_restrict;
             else if (s == "volatile")
-                _cvflag |= 2;
+                _cvflag |= cv_volatile;
             else if (s == "const")
-                _cvflag |= 1;
+                _cvflag |= cv_const;
             else if (s == "void")
                 do_base("v");
             else if (s == "wchar_t")
                 do_base("w");
             else if (s == "size_t")
                 do_base("k");
+            else if (s == "ssize_t")
+                do_base("g");
             else if (s == "bool")
                 do_base("b");
             else if (s == "char")
                 do_base("c");
+            else if (s == "short")
+                _lflag |= l_short;
             else if (s == "signed")
-                _lflag |= 1;
+                _lflag |= l_signed;
             else if (s == "unsigned")
-                _lflag |= 2;
+                _lflag |= l_unsigned;
             else if (s == "int")
                 do_base("i");
             else if (s == "long")
-                _lflag |= (_lflag & 4 ? 8 : 4);
+                _lflag |= (_lflag & l_long ? l_long_long : l_long);
             else if (s == "float")
                 do_base("f");
             else if (s == "double")
@@ -544,7 +591,7 @@ mangler::mangler(const str &s)
             else if (_base == "Sx2fd")
                 _base = "Sf";
             else
-                _cvflag |= 8;
+                _cvflag |= cv_complex_type;
         } else if (*i == '*') {
             if (_lflag || _cvflag)
                 make_base("");
@@ -590,7 +637,7 @@ mangler::mangler(const str &s)
                 i++;
             if (_base == "5event") {
                 _base = "Q";
-                _cvflag &= ~8;
+                _cvflag &= ~cv_complex_type;
             }
             str targs = b.str();
             if (_base == "Q")
