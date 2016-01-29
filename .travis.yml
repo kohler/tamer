@@ -2,6 +2,16 @@ language: c++
 compiler:
   - gcc
   - clang
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-4.8
+    - g++-4.8
+before_script:
+  - if test CC=gcc && which gcc-4.9 >/dev/null 2>&1; then export CC=gcc-4.9 CXX=g++-4.9; fi
+  - if test CC=gcc && which gcc-4.8 >/dev/null 2>&1; then export CC=gcc-4.8 CXX=g++-4.8; fi
+  - ./bootstrap.sh
 script: ./configure && make && make check
-before_script: ./bootstrap.sh
 sudo: false
