@@ -236,7 +236,7 @@ NOTE-- this code is probably broken
 #else
         while (1)
         {
-	    twait { f.read(buf, BUFSZ, n, make_event(rc)); }
+	    twait { f.read(buf, BUFSZ, make_event(n, rc)); }
 	    if (rc < 0) {
                 perror("read");
                 success = 0;
@@ -244,7 +244,7 @@ NOTE-- this code is probably broken
             } else if (n == 0)
 		break;
 
-	    twait { client.write(buf, n, n, make_event(rc)); }
+	    twait { client.write(buf, n, make_event(n, rc)); }
 	    if (rc < 0) {
 		perror("write");
 		success = 0;
@@ -313,7 +313,7 @@ process_client_cache(http_request *request, tamer::fd client, tamer::event<int> 
         }
 
 
-	twait { client.write(entry->data(), entry->size(), written, make_event(rc)); }
+	twait { client.write(entry->data(), entry->size(), make_event(written, rc)); }
 
 	pthread_mutex_lock(&g_cache_mutex);
 	g_bytes_sent += written;

@@ -429,11 +429,12 @@ tamed static void http_parser::send_request(fd f, const http_message& m,
     body = m.body();
     if (body.length() + buf.str().length() < 16384) {
         buf << TAMER_MOVE(body);
-        f.write(buf.str(), done);
-    } else {
-        twait { f.write(buf.str(), make_event()); }
-        f.write(TAMER_MOVE(body), done);
+        body = "";
     }
+    twait { f.write(buf.str().data(), buf.str().length(), rebind<size_t, int>(make_event())); }
+    if (body.length())
+        twait { f.write(body.data(), body.length(), rebind<size_t, int>(make_event())); }
+    done();
 }
 
 void http_parser::unparse_response_headers(std::ostringstream& buf,
@@ -464,36 +465,39 @@ tamed static void http_parser::send_response(fd f, const http_message& m,
     body = m.body();
     if (body.length() + buf.str().length() <= 16384) {
         buf << TAMER_MOVE(body);
-        f.write(buf.str(), done);
-    } else {
-        twait { f.write(buf.str(), make_event()); }
-        f.write(TAMER_MOVE(body), done);
+        body = "";
     }
+    twait { f.write(buf.str().data(), buf.str().length(), rebind<size_t, int>(make_event())); }
+    if (body.length())
+        twait { f.write(body.data(), body.length(), rebind<size_t, int>(make_event())); }
+    done();
 }
 
-void http_parser::send_response_headers(fd f, const http_message& m,
-                                        event<> done) {
-    std::ostringstream buf;
+tamed static void http_parser::send_response_headers(fd f, const http_message& m,
+                                                     event<> done) {
+    tvars { std::ostringstream buf; }
     unparse_response_headers(buf, m, false);
-    f.write(buf.str(), done);
+    twait { f.write(buf.str().data(), buf.str().length(), rebind<size_t, int>(make_event())); }
+    done();
 }
 
 tamed static void http_parser::send_response_chunk(fd f, std::string s,
                                                    event<> done) {
     tamed { std::ostringstream buf; }
     buf << s.length() << "\r\n";
-    if (s.length() <= 16384) {
+    if (s.length() <= 16375) {
         buf << s << "\r\n";
-        f.write(buf.str(), done);
+        twait { f.write(buf.str().data(), buf.str().length(), rebind<size_t, int>(make_event())); }
     } else {
-        twait { f.write(buf.str(), make_event()); }
-        twait { f.write(TAMER_MOVE(s), make_event()); }
-        f.write("\r\n", 2, done);
+        twait { f.write(buf.str().data(), buf.str().length(), rebind<size_t, int>(make_event())); }
+        twait { f.write(s.data(), s.length(), rebind<size_t, int>(make_event())); }
+        twait { f.write("\r\n", 2, rebind<size_t, int>(make_event())); }
     }
+    done();
 }
 
 void http_parser::send_response_end(fd f, event<> done) {
-    f.write("0\r\n\r\n", 5, done);
+    f.write("0\r\n\r\n", 5, rebind<size_t, int>(done));
 }
 
 void http_parser::send(fd f, const http_message& m, event<> done) {

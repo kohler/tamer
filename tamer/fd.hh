@@ -68,39 +68,15 @@ class fd {
     inline void close(int errcode);
     inline void error_close(int errcode);
 
-    void read(void* buf, size_t size, size_t* nread_ptr, event<int> done);
-    inline void read(void* buf, size_t size, size_t& nread, event<int> done);
-    inline void read(void* buf, size_t size, size_t& nread, event<> done);
-    inline void read(void* buf, size_t size, event<int> done);
-    inline void read(void* buf, size_t size, event<> done);
-    void read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<int> done);
-    inline void read(struct iovec* iov, int iov_count, size_t& nread, event<int> done);
-    inline void read(struct iovec* iov, int iov_count, size_t& nread, event<> done);
-    void read_once(void* buf, size_t size, size_t& nread, event<int> done);
-    inline void read_once(void* buf, size_t size, size_t& nread, event<> done);
-    void read_once(const struct iovec* iov, int iov_count, size_t& nread, event<int> done);
-    inline void read_once(const struct iovec* iov, int iov_count, size_t& nread, event<> done);
+    void read(void* buf, size_t size, event<size_t, int> done);
+    void read(struct iovec* iov, int iov_count, event<size_t, int> done);
+    void read_once(void* buf, size_t size, event<size_t, int> done);
 
-    void write(const void* buf, size_t size, size_t* nwritten_ptr, event<int> done);
-    inline void write(const void* buf, size_t size, size_t& nwritten, event<int> done);
-    inline void write(const void* buf, size_t size, size_t& nwritten, event<> done);
-    inline void write(const void* buf, size_t size, event<int> done);
-    inline void write(const void* buf, size_t size, event<> done);
-    void write(std::string buf, size_t* nwritten_ptr, event<int> done);
-    inline void write(const std::string& buf, size_t& nwritten, event<int> done);
-    inline void write(const std::string& buf, size_t& nwritten, event<> done);
-    inline void write(const std::string& buf, event<int> done);
-    inline void write(const std::string& buf, event<> done);
-    void write(struct iovec* iov, int iov_count, size_t* nwritten_ptr, event<int> done);
-    inline void write(struct iovec* iov, int iov_count, size_t& nwritten, event<int> done);
-    inline void write(struct iovec* iov, int iov_count, size_t& nwritten, event<> done);
-    void write_once(const void* buf, size_t size, size_t& nwritten, event<int> done);
-    inline void write_once(const void* buf, size_t size, size_t& nwritten, event<> done);
-    void write_once(const struct iovec* iov, int iov_count, size_t& nwritten, event<int> done);
-    inline void write_once(const struct iovec* iov, int iov_count, size_t& nwritten, event<> done);
+    void write(const void* buf, size_t size, event<size_t, int> done);
+    void write(struct iovec* iov, int iov_count, event<size_t, int> done);
+    void write_once(const void* buf, size_t size, event<size_t, int> done);
 
     void sendmsg(const void* buf, size_t size, int transfer_fd, event<int> done);
-    inline void sendmsg(const void* buf, size_t size, event<int> done);
 
     void fstat(struct stat& stat, event<int> done);
 
@@ -172,15 +148,12 @@ class fd {
 
     class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_&);
     class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_&);
-    class closure__read__PvkPkQi_; void read(closure__read__PvkPkQi_&);
-    class closure__read__P5ioveciPkQi_; void read(closure__read__P5ioveciPkQi_&);
-    class closure__read_once__PvkRkQi_; void read_once(closure__read_once__PvkRkQi_ &);
-    class closure__read_once__PK5ioveciRkQi_; void read_once(closure__read_once__PK5ioveciRkQi_&);
-    class closure__write__PKvkPkQi_; void write(closure__write__PKvkPkQi_ &);
-    class closure__write__SsPkQi_; void write(closure__write__SsPkQi_ &);
-    class closure__write__P5ioveciPkQi_; void write(closure__write__P5ioveciPkQi_&);
-    class closure__write_once__PKvkRkQi_; void write_once(closure__write_once__PKvkRkQi_ &);
-    class closure__write_once__PK5ioveciRkQi_; void write_once(closure__write_once__PK5ioveciRkQi_&);
+    class closure__read__PvkQki_; void read(closure__read__PvkQki_&);
+    class closure__read__P5ioveciQki_; void read(closure__read__P5ioveciQki_&);
+    class closure__read_once__PvkQki_; void read_once(closure__read_once__PvkQki_&);
+    class closure__write__PKvkQki_; void write(closure__write__PKvkQki_&);
+    class closure__write__P5ioveciQki_; void write(closure__write__P5ioveciQki_&);
+    class closure__write_once__PKvkQki_; void write_once(closure__write_once__PKvkQki_&);
     class closure__sendmsg__PKvkiQi_; void sendmsg(closure__sendmsg__PKvkiQi_ &);
     class closure__open__PKci6mode_tQ2fd_; static void open(closure__open__PKci6mode_tQ2fd_ &);
 
@@ -464,204 +437,6 @@ inline int fd::socket_error() const {
         return r ? -error : 0;
     } else
         return -EBADF;
-}
-
-/** @brief  Read from file descriptor.
- *  @param[out]  buf     Buffer.
- *  @param       size    Buffer size.
- *  @param[out]  nread   Number of characters read.
- *  @param       done    Event triggered on completion.
- *
- *  Reads @a size bytes from the file descriptor, blocking until @a size
- *  bytes are available (or end-of-file or an error condition).  @a done
- *  is triggered with 0 on success or end-of-file, or a negative error
- *  code.  @a nread is kept up to date as the read progresses.
- *
- *  @sa read_once(void*, size_t, size_t&, event<int>)
- */
-inline void fd::read(void* buf, size_t size, size_t& nread, event<int> done) {
-    read(buf, size, &nread, done);
-}
-
-inline void fd::read(void* buf, size_t size, size_t& nread, event<> done) {
-    read(buf, size, &nread, rebind<int>(done));
-}
-
-/** @brief  Read from file descriptor.
- *  @param[out]  buf     Buffer.
- *  @param       size    Buffer size.
- *  @param       done    Event triggered on completion.
- *
- *  Reads @a size bytes from the file descriptor, blocking until @a size bytes
- *  are available (or end-of-file or an error condition). Similar to read(void
- *  *, size_t, size_t &, event<int>), but does not return the number of
- *  characters actually read.
- */
-inline void fd::read(void* buf, size_t size, event<int> done) {
-    read(buf, size, (size_t*) 0, done);
-}
-
-inline void fd::read(void* buf, size_t size, event<> done) {
-    read(buf, size, (size_t*) 0, rebind<int>(done));
-}
-
-/** @brief  Read from file descriptor.
- *  @param[in,out]  iov         I/O vector.
- *  @param          iov_count   Number of elements in I/O vector.
- *  @param[out]     nread       Number of characters read.
- *  @param          done        Event triggered on completion.
- *
- *  Reads @a size bytes from the file descriptor, blocking until @a size
- *  bytes are available (or end-of-file or an error condition). @a done
- *  is triggered with 0 on success or end-of-file, or a negative error
- *  code. @a nread is kept up to date as the read progresses. @a iov may
- *  be modified as a side effect.
- *
- *  @sa read_once(const struct iovec*, int, size_t&, event<int>)
- */
-inline void fd::read(struct iovec* iov, int iov_count, size_t& nread, event<int> done) {
-    read(iov, iov_count, &nread, done);
-}
-
-inline void fd::read(struct iovec* iov, int iov_count, size_t& nread, event<> done) {
-    read(iov, iov_count, &nread, rebind<int>(done));
-}
-
-/** @brief  Read once from file descriptor.
- *  @param[out]  buf     Buffer.
- *  @param       size    Buffer size.
- *  @param[out]  nread   Number of characters read.
- *  @param       done    Event triggered on completion.
- *
- *  Reads at most @a size bytes from the file descriptor. Blocks until at
- *  least one byte is read (or end-of-file or an error condition), but unlike
- *  read(), @a done is triggered after the @em first successful read, even if
- *  less than @a size bytes are read. @a done is triggered with 0 on success,
- *  or a negative error code. @a nread is kept up to date as the read
- *  progresses.
- *
- *  @sa read(void *, size_t, size_t &, event<int>)
- */
-inline void fd::read_once(void *buf, size_t size, size_t& nread, event<> done) {
-    read_once(buf, size, nread, rebind<int>(done));
-}
-
-/** @brief  Read once from file descriptor.
- *  @param       iov         I/O vector.
- *  @param       iov_count   Number of elements in I/O vector.
- *  @param[out]  nread       Number of characters read.
- *  @param       done        Event triggered on completion.
- *
- *  Reads at most @a size bytes from the file descriptor. Blocks until at
- *  least one byte is read (or end-of-file or an error condition), but unlike
- *  read(), @a done is triggered after the @em first successful read, even if
- *  less than @a size bytes are read. @a done is triggered with 0 on success,
- *  or a negative error code. @a nread is kept up to date as the read
- *  progresses. Unlike read(), @a iov is never modified.
- *
- *  @sa read(void *, size_t, size_t &, event<int>)
- */
-inline void fd::read_once(const struct iovec* iov, int iov_count, size_t& nread, event<> done) {
-    read_once(iov, iov_count, nread, rebind<int>(done));
-}
-
-
-/** @brief  Write to file descriptor.
- *  @param       buf       Buffer.
- *  @param       size      Buffer size.
- *  @param[out]  nwritten  Number of characters written.
- *  @param       done      Event triggered on completion.
- *
- *  @a done is triggered with 0 on success or end-of-file, or a negative
- *  error code.  @a nwritten is kept up to date as the write progresses.
- *
- *  @sa write(std::string, size_t, event<int>)
- */
-inline void fd::write(const void *buf, size_t size, size_t& nwritten, event<int> done) {
-    write(buf, size, &nwritten, done);
-}
-
-inline void fd::write(const void *buf, size_t size, size_t& nwritten, event<> done) {
-    write(buf, size, &nwritten, rebind<int>(done));
-}
-
-/** @brief  Write to file descriptor.
- *  @param[in,out]  iov         I/O vector.
- *  @param          iov_count   Number of elements in I/O vector.
- *  @param[out]     nwritten    Number of characters written.
- *  @param          done        Event triggered on completion.
- *
- *  @a done is triggered with 0 on success or end-of-file, or a negative
- *  error code. @a nwritten is kept up to date as the write progresses.
- *  The @a iov array might be modified during the write.
- *
- *  @sa write(std::string, size_t, event<int>)
- */
-inline void fd::write(struct iovec* iov, int iov_count, size_t& nwritten, event<int> done) {
-    write(iov, iov_count, &nwritten, done);
-}
-
-inline void fd::write(struct iovec* iov, int iov_count, size_t& nwritten, event<> done) {
-    write(iov, iov_count, &nwritten, rebind<int>(done));
-}
-
-/** @brief  Write to file descriptor.
- *  @param  buf   Buffer.
- *  @param  size  Buffer size.
- *  @param  done  Event triggered on completion.
- *
- *  Similar to write(const void *, size_t, size_t &, event<int>), but does
- *  not return the number of characters actually written.
- */
-inline void fd::write(const void *buf, size_t size, event<int> done) {
-    write(buf, size, 0, done);
-}
-
-inline void fd::write(const void *buf, size_t size, event<> done) {
-    write(buf, size, 0, rebind<int>(done));
-}
-
-/** @brief  Write string to file descriptor.
- *  @param       buf       Buffer.
- *  @param[out]  nwritten  Number of characters written.
- *  @param       done      Event triggered on completion.
- *
- *  Equivalent to write(buf.data(), buf.length(), nwritten, done).
- */
-inline void fd::write(const std::string& buf, size_t& nwritten, event<int> done) {
-    write(buf, &nwritten, done);
-}
-
-inline void fd::write(const std::string& buf, size_t& nwritten, event<> done) {
-    write(buf, &nwritten, rebind<int>(done));
-}
-
-/** @brief  Write string to file descriptor.
- *  @param  buf   Buffer.
- *  @param  done  Event triggered on completion.
- *
- *  Equivalent to write(buf.data(), buf.length(), done).
- */
-inline void fd::write(const std::string& buf, event<int> done) {
-    write(buf, (size_t*) 0, done);
-}
-
-inline void fd::write(const std::string &buf, event<> done) {
-    write(buf, (size_t*) 0, rebind<int>(done));
-}
-
-inline void fd::write_once(const void *buf, size_t size, size_t& nwritten, event<> done) {
-    write_once(buf, size, nwritten, rebind<int>(done));
-}
-
-inline void fd::write_once(const struct iovec* iov, int iov_count, size_t& nwritten, event<> done) {
-    write_once(iov, iov_count, nwritten, rebind<int>(done));
-}
-
-
-/** @overload */
-inline void fd::sendmsg(const void *buf, size_t size, event<int> done) {
-    sendmsg(buf, size, -1, done);
 }
 
 /** @brief  Close file descriptor, marking it with an error.

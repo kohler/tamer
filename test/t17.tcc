@@ -24,7 +24,7 @@
 tamed void readit(tamer::fd fd) {
     tvars { char buf[1024]; size_t x; int ret; }
     twait [std::string("READING SOMETHING", 10) + " OR OTHER"] {
-        fd.read(buf, sizeof(buf), x, make_event(ret));
+        fd.read(buf, sizeof(buf), make_event(x, ret));
     }
     std::cout << ret << " returned, " << x << " bytes read\n";
 }

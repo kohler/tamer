@@ -29,7 +29,7 @@ tamed void run(tamer::fd fd, std::string s, double rate, unsigned long limit) {
 
     while (1) {
 	// Write a copy of `s` to `fd`
-	twait { fd.write(s, make_event(r)); }
+	twait { fd.write(s.data(), s.length(), make_event(w, r)); }
 	// Just exit on error
 	if (r < 0)
 	    exit(0);

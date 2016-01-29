@@ -223,7 +223,7 @@ void fd::fstat(struct stat &stat_out, event<int> done)
         done.trigger(-EBADF);
 }
 
-tamed void fd::read(void *buf, size_t size, size_t* nread_ptr, event<int> done)
+tamed void fd::read(void *buf, size_t size, event<size_t, int> done)
 {
     tvars {
         size_t pos = 0;
@@ -231,11 +231,8 @@ tamed void fd::read(void *buf, size_t size, size_t* nread_ptr, event<int> done)
         fdref fi(*this, fdref::weak);
     }
 
-    if (nread_ptr)
-        *nread_ptr = 0;
-
     if (!fi) {
-        done.trigger(-EBADF);
+        done(0, -EBADF);
         return;
     }
 
@@ -246,28 +243,28 @@ tamed void fd::read(void *buf, size_t size, size_t* nread_ptr, event<int> done)
     }
 #endif
 
+    done.set_result<0>(pos);
     twait { fi.acquire_read(make_event()); }
 
     while (pos != size && done && fi) {
+        done.set_result<0>(pos);
         amt = fi.read(static_cast<char*>(buf) + pos, size - pos);
-        if (amt != 0 && amt != (ssize_t) -1) {
+        if (amt != 0 && amt != (ssize_t) -1)
             pos += amt;
-            if (nread_ptr)
-                *nread_ptr = pos;
-        } else if (amt == 0)
+        else if (amt == 0)
             break;
         else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
         } else if (errno != EINTR) {
-            done.trigger(-errno);
+            done(pos, -errno);
             break;
         }
     }
 
-    done.trigger(pos == size || fi ? 0 : -ECANCELED);
+    done(pos, pos == size || fi ? 0 : -ECANCELED);
 }
 
-tamed void fd::read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<int> done)
+tamed void fd::read(struct iovec* iov, int iov_count, event<size_t, int> done)
 {
     tvars {
         size_t pos = 0;
@@ -276,11 +273,8 @@ tamed void fd::read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<i
         fdref fi(*this, fdref::weak);
     }
 
-    if (nread_ptr)
-        *nread_ptr = 0;
-
     if (!fi) {
-        done.trigger(-EBADF);
+        done(0, -EBADF);
         return;
     }
 
@@ -294,14 +288,14 @@ tamed void fd::read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<i
     }
 #endif
 
+    done.set_result<0>(pos);
     twait { fi.acquire_read(make_event()); }
 
     while (pos != size && done && fi) {
+        done.set_result<0>(pos);
         amt = ::readv(fi.fdnum(), iov, iov_count);
         if (amt != 0 && amt != (ssize_t) -1) {
             pos += amt;
-            if (nread_ptr)
-                *nread_ptr = pos;
             if (pos != size) {
                 while (amt != 0 && (size_t) amt >= iov[0].iov_len) {
                     amt -= iov[0].iov_len;
@@ -317,80 +311,44 @@ tamed void fd::read(struct iovec* iov, int iov_count, size_t* nread_ptr, event<i
         else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
         } else if (errno != EINTR) {
-            done.trigger(-errno);
+            done(pos, -errno);
             break;
         }
     }
 
-    done.trigger(pos == size || fi ? 0 : -ECANCELED);
+    done(pos, pos == size || fi ? 0 : -ECANCELED);
 }
 
-tamed void fd::read_once(void* buf, size_t size, size_t& nread, event<int> done)
+tamed void fd::read_once(void* buf, size_t size, event<size_t, int> done)
 {
     tvars {
         ssize_t amt;
         fdref fi(*this, fdref::weak);
     }
 
-    nread = 0;
-
     if (!fi) {
-        done.trigger(-EBADF);
+        done(0, -EBADF);
         return;
     }
 
+    done.set_result<0>(0);
     twait { fi.acquire_read(make_event()); }
 
     while (done && fi) {
         amt = fi.read(static_cast<char*>(buf), size);
         if (amt != (ssize_t) -1) {
-            nread = amt;
+            done(size_t(amt), 0);
             break;
         } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
         } else if (errno != EINTR) {
-            done.trigger(-errno);
+            done(0, -errno);
             break;
         }
     }
-
-    done.trigger(0);
 }
 
-tamed void fd::read_once(const struct iovec* iov, int iov_count, size_t& nread, event<int> done)
-{
-    tvars {
-        ssize_t amt;
-        fdref fi(*this, fdref::weak);
-    }
-
-    nread = 0;
-
-    if (!fi) {
-        done.trigger(-EBADF);
-        return;
-    }
-
-    twait { fi.acquire_read(make_event()); }
-
-    while (done && fi) {
-        amt = ::readv(fi.fdnum(), iov, iov_count);
-        if (amt != (ssize_t) -1) {
-            nread = amt;
-            break;
-        } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
-        } else if (errno != EINTR) {
-            done.trigger(-errno);
-            break;
-        }
-    }
-
-    done.trigger(0);
-}
-
-tamed void fd::write(const void* buf, size_t size, size_t* nwritten_ptr,
-                     event<int> done)
+tamed void fd::write(const void* buf, size_t size, event<size_t, int> done)
 {
     tvars {
         size_t pos = 0;
@@ -398,11 +356,8 @@ tamed void fd::write(const void* buf, size_t size, size_t* nwritten_ptr,
         fdref fi(*this, fdref::weak);
     }
 
-    if (nwritten_ptr)
-        *nwritten_ptr = 0;
-
     if (!fi) {
-        done.trigger(-EBADF);
+        done(0, -EBADF);
         return;
     }
 
@@ -413,37 +368,28 @@ tamed void fd::write(const void* buf, size_t size, size_t* nwritten_ptr,
     }
 #endif
 
+    done.set_result<0>(pos);
     twait { fi.acquire_write(make_event()); }
 
     while (pos != size && done && fi) {
+        done.set_result<0>(pos);
         amt = fi.write(static_cast<const char*>(buf) + pos, size - pos);
-        if (amt != 0 && amt != (ssize_t) -1) {
+        if (amt != 0 && amt != (ssize_t) -1)
             pos += amt;
-            if (nwritten_ptr)
-                *nwritten_ptr = pos;
-        } else if (amt == 0)
+        else if (amt == 0)
             break;
         else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
         } else if (errno != EINTR) {
-            done.trigger(-errno);
+            done(pos, -errno);
             break;
         }
     }
 
-    done.trigger(pos == size || fi ? 0 : -ECANCELED);
+    done(pos, pos == size || fi ? 0 : -ECANCELED);
 }
 
-tamed void fd::write(std::string s, size_t* nwritten_ptr, event<int> done)
-{
-    twait { // This twait block prevents s from being destroyed.
-        done.at_trigger(make_event());
-        write(s.data(), s.length(), nwritten_ptr, done);
-    }
-}
-
-tamed void fd::write(struct iovec* iov, int iov_count, size_t* nwritten_ptr,
-                     event<int> done)
+tamed void fd::write(struct iovec* iov, int iov_count, event<size_t, int> done)
 {
     tvars {
         size_t pos = 0;
@@ -452,11 +398,8 @@ tamed void fd::write(struct iovec* iov, int iov_count, size_t* nwritten_ptr,
         fdref fi(*this, fdref::weak);
     }
 
-    if (nwritten_ptr)
-        *nwritten_ptr = 0;
-
     if (!fi) {
-        done.trigger(-EBADF);
+        done(0, -EBADF);
         return;
     }
 
@@ -470,14 +413,14 @@ tamed void fd::write(struct iovec* iov, int iov_count, size_t* nwritten_ptr,
     for (int i = 0; i != iov_count; ++i)
         size += iov[i].iov_len;
 
+    done.set_result<0>(pos);
     twait { fi.acquire_write(make_event()); }
 
     while (pos != size && done && fi) {
+        done.set_result<0>(pos);
         amt = ::writev(fi.fdnum(), iov, iov_count);
         if (amt != 0 && amt != (ssize_t) -1) {
             pos += amt;
-            if (nwritten_ptr)
-                *nwritten_ptr = pos;
             if (pos != size) {
                 while (amt != 0 && (size_t) amt >= iov[0].iov_len) {
                     amt -= iov[0].iov_len;
@@ -493,12 +436,12 @@ tamed void fd::write(struct iovec* iov, int iov_count, size_t* nwritten_ptr,
         else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
         } else if (errno != EINTR) {
-            done.trigger(-errno);
+            done(pos, -errno);
             break;
         }
     }
 
-    done.trigger(pos == size || fi ? 0 : -ECANCELED);
+    done(pos, pos == size || fi ? 0 : -ECANCELED);
 }
 
 /** @brief  Write once to file descriptor.
@@ -516,84 +459,33 @@ tamed void fd::write(struct iovec* iov, int iov_count, size_t* nwritten_ptr,
  *
  *  @sa write(const void *, size_t, size_t &, event<int>)
  */
-tamed void fd::write_once(const void *buf, size_t size, size_t &nwritten, event<int> done)
+tamed void fd::write_once(const void *buf, size_t size, event<size_t, int> done)
 {
     tvars {
         ssize_t amt;
         fdref fi(*this, fdref::weak);
     }
 
-    nwritten = 0;
-
     if (!fi) {
-        done.trigger(-EBADF);
+        done(0, -EBADF);
         return;
     }
 
+    done.set_result<0>(0);
     twait { fi.acquire_write(make_event()); }
 
     while (done && fi) {
         amt = fi.write(static_cast<const char*>(buf), size);
         if (amt != (ssize_t) -1) {
-            nwritten = amt;
+            done(size_t(amt), 0);
             break;
         } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
         } else if (errno != EINTR) {
-            done.trigger(-errno);
+            done(0, -errno);
             break;
         }
     }
-
-    done.trigger(0);
-}
-
-/** @brief  Write once to file descriptor.
- *  @param       iov         I/O vector.
- *  @param       iov_count   Number of elements in I/O vector.
- *  @param[out]  nwritten    Number of characters written.
- *  @param       done        Event triggered on completion.
- *
- *  Writes at most @a size bytes to the file descriptor. Blocks until at
- *  least one byte is written (or end-of-file or an error condition), but
- *  unlike write(), @a done is triggered after the @em first successful
- *  read, even if less than @a size bytes are written. @a done is
- *  triggered with 0 on success, or a negative error code. @a nwritten is
- *  kept up to date as the read progresses. Unlike write(), @a iov is never
- *  modified.
- *
- *  @sa write(const void *, size_t, size_t &, event<int>)
- */
-tamed void fd::write_once(const struct iovec* iov, int iov_count, size_t& nwritten, event<int> done)
-{
-    tvars {
-        ssize_t amt;
-        fdref fi(*this, fdref::weak);
-    }
-
-    nwritten = 0;
-
-    if (!fi) {
-        done.trigger(-EBADF);
-        return;
-    }
-
-    twait { fi.acquire_write(make_event()); }
-
-    while (done && fi) {
-        amt = ::writev(fi.fdnum(), iov, iov_count);
-        if (amt != (ssize_t) -1) {
-            nwritten = amt;
-            break;
-        } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
-        } else if (errno != EINTR) {
-            done.trigger(-errno);
-            break;
-        }
-    }
-
-    done.trigger(0);
 }
 
 ssize_t fd::direct_read(void* buf, size_t size) {

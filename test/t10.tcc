@@ -30,11 +30,11 @@ tamed void passoff(tamer::fd& r, tamer::fd& w, int n) {
     }
     while (1) {
         fprintf(stderr, "pipe %d waits\n", n);
-        twait { r.read(&c, 1, x, make_event(ret)); }
+        twait { r.read(&c, 1, make_event(x, ret)); }
         fprintf(stderr, "pipe %d read %zd\n", n, x);
         if (x) {
             ++npass;
-            twait { w.write(&c, 1, x, make_event(ret)); }
+            twait { w.write(&c, 1, make_event(x, ret)); }
             fprintf(stderr, "pipe %d wrote %zd\n", n, x);
         }
     }
@@ -43,13 +43,13 @@ tamed void passoff(tamer::fd& r, tamer::fd& w, int n) {
 tamed void writeit(tamer::fd& w) {
     tvars { char c = 'A'; size_t x; int ret; }
     fprintf(stderr, "pipe 1 prepares\n");
-    twait { w.write(&c, 1, x, make_event(ret)); }
+    twait { w.write(&c, 1, make_event(x, ret)); }
     fprintf(stderr, "pipe 1 wrote %zd\n", x);
 }
 
 tamed void readandexit(tamer::fd& r, size_t expected_npass) {
     tvars { char c; size_t x; int ret; }
-    twait { r.read(&c, 1, x, make_event(ret)); }
+    twait { r.read(&c, 1, make_event(x, ret)); }
     if (npass == expected_npass)
         std::cout << "GOOD: Got character " << c << " after " << npass << " passes\n";
     else

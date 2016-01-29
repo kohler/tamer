@@ -21,25 +21,25 @@ tamed void runone(tamer::fd cfd, double timeout) {
     tvars {
 	char buf[BUFSIZ];
 	size_t rpos = 0, nread = 0, nwritten = 0;
-	tamer::rendezvous<int> r;
-	tamer::event<> reader, writer;
-	int x;
+	tamer::rendezvous<int> rv;
+	tamer::event<size_t, int> reader, writer;
+	int x, r;
     }
 
     if (timeout > 0)
-	tamer::at_delay(timeout, make_event(r, 1));
+	tamer::at_delay(timeout, make_event(rv, 1));
 
     while (cfd) {
 	if (rpos < BUFSIZ && !reader) {
-	    reader = make_event(r, 2);
-	    cfd.read_once(buf + rpos, BUFSIZ - rpos, nread, reader);
+	    reader = make_event(rv, 2, nread, r);
+	    cfd.read_once(buf + rpos, BUFSIZ - rpos, reader);
 	}
 	if (rpos > 0 && !writer) {
-	    writer = make_event(r, 3);
-	    cfd.write_once(buf, rpos, nwritten, writer);
+	    writer = make_event(rv, 3, nwritten, r);
+	    cfd.write_once(buf, rpos, writer);
 	}
 
-	twait(r, x);
+	twait(rv, x);
 
 	if (x == 1)
 	    cfd.close();
@@ -55,7 +55,7 @@ tamed void runone(tamer::fd cfd, double timeout) {
 	}
     }
 
-    r.clear();
+    rv.clear();
 }
 
 tamed void run(tamer::fd listenfd, double timeout) {

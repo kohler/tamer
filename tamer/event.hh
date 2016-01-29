@@ -295,6 +295,9 @@ class event<T0, T1, void, void>
         x.se_ = 0;
     }
 
+    inline event(const event<>& x, arguments_type& xs);
+    inline event(event<>&& x, arguments_type& xs) noexcept;
+
     ~event() noexcept {
         tamerpriv::simple_event::unuse(se_);
     }
@@ -1770,6 +1773,18 @@ inline event<>::event(preevent<R>&& x)
     x.r_ = 0;
 }
 #endif
+
+template <typename T0, typename T1>
+inline event<T0, T1>::event(const event<>& x, arguments_type& vs)
+    : se_(x.__get_simple()), sv_(&std::get<0>(vs), &std::get<1>(vs)) {
+    tamerpriv::simple_event::use(se_);
+}
+
+template <typename T0, typename T1>
+inline event<T0, T1>::event(event<>&& x, arguments_type& vs) noexcept
+    : se_(x.__get_simple()), sv_(&std::get<0>(vs), &std::get<1>(vs)) {
+    tamerpriv::simple_event::use(se_);
+}
 
 template <typename T0>
 inline event<T0>::event(const event<>& x, arguments_type& vs)

@@ -214,7 +214,7 @@ tamed void nameserver_imp::init(event<int> e) {
   e.trigger(_udp.error());
 
   while (_udp) {
-    twait { _udp.read_once(buf, 512, n, make_event(i)); }
+    twait { _udp.read_once(buf, 512, make_event(n, i)); }
     if (!_udp || (!n && !i))
       break;
     if (i) {
@@ -232,7 +232,7 @@ tamed void nameserver_imp::query(packet p) {
   if (!_udp)
     return;
   // we let timeouts take care of failed writes
-  twait { _udp.write(p->getbuf(), p->size(), n, make_event(i)); }
+  twait { _udp.write(p->getbuf(), p->size(), make_event(n, i)); }
 }
 
 tamed void nameserver_imp::init_tcp(event<int> e, timeval timeout) {
@@ -253,10 +253,10 @@ tamed void nameserver_imp::init_tcp(event<int> e, timeval timeout) {
     goto clean_up;
 
   while (_tcp && (_tcp_outbound || _tcp_outgoing.size())) {
-    twait { _tcp.read((uint8_t *)&len, sizeof(len), n, with_timeout(timeout, make_event(i), j)); }
+    twait { _tcp.read((uint8_t *)&len, sizeof(len), add_timeout<1>(timeout, make_event(n, i), -ETIMEDOUT)); }
     len = htons(len);
     if (j || i || len > 8192 ) break;
-    twait { _tcp.read(buf, len, n, with_timeout(timeout, make_event(i), j)); }
+    twait { _tcp.read(buf, len, add_timeout<1>(timeout, make_event(n, i), -ETIMEDOUT)); }
     if (j || i || len != n) break;
     received.push_back(make_reply(make_packet(buf, len)));
     _tcp_outbound--;
@@ -285,7 +285,7 @@ tamed void nameserver_imp::query_tcp(packet p, timeval timeout) {
 
   while (_tcp && _tcp_outgoing.size()) {
     k = _tcp_outgoing.front();
-    twait { _tcp.write(k->getbuf(), k->size(), n, make_event(i)); }
+    twait { _tcp.write(k->getbuf(), k->size(), make_event(n, i)); }
     if (!i)
       _tcp_outbound++;
     _tcp_outgoing.pop_front();
@@ -637,7 +637,7 @@ tamed void resolver::parse() {
 
   buf = new char[fst.st_size + 1];
 
-  twait { fin.read(buf, fst.st_size, size, make_event(i)); }
+  twait { fin.read(buf, fst.st_size, make_event(size, i)); }
 
   // read error or file was modified between stat and read
   if (i < 0 || (size_t)fst.st_size != size) {

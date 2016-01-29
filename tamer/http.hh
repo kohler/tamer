@@ -185,6 +185,7 @@ class http_parser : public tamed_class {
     class closure__receive__2fdQ12http_message_; void receive(closure__receive__2fdQ12http_message_&);
     class closure__send_request__2fdRK12http_messageQ_; static void send_request(closure__send_request__2fdRK12http_messageQ_&);
     class closure__send_response__2fdRK12http_messageQ_; static void send_response(closure__send_response__2fdRK12http_messageQ_&);
+    class closure__send_response_headers__2fdRK12http_messageQ_; static void send_response_headers(closure__send_response_headers__2fdRK12http_messageQ_&);
     class closure__send_response_chunk__2fdSsQ_; static void send_response_chunk(closure__send_response_chunk__2fdSsQ_&);
 };
 

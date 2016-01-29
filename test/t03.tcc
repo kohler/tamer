@@ -27,7 +27,7 @@ tamed void read_sucka(tamer::fd &f) {
         size_t amt(0);
     }
     twait {
-        f.read(buf, 40, amt, tamer::add_timeout(0.5, make_event(ret), -ETIMEDOUT));
+        f.read(buf, 40, tamer::add_timeout<1>(0.5, make_event(amt, ret), -ETIMEDOUT));
     }
     if (ret < 0)
         printf("got error %d (%s): %ld: %.*s\n", ret, strerror(-ret), (long) amt, (int) amt, buf);

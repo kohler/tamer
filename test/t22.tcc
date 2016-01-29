@@ -33,11 +33,11 @@ std::ostream& operator<<(std::ostream& str, timeval x) {
 }
 
 tamed void f(tamer::fd fd) {
-    tamed { char buf[40]; size_t len; }
+    tamed { char buf[40]; size_t len; int r; }
     std::cout << tamer::recent() << "\n";
     twait { tamer::at_delay(100, make_event()); }
     std::cout << tamer::recent() << "\n";
-    twait { fd.read(buf, 20, len, tamer::add_timeout(100, make_event())); }
+    twait { fd.read(buf, 20, tamer::add_timeout(100, make_event(len, r))); }
     std::cout << len << " ";
     std::cout.write(buf, len);
     std::cout << "\n" << tamer::recent() << "\n";

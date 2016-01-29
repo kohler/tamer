@@ -100,7 +100,7 @@ cache_new(const std::string &filename, tamer::event<refptr<cache_entry> > ev)
 	    }
 
 	    twait {
-		f.read(data + hdrlen, length, ssrc, make_event(rc));
+		f.read(data + hdrlen, length, make_event(ssrc, rc));
 	    }
 
 	    if (rc >= 0)
