@@ -40,8 +40,8 @@ class with_helper_rendezvous : public functional_rendezvous,
     static void hook(functional_rendezvous *fr, simple_event *, bool) TAMER_NOEXCEPT;
 };
 
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<> with_helper(event<T0, T1, T2, T3> e, int *result, int value) {
+template <typename... TS>
+inline event<> with_helper(event<TS...> e, int *result, int value) {
     with_helper_rendezvous *r = new with_helper_rendezvous(e.__get_simple(), result, value);
     event<> with = tamer::make_event(*r);
     e.at_trigger(with);
@@ -49,24 +49,26 @@ inline event<> with_helper(event<T0, T1, T2, T3> e, int *result, int value) {
 }
 
 
-template <typename T0, typename V0>
+template <size_t I, typename VI, typename... TS>
 class bind_rendezvous : public functional_rendezvous,
-                        public zero_argument_rendezvous_tag<bind_rendezvous<T0, V0> > {
+                        public zero_argument_rendezvous_tag<bind_rendezvous<I, VI, TS...> > {
   public:
-    bind_rendezvous(const event<T0>& e, V0 v0)
-        : functional_rendezvous(hook), e_(e), v0_(TAMER_MOVE(v0)) {
+    bind_rendezvous(const event<TS...>& e, VI vi)
+        : functional_rendezvous(hook), e_(e), vi_(TAMER_MOVE(vi)) {
     }
   private:
-    event<T0> e_;
-    V0 v0_;
+    event<TS...> e_;
+    VI vi_;
     static void hook(functional_rendezvous*, simple_event*, bool) TAMER_NOEXCEPT;
 };
 
-template <typename T0, typename V0>
-void bind_rendezvous<T0, V0>::hook(functional_rendezvous *fr,
-                                   simple_event *, bool) TAMER_NOEXCEPT {
-    bind_rendezvous<T0, V0>* self = static_cast<bind_rendezvous<T0, V0>*>(fr);
-    self->e_.trigger(self->v0_);
+template <size_t I, typename VI, typename... TS>
+void bind_rendezvous<I, VI, TS...>::hook(functional_rendezvous *fr, simple_event*, bool) TAMER_NOEXCEPT {
+    bind_rendezvous<I, VI, TS...>* self = static_cast<bind_rendezvous<I, VI, TS...>*>(fr);
+    self->e_.template set_result<I>(self->vi_);
+    if (simple_event* se = self->e_.__release_simple())
+        if (*se)
+            se->simple_trigger(true);
     delete self;
 }
 

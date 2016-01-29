@@ -39,7 +39,7 @@ namespace tamer {
  *  <code>char*&</code>, and <code>bool&</code>, which define where the
  *  results are stored. The <code>event<int, char*, bool>::trigger</code>
  *  method takes value arguments of types <code>int</code>,
- *  <code>char*</code>, and <code>bool</code>. Calling <code>e.trigger(1,
+ *  <code>char*</code>, and <code>bool</code>. Calling <code>e(1,
  *  "Hi", false)</code> will set each result to the corresponding value.
  *  This can be used to pass information back to the function waiting for
  *  the event.
@@ -69,7 +69,7 @@ namespace tamer {
  *
  *  The unblocker() method returns a version of the event with no results.
  *  The unblocker().trigger() method triggers the underlying occurrence, but
- *  does not change the values stored in the original results. For instance:
+ *  does not change the results. For instance:
  *
  *  @code
  *     tvars { event<int> e; int x = 0; }
@@ -108,8 +108,8 @@ namespace tamer {
  *     tamer::rendezvous<> r(tamer::rvolatile);
  *  @endcode
  *
- *  In any case, deleting the last reference to an empty event is not an
- *  error and does not produce an error message.
+ *  Deleting the last reference to an empty event is not an error and does not
+ *  produce an error message.
  *
  *  An event's <em>trigger notifiers</em> are triggered when the event
  *  itself is triggered. A trigger notifier is simply an

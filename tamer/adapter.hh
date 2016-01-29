@@ -121,10 +121,10 @@ distribute(event<T0, T1, T2, T3> e1, event<T0, T1, T2, T3> e2,
  *  triggers the other. Triggering the result instantly triggers @a e with
  *  value @a v0; triggering @a e instantly triggers the result's unblocker.
  */
-template <typename T0, typename V0>
-event<> bind(event<T0> e, V0 v0) {
-    tamerpriv::bind_rendezvous<T0, V0>* r =
-        new tamerpriv::bind_rendezvous<T0, V0>(e, TAMER_MOVE(v0));
+template <size_t I = 0, typename VI = void, typename... TS>
+event<> bind(event<TS...> e, VI vi) {
+    tamerpriv::bind_rendezvous<I, VI, TS...>* r =
+        new tamerpriv::bind_rendezvous<I, VI, TS...>(e, std::move(vi));
     event<> bound = TAMER_MAKE_FN_ANNOTATED_EVENT(*r);
     e.at_trigger(bound);
     return bound;
@@ -215,27 +215,27 @@ event<S0> map(preevent<R, T0>&& pe, F f) {
  *  add_timeout_msec(), @c int numbers of seconds and milliseconds,
  *  respectively.
  */
-template <typename T0>
-inline event<T0> add_timeout(const timeval& delay, event<T0> e, T0 v) {
-    at_delay(delay, tamer::bind(e, TAMER_MOVE(v)));
+template <size_t I = 0, typename V = void, typename... TS>
+inline event<TS...> add_timeout(const timeval& delay, event<TS...> e, V v) {
+    at_delay(delay, tamer::bind<I>(e, TAMER_MOVE(v)));
     return e;
 }
 
-template <typename T0>
-inline event<T0> add_timeout(double delay, event<T0> e, T0 v) {
-    at_delay(delay, tamer::bind(e, TAMER_MOVE(v)));
+template <size_t I = 0, typename V = void, typename... TS>
+inline event<TS...> add_timeout(double delay, event<TS...> e, V v) {
+    at_delay(delay, tamer::bind<I>(e, TAMER_MOVE(v)));
     return e;
 }
 
-template <typename T0>
-inline event<T0> add_timeout_sec(int delay, event<T0> e, T0 v) {
-    at_delay_sec(delay, tamer::bind(e, TAMER_MOVE(v)));
+template <size_t I = 0, typename V = void, typename... TS>
+inline event<TS...> add_timeout_sec(int delay, event<TS...> e, V v) {
+    at_delay_sec(delay, tamer::bind<I>(e, TAMER_MOVE(v)));
     return e;
 }
 
-template <typename T0>
-inline event<T0> add_timeout_msec(int delay, event<T0> e, T0 v) {
-    at_delay_msec(delay, tamer::bind(e, TAMER_MOVE(v)));
+template <size_t I = 0, typename V = void, typename... TS>
+inline event<TS...> add_timeout_msec(int delay, event<TS...> e, V v) {
+    at_delay_msec(delay, tamer::bind<I>(e, TAMER_MOVE(v)));
     return e;
 }
 
@@ -274,26 +274,26 @@ inline event<T0> add_timeout_msec(int delay, preevent<R, T0>&& pe, T0 v) {
  *  add_timeout_msec(), @c int numbers of seconds and milliseconds,
  *  respectively.
  */
-template <typename T0>
-inline event<T0> add_timeout(const timeval& delay, event<T0> e) {
+template <typename... TS>
+inline event<TS...> add_timeout(const timeval& delay, event<TS...> e) {
     at_delay(delay, e.unblocker());
     return e;
 }
 
-template <typename T0>
-inline event<T0> add_timeout(double delay, event<T0> e) {
+template <typename... TS>
+inline event<TS...> add_timeout(double delay, event<TS...> e) {
     at_delay(delay, e.unblocker());
     return e;
 }
 
-template <typename T0>
-inline event<T0> add_timeout_sec(int delay, event<T0> e) {
+template <typename... TS>
+inline event<TS...> add_timeout_sec(int delay, event<TS...> e) {
     at_delay_sec(delay, e.unblocker());
     return e;
 }
 
-template <typename T0>
-inline event<T0> add_timeout_msec(int delay, event<T0> e) {
+template <typename... TS>
+inline event<TS...> add_timeout_msec(int delay, event<TS...> e) {
     at_delay_msec(delay, e.unblocker());
     return e;
 }
