@@ -146,6 +146,7 @@ class event {
     inline void trigger(T0 v0, T1 v1, T2 v2, T3 v3);
     inline void trigger(const arguments_type& vs);
     inline void unblock() noexcept;
+    template <size_t I> inline void set_result(typename std::tuple_element<I, arguments_type>::type vi);
 
     inline void at_trigger(const event<>& e);
     inline void at_trigger(event<>&& e);
@@ -225,6 +226,7 @@ class event<T0, T1, T2, void> { public:
     inline void trigger(T0 v0, T1 v1, T2 v2);
     inline void trigger(const arguments_type& v);
     inline void unblock() noexcept;
+    template <size_t I> inline void set_result(typename std::tuple_element<I, arguments_type>::type vi);
 
     inline void at_trigger(const event<>& e);
     inline void at_trigger(event<>&& e);
@@ -314,6 +316,7 @@ class event<T0, T1, void, void>
     inline void trigger(T0 v0, T1 v1);
     inline void trigger(const arguments_type& vs);
     inline void unblock() noexcept;
+    template <size_t I> inline void set_result(typename std::tuple_element<I, arguments_type>::type vi);
 
     inline void at_trigger(const event<>& e);
     inline void at_trigger(event<>&& e);
@@ -410,6 +413,7 @@ class event<T0, void, void, void>
     inline void trigger(T0 v0);
     inline void trigger(const arguments_type& vs);
     inline void unblock() noexcept;
+    template <size_t I = 0> inline void set_result(typename std::tuple_element<I, arguments_type>::type vi);
 
     inline T0& result() const noexcept;
     inline T0* result_pointer() const noexcept;
@@ -859,6 +863,13 @@ inline void event<T0, T1, T2, T3>::unblock() noexcept {
     se_ = 0;
 }
 
+template <typename T0, typename T1, typename T2, typename T3>
+template <size_t I>
+inline void event<T0, T1, T2, T3>::set_result(typename std::tuple_element<I, arguments_type>::type vi) {
+    if (se_ && *se_)
+        *std::get<I>(sv_) = std::move(vi);
+}
+
 /** @brief  Register a trigger notifier.
  *  @param  e  Trigger notifier.
  *
@@ -1001,6 +1012,13 @@ inline void event<T0, T1, T2>::unblock() noexcept {
     se_ = 0;
 }
 
+template <typename T0, typename T1, typename T2>
+template <size_t I>
+inline void event<T0, T1, T2>::set_result(typename std::tuple_element<I, arguments_type>::type vi) {
+    if (se_ && *se_)
+        *std::get<I>(sv_) = std::move(vi);
+}
+
 
 template <typename T0, typename T1>
 inline event<T0, T1>::event() noexcept
@@ -1048,6 +1066,13 @@ inline void event<T0, T1>::unblock() noexcept {
     se_ = 0;
 }
 
+template <typename T0, typename T1>
+template <size_t I>
+inline void event<T0, T1>::set_result(typename std::tuple_element<I, arguments_type>::type vi) {
+    if (se_ && *se_)
+        *std::get<I>(sv_) = std::move(vi);
+}
+
 
 template <typename T0>
 inline event<T0>::event() noexcept
@@ -1092,6 +1117,13 @@ template <typename T0>
 inline void event<T0>::unblock() noexcept {
     tamerpriv::simple_event::simple_trigger(se_, false);
     se_ = 0;
+}
+
+template <typename T0>
+template <size_t I>
+inline void event<T0>::set_result(typename std::tuple_element<I, arguments_type>::type vi) {
+    if (se_ && *se_)
+        *s0_ = std::move(vi);
 }
 
 
