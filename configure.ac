@@ -246,7 +246,13 @@ fi
 AC_MSG_CHECKING([for std::move])
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <utility>], [[long x = 0; long &&y = std::move(x); (void) y;]])], [ac_cv_std_move=yes], [ac_cv_std_move=no])
 AC_MSG_RESULT([$ac_cv_std_move])
-if test "$ac_cv_std_move" != yes; then
+
+AC_MSG_CHECKING([for variadic templates])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <utility>
+template <typename... TS> struct foo { enum { count = sizeof...(TS) }; };], [[long x = foo<>::count + foo<int, int, int, int, int>::count; (void) x;]])], [ac_cv_variadic_templates=yes], [ac_cv_variadic_templates=no])
+AC_MSG_RESULT([$ac_cv_variadic_templates])
+
+if test "$ac_cv_std_move" != yes -o "$ac_cv_variadic_templates" != yes; then
     AC_MSG_ERROR([
 
 The C++ compiler does not appear to understand C++11.
