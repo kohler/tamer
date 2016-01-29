@@ -120,17 +120,17 @@ timeval now() {
 void driver::at_delay(double delay, event<> e, bool bg)
 {
     if (delay <= 0)
-	at_asap(e);
+        at_asap(e);
     else {
-	timeval tv = recent();
-	long ldelay = (long) delay;
-	tv.tv_sec += ldelay;
-	tv.tv_usec += (long) ((delay - ldelay) * 1000000 + 0.5);
-	if (tv.tv_usec >= 1000000) {
-	    tv.tv_sec++;
-	    tv.tv_usec -= 1000000;
-	}
-	at_time(tv, e, bg);
+        timeval tv = recent();
+        long ldelay = (long) delay;
+        tv.tv_sec += ldelay;
+        tv.tv_usec += (long) ((delay - ldelay) * 1000000 + 0.5);
+        if (tv.tv_usec >= 1000000) {
+            tv.tv_sec++;
+            tv.tv_usec -= 1000000;
+        }
+        at_time(tv, e, bg);
     }
 }
 
@@ -155,7 +155,7 @@ void driver_asapset::expand() {
     tamerpriv::simple_event **na = new tamerpriv::simple_event *[ncapmask + 1];
     unsigned i = 0;
     for (unsigned x = head_; x != tail_; ++x, ++i)
-	na[i] = ses_[x & capmask_];
+        na[i] = ses_[x & capmask_];
     delete[] ses_;
     ses_ = na;
     capmask_ = ncapmask;
@@ -165,7 +165,7 @@ void driver_asapset::expand() {
 
 driver_timerset::~driver_timerset() {
     for (unsigned i = 0; i != nts_; ++i)
-	simple_event::unuse(ts_[i].se);
+        simple_event::unuse(ts_[i].se);
     delete[] ts_;
 }
 
@@ -174,9 +174,9 @@ void driver_timerset::check() {
     fprintf(stderr, "---");
     for (unsigned k = 0; k != nts_; ++k) {
         std::string location;
-	if (ts_[k].se->empty())
+        if (ts_[k].se->empty())
             location = "EMPTY";
-	else {
+        else {
             abstract_rendezvous* r = ts_[k].se->rendezvous();
             location = "?";
             if (r->rtype() == rgather || r->rtype() == rexplicit) {
@@ -191,19 +191,19 @@ void driver_timerset::check() {
     fprintf(stderr, "\n");
 
     for (unsigned i = 0; true; ++i) {
-	unsigned trial = i * arity + (arity == 2 || i == 0),
-	    end_trial = trial + arity - (arity != 2 && i == 0);
-	if (trial >= nts_)
-	    break;
-	end_trial = (end_trial < nts_ ? end_trial : nts_);
-	for (; trial < end_trial; ++trial)
-	    if (ts_[trial] < ts_[i]) {
-		fprintf(stderr, "***");
-		for (unsigned k = 0; k != nts_; ++k)
-		    fprintf(stderr, (k == i || k == trial ? " **%ld.%06ld**" : " %ld.%06ld"), ts_[k].when.tv_sec, ts_[k].when.tv_usec);
-		fprintf(stderr, "\n");
-		assert(0);
-	    }
+        unsigned trial = i * arity + (arity == 2 || i == 0),
+            end_trial = trial + arity - (arity != 2 && i == 0);
+        if (trial >= nts_)
+            break;
+        end_trial = (end_trial < nts_ ? end_trial : nts_);
+        for (; trial < end_trial; ++trial)
+            if (ts_[trial] < ts_[i]) {
+                fprintf(stderr, "***");
+                for (unsigned k = 0; k != nts_; ++k)
+                    fprintf(stderr, (k == i || k == trial ? " **%ld.%06ld**" : " %ld.%06ld"), ts_[k].when.tv_sec, ts_[k].when.tv_usec);
+                fprintf(stderr, "\n");
+                assert(0);
+            }
     }
 #endif
 }

@@ -104,7 +104,7 @@ std::string closure::location_description() const {
 
 void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
     if (!x)
-	return;
+        return;
     simple_event *to_delete = 0;
 
  retry:
@@ -112,28 +112,28 @@ void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
     bool reduce_refcount = x->_refcount > 0;
 
     if (r) {
-	// See also trigger_list_for_remove(), trigger_for_unuse().
-	x->_r = 0;
-	*x->_r_pprev = x->_r_next;
-	if (x->_r_next)
-	    x->_r_next->_r_pprev = x->_r_pprev;
+        // See also trigger_list_for_remove(), trigger_for_unuse().
+        x->_r = 0;
+        *x->_r_pprev = x->_r_next;
+        if (x->_r_next)
+            x->_r_next->_r_pprev = x->_r_pprev;
 
-	if (r->rtype_ == rgather) {
-	    gather_rendezvous *gr = static_cast<gather_rendezvous *>(r);
-	    if (!gr->waiting_)
-		gr->unblock();
-	} else if (r->rtype_ == rexplicit) {
-	    explicit_rendezvous *er = static_cast<explicit_rendezvous *>(r);
-	    simple_event::use(x);
-	    *er->ready_ptail_ = x;
-	    er->ready_ptail_ = &x->_r_next;
-	    x->_r_next = 0;
-	    er->unblock();
-	} else {
-	    // rfunctional || rdistribute
-	    functional_rendezvous *fr = static_cast<functional_rendezvous *>(r);
-	    fr->f_(fr, x, values);
-	}
+        if (r->rtype_ == rgather) {
+            gather_rendezvous *gr = static_cast<gather_rendezvous *>(r);
+            if (!gr->waiting_)
+                gr->unblock();
+        } else if (r->rtype_ == rexplicit) {
+            explicit_rendezvous *er = static_cast<explicit_rendezvous *>(r);
+            simple_event::use(x);
+            *er->ready_ptail_ = x;
+            er->ready_ptail_ = &x->_r_next;
+            x->_r_next = 0;
+            er->unblock();
+        } else {
+            // rfunctional || rdistribute
+            functional_rendezvous *fr = static_cast<functional_rendezvous *>(r);
+            fr->f_(fr, x, values);
+        }
     }
 
     // Important to keep an event in memory until all its at_triggers are
@@ -142,22 +142,22 @@ void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
     if (reduce_refcount)
         --x->_refcount;
     if (x->_refcount == 0) {
-	x->_r_next = to_delete;
-	to_delete = x;
+        x->_r_next = to_delete;
+        to_delete = x;
     }
 
     if (r && x->at_trigger_f_) {
-	if (x->at_trigger_f_ == trigger_hook) {
-	    x = static_cast<simple_event*>(x->at_trigger_arg_);
-	    values = false;
-	    goto retry;
+        if (x->at_trigger_f_ == trigger_hook) {
+            x = static_cast<simple_event*>(x->at_trigger_arg_);
+            values = false;
+            goto retry;
         } else
-	    x->at_trigger_f_(x->at_trigger_arg_);
+            x->at_trigger_f_(x->at_trigger_arg_);
     }
 
     while ((x = to_delete)) {
-	to_delete = x->_r_next;
-	delete x;
+        to_delete = x->_r_next;
+        delete x;
     }
 }
 
@@ -165,11 +165,11 @@ void simple_event::trigger_list_for_remove() TAMER_NOEXCEPT {
     // first, remove all the events (in case an at_trigger() is also waiting
     // on this rendezvous)
     for (simple_event *e = this; e; e = e->_r_next)
-	e->_r = 0;
+        e->_r = 0;
     // then call any left-behind at_triggers
     for (simple_event *e = this; e; e = e->_r_next)
-	if (e->at_trigger_f_)
-	    e->at_trigger_f_(e->at_trigger_arg_);
+        if (e->at_trigger_f_)
+            e->at_trigger_f_(e->at_trigger_arg_);
 }
 
 void simple_event::trigger_hook(void* arg) {
@@ -178,21 +178,21 @@ void simple_event::trigger_hook(void* arg) {
 
 void simple_event::unuse_trigger() TAMER_NOEXCEPT {
     if (_r) {
-	message::event_prematurely_dereferenced(this, _r);
-	simple_trigger(false);
+        message::event_prematurely_dereferenced(this, _r);
+        simple_trigger(false);
     } else
-	delete this;
+        delete this;
 }
 
 inline event<> simple_event::at_trigger_event(void (*f)(void*), void* arg) {
     if (f == trigger_hook)
-	return event<>::__make(static_cast<simple_event*>(arg));
+        return event<>::__make(static_cast<simple_event*>(arg));
     else
-	return tamer::fun_event(f, arg);
+        return tamer::fun_event(f, arg);
 }
 
 void simple_event::hard_at_trigger(simple_event* x, void (*f)(void*),
-				   void* arg) {
+                                   void* arg) {
     if (x && *x) {
         event<> t(at_trigger_event(x->at_trigger_f_, x->at_trigger_arg_));
         t += at_trigger_event(f, arg);
@@ -207,7 +207,7 @@ namespace message {
 
 void event_prematurely_dereferenced(simple_event* se, abstract_rendezvous* r) {
     if (r->is_volatile())
-	/* no error message */;
+        /* no error message */;
     else {
         fprintf(stderr, "tamer: dropping last reference to active event\n");
         if (se->file_annotation() && se->line_annotation())

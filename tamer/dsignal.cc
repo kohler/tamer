@@ -37,16 +37,16 @@ static int tamer_sigaction(int signo, tamer_sighandler handler)
 
 namespace {
 class sigcancel_rendezvous : public tamerpriv::functional_rendezvous,
-			     public one_argument_rendezvous_tag<sigcancel_rendezvous> { public:
+                             public one_argument_rendezvous_tag<sigcancel_rendezvous> { public:
     sigcancel_rendezvous()
-	: functional_rendezvous(hook) {
+        : functional_rendezvous(hook) {
     }
     inline uintptr_t make_rid(int sig) TAMER_NOEXCEPT {
-	assert(sig >= 0 && sig < 2*NSIG);
-	return sig;
+        assert(sig >= 0 && sig < 2*NSIG);
+        return sig;
     }
     static void hook(tamerpriv::functional_rendezvous *fr,
-		     tamerpriv::simple_event *e, bool values) TAMER_NOEXCEPT;
+                     tamerpriv::simple_event *e, bool values) TAMER_NOEXCEPT;
 };
 
 sigcancel_rendezvous sigcancelr;
@@ -55,13 +55,13 @@ event<> sig_handlers[NSIG];
 sigset_t sig_dispatching;
 
 void sigcancel_rendezvous::hook(tamerpriv::functional_rendezvous *,
-				tamerpriv::simple_event *e, bool) TAMER_NOEXCEPT {
+                                tamerpriv::simple_event *e, bool) TAMER_NOEXCEPT {
     uintptr_t rid = e->rid();
     int signo = rid >> 1;
     if (!sig_handlers[signo] && sigismember(&sig_dispatching, signo) == 0)
-	tamer_sigaction(signo, SIG_DFL);
+        tamer_sigaction(signo, SIG_DFL);
     if (rid & 1)
-	--driver::sig_nforeground;
+        --driver::sig_nforeground;
     --driver::sig_ntotal;
 }
 } // namespace
@@ -72,10 +72,10 @@ static void tamer_signal_handler(int signo) {
     driver::sig_any_active = sig_active[signo] = 1;
     // ensure select wakes up
     if (driver::sig_pipe[1] >= 0) {
-	int save_errno = errno;
-	ssize_t r = write(driver::sig_pipe[1], "", 1);
-	(void) r;		// don't care if the write fails
-	errno = save_errno;
+        int save_errno = errno;
+        ssize_t r = write(driver::sig_pipe[1], "", 1);
+        (void) r;               // don't care if the write fails
+        errno = save_errno;
     }
 }
 }
@@ -86,15 +86,15 @@ void driver::at_signal(int signo, event<> trigger, signal_flags flags)
     assert(signo >= 0 && signo < NSIG);
 
     if (sig_pipe[0] < 0 && pipe(sig_pipe) >= 0) {
-	fcntl(sig_pipe[0], F_SETFL, O_NONBLOCK);
-	fcntl(sig_pipe[1], F_SETFL, O_NONBLOCK);
-	fcntl(sig_pipe[0], F_SETFD, FD_CLOEXEC);
-	fcntl(sig_pipe[1], F_SETFD, FD_CLOEXEC);
-	sigemptyset(&sig_dispatching);
+        fcntl(sig_pipe[0], F_SETFL, O_NONBLOCK);
+        fcntl(sig_pipe[1], F_SETFL, O_NONBLOCK);
+        fcntl(sig_pipe[0], F_SETFD, FD_CLOEXEC);
+        fcntl(sig_pipe[1], F_SETFD, FD_CLOEXEC);
+        sigemptyset(&sig_dispatching);
     }
 
-    if (!trigger)		// special case forces creation of signal pipe
-	return;
+    if (!trigger)               // special case forces creation of signal pipe
+        return;
 
     bool foreground = (flags & signal_background) == 0;
     trigger.at_trigger(make_event(sigcancelr, (signo << 1) + foreground));
@@ -103,7 +103,7 @@ void driver::at_signal(int signo, event<> trigger, signal_flags flags)
 
     sig_handlers[signo] += TAMER_MOVE(trigger);
     if (sigismember(&sig_dispatching, signo) == 0)
-	tamer_sigaction(signo, tamer_signal_handler);
+        tamer_sigaction(signo, tamer_signal_handler);
 }
 
 
@@ -114,29 +114,29 @@ void driver::dispatch_signals()
     // kill crap data written to pipe
     char crap[64];
     while (read(sig_pipe[0], crap, 64) > 0)
-	/* do nothing */;
+        /* do nothing */;
 
     // find and block signals that have happened
     for (int signo = 0; signo < NSIG; ++signo)
-	if (sig_active[signo])
-	    sigaddset(&sig_dispatching, signo);
+        if (sig_active[signo])
+            sigaddset(&sig_dispatching, signo);
     sigprocmask(SIG_BLOCK, &sig_dispatching, 0);
 
     // trigger those signals
     for (int signo = 0; signo < NSIG; ++signo)
-	if (sigismember(&sig_dispatching, signo) > 0) {
-	    sig_active[signo] = 0;
-	    sig_handlers[signo].trigger();
-	}
+        if (sigismember(&sig_dispatching, signo) > 0) {
+            sig_active[signo] = 0;
+            sig_handlers[signo].trigger();
+        }
 
     // run closures activated by signals (plus maybe some others)
     run_unblocked();
 
     // reset signal handlers if appropriate
     for (int signo = 0; signo < NSIG; ++signo)
-	if (sigismember(&sig_dispatching, signo) > 0
-	    && !sig_handlers[signo])
-	    tamer_sigaction(signo, SIG_DFL);
+        if (sigismember(&sig_dispatching, signo) > 0
+            && !sig_handlers[signo])
+            tamer_sigaction(signo, SIG_DFL);
 
     // now that the signal responders have potentially reinstalled signal
     // handlers, unblock the signals
