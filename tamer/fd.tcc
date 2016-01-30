@@ -77,6 +77,8 @@ namespace tamer {
 static fdhelper _fdhm;
 #endif
 
+fd::fdimp fd::deadimp(-EBADF);
+
 /** @brief  Make a file descriptor use nonblocking I/O.
  *  @param  f  File descriptor value.
  *  @note   This function's argument is a file descriptor value, not an
@@ -124,7 +126,7 @@ int fd::make_blocking(int f) {
 event<> fd::closer()
 {
     if (*this) {
-        event<> e = fun_event(fdcloser(_p));
+        event<> e = fun_event(fdweakref(_p));
         at_close(e);
         return e;
     } else
@@ -223,70 +225,54 @@ void fd::fstat(struct stat &stat_out, event<int> done)
         done.trigger(-EBADF);
 }
 
-tamed void fd::read(void *buf, size_t size, event<size_t, int> done)
-{
+tamed void fd::fdimp::read(void *buf, size_t size, event<size_t, int> done) {
     tvars {
+        int r = fde_ >= 0 ? 0 : -EBADF;
         size_t pos = 0;
         ssize_t amt;
-        fdref fi(*this, fdref::weak);
-    }
-
-    if (!fi) {
-        done(0, -EBADF);
-        return;
+        fdweakref guard(this);
     }
 
 #if HAVE_TAMER_FDHELPER
-    if (fi.imp_->_is_file) {
-        _fdhm.read(fi.fdnum(), buf, size, nread, done);
+    if (_is_file && fde_ >= 0) {
+        _fdhm.read(fdv_, buf, size, nread, done);
         return;
     }
 #endif
 
-    while (pos != size && done && fi) {
-        amt = fi.read(static_cast<char*>(buf) + pos, size - pos);
+    while (pos != size && done && fde_ >= 0) {
+        amt = ::read(fdv_, static_cast<char*>(buf) + pos, size - pos);
         if (amt != 0 && amt != (ssize_t) -1)
             pos += amt;
         else if (amt == 0)
             break;
         else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             done.set_result<0>(pos);
-            twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
+            twait { tamer::at_fd_read(fdv_, make_event()); }
         } else if (errno != EINTR) {
-            done(pos, -errno);
+            r = -errno;
             break;
         }
     }
 
-    done(pos, pos == size || fi ? 0 : -ECANCELED);
+    done(pos, fde_ >= 0 || r < 0 ? r : -ECANCELED);
 }
 
-tamed void fd::read(struct iovec* iov, int iov_count, event<size_t, int> done)
+tamed void fd::fdimp::read(struct iovec* iov, int iov_count, event<size_t, int> done)
 {
     tvars {
+        int r = fde_ >= 0 ? 0 : -EBADF;
         size_t pos = 0;
         size_t size = 0;
         ssize_t amt;
-        fdref fi(*this, fdref::weak);
-    }
-
-    if (!fi) {
-        done(0, -EBADF);
-        return;
+        fdweakref guard(this);
     }
 
     for (int i = 0; i != iov_count; ++i)
         size += iov[i].iov_len;
 
-#if HAVE_TAMER_FDHELPER
-    if (fi.imp_->_is_file) {
-        _fdhm.read(fi.fdnum(), buf, size, nread, done);
-        return;
-    }
-#endif
-
-    while (pos != size && done && fi) {
-        amt = ::readv(fi.fdnum(), iov, iov_count);
+    while (pos != size && done && fde_ >= 0) {
+        amt = ::readv(fdv_, iov, iov_count);
         if (amt != 0 && amt != (ssize_t) -1) {
             pos += amt;
             if (pos != size) {
@@ -303,107 +289,89 @@ tamed void fd::read(struct iovec* iov, int iov_count, event<size_t, int> done)
             break;
         else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             done.set_result<0>(pos);
-            twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
+            twait { tamer::at_fd_read(fdv_, make_event()); }
         } else if (errno != EINTR) {
-            done(pos, -errno);
+            r = -errno;
             break;
         }
     }
 
-    done(pos, pos == size || fi ? 0 : -ECANCELED);
+    done(pos, fde_ >= 0 || r < 0 ? r : -ECANCELED);
 }
 
-tamed void fd::read_once(void* buf, size_t size, event<size_t, int> done)
+tamed void fd::fdimp::read_once(void* buf, size_t size, event<size_t, int> done)
 {
     tvars {
-        ssize_t amt;
-        fdref fi(*this, fdref::weak);
+        int r = fde_ >= 0 ? 0 : -EBADF;
+        size_t pos = 0;
+        fdweakref guard(this);
     }
 
-    if (!fi) {
-        done(0, -EBADF);
-        return;
-    }
-
-    while (done && fi) {
-        amt = fi.read(static_cast<char*>(buf), size);
-        if (amt != (ssize_t) -1) {
-            done(size_t(amt), 0);
+    while (done && fde_ >= 0) {
+        pos = ::read(fdv_, static_cast<char*>(buf), size);
+        if (pos != (size_t) -1)
             break;
-        } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             done.set_result<0>(0);
-            twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
+            twait { tamer::at_fd_read(fdv_, make_event()); }
         } else if (errno != EINTR) {
-            done(0, -errno);
+            r = -errno;
             break;
         }
     }
+
+    done(pos, fde_ >= 0 || r < 0 ? r : -ECANCELED);
 }
 
-tamed void fd::write(const void* buf, size_t size, event<size_t, int> done)
+tamed void fd::fdimp::write(const void* buf, size_t size, event<size_t, int> done)
 {
     tvars {
+        int r = fde_ >= 0 ? 0 : -EBADF;
         size_t pos = 0;
         ssize_t amt;
-        fdref fi(*this, fdref::weak);
-    }
-
-    if (!fi) {
-        done(0, -EBADF);
-        return;
+        fdweakref guard(this);
     }
 
 #if HAVE_TAMER_FDHELPER
-    if (fi.imp_->_is_file) {
-        _fdhm.write(fi.fdnum(), buf, size, nwritten, done);
+    if (_is_file) {
+        _fdhm.write(fdv_, buf, size, nwritten, done);
         return;
     }
 #endif
 
-    while (pos != size && done && fi) {
-        amt = fi.write(static_cast<const char*>(buf) + pos, size - pos);
+    while (pos != size && done && fde_ >= 0) {
+        amt = ::write(fdv_, static_cast<const char*>(buf) + pos, size - pos);
         if (amt != 0 && amt != (ssize_t) -1)
             pos += amt;
         else if (amt == 0)
             break;
         else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             done.set_result<0>(pos);
-            twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
+            twait { tamer::at_fd_write(fdv_, make_event()); }
         } else if (errno != EINTR) {
-            done(pos, -errno);
+            r = -errno;
             break;
         }
     }
 
-    done(pos, pos == size || fi ? 0 : -ECANCELED);
+    done(pos, fde_ >= 0 || r < 0 ? r : -ECANCELED);
 }
 
-tamed void fd::write(struct iovec* iov, int iov_count, event<size_t, int> done)
+tamed void fd::fdimp::write(struct iovec* iov, int iov_count, event<size_t, int> done)
 {
     tvars {
+        int r = fde_ >= 0 ? 0 : -EBADF;
         size_t pos = 0;
         size_t size = 0;
         ssize_t amt;
-        fdref fi(*this, fdref::weak);
+        fdweakref guard(this);
     }
-
-    if (!fi) {
-        done(0, -EBADF);
-        return;
-    }
-
-#if HAVE_TAMER_FDHELPER
-    if (fi.imp_->_is_file) {
-        _fdhm.write(fi.fdnum(), buf, size, nwritten, done);
-        return;
-    }
-#endif
 
     for (int i = 0; i != iov_count; ++i)
         size += iov[i].iov_len;
 
-    while (pos != size && done && fi) {
-        amt = ::writev(fi.fdnum(), iov, iov_count);
+    while (pos != size && done && fde_ >= 0) {
+        amt = ::writev(fdv_, iov, iov_count);
         if (amt != 0 && amt != (ssize_t) -1) {
             pos += amt;
             if (pos != size) {
@@ -420,14 +388,14 @@ tamed void fd::write(struct iovec* iov, int iov_count, event<size_t, int> done)
             break;
         else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             done.set_result<0>(pos);
-            twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
+            twait { tamer::at_fd_write(fdv_, make_event()); }
         } else if (errno != EINTR) {
-            done(pos, -errno);
+            r = -errno;
             break;
         }
     }
 
-    done(pos, pos == size || fi ? 0 : -ECANCELED);
+    done(pos, fde_ >= 0 || r < 0 ? r : -ECANCELED);
 }
 
 /** @brief  Write once to file descriptor.
@@ -445,31 +413,28 @@ tamed void fd::write(struct iovec* iov, int iov_count, event<size_t, int> done)
  *
  *  @sa write(const void *, size_t, size_t &, event<int>)
  */
-tamed void fd::write_once(const void *buf, size_t size, event<size_t, int> done)
+tamed void fd::fdimp::write_once(const void *buf, size_t size, event<size_t, int> done)
 {
     tvars {
-        ssize_t amt;
-        fdref fi(*this, fdref::weak);
+        int r = fde_ >= 0 ? 0 : -EBADF;
+        size_t pos;
+        fdweakref guard(this);
     }
 
-    if (!fi) {
-        done(0, -EBADF);
-        return;
-    }
-
-    while (done && fi) {
-        amt = fi.write(static_cast<const char*>(buf), size);
-        if (amt != (ssize_t) -1) {
-            done(size_t(amt), 0);
+    while (done && fde_ >= 0) {
+        pos = ::write(fdv_, static_cast<const char*>(buf), size);
+        if (pos != (size_t) -1)
             break;
-        } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        else if (errno == EAGAIN || errno == EWOULDBLOCK) {
             done.set_result<0>(0);
-            twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
+            twait { tamer::at_fd_write(fdv_, make_event()); }
         } else if (errno != EINTR) {
-            done(0, -errno);
+            r = -errno;
             break;
         }
     }
+
+    done(pos, fde_ >= 0 || r < 0 ? r : -ECANCELED);
 }
 
 ssize_t fd::direct_read(void* buf, size_t size) {
@@ -498,20 +463,16 @@ ssize_t fd::direct_write(const void* buf, size_t size) {
  *  @param  transfer_fd  File descriptor to send with the message.
  *  @param  done         Event triggered on completion.
  */
-tamed void fd::sendmsg(const void *buf, size_t size, int transfer_fd,
-                       event<int> done)
+tamed void fd::fdimp::sendmsg(const void *buf, size_t size, int transfer_fd,
+                              event<int> done)
 {
     tvars {
+        int r = fde_ >= 0 ? 0 : -EBADF;
         struct msghdr msg;
         struct iovec iov;
         char transfer_fd_space[64];
         ssize_t amt;
-        fdref fi(*this, fdref::weak);
-    }
-
-    if (!fi) {
-        done.trigger(-EBADF);
-        return;
+        fdweakref guard(this);
     }
 
     // prepare message
@@ -529,7 +490,7 @@ tamed void fd::sendmsg(const void *buf, size_t size, int transfer_fd,
     } else {
         msg.msg_control = transfer_fd_space;
         msg.msg_controllen = CMSG_SPACE(sizeof(int));
-        struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+        struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
         cmsg->cmsg_level = SOL_SOCKET;
         cmsg->cmsg_type = SCM_RIGHTS;
         cmsg->cmsg_len = CMSG_LEN(sizeof(int));
@@ -537,17 +498,19 @@ tamed void fd::sendmsg(const void *buf, size_t size, int transfer_fd,
     }
 
     // send message
-    while (done && fi) {
-        amt = ::sendmsg(fi.fdnum(), &msg, 0);
+    while (done && fde_ >= 0) {
+        amt = ::sendmsg(fdv_, &msg, 0);
         if (amt != (ssize_t) -1)
             break;
         else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
-        } else if (errno != EINTR)
-            done.trigger(-errno);
+            twait { tamer::at_fd_write(fdv_, make_event()); }
+        } else if (errno != EINTR) {
+            r = -errno;
+            break;
+        }
     }
 
-    done.trigger(fi ? 0 : -ECANCELED);
+    done(fde_ >= 0 || r < 0 ? r : -ECANCELED);
 }
 
 /** @brief  Create a socket file descriptor.
@@ -611,33 +574,28 @@ int fd::bind(const struct sockaddr *addr, socklen_t addrlen)
  *
  *  @sa accept(const event<fd> &)
  */
-tamed void fd::accept(struct sockaddr *addr_out, socklen_t *addrlen_out,
-                      event<fd> done)
+tamed void fd::fdimp::accept(struct sockaddr *addr_out, socklen_t *addrlen_out,
+                             event<fd> done)
 {
     tvars {
-        int f = -ECANCELED;
-        fdref fi(*this, fdref::weak);
+        int f = fde_ >= 0 ? -ECANCELED : -EBADF;
+        fdweakref guard(this);
     }
 
-    if (!fi) {
-        done.trigger(fd());
-        return;
-    }
-
-    while (done && fi) {
-        f = ::accept(fi.fdnum(), addr_out, addrlen_out);
+    while (done && fde_ >= 0) {
+        f = ::accept(fdv_, addr_out, addrlen_out);
         if (f >= 0) {
             make_nonblocking(f);
             break;
         } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
+            twait { tamer::at_fd_read(fdv_, make_event()); }
         } else if (errno != EINTR) {
             f = -errno;
             break;
         }
     }
 
-    done.trigger(fd(f));
+    done(fd(f));
 }
 
 /** @brief  Connect socket file descriptor.
@@ -649,35 +607,31 @@ tamed void fd::accept(struct sockaddr *addr_out, socklen_t *addrlen_out,
  *
  *  @sa tamer::tcp_connect
  */
-tamed void fd::connect(const struct sockaddr *addr, socklen_t addrlen,
-                       event<int> done)
+tamed void fd::fdimp::connect(const struct sockaddr *addr, socklen_t addrlen,
+                              event<int> done)
 {
     tvars {
-        int x, ret(0);
-        fdref fi(*this, fdref::weak);
+        int r = fde_ >= 0 ? -EINTR : -EBADF;
+        fdweakref guard(this);
     }
 
-    if (!fi) {
-        done.trigger(-EBADF);
-        return;
+    while (r == -EINTR) {
+        r = ::connect(fdv_, addr, addrlen);
+        if (r == -1)
+            r = -errno;
+    }
+    while (r == -EINPROGRESS || r == -EINTR) {
+        twait { tamer::at_fd_write(fdv_, make_event()); }
+        socklen_t socklen = sizeof(r);
+        if (!done || fde_ >= 0)
+            r = -ECANCELED;
+        else if (getsockopt(fdv_, SOL_SOCKET, SO_ERROR, (void*) &r, &socklen) == -1)
+            r = -errno;
+        else if (r != 0)
+            r = -r;
     }
 
-    x = ::connect(fi.fdnum(), addr, addrlen);
-    if (x == -1 && errno != EINPROGRESS)
-        ret = -errno;
-    else if (x == -1) {
-        twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
-        socklen_t socklen = sizeof(x);
-        if (!done || fi.fdnum() < 0)
-            ret = -ECANCELED;
-        else if (getsockopt(fi.fdnum(), SOL_SOCKET, SO_ERROR,
-                            (void *) &x, &socklen) == -1)
-            ret = -errno;
-        else if (x != 0)
-            ret = -x;
-    }
-
-    done.trigger(ret);
+    done(r);
 }
 
 

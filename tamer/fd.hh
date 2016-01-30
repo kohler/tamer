@@ -68,24 +68,23 @@ class fd {
     inline void close(int errcode);
     inline void error_close(int errcode);
 
-    void read(void* buf, size_t size, event<size_t, int> done);
-    void read(struct iovec* iov, int iov_count, event<size_t, int> done);
-    void read_once(void* buf, size_t size, event<size_t, int> done);
+    inline void read(void* buf, size_t size, event<size_t, int> done);
+    inline void read(struct iovec* iov, int iov_count, event<size_t, int> done);
+    inline void read_once(void* buf, size_t size, event<size_t, int> done);
 
-    void write(const void* buf, size_t size, event<size_t, int> done);
-    void write(struct iovec* iov, int iov_count, event<size_t, int> done);
-    void write_once(const void* buf, size_t size, event<size_t, int> done);
+    inline void write(const void* buf, size_t size, event<size_t, int> done);
+    inline void write(struct iovec* iov, int iov_count, event<size_t, int> done);
+    inline void write_once(const void* buf, size_t size, event<size_t, int> done);
 
-    void sendmsg(const void* buf, size_t size, int transfer_fd, event<int> done);
+    inline void sendmsg(const void* buf, size_t size, int transfer_fd, event<int> done);
 
     void fstat(struct stat& stat, event<int> done);
 
     int listen(int backlog = default_backlog);
     int bind(const struct sockaddr* addr, socklen_t addrlen);
-    void accept(struct sockaddr* addr, socklen_t* addrlen, event<fd> result);
+    inline void accept(struct sockaddr* addr, socklen_t* addrlen, event<fd> result);
     inline void accept(event<fd> result);
-    void connect(const struct sockaddr* addr, socklen_t addrlen,
-                 event<int> done);
+    inline void connect(const struct sockaddr* addr, socklen_t addrlen, event<int> done);
     inline int shutdown(int how);
     inline int socket_error() const;
 
@@ -128,70 +127,54 @@ class fd {
                 delete this;
         }
         int close(int leave_error = -EBADF);
+
+        void read(void* buf, size_t size, event<size_t, int> done);
+        void read(struct iovec* iov, int iov_count, event<size_t, int> done);
+        void read_once(void* buf, size_t size, event<size_t, int> done);
+        void write(const void* buf, size_t size, event<size_t, int> done);
+        void write(struct iovec* iov, int iov_count, event<size_t, int> done);
+        void write_once(const void* buf, size_t size, event<size_t, int> done);
+        void sendmsg(const void* buf, size_t size, int transfer_fd, event<int> done);
+
+        void accept(struct sockaddr* addr, socklen_t* addrlen, event<fd> result);
+        void connect(const struct sockaddr* addr, socklen_t addrlen, event<int> done);
+
+        class closure__read__PvkQki_; void read(closure__read__PvkQki_&);
+        class closure__read__P5ioveciQki_; void read(closure__read__P5ioveciQki_&);
+        class closure__read_once__PvkQki_; void read_once(closure__read_once__PvkQki_&);
+        class closure__write__PKvkQki_; void write(closure__write__PKvkQki_&);
+        class closure__write__P5ioveciQki_; void write(closure__write__P5ioveciQki_&);
+        class closure__write_once__PKvkQki_; void write_once(closure__write_once__PKvkQki_&);
+        class closure__sendmsg__PKvkiQi_; void sendmsg(closure__sendmsg__PKvkiQi_ &);
+        class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_&);
+        class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_&);
     };
 
-    struct fdcloser {
-        fdcloser(fd::fdimp* imp)
+    struct fdweakref {
+        fdweakref(fd::fdimp* imp)
             : imp_(imp) {
-            ++imp_->weak_count_;
+            if (imp_)
+                ++imp_->weak_count_;
         }
-        ~fdcloser() {
-            imp_->weak_deref();
+        ~fdweakref() {
+            if (imp_)
+                imp_->weak_deref();
         }
         void operator()() {
-            imp_->close();
+            if (imp_)
+                imp_->close();
         }
         fd::fdimp* imp_;
     };
 
-    class closure__accept__P8sockaddrP9socklen_tQ2fd_; void accept(closure__accept__P8sockaddrP9socklen_tQ2fd_&);
-    class closure__connect__PK8sockaddr9socklen_tQi_; void connect(closure__connect__PK8sockaddr9socklen_tQi_&);
-    class closure__read__PvkQki_; void read(closure__read__PvkQki_&);
-    class closure__read__P5ioveciQki_; void read(closure__read__P5ioveciQki_&);
-    class closure__read_once__PvkQki_; void read_once(closure__read_once__PvkQki_&);
-    class closure__write__PKvkQki_; void write(closure__write__PKvkQki_&);
-    class closure__write__P5ioveciQki_; void write(closure__write__P5ioveciQki_&);
-    class closure__write_once__PKvkQki_; void write_once(closure__write_once__PKvkQki_&);
-    class closure__sendmsg__PKvkiQi_; void sendmsg(closure__sendmsg__PKvkiQi_ &);
     class closure__open__PKci6mode_tQ2fd_; static void open(closure__open__PKci6mode_tQ2fd_ &);
 
     fdimp* _p;
 
+    static fdimp deadimp;
+
     friend bool operator==(const fd &a, const fd &b);
     friend bool operator!=(const fd &a, const fd &b);
-    friend class fdref;
-};
-
-class fdref {
-  public:
-    typedef fd::unspecified_bool_type unspecified_bool_type;
-
-    enum ref_type { strong = 0, weak = 1 };
-    inline fdref();
-    explicit inline fdref(const fd& f);
-    explicit inline fdref(fd&& f);
-    inline fdref(const fd& f, ref_type ref);
-    inline fdref(fd&& f, ref_type ref);
-    inline ~fdref();
-
-    inline operator unspecified_bool_type() const;
-    inline bool operator!() const;
-    inline int fdnum() const;
-
-    inline ssize_t read(void* buf, size_t size);
-    inline ssize_t write(const void* buf, size_t size);
-
-    inline void close();
-    inline void close(int errcode);
-
-  private:
-    fd::fdimp* imp_;
-    int flags_;
-
-    fdref(const fdref&) = delete;
-    fdref& operator=(const fdref&) = delete;
-
-    friend class fd;
 };
 
 inline fd tcp_listen(int port);
@@ -402,13 +385,21 @@ inline void fd::close()
         _p->close();
 }
 
+inline void fd::accept(struct sockaddr* addr, socklen_t* addrlen, event<fd> result) {
+    (_p ? _p : &deadimp)->accept(addr, addrlen, result);
+}
+
 /** @brief  Accept new connection on listening socket file descriptor.
  *  @param  result  Event triggered on completion.
  *
  *  Equivalent to accept(NULL, NULL, result).
  */
 inline void fd::accept(event<fd> result) {
-    accept(0, 0, result);
+    accept(nullptr, nullptr, result);
+}
+
+inline void fd::connect(const struct sockaddr* addr, socklen_t addrlen, event<int> done) {
+    (_p ? _p : &deadimp)->connect(addr, addrlen, done);
 }
 
 /** @brief  Shut down a socket file descriptor for reading and/or writing.
@@ -450,6 +441,36 @@ inline void fd::error_close(int errcode) {
 }
 /** @endcond never */
 
+inline void fd::read(void* buf, size_t size, event<size_t, int> done) {
+    (_p ? _p : &deadimp)->read(buf, size, done);
+}
+
+inline void fd::read(struct iovec* iov, int iov_count, event<size_t, int> done) {
+    (_p ? _p : &deadimp)->read(iov, iov_count, done);
+}
+
+inline void fd::read_once(void* buf, size_t size, event<size_t, int> done) {
+    (_p ? _p : &deadimp)->read_once(buf, size, done);
+}
+
+inline void fd::write(const void* buf, size_t size, event<size_t, int> done) {
+    (_p ? _p : &deadimp)->write(buf, size, done);
+}
+
+inline void fd::write(struct iovec* iov, int iov_count, event<size_t, int> done) {
+    (_p ? _p : &deadimp)->write(iov, iov_count, done);
+}
+
+inline void fd::write_once(const void* buf, size_t size, event<size_t, int> done) {
+    (_p ? _p : &deadimp)->write_once(buf, size, done);
+}
+
+inline void fd::sendmsg(const void* buf, size_t size, int transfer_fd, event<int> done) {
+    (_p ? _p : &deadimp)->sendmsg(buf, size, transfer_fd, done);
+}
+
+
+
 /** @brief  Make this file descriptor use nonblocking I/O.
  */
 inline int fd::make_nonblocking() {
@@ -461,7 +482,7 @@ inline int fd::make_nonblocking() {
  *  @param  b  Second file descriptor.
  *  @return  True iff @a a and @a b refer to the same file descriptor.
  */
-inline bool operator==(const fd &a, const fd &b) {
+inline bool operator==(const fd& a, const fd& b) {
     return a._p == b._p;
 }
 
@@ -472,87 +493,6 @@ inline bool operator==(const fd &a, const fd &b) {
  */
 inline bool operator!=(const fd &a, const fd &b) {
     return a._p != b._p;
-}
-
-
-inline fdref::fdref()
-    : imp_(0), flags_(0) {
-}
-
-inline fdref::fdref(const fd& f)
-    : imp_(f._p), flags_(0) {
-    if (imp_)
-        ++imp_->ref_count_;
-}
-
-inline fdref::fdref(fd&& f)
-    : imp_(f._p), flags_(0) {
-    f._p = 0;
-}
-
-inline fdref::fdref(const fd& f, ref_type ref)
-    : imp_(f._p), flags_(ref) {
-    if (imp_ && ref == weak)
-        ++imp_->weak_count_;
-    else if (imp_)
-        ++imp_->ref_count_;
-}
-
-inline fdref::fdref(fd&& f, ref_type ref)
-    : imp_(f._p), flags_(ref) {
-    f._p = 0;
-    if (imp_ && ref == weak) {
-        ++imp_->weak_count_;
-        imp_->deref();
-    }
-}
-
-inline fdref::~fdref() {
-    if (imp_ && (flags_ & weak))
-        imp_->weak_deref();
-    else if (imp_)
-        imp_->deref();
-}
-
-inline fdref::operator unspecified_bool_type() const {
-    return imp_ && imp_->fde_ >= 0 ? &fd::valid : 0;
-}
-
-inline bool fdref::operator!() const {
-    return !imp_ || imp_->fde_ < 0;
-}
-
-inline int fdref::fdnum() const {
-    assert(imp_ && imp_->fde_ >= 0);
-    return imp_->fdv_;
-}
-
-inline ssize_t fdref::read(void* buf, size_t size) {
-    if (imp_ && imp_->fde_ >= 0)
-        return ::read(imp_->fdv_, buf, size);
-    else {
-        errno = EBADF;
-        return -1;
-    }
-}
-
-inline ssize_t fdref::write(const void* buf, size_t size) {
-    if (imp_ && imp_->fde_ >= 0)
-        return ::write(imp_->fdv_, buf, size);
-    else {
-        errno = EBADF;
-        return -1;
-    }
-}
-
-inline void fdref::close() {
-    if (imp_)
-        imp_->close();
-}
-
-inline void fdref::close(int errcode) {
-    if (imp_)
-        imp_->close(errcode);
 }
 
 
