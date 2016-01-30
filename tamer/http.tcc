@@ -367,16 +367,13 @@ int http_parser::on_message_complete(::http_parser* hp) {
 }
 
 tamed void http_parser::receive(fd f, event<http_message> done) {
-    tamed {
-        message_data md;
-        fdref fi(std::move(f));
-    }
+    tamed { message_data md; }
     md.done = false;
 
-    while (fi && done) {
+    while (f && done) {
         {
             char mbuf[32768];
-            ssize_t nread = fi.read(mbuf, sizeof(mbuf));
+            ssize_t nread = f.direct_read(mbuf, sizeof(mbuf));
 
             if (nread != 0 && nread != (ssize_t) -1) {
                 hp_.data = &md;
@@ -391,13 +388,13 @@ tamed void http_parser::receive(fd f, event<http_message> done) {
             else if (errno == EAGAIN || errno == EWOULDBLOCK)
                 /* fall through to blocking */;
             else if (errno != EINTR) {
-                fi.close(errno);
+                f.close(errno);
                 break;
             } else
                 continue;
         }
 
-        twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
+        twait { tamer::at_fd_read(f.fdnum(), make_event()); }
     }
 
     if (done && !md.done && !md.hm.error_)
