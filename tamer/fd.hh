@@ -103,8 +103,6 @@ class fd {
     struct fdimp {
         int fde_;
         int fdv_;
-        mutex rlock_;
-        mutex wlock_;
         event<> _at_close;
 #if HAVE_TAMER_FDHELPER
         bool _is_file;
@@ -180,19 +178,13 @@ class fdref {
     inline bool operator!() const;
     inline int fdnum() const;
 
-    inline void acquire_read(event<> done);
-    inline void release_read();
     inline ssize_t read(void* buf, size_t size);
-
-    inline void acquire_write(event<> done);
-    inline void release_write();
     inline ssize_t write(const void* buf, size_t size);
 
     inline void close();
     inline void close(int errcode);
 
   private:
-    enum { read_locked = 2, write_locked = 4 };
     fd::fdimp* imp_;
     int flags_;
 
@@ -516,10 +508,6 @@ inline fdref::fdref(fd&& f, ref_type ref)
 }
 
 inline fdref::~fdref() {
-    if (imp_ && (flags_ & read_locked))
-        imp_->rlock_.release();
-    if (imp_ && (flags_ & write_locked))
-        imp_->wlock_.release();
     if (imp_ && (flags_ & weak))
         imp_->weak_deref();
     else if (imp_)
@@ -539,24 +527,7 @@ inline int fdref::fdnum() const {
     return imp_->fdv_;
 }
 
-inline void fdref::acquire_read(event<> done) {
-    assert(!(flags_ & read_locked));
-    flags_ |= read_locked;
-    if (imp_)
-        imp_->rlock_.acquire(std::move(done));
-    else
-        done();
-}
-
-inline void fdref::release_read() {
-    assert(flags_ & read_locked);
-    flags_ &= ~read_locked;
-    if (imp_)
-        imp_->rlock_.release();
-}
-
 inline ssize_t fdref::read(void* buf, size_t size) {
-    assert(flags_ & read_locked);
     if (imp_ && imp_->fde_ >= 0)
         return ::read(imp_->fdv_, buf, size);
     else {
@@ -565,24 +536,7 @@ inline ssize_t fdref::read(void* buf, size_t size) {
     }
 }
 
-inline void fdref::acquire_write(event<> done) {
-    assert(!(flags_ & write_locked));
-    flags_ |= write_locked;
-    if (imp_)
-        imp_->wlock_.acquire(std::move(done));
-    else
-        done();
-}
-
-inline void fdref::release_write() {
-    assert(flags_ & write_locked);
-    flags_ &= ~write_locked;
-    if (imp_)
-        imp_->wlock_.release();
-}
-
 inline ssize_t fdref::write(const void* buf, size_t size) {
-    assert(flags_ & write_locked);
     if (imp_ && imp_->fde_ >= 0)
         return ::write(imp_->fdv_, buf, size);
     else {

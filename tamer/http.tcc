@@ -373,8 +373,6 @@ tamed void http_parser::receive(fd f, event<http_message> done) {
     }
     md.done = false;
 
-    twait { fi.acquire_read(tamer::make_event()); }
-
     while (fi && done) {
         {
             char mbuf[32768];

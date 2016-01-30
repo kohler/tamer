@@ -243,17 +243,14 @@ tamed void fd::read(void *buf, size_t size, event<size_t, int> done)
     }
 #endif
 
-    done.set_result<0>(pos);
-    twait { fi.acquire_read(make_event()); }
-
     while (pos != size && done && fi) {
-        done.set_result<0>(pos);
         amt = fi.read(static_cast<char*>(buf) + pos, size - pos);
         if (amt != 0 && amt != (ssize_t) -1)
             pos += amt;
         else if (amt == 0)
             break;
         else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            done.set_result<0>(pos);
             twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
         } else if (errno != EINTR) {
             done(pos, -errno);
@@ -288,11 +285,7 @@ tamed void fd::read(struct iovec* iov, int iov_count, event<size_t, int> done)
     }
 #endif
 
-    done.set_result<0>(pos);
-    twait { fi.acquire_read(make_event()); }
-
     while (pos != size && done && fi) {
-        done.set_result<0>(pos);
         amt = ::readv(fi.fdnum(), iov, iov_count);
         if (amt != 0 && amt != (ssize_t) -1) {
             pos += amt;
@@ -309,6 +302,7 @@ tamed void fd::read(struct iovec* iov, int iov_count, event<size_t, int> done)
         } else if (amt == 0)
             break;
         else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            done.set_result<0>(pos);
             twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
         } else if (errno != EINTR) {
             done(pos, -errno);
@@ -331,15 +325,13 @@ tamed void fd::read_once(void* buf, size_t size, event<size_t, int> done)
         return;
     }
 
-    done.set_result<0>(0);
-    twait { fi.acquire_read(make_event()); }
-
     while (done && fi) {
         amt = fi.read(static_cast<char*>(buf), size);
         if (amt != (ssize_t) -1) {
             done(size_t(amt), 0);
             break;
         } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            done.set_result<0>(0);
             twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
         } else if (errno != EINTR) {
             done(0, -errno);
@@ -368,17 +360,14 @@ tamed void fd::write(const void* buf, size_t size, event<size_t, int> done)
     }
 #endif
 
-    done.set_result<0>(pos);
-    twait { fi.acquire_write(make_event()); }
-
     while (pos != size && done && fi) {
-        done.set_result<0>(pos);
         amt = fi.write(static_cast<const char*>(buf) + pos, size - pos);
         if (amt != 0 && amt != (ssize_t) -1)
             pos += amt;
         else if (amt == 0)
             break;
         else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            done.set_result<0>(pos);
             twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
         } else if (errno != EINTR) {
             done(pos, -errno);
@@ -413,11 +402,7 @@ tamed void fd::write(struct iovec* iov, int iov_count, event<size_t, int> done)
     for (int i = 0; i != iov_count; ++i)
         size += iov[i].iov_len;
 
-    done.set_result<0>(pos);
-    twait { fi.acquire_write(make_event()); }
-
     while (pos != size && done && fi) {
-        done.set_result<0>(pos);
         amt = ::writev(fi.fdnum(), iov, iov_count);
         if (amt != 0 && amt != (ssize_t) -1) {
             pos += amt;
@@ -434,6 +419,7 @@ tamed void fd::write(struct iovec* iov, int iov_count, event<size_t, int> done)
         } else if (amt == 0)
             break;
         else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            done.set_result<0>(pos);
             twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
         } else if (errno != EINTR) {
             done(pos, -errno);
@@ -471,15 +457,13 @@ tamed void fd::write_once(const void *buf, size_t size, event<size_t, int> done)
         return;
     }
 
-    done.set_result<0>(0);
-    twait { fi.acquire_write(make_event()); }
-
     while (done && fi) {
         amt = fi.write(static_cast<const char*>(buf), size);
         if (amt != (ssize_t) -1) {
             done(size_t(amt), 0);
             break;
         } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            done.set_result<0>(0);
             twait { tamer::at_fd_write(fi.fdnum(), make_event()); }
         } else if (errno != EINTR) {
             done(0, -errno);
@@ -640,8 +624,6 @@ tamed void fd::accept(struct sockaddr *addr_out, socklen_t *addrlen_out,
         return;
     }
 
-    twait { fi.acquire_read(make_event()); }
-
     while (done && fi) {
         f = ::accept(fi.fdnum(), addr_out, addrlen_out);
         if (f >= 0) {
@@ -679,8 +661,6 @@ tamed void fd::connect(const struct sockaddr *addr, socklen_t addrlen,
         done.trigger(-EBADF);
         return;
     }
-
-    twait { fi.acquire_write(make_event()); }
 
     x = ::connect(fi.fdnum(), addr, addrlen);
     if (x == -1 && errno != EINPROGRESS)
