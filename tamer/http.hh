@@ -176,11 +176,9 @@ class http_parser : public tamed_class {
     static int on_body(::http_parser* hp, const char* s, size_t len);
     static int on_message_complete(::http_parser* hp);
     inline void copy_parser_status(message_data& md);
-    static void unparse_request_headers(std::ostringstream& buf,
-                                        const http_message& m);
-    static void unparse_response_headers(std::ostringstream& buf,
-                                         const http_message& m,
-                                         bool include_content_length);
+    static std::string unparse_request_headers(const http_message& m);
+    static std::string unparse_response_headers(const http_message& m,
+                                                bool include_content_length);
 
     class closure__receive__2fdQ12http_message_; void receive(closure__receive__2fdQ12http_message_&);
     class closure__send_request__2fdRK12http_messageQ_; static void send_request(closure__send_request__2fdRK12http_messageQ_&);

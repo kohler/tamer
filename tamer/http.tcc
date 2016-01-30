@@ -402,8 +402,8 @@ tamed void http_parser::receive(fd f, event<http_message> done) {
     done(TAMER_MOVE(md.hm));
 }
 
-void http_parser::unparse_request_headers(std::ostringstream& buf,
-                                          const http_message& m) {
+std::string http_parser::unparse_request_headers(const http_message& m) {
+    std::ostringstream buf;
     buf << http_method_str(m.method()) << " " << m.url()
         << " HTTP/" << m.http_major() << "." << m.http_minor() << "\r\n";
     bool need_content_length = !m.body_.empty();
@@ -415,26 +415,27 @@ void http_parser::unparse_request_headers(std::ostringstream& buf,
     if (need_content_length)
         buf << "Content-Length: " << m.body_.length() << "\r\n";
     buf << "\r\n";
+    return buf.str();
 }
 
 tamed static void http_parser::send_request(fd f, const http_message& m,
                                             event<> done) {
-    tamed { std::ostringstream buf; std::string body; }
-    unparse_request_headers(buf, m);
-    body = m.body();
-    if (body.length() + buf.str().length() < 16384) {
-        buf << TAMER_MOVE(body);
-        body = "";
+    tamed {
+        std::string headers = unparse_request_headers(m);
+        std::string body = m.body();
+        struct iovec iov[2];
     }
-    twait { f.write(buf.str().data(), buf.str().length(), rebind<size_t, int>(make_event())); }
-    if (body.length())
-        twait { f.write(body.data(), body.length(), rebind<size_t, int>(make_event())); }
+    iov[0].iov_base = const_cast<char*>(headers.data());
+    iov[0].iov_len = headers.length();
+    iov[1].iov_base = const_cast<char*>(body.data());
+    iov[1].iov_len = body.length();
+    twait { f.write(iov, 2, rebind<size_t, int>(make_event())); }
     done();
 }
 
-void http_parser::unparse_response_headers(std::ostringstream& buf,
-                                           const http_message& m,
-                                           bool include_content_length) {
+std::string http_parser::unparse_response_headers(const http_message& m,
+                                                  bool include_content_length) {
+    std::ostringstream buf;
     buf << "HTTP/" << m.http_major() << "." << m.http_minor()
         << " " << m.status_code() << " ";
     if (m.status_message().empty())
@@ -451,43 +452,41 @@ void http_parser::unparse_response_headers(std::ostringstream& buf,
     if (need_content_length)
         buf << "Content-Length: " << m.body_.length() << "\r\n";
     buf << "\r\n";
+    return buf.str();
 }
 
 tamed static void http_parser::send_response(fd f, const http_message& m,
                                              event<> done) {
-    tamed { std::ostringstream buf; std::string body; }
-    unparse_response_headers(buf, m, true);
-    body = m.body();
-    if (body.length() + buf.str().length() <= 16384) {
-        buf << TAMER_MOVE(body);
-        body = "";
+    tamed {
+        std::string headers = unparse_response_headers(m, true);
+        std::string body = m.body();
+        struct iovec iov[2];
     }
-    twait { f.write(buf.str().data(), buf.str().length(), rebind<size_t, int>(make_event())); }
-    if (body.length())
-        twait { f.write(body.data(), body.length(), rebind<size_t, int>(make_event())); }
+    iov[0].iov_base = const_cast<char*>(headers.data());
+    iov[0].iov_len = headers.length();
+    iov[1].iov_base = const_cast<char*>(body.data());
+    iov[1].iov_len = body.length();
+    twait { f.write(iov, 2, rebind<size_t, int>(make_event())); }
     done();
 }
 
 tamed static void http_parser::send_response_headers(fd f, const http_message& m,
                                                      event<> done) {
-    tvars { std::ostringstream buf; }
-    unparse_response_headers(buf, m, false);
-    twait { f.write(buf.str().data(), buf.str().length(), rebind<size_t, int>(make_event())); }
+    tamed { std::string headers = unparse_response_headers(m, false); }
+    twait { f.write(headers.data(), headers.length(), rebind<size_t, int>(make_event())); }
     done();
 }
 
 tamed static void http_parser::send_response_chunk(fd f, std::string s,
                                                    event<> done) {
-    tamed { std::ostringstream buf; }
-    buf << s.length() << "\r\n";
-    if (s.length() <= 16375) {
-        buf << s << "\r\n";
-        twait { f.write(buf.str().data(), buf.str().length(), rebind<size_t, int>(make_event())); }
-    } else {
-        twait { f.write(buf.str().data(), buf.str().length(), rebind<size_t, int>(make_event())); }
-        twait { f.write(s.data(), s.length(), rebind<size_t, int>(make_event())); }
-        twait { f.write("\r\n", 2, rebind<size_t, int>(make_event())); }
-    }
+    tamed { char lenbuf[32]; struct iovec iov[3]; }
+    iov[0].iov_base = lenbuf;
+    iov[0].iov_len = sprintf(lenbuf, "%zd\r\n", s.length());
+    iov[1].iov_base = const_cast<char*>(s.data());
+    iov[1].iov_len = s.length();
+    iov[2].iov_base = const_cast<char*>("\r\n");
+    iov[2].iov_len = 2;
+    twait { f.write(iov, 3, rebind<size_t, int>(make_event())); }
     done();
 }
 
