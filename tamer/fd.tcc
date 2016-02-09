@@ -623,7 +623,7 @@ tamed void fd::fdimp::connect(const struct sockaddr *addr, socklen_t addrlen,
     while (r == -EINPROGRESS || r == -EINTR) {
         twait { tamer::at_fd_write(fdv_, make_event()); }
         socklen_t socklen = sizeof(r);
-        if (!done || fde_ >= 0)
+        if (!done || fde_ < 0)
             r = -ECANCELED;
         else if (getsockopt(fdv_, SOL_SOCKET, SO_ERROR, (void*) &r, &socklen) == -1)
             r = -errno;
