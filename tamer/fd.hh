@@ -153,16 +153,13 @@ class fd {
     struct fdweakref {
         fdweakref(fd::fdimp* imp)
             : imp_(imp) {
-            if (imp_)
-                ++imp_->weak_count_;
+            ++imp_->weak_count_;
         }
         ~fdweakref() {
-            if (imp_)
-                imp_->weak_deref();
+            imp_->weak_deref();
         }
         void operator()() {
-            if (imp_)
-                imp_->close();
+            imp_->close();
         }
         fd::fdimp* imp_;
     };
