@@ -383,9 +383,10 @@ tamed void http_parser::receive(fd f, event<http_message> done) {
                     copy_parser_status(md);
                     break;
                 }
-            } else if (nread == 0)
+            } else if (nread == 0) {
+                hp_.http_errno = md.hm.error_ = HPE_INVALID_EOF_STATE;
                 break;
-            else if (errno == EAGAIN || errno == EWOULDBLOCK)
+            } else if (errno == EAGAIN || errno == EWOULDBLOCK)
                 /* fall through to blocking */;
             else if (errno != EINTR) {
                 f.close(errno);
