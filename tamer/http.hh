@@ -30,7 +30,7 @@ struct http_header {
         const char* end = s + len;
         for (; s != end; ++s, ++names)
             if (*s != *names
-                && (*s < 'A' || *s > 'Z' || (*s - 'A' + 'a') != *names))
+                && (*names < 'A' || *names > 'Z' || (*names - 'A' + 'a') != *s))
                 return false;
         return true;
     }
