@@ -94,6 +94,7 @@ class http_message {
     inline http_message& header(std::string key, size_t value);
     inline http_message& date_header(std::string key, time_t value);
     inline http_message& body(std::string body);
+    inline http_message& append_body(const std::string& x);
 
     static std::string canonicalize(std::string x);
     static const char* default_status_message(unsigned code);
@@ -348,6 +349,11 @@ inline http_message& http_message::date_header(std::string key, time_t value) {
 
 inline http_message& http_message::body(std::string body) {
     body_ = TAMER_MOVE(body);
+    return *this;
+}
+
+inline http_message& http_message::append_body(const std::string& x) {
+    body_ += x;
     return *this;
 }
 
