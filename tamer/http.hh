@@ -148,7 +148,9 @@ class http_parser : public tamed_class {
     void receive(fd f, event<http_message> done);
     void send(fd f, const http_message& m, event<> done);
     static void send_request(fd f, const http_message& m, event<> done);
+    static void send_request(fd f, http_message&& m, event<> done);
     static void send_response(fd f, const http_message& m, event<> done);
+    static void send_response(fd f, http_message&& m, event<> done);
     static void send_response_headers(fd f, const http_message& m, event<> done);
     static void send_response_chunk(fd f, std::string s, event<> done);
     static void send_response_end(fd f, event<> done);
@@ -182,11 +184,16 @@ class http_parser : public tamed_class {
     static void unparse_response_headers(std::ostringstream& buf,
                                          const http_message& m,
                                          bool include_content_length);
+    static inline std::string prepare_headers(const http_message& m,
+                                              std::string& body,
+                                              bool is_response);
+    static inline void send_message(fd f, std::string headers,
+                                    std::string body, event<> done);
+    static void send_two(fd f, std::string a, std::string b, event<> done);
 
     class closure__receive__2fdQ12http_message_; void receive(closure__receive__2fdQ12http_message_&);
-    class closure__send_request__2fdRK12http_messageQ_; static void send_request(closure__send_request__2fdRK12http_messageQ_&);
-    class closure__send_response__2fdRK12http_messageQ_; static void send_response(closure__send_response__2fdRK12http_messageQ_&);
     class closure__send_response_chunk__2fdSsQ_; static void send_response_chunk(closure__send_response_chunk__2fdSsQ_&);
+    class closure__send_two__2fdSsSsQ_; static void send_two(closure__send_two__2fdSsSsQ_&);
 };
 
 inline http_message::http_message()
@@ -393,6 +400,14 @@ inline bool http_parser::should_keep_alive() const {
 
 inline void http_parser::clear_should_keep_alive() {
     hp_.flags = (hp_.flags & ~F_CONNECTION_KEEP_ALIVE) | F_CONNECTION_CLOSE;
+}
+
+inline void http_parser::send_message(fd f, std::string headers,
+                                      std::string body, event<> done) {
+    if (body.empty())
+        f.write(headers, done);
+    else
+        send_two(f, headers, body, done);
 }
 
 } // namespace tamer

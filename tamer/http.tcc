@@ -422,18 +422,36 @@ void http_parser::unparse_request_headers(std::ostringstream& buf,
     buf << "\r\n";
 }
 
-tamed static void http_parser::send_request(fd f, const http_message& m,
-                                            event<> done) {
-    tamed { std::ostringstream buf; std::string body; }
-    unparse_request_headers(buf, m);
-    body = m.body();
-    if (body.length() + buf.str().length() < 16384) {
+inline std::string http_parser::prepare_headers(const http_message& m,
+                                                std::string& body,
+                                                bool is_response) {
+    std::ostringstream buf;
+    if (is_response)
+        unparse_response_headers(buf, m, true);
+    else
+        unparse_request_headers(buf, m);
+    if (buf.tellp() + std::ostringstream::pos_type(body.length()) < 16384) {
         buf << TAMER_MOVE(body);
-        f.write(buf.str(), done);
-    } else {
-        twait { f.write(buf.str(), make_event()); }
-        f.write(TAMER_MOVE(body), done);
+        body.clear();
     }
+    return buf.str();
+}
+
+tamed static void http_parser::send_two(fd f, std::string a,
+                                        std::string b, event<> done) {
+    twait { f.write(TAMER_MOVE(a), make_event()); }
+    f.write(TAMER_MOVE(b), done);
+}
+
+void http_parser::send_request(fd f, const http_message& m, event<> done) {
+    std::string body = m.body();
+    std::string headers = prepare_headers(m, body, false);
+    send_message(f, headers, body, done);
+}
+
+void http_parser::send_request(fd f, http_message&& m, event<> done) {
+    std::string headers = prepare_headers(m, m.body_, false);
+    send_message(f, headers, TAMER_MOVE(m.body_), done);
 }
 
 void http_parser::unparse_response_headers(std::ostringstream& buf,
@@ -457,18 +475,15 @@ void http_parser::unparse_response_headers(std::ostringstream& buf,
     buf << "\r\n";
 }
 
-tamed static void http_parser::send_response(fd f, const http_message& m,
-                                             event<> done) {
-    tamed { std::ostringstream buf; std::string body; }
-    unparse_response_headers(buf, m, true);
-    body = m.body();
-    if (body.length() + buf.str().length() <= 16384) {
-        buf << TAMER_MOVE(body);
-        f.write(buf.str(), done);
-    } else {
-        twait { f.write(buf.str(), make_event()); }
-        f.write(TAMER_MOVE(body), done);
-    }
+void http_parser::send_response(fd f, const http_message& m, event<> done) {
+    std::string body = m.body();
+    std::string headers = prepare_headers(m, body, true);
+    send_message(f, headers, body, done);
+}
+
+void http_parser::send_response(fd f, http_message&& m, event<> done) {
+    std::string headers = prepare_headers(m, m.body_, true);
+    send_message(f, headers, TAMER_MOVE(m.body_), done);
 }
 
 void http_parser::send_response_headers(fd f, const http_message& m,
