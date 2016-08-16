@@ -64,8 +64,8 @@ tamed void websocket_parser::receive_any(fd f, websocket_message& ctrl, websocke
     }
 
     twait { f.read(header, 2, nread, make_event(r)); }
-    if (r >= 0 && nread == 2 && (header[1] & 127) >= 126) {
-        twait { f.read(header, expected_length(header[1]) - 2, nread, make_event(r)); }
+    if (r >= 0 && nread == 2 && header[1] >= 126) {
+        twait { f.read(&header[2], expected_length(header[1]) - 2, nread, make_event(r)); }
         nread += 2;
     }
 
@@ -85,22 +85,25 @@ tamed void websocket_parser::receive_any(fd f, websocket_message& ctrl, websocke
         close(1002);
         return;
     } else if (header[0] & 0x08
-               ? (header[0] & 0x80) == 0x00       // fragmented control
+               ? (header[0] & 0x80) == 0x00  // fragmented control
                : (data.opcode()
-                  ? header[0] & 0x07              // new frame, incomplete fragment
-                  : !(header[0] & 0x07))) {       // continuation, no fragment
+                  ? header[0] & 0x07         // new frame, incomplete fragment
+                  : !(header[0] & 0x07))) {  // continuation, no fragment
+                  std::cerr<<"Y\n";
         done(-HPE_INVALID_FRAGMENT);
         close(1002);
         return;
     }
 
     if (header[0] & 0x08)
-        m = &ctrl;
+        m = &ctrl.clear();
     else
         m = &data;
 
     if (header[0] & 0x0F)
         m->opcode(websocket_opcode(header[0] & 0x0F));
+
+    m->incomplete(!(header[0] & 0x80));
 
     {
         uint64_t sz = header[1] & 127;
@@ -138,7 +141,7 @@ tamed void websocket_parser::receive_any(fd f, websocket_message& ctrl, websocke
         return;
     }
 
-    if ((header[0] & 0x08) && m->body().length() > offset) {
+    if ((header[1] & 0x80) && m->body().length() > offset) {
         memcpy(&mask, &header[expected_length(header[1]) - 4], 4);
         do_mask(&m->body().front() + offset, m->body().length() - offset, mask);
     }
@@ -215,6 +218,7 @@ tamed void websocket_parser::send(fd f, websocket_message m, event<> done) {
         }
         if (m.body().length())
             do_mask(&m.body().front(), m.body().length(), mask);
+        memcpy(&header[nheader], &mask, 4);
         nheader += 4;
     }
 
@@ -224,7 +228,7 @@ tamed void websocket_parser::send(fd f, websocket_message m, event<> done) {
     iov[1].iov_base = const_cast<char*>(m.body().data());
     iov[1].iov_len = m.body().length();
 
-    twait { f.write(iov, 2, rebind<int>(make_event())); }
+    twait { f.write(iov, 2, nullptr, rebind<int>(make_event())); }
 
     done();
 }
@@ -285,6 +289,7 @@ bool websocket_handshake::response(http_message& resp, const http_message& req) 
         return false;
     resp.status_code(101).header("Upgrade", "websocket")
         .header("Connection", "Upgrade")
+        .date_header("Date", time(0))
         .header("Sec-WebSocket-Accept", std::string(reinterpret_cast<char*>(sha1enc), olen));
     return true;
 }

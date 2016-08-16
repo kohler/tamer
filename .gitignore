@@ -60,6 +60,8 @@ gmon.out
 /ex/tamer-echosrv.cc
 /ex/tamer-httpd
 /ex/tamer-httpd.cc
+/ex/tamer-wsecho
+/ex/tamer-wsecho.cc
 /ex/tamer-yes
 /ex/tamer-yes.cc
 
