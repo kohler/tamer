@@ -45,7 +45,7 @@ tamed void runone(tamer::fd cfd, double delay) {
 
     while (cfd && wp.ok()) {
         twait { wp.receive(cfd, make_event(wreq)); }
-        if (!req)
+        if (!wreq)
             break;
         std::cerr << wreq.opcode() << '\n';
         assert(wreq.opcode() == tamer::WEBSOCKET_TEXT || wreq.opcode() == tamer::WEBSOCKET_BINARY);
