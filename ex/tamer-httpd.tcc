@@ -52,7 +52,7 @@ tamed void run(tamer::fd listenfd, double delay) {
 	fprintf(stderr, "listen: %s\n", strerror(-listenfd.error()));
     while (listenfd) {
 	twait { listenfd.accept(make_event(cfd)); }
-	runone(cfd, delay);
+	runone(std::move(cfd), delay);
     }
 }
 
