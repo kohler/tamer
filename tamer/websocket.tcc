@@ -4,6 +4,7 @@
 #include <mbedtls/entropy.h>
 #include <mbedtls/sha1.h>
 #include <unistd.h>
+#include <iostream>
 namespace tamer {
 
 namespace {
@@ -52,6 +53,39 @@ void do_mask(unsigned char* x, size_t n, websocket_mask_union mask) {
 void do_mask(char* x, size_t n, websocket_mask_union mask) {
     return do_mask(reinterpret_cast<unsigned char*>(x), n, mask);
 }
+
+bool validate_utf8(const char* first, const char* cur, const char* last,
+                   bool complete) {
+    while (cur > first) {
+        --cur;
+        if (((unsigned char) *cur & 0xC0) != 0x80)
+            break;
+    }
+    int state = 0;
+    for (; cur < last; ++cur) {
+        int ch = (unsigned char) *cur;
+        if (state == 0 && ch <= 127)
+            continue;
+        if ((state == 0) != ((ch & 0xC0) != 0x80)
+            || ch == 0xC0
+            || ch == 0xC1
+            || ch >= 0xF5
+            || (state == 2 && ch < 0xA0 && (unsigned char) cur[-1] == 0xE0)
+            || (state == 2 && ch >= 0xA0 && (unsigned char) cur[-1] == 0xED)
+            || (state == 3 && ch < 0x90 && (unsigned char) cur[-1] == 0xF0)
+            || (state == 3 && ch >= 0x90 && (unsigned char) cur[-1] == 0xF4))
+            return false;
+        if (ch >= 0xF0)
+            state = 3;
+        else if (ch >= 0xE0)
+            state = 2;
+        else if (ch >= 0xC0)
+            state = 1;
+        else
+            --state;
+    }
+    return state == 0 || !complete;
+}
 }
 
 tamed void websocket_parser::receive_any(fd f, websocket_message& ctrl, websocket_message& data, event<int> done) {
@@ -70,29 +104,28 @@ tamed void websocket_parser::receive_any(fd f, websocket_message& ctrl, websocke
     }
 
     if (r < 0                                     // I/O error
-        || (nread && nread != expected_length(header[1]))) { // incorrect length
-        done(-HPE_INVALID_EOF_STATE);
-        close(1002);
-        return;
+        || (nread && nread != expected_length(header[1]))) { // bad length
+        r = -HPE_INVALID_EOF_STATE;
+        goto protocol_error;
     } else if (!nread) {
         done(-HPE_CLOSED_CONNECTION);
-        close(0);
+        if (!closed_)
+            close_code_ = 1006;
+        closed_ = 3;
         return;
     } else if ((type_ == HTTP_RESPONSE) != !(header[1] & 128) // mask iff C->S
                || (header[0] & 0x70)              // reserved bits nonzero
                || (header[0] & 0x07) >= 3) {      // unknown opcode
-        done(-HPE_INVALID_HEADER_TOKEN);
-        close(1002);
-        return;
+        r = -HPE_INVALID_HEADER_TOKEN;
+        goto protocol_error;
     } else if (header[0] & 0x08
                ? (header[0] & 0x80) == 0x00  // fragmented control
+                 || (header[1] & 0x7F) > 125 // control too long
                : (data.opcode()
                   ? header[0] & 0x07         // new frame, incomplete fragment
                   : !(header[0] & 0x07))) {  // continuation, no fragment
-                  std::cerr<<"Y\n";
-        done(-HPE_INVALID_FRAGMENT);
-        close(1002);
-        return;
+        r = -HPE_INVALID_FRAGMENT;
+        goto protocol_error;
     }
 
     if (header[0] & 0x08)
@@ -124,9 +157,7 @@ tamed void websocket_parser::receive_any(fd f, websocket_message& ctrl, websocke
         m->body().resize(sz);
         if (m->body().length() != sz || m->body().capacity() < cap) {
             m->body().resize(0);
-            done(-HPE_INVALID_CONTENT_LENGTH);
-            close(1009);
-            return;
+            goto too_big;
         }
     }
 
@@ -136,9 +167,8 @@ tamed void websocket_parser::receive_any(fd f, websocket_message& ctrl, websocke
 
     if (r < 0 || offset + nread != m->body().length()) {
         m->body().resize(offset + nread);
-        done(-HPE_INVALID_EOF_STATE);
-        close(1002);
-        return;
+        r = -HPE_INVALID_EOF_STATE;
+        goto protocol_error;
     }
 
     if ((header[1] & 0x80) && m->body().length() > offset) {
@@ -146,7 +176,25 @@ tamed void websocket_parser::receive_any(fd f, websocket_message& ctrl, websocke
         do_mask(&m->body().front() + offset, m->body().length() - offset, mask);
     }
 
-    done(!(header[0] & 0x80) ? 0 : m->opcode());
+    // validate UTF-8
+    if (m->opcode() == WEBSOCKET_TEXT
+        && !validate_utf8(m->body().data(), m->body().data() + offset, m->body().data() + m->body().length(), header[0] & 0x80)) {
+        done(-HPE_STRICT);
+        twait { close(f, 1007, make_event()); }
+        return;
+    }
+
+    done(header[0] & 0x80 ? m->opcode() : 0);
+    return;
+
+ protocol_error:
+    done(r);
+    twait { close(f, 1002, make_event()); }
+    return;
+
+ too_big:
+    done(-HPE_INVALID_CONTENT_LENGTH);
+    twait { close(f, 1009, make_event()); }
 }
 
 tamed void websocket_parser::receive(fd f, event<websocket_message> done) {
@@ -163,13 +211,27 @@ tamed void websocket_parser::receive(fd f, event<websocket_message> done) {
             done(TAMER_MOVE(data));
             return;
         } else if (r == WEBSOCKET_CLOSE) {
-            if (ctrl.body().length() >= 2)
-                close_reason_ = ((unsigned char) ctrl.body()[0] << 8) | (unsigned char) ctrl.body()[1];
-            if (!closed_) {
-                closed_ = true;
-                twait { send(f, ctrl, make_event()); }
+            if (ctrl.body().length() < 2)
+                close_code_ = 1005;
+            else {
+                close_code_ = ((unsigned char) ctrl.body()[0] << 8) | (unsigned char) ctrl.body()[1];
+                // invalid reasons => protocol error
+                if (close_code_ < 1000
+                    || (close_code_ >= 1004 && close_code_ <= 1006)
+                    || (close_code_ >= 1014 && close_code_ <= 2999))
+                    close_code_ = 1002;
+                if (ctrl.body().length() > 2) {
+                    if (validate_utf8(ctrl.body().data() + 2, ctrl.body().data() + 2, ctrl.body().data() + ctrl.body().length(), true))
+                        close_reason_ = ctrl.body().substr(2);
+                    else
+                        close_code_ = 1002;
+                }
             }
+            closed_ |= 1;
+            if (!(closed_ & 2))
+                twait { close(f, close_code_, make_event()); }
             done(TAMER_MOVE(data.error(HPE_CLOSED_CONNECTION)));
+            return;
         } else if (r == WEBSOCKET_PING) {
             twait { send(f, ctrl.opcode(WEBSOCKET_PONG), make_event()); }
         }
@@ -184,6 +246,9 @@ tamed void websocket_parser::send(fd f, websocket_message m, event<> done) {
         size_t nread;
         int r;
     }
+    assert(!(closed_ & 2));
+    if (m.opcode() == WEBSOCKET_CLOSE)
+        closed_ |= 2;
 
     {
         size_t l = m.body().length();
@@ -231,6 +296,26 @@ tamed void websocket_parser::send(fd f, websocket_message m, event<> done) {
     twait { f.write(iov, 2, nullptr, rebind<int>(make_event())); }
 
     done();
+}
+
+void websocket_parser::close(fd f, uint16_t code, std::string reason, event<> done) {
+    if (!(closed_ & 2)) {
+        websocket_message m;
+        m.opcode(WEBSOCKET_CLOSE);
+        if (code && code != 1005) {
+            char buf[256];
+            buf[0] = code >> 8;
+            buf[1] = code & 255;
+            if (reason.length() > 254)
+                m.body(std::string(buf, 2) + reason);
+            else {
+                memcpy(&buf[2], reason.data(), reason.length());
+                m.body(std::string(buf, 2 + reason.length()));
+            }
+        }
+        send(f, std::move(m), done);
+    } else
+        done();
 }
 
 bool websocket_handshake::request(http_message& req, std::string& key) {

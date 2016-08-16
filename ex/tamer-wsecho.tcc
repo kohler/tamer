@@ -47,11 +47,13 @@ tamed void runone(tamer::fd cfd, double delay) {
         twait { wp.receive(cfd, make_event(wreq)); }
         if (!wreq)
             break;
-        std::cerr << wreq.opcode() << '\n';
         assert(wreq.opcode() == tamer::WEBSOCKET_TEXT || wreq.opcode() == tamer::WEBSOCKET_BINARY);
         wres.opcode(wreq.opcode()).body(wreq.body());
         twait { wp.send(cfd, wres, make_event()); }
     }
+
+    // “clean shutdown” suggestion is SHUT_WR, receive until EOF, close.
+    // we just close.
 }
 
 tamed void run(tamer::fd listenfd, double delay) {

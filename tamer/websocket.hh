@@ -29,6 +29,8 @@ class websocket_message {
     inline enum http_errno error() const;
 
     inline enum websocket_opcode opcode() const;
+    inline bool text() const;
+    inline bool binary() const;
     inline bool incomplete() const;
     inline const std::string& body() const;
     inline std::string& body();
@@ -39,6 +41,8 @@ class websocket_message {
     inline websocket_message& incomplete(bool c);
     inline websocket_message& opcode(enum websocket_opcode o);
     inline websocket_message& body(std::string body);
+    inline websocket_message& text(std::string body);
+    inline websocket_message& binary(std::string body);
 
   private:
     unsigned error_ : 8;
@@ -58,11 +62,16 @@ class websocket_parser : public tamed_class {
     void receive_any(fd f, websocket_message& ctrl, websocket_message& data, event<int> done);
     void receive(fd f, event<websocket_message> done);
     void send(fd f, websocket_message m, event<> done);
+    inline void send_text(fd f, std::string text, event<> done);
+    inline void send_binary(fd f, std::string text, event<> done);
+    void close(fd f, uint16_t code, std::string reason, event<> done);
+    inline void close(fd f, uint16_t code, event<> done);
 
   private:
     enum http_parser_type type_;
-    bool closed_;
-    uint16_t close_reason_;
+    uint8_t closed_;
+    uint16_t close_code_;
+    std::string close_reason_;
 
     class closure__receive_any__2fdR17websocket_messageR17websocket_messageQi_;
     void receive_any(closure__receive_any__2fdR17websocket_messageR17websocket_messageQi_&);
@@ -90,6 +99,14 @@ inline enum http_errno websocket_message::error() const {
 
 inline enum websocket_opcode websocket_message::opcode() const {
     return websocket_opcode(opcode_);
+}
+
+inline bool websocket_message::text() const {
+    return websocket_opcode(opcode_) == WEBSOCKET_TEXT;
+}
+
+inline bool websocket_message::binary() const {
+    return websocket_opcode(opcode_) == WEBSOCKET_BINARY;
 }
 
 inline bool websocket_message::incomplete() const {
@@ -132,8 +149,20 @@ inline websocket_message& websocket_message::body(std::string s) {
     return *this;
 }
 
+inline websocket_message& websocket_message::text(std::string s) {
+    opcode_ = WEBSOCKET_TEXT;
+    body_ = TAMER_MOVE(s);
+    return *this;
+}
+
+inline websocket_message& websocket_message::binary(std::string s) {
+    opcode_ = WEBSOCKET_BINARY;
+    body_ = TAMER_MOVE(s);
+    return *this;
+}
+
 inline websocket_parser::websocket_parser(enum http_parser_type type)
-    : type_(type), closed_(false), close_reason_(0) {
+    : type_(type), closed_(0), close_code_(0) {
 }
 
 inline bool websocket_parser::ok() const {
@@ -146,6 +175,18 @@ inline bool websocket_parser::operator!() const {
 
 inline bool websocket_parser::closed() const {
     return closed_;
+}
+
+inline void websocket_parser::send_text(fd f, std::string s, event<> done) {
+    send(f, websocket_message().text(s), done);
+}
+
+inline void websocket_parser::send_binary(fd f, std::string s, event<> done) {
+    send(f, websocket_message().binary(s), done);
+}
+
+inline void websocket_parser::close(fd f, uint16_t close_code, event<> done) {
+    close(f, close_code, std::string(), done);
 }
 
 }
