@@ -23,16 +23,19 @@ struct http_header {
     inline bool is(const std::string& s) const {
         return is(s.data(), s.length());
     }
-    inline bool is_canonical(const char* s, size_t len) const {
-        if (name.length() != len)
-            return false;
-        const char* names = name.data();
-        const char* end = s + len;
-        for (; s != end; ++s, ++names)
-            if (*s != *names
-                && (*names < 'A' || *names > 'Z' || (*names - 'A' + 'a') != *s))
+    static inline bool equals_canonical(const char* s1, const char* s2, size_t len) {
+        const char* end2 = s2 + len;
+        for (; s2 != end2; ++s1, ++s2)
+            if (*s1 != *s2
+                && (*s1 < 'A' || *s1 > 'Z' || (*s1 - 'A' + 'a') != *s2))
                 return false;
         return true;
+    }
+    static inline bool equals_canonical(const std::string& str, const char* s, size_t len) {
+        return str.length() == len && equals_canonical(str.data(), s, len);
+    }
+    inline bool is_canonical(const char* s, size_t len) const {
+        return equals_canonical(name, s, len);
     }
     inline bool is_canonical(const std::string& s) const {
         return is_canonical(s.data(), s.length());
@@ -59,10 +62,18 @@ class http_message {
     inline const std::string& status_message() const;
     inline enum http_method method() const;
     inline const std::string& url() const;
-    header_iterator find_canonical_header(const std::string& name) const;
-    inline header_iterator find_header(const std::string& name) const;
+    inline bool has_canonical_header(const char* name, size_t length) const;
+    inline bool has_canonical_header(const char* name) const;
     inline bool has_canonical_header(const std::string& name) const;
+    header_iterator find_canonical_header(const char* name, size_t length) const;
+    inline header_iterator find_canonical_header(const char* name) const;
+    inline header_iterator find_canonical_header(const std::string& name) const;
+    std::string canonical_header(const char* name, size_t length) const;
+    inline std::string canonical_header(const char* name) const;
+    inline std::string canonical_header(const std::string& name) const;
     inline bool has_header(const std::string& name) const;
+    inline header_iterator find_header(const std::string& name) const;
+    inline std::string header(const std::string& name) const;
     inline const std::string& body() const;
 
     std::string host() const;
@@ -242,16 +253,44 @@ inline const std::string& http_message::url() const {
     return url_;
 }
 
-inline http_message::header_iterator http_message::find_header(const std::string& key) const {
-    return find_canonical_header(canonicalize(key));
+inline bool http_message::has_canonical_header(const char* name, size_t length) const {
+    return find_canonical_header(name, length) != header_end();
 }
 
-inline bool http_message::has_canonical_header(const std::string& key) const {
-    return find_canonical_header(key) != header_end();
+inline bool http_message::has_canonical_header(const char* name) const {
+    return find_canonical_header(name) != header_end();
 }
 
-inline bool http_message::has_header(const std::string& key) const {
-    return has_canonical_header(canonicalize(key));
+inline bool http_message::has_canonical_header(const std::string& name) const {
+    return find_canonical_header(name) != header_end();
+}
+
+inline http_message::header_iterator http_message::find_canonical_header(const char* name) const {
+    return find_canonical_header(name, strlen(name));
+}
+
+inline http_message::header_iterator http_message::find_canonical_header(const std::string& name) const {
+    return find_canonical_header(name.data(), name.length());
+}
+
+inline std::string http_message::canonical_header(const char* name) const {
+    return canonical_header(name, strlen(name));
+}
+
+inline std::string http_message::canonical_header(const std::string& name) const {
+    return canonical_header(name.data(), name.length());
+}
+
+inline bool http_message::has_header(const std::string& name) const {
+    return has_canonical_header(canonicalize(name));
+}
+
+inline http_message::header_iterator http_message::find_header(const std::string& name) const {
+    return find_canonical_header(canonicalize(name));
+}
+
+inline std::string http_message::header(const std::string& name) const {
+    return canonical_header(canonicalize(name));
 }
 
 inline const std::string& http_message::body() const {

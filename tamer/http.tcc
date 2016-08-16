@@ -131,12 +131,27 @@ const char* http_message::default_status_message(unsigned code) {
         return "unknown";
 }
 
-http_message::header_iterator http_message::find_canonical_header(const std::string& key) const {
+http_message::header_iterator http_message::find_canonical_header(const char* name, size_t length) const {
     header_iterator it = raw_headers_.begin();
-    while (it != raw_headers_.end()
-           && !it->is_canonical(key.data(), key.length()))
+    while (it != raw_headers_.end() && !it->is_canonical(name, length))
         ++it;
     return it;
+}
+
+std::string http_message::canonical_header(const char* name, size_t length) const {
+    std::string result;
+    bool any = false;
+    for (header_iterator it = raw_headers_.begin(); it != raw_headers_.end(); ++it)
+        if (it->is_canonical(name, length)) {
+            if (any) {
+                result += ", ";
+                result += it->value;
+            } else {
+                result = it->value;
+                any = true;
+            }
+        }
+    return result;
 }
 
 void http_message::do_clear() {

@@ -61,6 +61,10 @@ AM_CPPFLAGS += -DHTTP_PARSER_STRICT=0
 endif
 endif
 
+if MBEDTLS
+libtamer_la_SOURCES += websocket.tcc websocket.hh
+endif
+
 if FDHELPER
 libtamer_la_SOURCES += fdhmsg.hh fdhmsg.cc fdh.hh fdh.tt
 bin_PROGRAMS += tamerfdh
@@ -77,6 +81,7 @@ dns.cc: $(TAMER) dns.tt
 lock.cc: $(TAMER) lock.tt
 bufferedio.cc: $(TAMER) bufferedio.tt
 http.cc: $(TAMER) http.tcc
+websocket.cc: $(TAMER) websocket.tcc
 
 clean-local:
-	-rm -f lock.cc fd.cc fdh.cc dns.cc bufferedio.cc http.cc
+	-rm -f lock.cc fd.cc fdh.cc dns.cc bufferedio.cc http.cc websocket.cc

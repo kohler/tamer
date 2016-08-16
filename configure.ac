@@ -22,7 +22,7 @@ if test -n "$GCC"; then CC="$CC -W -Wall"; CXX="$CXX -W -Wall"; fi
 AC_LANG_CPLUSPLUS
 AC_CACHE_CHECK([whether the C++ compiler works], [ac_cv_cxx_works], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int x) { return x + 1; }]], [[]])],
-	[ac_cv_cxx_works=yes], [ac_cv_cxx_works=no])])
+        [ac_cv_cxx_works=yes], [ac_cv_cxx_works=no])])
 if test "$ac_cv_cxx_works" != yes; then
     AC_MSG_ERROR([
 =========================================
@@ -157,7 +157,7 @@ AC_CHECK_HEADERS([byteorder.h netinet/in.h sys/param.h sys/epoll.h])
 AC_MSG_CHECKING([whether ntohs and ntohl are defined])
 ac_ntoh_defined=no
 AC_COMPILE_IFELSE(
-	[AC_LANG_PROGRAM([[#if HAVE_SYS_TYPES_H
+        [AC_LANG_PROGRAM([[#if HAVE_SYS_TYPES_H
 # include <sys/types.h>
 #endif
 #if HAVE_BYTEORDER_H
@@ -168,23 +168,23 @@ AC_COMPILE_IFELSE(
 # include <sys/param.h>
 #endif
 ]], [[(void) ntohs(0x0020), (void) ntohl(0x03040020);]])],
-	[AC_MSG_RESULT(yes)
+        [AC_MSG_RESULT(yes)
 ac_ntoh_defined=yes],
-	[AC_MSG_RESULT(no)])
+        [AC_MSG_RESULT(no)])
 if test $ac_ntoh_defined = no; then
     AC_CHECK_HEADERS([arpa/inet.h], [have_arpa_inet_h=yes], [have_arpa_inet_h=no])
     if test $have_arpa_inet_h = yes; then
-	AC_MSG_CHECKING([whether ntohs and ntohl are defined in <arpa/inet.h>])
-	AC_COMPILE_IFELSE(
-		[AC_LANG_PROGRAM([[#if HAVE_SYS_TYPES_H
+        AC_MSG_CHECKING([whether ntohs and ntohl are defined in <arpa/inet.h>])
+        AC_COMPILE_IFELSE(
+                [AC_LANG_PROGRAM([[#if HAVE_SYS_TYPES_H
 # include <sys/types.h>
 #endif
 #include <arpa/inet.h>
 ]], [[(void) ntohs(0x0020), (void) ntohl(0x03040020);]])],
-		[AC_MSG_RESULT(yes)
+                [AC_MSG_RESULT(yes)
 AC_DEFINE(NEED_ARPA_INET_H, 1, [Define to 1 if you must include <arpa/inet.h> to get `ntohl'.])
 ac_ntoh_defined=yes],
-		[AC_MSG_RESULT(no)])
+                [AC_MSG_RESULT(no)])
     fi
 fi
 if test $ac_ntoh_defined = no; then
@@ -230,13 +230,13 @@ if test -n "$GCC"; then CXX="$CXX -Werror"; fi
 
 AC_CACHE_CHECK([whether the C++ compiler understands rvalue references], [ac_cv_cxx_rvalue_references], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int &) { return 1; } int f(int &&) { return 0; }]], [[return f(int());]])],
-	[ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])])
+        [ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])])
 if test "$ac_cv_cxx_rvalue_references" != yes; then
     SAVE_CXX="${SAVE_CXX} -std=gnu++0x"
     CXX="${SAVE_CXX} -Werror"
     AC_MSG_CHECKING([whether the C++ compiler with -std=gnu++0x understands rvalue refs])
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int &) { return 1; } int f(int &&) { return 0; }]], [[return f(int());]])],
-	[ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])
+        [ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])
     AC_MSG_RESULT([$ac_cv_cxx_rvalue_references])
 fi
 if test "$ac_cv_cxx_rvalue_references" = yes; then
@@ -264,35 +264,35 @@ fi
 
 AC_CACHE_CHECK([whether the C++ compiler understands constexpr], [ac_cv_cxx_constexpr], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[constexpr int f(int x) { return x + 1; }]], [[]])],
-	[ac_cv_cxx_constexpr=yes], [ac_cv_cxx_constexpr=no])])
+        [ac_cv_cxx_constexpr=yes], [ac_cv_cxx_constexpr=no])])
 if test "$ac_cv_cxx_constexpr" = yes; then
     AC_DEFINE([TAMER_HAVE_CXX_CONSTEXPR], [1], [Define if the C++ compiler understands constexpr.])
 fi
 
 AC_CACHE_CHECK([whether the C++ compiler understands noexcept], [ac_cv_cxx_noexcept], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int x) noexcept { return x + 1; }]], [[]])],
-	[ac_cv_cxx_noexcept=yes], [ac_cv_cxx_noexcept=no])])
+        [ac_cv_cxx_noexcept=yes], [ac_cv_cxx_noexcept=no])])
 if test "$ac_cv_cxx_noexcept" = yes; then
     AC_DEFINE([TAMER_HAVE_CXX_NOEXCEPT], [1], [Define if the C++ compiler understands noexcept.])
 fi
 
 AC_CACHE_CHECK([whether the C++ compiler understands static_assert], [ac_cv_cxx_static_assert], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[const int f = 2;]], [[static_assert(f == 2, "f should be 2");]])],
-	[ac_cv_cxx_static_assert=yes], [ac_cv_cxx_static_assert=no])])
+        [ac_cv_cxx_static_assert=yes], [ac_cv_cxx_static_assert=no])])
 if test "$ac_cv_cxx_static_assert" = yes; then
     AC_DEFINE([TAMER_HAVE_CXX_STATIC_ASSERT], [1], [Define if the C++ compiler understands static_assert.])
 fi
 
 AC_CACHE_CHECK([whether the C++ compiler understands template alias], [ac_cv_cxx_template_alias], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[template <typename T> struct X { typedef T type; }; template <typename T> using Y = X<T>; int f(int x) { return x; }]], [[return f(Y<int>::type());]])],
-	[ac_cv_cxx_template_alias=yes], [ac_cv_cxx_template_alias=no])])
+        [ac_cv_cxx_template_alias=yes], [ac_cv_cxx_template_alias=no])])
 if test "$ac_cv_cxx_template_alias" = yes; then
     AC_DEFINE([TAMER_HAVE_CXX_TEMPLATE_ALIAS], [1], [Define if the C++ compiler understands template alias.])
 fi
 
 AC_CACHE_CHECK([whether the C++ compiler understands variadic templates], [ac_cv_cxx_variadic_templates], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[template <typename... Ts> struct X; template <> struct X<> { enum { n = 0 }; }; template <typename T, typename... Ts> struct X<T, Ts...> { enum { n = X<Ts...>::n + 1 }; };]], [[switch (0) { case 0: case X<>::n == 0 && X<int>::n == 1 && X<int, int>::n == 2: break; }]])],
-	[ac_cv_cxx_variadic_templates=yes], [ac_cv_cxx_variadic_templates=no])])
+        [ac_cv_cxx_variadic_templates=yes], [ac_cv_cxx_variadic_templates=no])])
 if test "$ac_cv_cxx_variadic_templates" = yes; then
     AC_DEFINE([TAMER_HAVE_CXX_VARIADIC_TEMPLATES], [1], [Define if the C++ compiler understands variadic templates.])
 fi
@@ -329,11 +329,11 @@ if test "$with_libevent" != no; then
     AC_CHECK_LIB([event], [event_init], [have_libevent=yes])
     AC_CHECK_HEADERS([event.h], [have_event_h=yes])
     if test "$have_libevent" = yes -a "$have_event_h" = yes; then
-	AC_DEFINE([HAVE_LIBEVENT], [1], [Define if Tame programs may use libevent.])
-	DRIVER_LIBS="$DRIVER_LIBS -levent"
-	AC_CHECK_DECLS([event_get_struct_event_size], [], [], [#include <event.h>])
+        AC_DEFINE([HAVE_LIBEVENT], [1], [Define if tamed programs may use libevent.])
+        DRIVER_LIBS="$DRIVER_LIBS -levent"
+        AC_CHECK_DECLS([event_get_struct_event_size], [], [], [#include <event.h>])
     elif test "$with_libevent" = yes; then
-	AC_MSG_ERROR([
+        AC_MSG_ERROR([
 =========================================
 
 You explicitly requested libevent support, but <event.h> and/or -levent
@@ -349,16 +349,16 @@ dnl libev support
 dnl
 
 AC_ARG_WITH([libev],
-	[AS_HELP_STRING([--with-libev], [include libev driver])],
-	[:], [with_libev=maybe])
+        [AS_HELP_STRING([--with-libev], [include libev driver])],
+        [:], [with_libev=maybe])
 if test "$with_libev" != no; then
     AC_CHECK_LIB([ev], [ev_run], [have_libev=yes])
     AC_CHECK_HEADERS([ev.h], [have_ev_h=yes])
     if test "$have_libev" = yes -a "$have_ev_h" = yes; then
-	AC_DEFINE([HAVE_LIBEV], [1], [Define if Tame programs may use libev.])
-	DRIVER_LIBS="$DRIVER_LIBS -lev"
+        AC_DEFINE([HAVE_LIBEV], [1], [Define if tamed programs may use libev.])
+        DRIVER_LIBS="$DRIVER_LIBS -lev"
     elif test "$with_libev" = yes; then
-	AC_MSG_ERROR([
+        AC_MSG_ERROR([
 =========================================
 
 You explicitly requested libev support, but <ev.h> and/or -lev
@@ -367,6 +367,33 @@ were not found.
 =========================================])
     fi
 fi
+
+
+dnl
+dnl mbedtls support
+dnl
+
+AC_ARG_WITH([mbedtls],
+    [AS_HELP_STRING([--with-mbedtls], [include mbedtls crypto/SSL support])],
+    [:], [with_mbedtls=maybe])
+if test "$with_mbedtls" != no; then
+    AC_CHECK_LIB([mbedcrypto], [mbedtls_entropy_init], [have_libmbedtls=yes])
+    AC_CHECK_HEADERS([mbedtls/entropy.h], [have_mbedtls_entropy_h=yes])
+    if test "$have_libmbedtls" = yes -a "$have_mbedtls_entropy_h" = yes; then
+        AC_DEFINE([HAVE_LIBMBEDTLS], [1], [Define if tamed programs may use libmbedtls.])
+        DRIVER_LIBS="$DRIVER_LIBS -lmbedcrypto"
+        with_mbedtls=yes
+    elif test "$with_mbedtls" = yes; then
+        AC_MSG_ERROR([
+=========================================
+
+You explicitly requested libmbedtls support, but <mbedtls/*.h> and/or
+-lmbedcrypto were not found.
+
+=========================================])
+    fi
+fi
+AM_CONDITIONAL([MBEDTLS], [test x$with_mbedtls = xyes])
 
 AC_SUBST([DRIVER_LIBS])
 AC_DEFINE_UNQUOTED([TAMER_LIBS], ["]$DRIVER_LIBS["], [Define to a C string with the libraries required to link a tamed program.])
@@ -377,8 +404,8 @@ dnl http-parser support
 dnl
 
 AC_ARG_WITH([http-parser],
-	[AS_HELP_STRING([--without-http-parser], [don't include http-parser library])],
-	[:], [with_http_parser=yes])
+        [AS_HELP_STRING([--without-http-parser], [don't include http-parser library])],
+        [:], [with_http_parser=yes])
 if test "$with_http_parser" = yes; then
     AC_DEFINE([TAMER_HTTP_PARSER], [1], [Define if http-parser is available.])
 fi
@@ -398,11 +425,11 @@ AC_ARG_WITH([malloc],
     [tamer_malloc=$withval], [tamer_malloc=yes])
 
 if test \( "$tamer_malloc" = tcmalloc -a -z "$have_tcmalloc_minimal" \) \
-	-o \( "$tamer_malloc" = jemalloc -a -z "$have_jemalloc" \); then
+        -o \( "$tamer_malloc" = jemalloc -a -z "$have_jemalloc" \); then
     AC_MSG_ERROR([$tamer_malloc not found])
 elif test "$tamer_malloc" = yes -o "$tamer_malloc" = default \
-	-o "$tamer_malloc" = no -o "$tamer_malloc" = malloc \
-	-o -z "$tamer_malloc"; then
+        -o "$tamer_malloc" = no -o "$tamer_malloc" = malloc \
+        -o -z "$tamer_malloc"; then
     tamer_malloc=malloc
 elif test "$tamer_malloc" = jemalloc -o "$tamer_malloc" = tcmalloc; then
     :
