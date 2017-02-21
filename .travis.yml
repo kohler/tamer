@@ -7,11 +7,13 @@ addons:
     sources:
     - ubuntu-toolchain-r-test
     packages:
-    - gcc-4.8
-    - g++-4.8
+    - gcc-6
+    - g++-6
 before_script:
-  - if test CC=gcc && which gcc-4.9 >/dev/null 2>&1; then export CC=gcc-4.9 CXX=g++-4.9; fi
   - if test CC=gcc && which gcc-4.8 >/dev/null 2>&1; then export CC=gcc-4.8 CXX=g++-4.8; fi
+  - if test CC=gcc && which gcc-4.9 >/dev/null 2>&1; then export CC=gcc-4.9 CXX=g++-4.9; fi
+  - if test CC=gcc && which gcc-5 >/dev/null 2>&1; then export CC=gcc-5 CXX=g++-5; fi
+  - if test CC=gcc && which gcc-6 >/dev/null 2>&1; then export CC=gcc-6 CXX=g++-6; fi
   - ./bootstrap.sh
 script: ./configure && make && make check
 sudo: false
