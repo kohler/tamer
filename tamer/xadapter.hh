@@ -94,21 +94,21 @@ template <typename T, typename... TS> struct ignore_analysis<T, TS...> {
 template <bool USE_PLACEHOLDER, typename... TS> struct ignore_binder;
 
 template <typename... TS> struct ignore_binder<false, TS...> {
-    typedef typename ignore_analysis<TS...>::type arguments_type;
+    typedef typename ignore_analysis<TS...>::type results_tuple_type;
     static event<TS...> make(event<> e) {
-        arguments_type* vs = new arguments_type;
+        results_tuple_type* vs = new results_tuple_type;
         simple_event::at_trigger(e.__get_simple(), deleter, vs);
         return event<TS...>(TAMER_MOVE(e), *vs);
     }
     static void deleter(void* x) {
-        delete static_cast<arguments_type*>(x);
+        delete static_cast<results_tuple_type*>(x);
     }
 };
 
 template <typename... TS> struct ignore_binder<true, TS...> {
-    typedef typename ignore_analysis<TS...>::type arguments_type;
+    typedef typename ignore_analysis<TS...>::type results_tuple_type;
     static event<TS...> make(event<> e) {
-        return event<TS...>(TAMER_MOVE(e), *new(placeholder_buffer) arguments_type);
+        return event<TS...>(TAMER_MOVE(e), *new(placeholder_buffer) results_tuple_type);
     }
 };
 

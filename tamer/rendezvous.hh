@@ -359,7 +359,7 @@ class distribute_rendezvous : public functional_rendezvous,
     int nes_;
     int outstanding_;
     event_type* es_;
-    typename event_type::arguments_type vs_;
+    typename event_type::results_tuple_type vs_;
     char local_es_[sizeof(event_type) * nlocal];
     static void hook(functional_rendezvous*, simple_event*, bool) TAMER_NOEXCEPT;
     static void clear_hook(void*);
@@ -442,7 +442,7 @@ void distribute_rendezvous<T0, T1, T2, T3>::hook(functional_rendezvous* fr,
     ++dr->outstanding_;         // keep memory around until we're done here
     if (values) {
         for (int i = 0; i != dr->nes_; ++i)
-            dr->es_[i](dr->vs_);
+            dr->es_[i].tuple_trigger(dr->vs_);
     } else if (!x->unused()) {
         for (int i = 0; i != dr->nes_; ++i)
             dr->es_[i].unblock();
