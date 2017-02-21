@@ -822,7 +822,7 @@ inline void event<T0, T1, T2, T3>::trigger(T0 v0, T1 v1, T2 v2, T3 v3) {
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline void event<T0, T1, T2, T3>::tuple_trigger(const results_tuple_type& vs) {
-    operator()(vs);
+    operator()(std::get<0>(vs), std::get<1>(vs), std::get<2>(vs), std::get<3>(vs));
 }
 
 /** @brief  Unblock event.
