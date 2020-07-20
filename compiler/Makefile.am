@@ -12,8 +12,10 @@ YYFLAGS = -d
 parse.hh: parse.cc
 
 scan.cc: scan.ll
+	rm -f $(LEX_OUTPUT_ROOT).c
 	$(LEX) $(AM_LFLAGS) $(LFLAGS) $(srcdir)/scan.ll \
-		&& mv $(LEX_OUTPUT_ROOT).c $(srcdir)/scan.cc
+		&& sed -e 's/register //' < $(LEX_OUTPUT_ROOT).c > $(srcdir)/scan.cc \
+		&& rm -f $(LEX_OUTPUT_ROOT).c
 
 parse.cc: parse.yy
 	rm -f y.tab.c y.tab.c2
@@ -21,6 +23,7 @@ parse.cc: parse.yy
 	case "$(YACC)" in					\
 	*bison*)						\
 		sed -e 's/union yyalloc/struct yyalloc/g;/^#line/d'	\
+		    -e 's/register //'				\
 			< y.tab.c > $(srcdir)/parse.cc ;	\
 		rm -f y.tab.c					\
 		;;						\

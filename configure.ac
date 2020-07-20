@@ -232,9 +232,9 @@ AC_CACHE_CHECK([whether the C++ compiler understands rvalue references], [ac_cv_
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int &) { return 1; } int f(int &&) { return 0; }]], [[return f(int());]])],
         [ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])])
 if test "$ac_cv_cxx_rvalue_references" != yes; then
-    SAVE_CXX="${SAVE_CXX} -std=gnu++0x"
+    SAVE_CXX="${SAVE_CXX} -std=gnu++17"
     CXX="${SAVE_CXX} -Werror"
-    AC_MSG_CHECKING([whether the C++ compiler with -std=gnu++0x understands rvalue refs])
+    AC_MSG_CHECKING([whether the C++ compiler with -std=gnu++17 understands rvalue refs])
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int &) { return 1; } int f(int &&) { return 0; }]], [[return f(int());]])],
         [ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])
     AC_MSG_RESULT([$ac_cv_cxx_rvalue_references])
@@ -255,9 +255,9 @@ AC_MSG_RESULT([$ac_cv_variadic_templates])
 if test "$ac_cv_std_move" != yes -o "$ac_cv_variadic_templates" != yes; then
     AC_MSG_ERROR([
 
-The C++ compiler does not appear to understand C++11.
+The C++ compiler does not appear to understand C++17.
 To fix this problem, try supplying a "CXX" argument to ./configure,
-such as "./configure CXX='c++ -std=gnu++0x'".
+such as "./configure CXX='c++ -std=gnu++17'".
 If you are using clang on Mac, ensure the '-stdlib=libc++' option.
 ])
 fi
