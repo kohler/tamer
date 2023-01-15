@@ -59,8 +59,6 @@ class closure;
 class simple_event { public:
     // DO NOT derive from this class!
 
-    typedef bool (simple_event::*unspecified_bool_type)() const;
-
     inline simple_event() TAMER_NOEXCEPT;
     inline simple_event(abstract_rendezvous& r, uintptr_t rid,
                         const char* file, int line) TAMER_NOEXCEPT;
@@ -73,7 +71,7 @@ class simple_event { public:
     static inline void unuse_clean(simple_event *e) TAMER_NOEXCEPT;
     inline bool unused() const;
 
-    inline operator unspecified_bool_type() const;
+    inline explicit operator bool() const;
     inline bool empty() const;
     inline abstract_rendezvous *rendezvous() const;
     inline uintptr_t rid() const;
@@ -570,12 +568,12 @@ inline bool simple_event::unused() const {
     return _refcount == 0;
 }
 
-inline simple_event::operator unspecified_bool_type() const {
-    return _r ? &simple_event::empty : 0;
+inline simple_event::operator bool() const {
+    return _r;
 }
 
 inline bool simple_event::empty() const {
-    return _r == 0;
+    return !_r;
 }
 
 inline abstract_rendezvous *simple_event::rendezvous() const {

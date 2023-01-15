@@ -33,7 +33,6 @@ class fd {
     struct fdimp;
 
   public:
-    typedef bool (fd::*unspecified_bool_type)() const;
     enum { default_backlog = 128 };
 
     inline fd();
@@ -55,8 +54,7 @@ class fd {
     static inline int pipe(fd pfd[2]);
 
     inline bool valid() const;
-    inline operator unspecified_bool_type() const;
-    inline bool operator!() const;
+    inline explicit operator bool() const;
     inline int error() const;
     inline int fdnum() const;
     inline int recent_fdnum() const;
@@ -193,8 +191,6 @@ class fd {
 
 class fdref {
   public:
-    typedef fd::unspecified_bool_type unspecified_bool_type;
-
     enum ref_type { strong = 0, weak = 1 };
     inline fdref();
     explicit inline fdref(const fd& f);
@@ -203,8 +199,7 @@ class fdref {
     inline fdref(fd&& f, ref_type ref);
     inline ~fdref();
 
-    inline operator unspecified_bool_type() const;
-    inline bool operator!() const;
+    inline explicit operator bool() const;
     inline int fdnum() const;
 
     inline void acquire_read(event<> done);
@@ -370,15 +365,8 @@ inline bool fd::valid() const {
 /** @brief  Test if file descriptor is valid.
  *  @return  True if file descriptor is valid, false if not.
  */
-inline fd::operator unspecified_bool_type() const {
-    return _p && _p->fde_ >= 0 ? &fd::valid : 0;
-}
-
-/** @brief  Test if file descriptor is invalid.
- *  @return  False if file descriptor is valid, true if not.
- */
-inline bool fd::operator!() const {
-    return !_p || _p->fde_ < 0;
+inline fd::operator bool() const {
+    return _p && _p->fde_ >= 0;
 }
 
 /** @brief  Check for file descriptor error.
@@ -462,8 +450,9 @@ inline int fd::socket_error() const {
         socklen_t len = sizeof(error);
         int r = getsockopt(_p->fdv_, SOL_SOCKET, SO_ERROR, &error, &len);
         return r ? -error : 0;
-    } else
+    } else {
         return -EBADF;
+    }
 }
 
 /** @brief  Read from file descriptor.
@@ -751,12 +740,8 @@ inline fdref::~fdref() {
         imp_->deref();
 }
 
-inline fdref::operator unspecified_bool_type() const {
-    return imp_ && imp_->fde_ >= 0 ? &fd::valid : 0;
-}
-
-inline bool fdref::operator!() const {
-    return !imp_ || imp_->fde_ < 0;
+inline fdref::operator bool() const {
+    return imp_ && imp_->fde_ >= 0;
 }
 
 inline int fdref::fdnum() const {

@@ -42,8 +42,8 @@ namespace tamer {
  *  Events may be <em>active</em> or <em>empty</em>.  An active event is ready
  *  to be triggered, while an empty event has already been triggered.  Events
  *  can be triggered at most once; triggering an empty event has no additional
- *  effect.  The empty() and operator unspecified_bool_type() member functions
- *  test whether an event is empty or active.
+ *  effect.  The empty() and operator bool() member functions test whether an
+ *  event is empty or active.
  *
  *  <pre>
  *      Constructors               Default constructor
@@ -123,8 +123,6 @@ class event {
     typedef T3 fourth_argument_type;
     typedef std::tuple<T0, T1, T2, T3> results_tuple_type;
 
-    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
-
     inline event() noexcept;
     inline event(T0& x0, T1& x1, T2& x2, T3& x3) noexcept;
     inline event(results_tuple_type& xs) noexcept;
@@ -132,8 +130,7 @@ class event {
     inline event(event<T0, T1, T2, T3>&& x) noexcept;
     inline ~event() noexcept;
 
-    inline operator unspecified_bool_type() const;
-    inline bool operator!() const;
+    inline explicit operator bool() const;
     inline bool empty() const;
 
     inline void operator()(T0 v0, T1 v1, T2 v2, T3 v3);
@@ -183,8 +180,6 @@ class event<T0, T1, T2, void> { public:
     typedef T2 third_argument_type;
     typedef std::tuple<T0, T1, T2> results_tuple_type;
 
-    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
-
     inline event() noexcept;
     inline event(T0& x0, T1& x1, T2& x2) noexcept;
     inline event(results_tuple_type& xs) noexcept;
@@ -203,12 +198,8 @@ class event<T0, T1, T2, void> { public:
         tamerpriv::simple_event::unuse(se_);
     }
 
-    operator unspecified_bool_type() const {
-        return se_ ? (unspecified_bool_type) *se_ : 0;
-    }
-
-    bool operator!() const {
-        return !se_ || se_->empty();
+    explicit operator bool() const {
+        return se_ && *se_;
     }
 
     bool empty() const {
@@ -271,7 +262,6 @@ class event<T0, T1, T2, void> { public:
 template <typename T0, typename T1>
 class event<T0, T1, void, void>
     : public std::binary_function<T0, T1, void> { public:
-    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
     typedef std::tuple<T0, T1> results_tuple_type;
 
     inline event() noexcept;
@@ -292,12 +282,8 @@ class event<T0, T1, void, void>
         tamerpriv::simple_event::unuse(se_);
     }
 
-    operator unspecified_bool_type() const {
-        return se_ ? (unspecified_bool_type) *se_ : 0;
-    }
-
-    bool operator!() const {
-        return !se_ || se_->empty();
+    explicit operator bool() const {
+        return se_ && *se_;
     }
 
     bool empty() const {
@@ -360,7 +346,6 @@ class event<T0, T1, void, void>
 template <typename T0>
 class event<T0, void, void, void>
     : public std::unary_function<T0, void> { public:
-    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
     typedef std::tuple<T0> results_tuple_type;
 
     inline event() noexcept;
@@ -388,12 +373,8 @@ class event<T0, void, void, void>
         tamerpriv::simple_event::unuse(se_);
     }
 
-    operator unspecified_bool_type() const {
-        return se_ ? (unspecified_bool_type) *se_ : 0;
-    }
-
-    bool operator!() const {
-        return !se_ || se_->empty();
+    explicit operator bool() const {
+        return se_ && *se_;
     }
 
     bool empty() const {
@@ -476,8 +457,6 @@ class event<void, void, void, void> { public:
     typedef void result_type;
     typedef std::tuple<> results_tuple_type;
 
-    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
-
     inline event() noexcept;
     inline event(results_tuple_type& xs) noexcept;
 
@@ -504,12 +483,8 @@ class event<void, void, void, void> { public:
         tamerpriv::simple_event::unuse(se_);
     }
 
-    operator unspecified_bool_type() const {
-        return se_ ? (unspecified_bool_type) *se_ : 0;
-    }
-
-    bool operator!() const {
-        return !se_ || se_->empty();
+    explicit operator bool() const {
+        return se_ && *se_;
     }
 
     bool empty() const {
@@ -600,17 +575,13 @@ class event<void, void, void, void> { public:
 template <typename R, typename T0>
 class preevent : public std::unary_function<const T0&, void> {
   public:
-    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
     typedef std::tuple<T0> results_tuple_type;
 
     inline constexpr preevent(R& r, T0& x0, const char* file = 0, int line = 0) noexcept;
     inline preevent(preevent<R, T0>&& x) noexcept;
 
-    operator unspecified_bool_type() const {
-        return r_ ? (unspecified_bool_type) &tamerpriv::simple_event::empty : 0;
-    }
-    bool operator!() const {
-        return !r_;
+    explicit operator bool() const {
+        return r_;
     }
     bool empty() const {
         return !r_;
@@ -658,16 +629,12 @@ class preevent<R, void> {
   public:
     typedef void result_type;
     typedef std::tuple<> results_tuple_type;
-    typedef tamerpriv::simple_event::unspecified_bool_type unspecified_bool_type;
 
     inline constexpr preevent(R& r, const char* file = 0, int line = 0) noexcept;
     inline preevent(preevent<R>&& x) noexcept;
 
-    operator unspecified_bool_type() const {
-        return r_ ? (unspecified_bool_type) &tamerpriv::simple_event::empty : 0;
-    }
-    bool operator!() const {
-        return !r_;
+    explicit operator bool() const {
+        return r_;
     }
     bool empty() const {
         return !r_;
@@ -760,15 +727,8 @@ inline event<T0, T1, T2, T3>::~event() noexcept {
 /** @brief  Test if event is active.
  *  @return  True if event is active, false if it is empty. */
 template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3>::operator unspecified_bool_type() const {
-    return se_ ? (unspecified_bool_type) *se_ : 0;
-}
-
-/** @brief  Test if event is empty.
- *  @return  True if event is empty, false if it is active. */
-template <typename T0, typename T1, typename T2, typename T3>
-inline bool event<T0, T1, T2, T3>::operator!() const {
-    return !se_ || se_->empty();
+inline event<T0, T1, T2, T3>::operator bool() const {
+    return se_ && *se_;
 }
 
 /** @brief  Test if event is empty.

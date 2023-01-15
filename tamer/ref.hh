@@ -27,16 +27,11 @@ class ref_monitor {
             next_->pprev_ = pprev_;
     }
 
-    typedef bool (ref_monitor::*unspecified_bool_type)() const;
-
     bool empty() const {
         return !pprev_;
     }
-    operator unspecified_bool_type() const {
-        return pprev_ ? &ref_monitor::empty : 0;
-    }
-    bool operator!() const {
-        return !pprev_;
+    explicit operator bool() const {
+        return pprev_;
     }
 
   private:
@@ -219,14 +214,8 @@ template <typename T> class ref_ptr { public:
         return _t;
     }
 
-    typedef T* ref_ptr::*unspecified_bool_type;
-
-    operator unspecified_bool_type() const {
-        return _t ? &ref_ptr::_t : 0;
-    }
-
-    bool operator!() const {
-        return !_t;
+    explicit operator bool() const {
+        return _t;
     }
 
   private:
@@ -309,14 +298,8 @@ template <typename T> class passive_ref_ptr { public:
         return _t;
     }
 
-    typedef T* passive_ref_ptr::*unspecified_bool_type;
-
-    operator unspecified_bool_type() const {
-        return _t ? &passive_ref_ptr::_t : 0;
-    }
-
-    bool operator!() const {
-        return !_t;
+    explicit operator bool() const {
+        return _t;
     }
 
   private:
