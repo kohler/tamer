@@ -7,7 +7,7 @@
 #include <sstream>
 #include <memory>
 #include <unordered_map>
-#include <time.h>
+#include <ctime>
 namespace tamer {
 class http_parser;
 
@@ -80,6 +80,7 @@ class http_message {
     inline std::string url_schema() const;
     inline std::string url_host() const;
     std::string url_host_port() const;
+    uint16_t url_port() const;
     inline std::string url_path() const;
     inline bool has_query() const;
     inline std::string query() const;

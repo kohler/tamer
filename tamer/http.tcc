@@ -125,23 +125,25 @@ const char* http_message::default_status_message(unsigned code) {
     status_code_map* m = std::lower_bound(default_status_codes,
                                           default_status_codes + ncodes,
                                           code, status_code_map_comparator());
-    if (m != default_status_codes + ncodes && m->code == code)
+    if (m != default_status_codes + ncodes && m->code == code) {
         return m->message;
-    else
+    } else {
         return "unknown";
+    }
 }
 
 http_message::header_iterator http_message::find_canonical_header(const char* name, size_t length) const {
     header_iterator it = raw_headers_.begin();
-    while (it != raw_headers_.end() && !it->is_canonical(name, length))
+    while (it != raw_headers_.end() && !it->is_canonical(name, length)) {
         ++it;
+    }
     return it;
 }
 
 std::string http_message::canonical_header(const char* name, size_t length) const {
     std::string result;
     bool any = false;
-    for (header_iterator it = raw_headers_.begin(); it != raw_headers_.end(); ++it)
+    for (header_iterator it = raw_headers_.begin(); it != raw_headers_.end(); ++it) {
         if (it->is_canonical(name, length)) {
             if (any) {
                 result += ", ";
@@ -151,6 +153,7 @@ std::string http_message::canonical_header(const char* name, size_t length) cons
                 any = true;
             }
         }
+    }
     return result;
 }
 
@@ -162,8 +165,9 @@ void http_message::do_clear() {
     upgrade_ = 0;
     url_ = status_message_ = body_ = std::string();
     raw_headers_.clear();
-    if (info_)
+    if (info_) {
         info_->flags = 0;
+    }
 }
 
 void http_message::add_header(std::string key, std::string value) {
@@ -171,23 +175,26 @@ void http_message::add_header(std::string key, std::string value) {
 }
 
 inline int xvalue(unsigned char ch) {
-    if (ch <= '9')
+    if (ch <= '9') {
         return ch - '0';
-    else if (ch <= 'F')
+    } else if (ch <= 'F') {
         return ch - 'A' + 10;
-    else
+    } else {
         return ch - 'a' + 10;
+    }
 }
 
 void http_message::make_info(unsigned f) const {
-    if (!info_ || !info_.unique())
+    if (!info_ || !info_.unique()) {
         info_ = std::make_shared<info_type>();
+    }
     info_type& i = *info_;
 
     if (!(i.flags & info_url) && (f & (info_url | info_query))) {
         int r = http_parser_parse_url(url_.data(), url_.length(), method_ == HTTP_CONNECT, &i.urlp);
-        if (r)
+        if (r) {
             i.urlp.field_set = 0;
+        }
         i.flags |= info_url;
     }
 
@@ -229,16 +236,19 @@ void http_message::make_info(unsigned f) const {
                 } else if (*s == '&' || *s == ';') {
                 add_last:
                     buf.append(last, s - last);
-                    if (name.empty())
+                    if (name.empty()) {
                         std::swap(name, buf);
+                    }
                     i.raw_query.emplace_back(std::move(name), std::move(buf));
                     name = buf = std::string();
-                    if (s != ends)
+                    if (s != ends) {
                         ++s;
+                    }
                     last = s;
                     state = 0;
-                } else
+                } else {
                     ++s;
+                }
             }
             if (last != s)
                 goto add_last;
@@ -249,21 +259,24 @@ void http_message::make_info(unsigned f) const {
 
 std::string http_message::host() const {
     info_type& i = info(info_url);
-    if (i.urlp.field_set & (1 << UF_HOST))
+    if (i.urlp.field_set & (1 << UF_HOST)) {
         return url_.substr(i.urlp.field_data[UF_HOST].off,
                            i.urlp.field_data[UF_HOST].len);
-    for (auto it = raw_headers_.begin(); it != raw_headers_.end(); ++it)
+    }
+    for (auto it = raw_headers_.begin(); it != raw_headers_.end(); ++it) {
         if (it->is_canonical("host", 4))
             return it->value;
+    }
     return std::string();
 }
 
 std::string http_message::url_host_port() const {
     info_type& i = info(info_url);
     std::string host;
-    if (i.urlp.field_set & (1 << UF_HOST))
+    if (i.urlp.field_set & (1 << UF_HOST)) {
         host = url_.substr(i.urlp.field_data[UF_HOST].off,
                            i.urlp.field_data[UF_HOST].len);
+    }
     if ((i.urlp.field_set & (1 << UF_PORT)) && !host.empty()) {
         host += ":";
         host += url_.substr(i.urlp.field_data[UF_PORT].off,
@@ -272,19 +285,30 @@ std::string http_message::url_host_port() const {
     return host;
 }
 
+uint16_t http_message::url_port() const {
+    info_type& i = info(info_url);
+    if (i.urlp.field_set & (1 << UF_PORT)) {
+        return i.urlp.port;
+    } else {
+        return 0;
+    }
+}
+
 bool http_message::has_query(const std::string& name) const {
     const info_type& i = info(info_query);
-    for (auto it = i.raw_query.begin(); it != i.raw_query.end(); ++it)
+    for (auto it = i.raw_query.begin(); it != i.raw_query.end(); ++it) {
         if (it->is(name))
             return true;
+    }
     return false;
 }
 
 std::string http_message::query(const std::string& name) const {
     const info_type& i = info(info_query);
-    for (auto it = i.raw_query.begin(); it != i.raw_query.end(); ++it)
+    for (auto it = i.raw_query.begin(); it != i.raw_query.end(); ++it) {
         if (it->is(name))
             return it->value;
+    }
     return std::string();
 }
 
@@ -330,8 +354,9 @@ int http_parser::on_url(::http_parser* hp, const char* s, size_t len) {
 
 int http_parser::on_status(::http_parser* hp, const char* s, size_t len) {
     message_data* md = get_message_data(hp);
-    if (md->hm.major_ == 0)
+    if (md->hm.major_ == 0) {
         get_parser(hp)->copy_parser_status(*md);
+    }
     md->hm.status_message_.append(s, len);
     return 0;
 }
@@ -403,22 +428,24 @@ tamed void http_parser::receive(fd f, event<http_message> done) {
                     copy_parser_status(md);
                     break;
                 }
-            } else if (nread == 0)
+            } else if (nread == 0) {
                 break;
-            else if (errno == EAGAIN || errno == EWOULDBLOCK)
-                /* fall through to blocking */;
-            else if (errno != EINTR) {
+            } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                /* fall through to blocking */
+            } else if (errno != EINTR) {
                 fi.close(errno);
                 break;
-            } else
+            } else {
                 continue;
+            }
         }
 
         twait { tamer::at_fd_read(fi.fdnum(), make_event()); }
     }
 
-    if (done && !md.done && !md.hm.error_)
+    if (done && !md.done && !md.hm.error_) {
         hp_.http_errno = md.hm.error_ = HPE_UNKNOWN;
+    }
     done(TAMER_MOVE(md.hm));
 }
 
@@ -432,8 +459,9 @@ void http_parser::unparse_request_headers(std::ostringstream& buf,
         buf << it->name << ": " << it->value << "\r\n";
         need_content_length = need_content_length && !it->is_content_length();
     }
-    if (need_content_length)
+    if (need_content_length) {
         buf << "Content-Length: " << m.body_.length() << "\r\n";
+    }
     buf << "\r\n";
 }
 
@@ -441,10 +469,11 @@ inline std::string http_parser::prepare_headers(const http_message& m,
                                                 std::string& body,
                                                 bool is_response) {
     std::ostringstream buf;
-    if (is_response)
+    if (is_response) {
         unparse_response_headers(buf, m, true);
-    else
+    } else {
         unparse_request_headers(buf, m);
+    }
     if (buf.tellp() + std::ostringstream::pos_type(body.length()) < 16384) {
         buf << TAMER_MOVE(body);
         body.clear();
@@ -474,10 +503,11 @@ void http_parser::unparse_response_headers(std::ostringstream& buf,
                                            bool include_content_length) {
     buf << "HTTP/" << m.http_major() << "." << m.http_minor()
         << " " << m.status_code() << " ";
-    if (m.status_message().empty())
+    if (m.status_message().empty()) {
         buf << m.default_status_message(m.status_code());
-    else
+    } else {
         buf << m.status_message();
+    }
     buf << "\r\n";
     bool need_content_length = !m.body_.empty() && include_content_length;
     for (http_message::header_iterator it = m.raw_headers_.begin();
@@ -485,8 +515,9 @@ void http_parser::unparse_response_headers(std::ostringstream& buf,
         buf << it->name << ": " << it->value << "\r\n";
         need_content_length = need_content_length && !it->is_content_length();
     }
-    if (need_content_length)
+    if (need_content_length) {
         buf << "Content-Length: " << m.body_.length() << "\r\n";
+    }
     buf << "\r\n";
 }
 
@@ -527,9 +558,9 @@ void http_parser::send_response_end(fd f, event<> done) {
 }
 
 void http_parser::send(fd f, const http_message& m, event<> done) {
-    if (hp_.type == (int) HTTP_RESPONSE)
+    if (hp_.type == (int) HTTP_RESPONSE) {
         send_request(f, m, done);
-    else if (hp_.type == (int) HTTP_REQUEST) {
+    } else if (hp_.type == (int) HTTP_REQUEST) {
         // If the response is marked `Connection: close`, then ensure
         // should_keep_alive() returns 0
         http_message::header_iterator connhdr;
@@ -543,15 +574,17 @@ void http_parser::send(fd f, const http_message& m, event<> done) {
                 && (data[2] == 'O' || data[2] == 'o')
                 && (data[3] == 'S' || data[3] == 's')
                 && (data[4] == 'E' || data[4] == 'e'))) {
-            if (hp_.http_major > 0 && hp_.http_minor > 0)
+            if (hp_.http_major > 0 && hp_.http_minor > 0) {
                 hp_.flags |= F_CONNECTION_CLOSE;
-            else
+            } else {
                 hp_.flags &= ~F_CONNECTION_KEEP_ALIVE;
+            }
         }
 
         send_response(f, m, done);
-    } else
+    } else {
         assert(0);
+    }
 }
 
 } // namespace tamer
