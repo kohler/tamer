@@ -146,8 +146,6 @@ inline std::ostream& operator<<(std::ostream& s, const lstr& l) {
  */
 struct type_qualifier_t {
     type_qualifier_t () {}
-    type_qualifier_t (const type_qualifier_t &t)
-        : _lineno (t._lineno), _v (t._v) {}
     type_qualifier_t (const lstr &s)
         { if (s.length()) add_lstr (s); }
 

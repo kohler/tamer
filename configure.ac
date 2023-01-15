@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([tamer], [1.7.0])
+AC_INIT([tamer],[1.7.0])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_HEADERS([config.h tamer/autoconf.h:tamer/autoconf.h.in])
 AC_CONFIG_FILES([Makefile compiler/Makefile tamer/Makefile ex/Makefile knot/Makefile doc/Makefile test/Makefile bench/Makefile tamer/tamer.pc])
@@ -19,7 +19,7 @@ AC_PROG_CXX
 AC_PROG_CXXCPP
 if test -n "$GCC"; then CC="$CC -W -Wall"; CXX="$CXX -W -Wall"; fi
 
-AC_LANG_CPLUSPLUS
+AC_LANG([C++])
 AC_CACHE_CHECK([whether the C++ compiler works], [ac_cv_cxx_works], [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int x) { return x + 1; }]], [[]])],
         [ac_cv_cxx_works=yes], [ac_cv_cxx_works=no])])
@@ -31,13 +31,13 @@ The C++ compiler doesn't work. Try setting 'CXX' differently.
 
 =========================================])
 fi
-AC_LANG_C
+AC_LANG([C])
 
 dnl other programs
 
-AM_PROG_LEX
+AC_PROG_LEX(noyywrap)
 AC_PROG_YACC
-AC_PROG_LIBTOOL
+LT_INIT
 
 dnl
 dnl directory searching
@@ -73,20 +73,19 @@ dnl functions such as strerror, working strtod, strtoul, time
 dnl headers such as unistd.h
 dnl
 
-AC_LANG_C
+AC_LANG([C])
 FIXLIBC_O=''
 AC_CHECK_FUNCS(strerror, :, FIXLIBC_O='fixlibc.o')
 
 AC_CACHE_CHECK([whether strtod works], ac_cv_working_strtod,
-[AC_TRY_RUN([#include <stdio.h>
+[AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
 #include <stdlib.h>
 int main(int c, char **v) {
   char s[] = "12 ";
   char *endp;
   double d = strtod(s, &endp);
   exit(*endp == 0 ? 1 : 0);
-}], ac_cv_working_strtod=yes, ac_cv_working_strtod=no,
-ac_cv_working_strtod=yes)])
+}]])],[ac_cv_working_strtod=yes],[ac_cv_working_strtod=no],[ac_cv_working_strtod=yes])])
 if test $ac_cv_working_strtod = no; then
     FIXLIBC_O='fixlibc.o'
     AC_DEFINE(BROKEN_STRTOD, 1, [Define if strtod is broken.])
@@ -152,7 +151,7 @@ dnl
 dnl ntohs, ntohl (need them in C++ code)
 dnl
 
-AC_LANG_CPLUSPLUS
+AC_LANG([C++])
 AC_CHECK_HEADERS([byteorder.h netinet/in.h sys/param.h sys/epoll.h])
 AC_MSG_CHECKING([whether ntohs and ntohl are defined])
 ac_ntoh_defined=no
@@ -195,17 +194,17 @@ Cannot find a definition for ntohs and/or ntohl!
 
 =========================================])
 fi
-AC_LANG_C
+AC_LANG([C])
 
 
 dnl
 dnl is va_list addressable?
 dnl
 
-AC_LANG_CPLUSPLUS
+AC_LANG([C++])
 AC_CACHE_CHECK([for addressable va_list type],
     ac_cv_va_list_addr,
-    [AC_TRY_COMPILE([#include <stdarg.h>
+    [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <stdarg.h>
 void f(va_list *) {
 }
 void g(va_list val) {
@@ -216,7 +215,7 @@ void h(int a, ...) {
     va_start(val, a);
     g(val);
     va_end(val);
-}], [h(2, 3, 4);], ac_cv_va_list_addr=yes, ac_cv_va_list_addr=no)])
+}]], [[h(2, 3, 4);]])],[ac_cv_va_list_addr=yes],[ac_cv_va_list_addr=no])])
 if test "x$ac_cv_va_list_addr" = xyes; then
     AC_DEFINE([HAVE_ADDRESSABLE_VA_LIST], [1], [Define if the va_list type is addressable.])
 fi
