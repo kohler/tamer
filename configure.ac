@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT([tamer],[1.7.0])
-AC_PREREQ([2.71])
+AC_PREREQ([2.69])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_HEADERS([config.h tamer/autoconf.h:tamer/autoconf.h.in])
 AC_CONFIG_FILES([Makefile compiler/Makefile tamer/Makefile ex/Makefile knot/Makefile doc/Makefile test/Makefile bench/Makefile tamer/tamer.pc])

@@ -374,7 +374,7 @@ void driver_tamer::update_fds() {
 #if HAVE_SYS_EPOLL_H && !TAMER_NOEPOLL
         if (epollfd_ >= 0)
             mark_epoll(fd, epoll_events(wasset[0], wasset[1]),
-                       epoll_events(x.e[0], x.e[1]));
+                       epoll_events(bool(x.e[0]), bool(x.e[1])));
 #else
         (void) wasset;
 #endif
