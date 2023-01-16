@@ -260,8 +260,7 @@ class event<T0, T1, T2, void> { public:
 
 
 template <typename T0, typename T1>
-class event<T0, T1, void, void>
-    : public std::binary_function<T0, T1, void> { public:
+class event<T0, T1, void, void> { public:
     typedef std::tuple<T0, T1> results_tuple_type;
 
     inline event() noexcept;
@@ -344,8 +343,7 @@ class event<T0, T1, void, void>
 
 
 template <typename T0>
-class event<T0, void, void, void>
-    : public std::unary_function<T0, void> { public:
+class event<T0, void, void, void> { public:
     typedef std::tuple<T0> results_tuple_type;
 
     inline event() noexcept;
@@ -573,7 +571,7 @@ class event<void, void, void, void> { public:
 
 #if TAMER_HAVE_PREEVENT
 template <typename R, typename T0>
-class preevent : public std::unary_function<const T0&, void> {
+class preevent {
   public:
     typedef std::tuple<T0> results_tuple_type;
 

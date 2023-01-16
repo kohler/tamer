@@ -360,7 +360,10 @@ class distribute_rendezvous : public functional_rendezvous,
     int outstanding_;
     event_type* es_;
     typename event_type::results_tuple_type vs_;
-    char local_es_[sizeof(event_type) * nlocal];
+    struct alignas(event_type) event_space {
+        char space[sizeof(event_type)];
+    };
+    event_space local_es_[nlocal];
     static void hook(functional_rendezvous*, simple_event*, bool) TAMER_NOEXCEPT;
     static void clear_hook(void*);
     void add(event_type e);
@@ -378,8 +381,9 @@ template <typename T0, typename T1, typename T2, typename T3>
 inline distribute_rendezvous<T0, T1, T2, T3>::~distribute_rendezvous() {
     for (int i = 0; i != nes_; ++i)
         es_[i].~event();
-    if (es_ != reinterpret_cast<event_type*>(local_es_))
-        delete[] reinterpret_cast<char*>(es_);
+    if (es_ != reinterpret_cast<event_type*>(local_es_)) {
+        delete[] reinterpret_cast<event_space*>(es_);
+    }
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
@@ -422,15 +426,18 @@ void distribute_rendezvous<T0, T1, T2, T3>::hard_make(event_type& a, event_type 
 
 template <typename T0, typename T1, typename T2, typename T3>
 bool distribute_rendezvous<T0, T1, T2, T3>::grow() {
-    event_type* new_es = reinterpret_cast<event_type*>(new char[sizeof(event_type) * nes_ * 2]);
+    event_space* new_es = new event_space[nes_ * 2];
     if (new_es) {
-        memcpy(new_es, es_, sizeof(event_type) * nes_);
-        if (es_ != reinterpret_cast<event_type*>(local_es_))
-            delete[] reinterpret_cast<char*>(es_);
-        es_ = new_es;
+        event_space* old_es = reinterpret_cast<event_space*>(es_);
+        memcpy(new_es, old_es, sizeof(event_type) * nes_);
+        if (old_es != reinterpret_cast<event_space*>(local_es_)) {
+            delete[] old_es;
+        }
+        es_ = reinterpret_cast<event_type*>(new_es);
         return true;
-    } else
+    } else {
         return false;
+    }
 }
 
 template <typename T0, typename T1, typename T2, typename T3>

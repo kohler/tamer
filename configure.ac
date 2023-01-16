@@ -1,5 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT([tamer],[1.7.0])
+AC_PREREQ([2.71])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_HEADERS([config.h tamer/autoconf.h:tamer/autoconf.h.in])
 AC_CONFIG_FILES([Makefile compiler/Makefile tamer/Makefile ex/Makefile knot/Makefile doc/Makefile test/Makefile bench/Makefile tamer/tamer.pc])
@@ -12,6 +13,7 @@ dnl compilers
 dnl
 
 ac_user_cxx=${CXX+y}
+ac_user_cxxflags=${CXXFLAGS+y}
 
 AC_PROG_CC
 AC_PROG_CPP
@@ -33,11 +35,6 @@ The C++ compiler doesn't work. Try setting 'CXX' differently.
 fi
 AC_LANG([C])
 
-dnl other programs
-
-AC_PROG_LEX(noyywrap)
-AC_PROG_YACC
-LT_INIT
 
 dnl
 dnl directory searching
@@ -232,7 +229,7 @@ AC_CACHE_CHECK([whether the C++ compiler understands rvalue references], [ac_cv_
         [ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])])
 if test "$ac_cv_cxx_rvalue_references" != yes; then
     SAVE_CXX="${SAVE_CXX} -std=gnu++17"
-    CXX="${SAVE_CXX} -Werror"
+    CXX="${CXX} -std=gnu++17"
     AC_MSG_CHECKING([whether the C++ compiler with -std=gnu++17 understands rvalue refs])
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int &) { return 1; } int f(int &&) { return 0; }]], [[return f(int());]])],
         [ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])
@@ -248,7 +245,8 @@ AC_MSG_RESULT([$ac_cv_std_move])
 
 AC_MSG_CHECKING([for variadic templates])
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <utility>
-template <typename... TS> struct foo { enum { count = sizeof...(TS) }; };], [[long x = foo<>::count + foo<int, int, int, int, int>::count; (void) x;]])], [ac_cv_variadic_templates=yes], [ac_cv_variadic_templates=no])
+#include <cstddef>
+template <typename... TS> struct foo { static constexpr size_t count = sizeof...(TS); };], [[long x = foo<>::count + foo<int, int, int, int, int>::count; (void) x;]])], [ac_cv_variadic_templates=yes], [ac_cv_variadic_templates=no])
 AC_MSG_RESULT([$ac_cv_variadic_templates])
 
 if test "$ac_cv_std_move" != yes -o "$ac_cv_variadic_templates" != yes; then
@@ -290,7 +288,7 @@ if test "$ac_cv_cxx_template_alias" = yes; then
 fi
 
 AC_CACHE_CHECK([whether the C++ compiler understands variadic templates], [ac_cv_cxx_variadic_templates], [
-    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[template <typename... Ts> struct X; template <> struct X<> { enum { n = 0 }; }; template <typename T, typename... Ts> struct X<T, Ts...> { enum { n = X<Ts...>::n + 1 }; };]], [[switch (0) { case 0: case X<>::n == 0 && X<int>::n == 1 && X<int, int>::n == 2: break; }]])],
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[template <typename... Ts> struct X; template <> struct X<> { static constexpr int n = 0; }; template <typename T, typename... Ts> struct X<T, Ts...> { static constexpr int n = X<Ts...>::n + 1; };]], [[switch (0) { case 0: case X<>::n == 0 && X<int>::n == 1 && X<int, int>::n == 2: break; }]])],
         [ac_cv_cxx_variadic_templates=yes], [ac_cv_cxx_variadic_templates=no])])
 if test "$ac_cv_cxx_variadic_templates" = yes; then
     AC_DEFINE([TAMER_HAVE_CXX_VARIADIC_TEMPLATES], [1], [Define if the C++ compiler understands variadic templates.])
@@ -479,6 +477,15 @@ if test "$enable_debug" = yes; then
     AC_DEFINE([TAMER_DEBUG], [1], [Define to include more debugging assertions.])
 fi
 AM_CONDITIONAL([TAMER_DEBUG], [test x$enable_debug = xyes])
+
+
+dnl
+dnl lex, yacc, libtool
+dnl
+
+AC_PROG_LEX(noyywrap)
+AC_PROG_YACC
+LT_INIT
 
 
 dnl
