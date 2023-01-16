@@ -411,6 +411,7 @@ tamed void http_parser::receive(fd f, event<http_message> done) {
         message_data md;
         fdref fi(std::move(f));
     }
+    md.hm.status_code(0);
     md.done = false;
 
     twait { fi.acquire_read(tamer::make_event()); }
