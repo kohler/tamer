@@ -96,6 +96,7 @@ class fd {
     inline void write_once(const void* buf, size_t size, size_t& nwritten, event<> done);
     void write_once(const struct iovec* iov, int iov_count, size_t& nwritten, event<int> done);
     inline void write_once(const struct iovec* iov, int iov_count, size_t& nwritten, event<> done);
+    bool write_closed() const;
 
     void sendmsg(const void* buf, size_t size, int transfer_fd, event<int> done);
     inline void sendmsg(const void* buf, size_t size, event<int> done);

@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <poll.h>
 #include <tamer/tamer.hh>
 #if HAVE_TAMER_FDHELPER
 # include <tamer/fdh.hh>
@@ -387,6 +388,21 @@ tamed void fd::read_once(const struct iovec* iov, int iov_count, size_t& nread, 
     }
 
     done.trigger(0);
+}
+
+/** @brief  Test if this file descriptor is closed for writing.
+ *
+ *  Returns true on erroneous files, closed files, and sockets whose peers
+ *  have disconnected.
+ */
+bool fd::write_closed() const {
+    if (!_p || _p->fde_ < 0)
+        return true;
+    struct pollfd pfd[1];
+    pfd[0].fd = _p->fdv_;
+    pfd[0].events = POLLIN;
+    int r = ::poll(pfd, 1, 0);
+    return r < 0 || (pfd[0].revents & (POLLERR | POLLHUP)) != 0;
 }
 
 tamed void fd::write(const void* buf, size_t size, size_t* nwritten_ptr,
