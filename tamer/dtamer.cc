@@ -82,7 +82,7 @@ class xfd_setpair {
     inline void transfer_segment(int lb, int rb);
     inline void clear();
     inline bool isset(int action, int fd) const {
-        assert(unsigned(action) < 2 && unsigned(fd) < cap_);
+        assert(unsigned(action) < nfdactions && unsigned(fd) < cap_);
 #if SIZEOF_FD_SET_ELEMENT
         return f_[action]->elt[elt_index(fd)] & elt_bit(fd);
 #else
@@ -90,7 +90,7 @@ class xfd_setpair {
 #endif
     }
     inline void set(int action, int fd) {
-        assert(unsigned(action) < 2 && unsigned(fd) < cap_);
+        assert(unsigned(action) < nfdactions && unsigned(fd) < cap_);
 #if SIZEOF_FD_SET_ELEMENT
         f_[action]->elt[elt_index(fd)] |= elt_bit(fd);
 #else
@@ -98,7 +98,7 @@ class xfd_setpair {
 #endif
     }
     inline void clear(int action, int fd) {
-        assert(unsigned(action) < 2 && unsigned(fd) < cap_);
+        assert(unsigned(action) < nfdactions && unsigned(fd) < cap_);
 #if SIZEOF_FD_SET_ELEMENT
         f_[action]->elt[elt_index(fd)] &= ~elt_bit(fd);
 #else
@@ -106,11 +106,11 @@ class xfd_setpair {
 #endif
     }
     inline fd_set* get_fd_set(int action) {
-        assert(unsigned(action) < 2);
+        assert(unsigned(action) < nfdactions);
         return &f_[action]->fds;
     }
   private:
-    xfd_set* f_[2];
+    xfd_set* f_[nfdactions];
     unsigned cap_;
     void hard_ensure(int fd);
 };
@@ -121,7 +121,7 @@ void xfd_setpair::hard_ensure(int fd) {
         ncap *= 2;
     assert((ncap % 64) == 0);
     char* ndata = new char[ncap / 4];
-    xfd_set* nf[2] = {
+    xfd_set* nf[nfdactions] = {
         reinterpret_cast<xfd_set*>(ndata),
         reinterpret_cast<xfd_set*>(&ndata[ncap / 8])
     };
@@ -277,7 +277,7 @@ void driver_tamer::fd_disinterest(void* arg) {
 
 void driver_tamer::at_fd(int fd, int action, event<int> e) {
     assert(fd >= 0);
-    if (e && (action == 0 || action == 1)) {
+    if (e && (unsigned) action < nfdactions) {
         fds_.expand(this, fd);
         tamerpriv::driver_fd<fdp>& x = fds_[fd];
         x.e[action] += TAMER_MOVE(e);
@@ -362,8 +362,8 @@ void driver_tamer::update_fds() {
         tamerpriv::driver_fd<fdp>& x = fds_[fd];
         fdsets_.ensure(fd);
 
-        bool wasset[2] = { false, false };
-        for (int action = 0; action < 2; ++action) {
+        bool wasset[nfdactions] = { false, false };
+        for (int action = 0; action < nfdactions; ++action) {
             wasset[action] = fdsets_.isset(action, fd);
             if (x.e[action])
                 fdsets_.set(action, fd);
@@ -379,15 +379,14 @@ void driver_tamer::update_fds() {
         (void) wasset;
 #endif
 
-        if (x.e[0] || x.e[1]) {
+        if (!x.empty()) {
             if ((unsigned) fd >= fdbound_)
                 fdbound_ = fd + 1;
-        } else if ((unsigned) fd + 1 == fdbound_)
+        } else if ((unsigned) fd + 1 == fdbound_) {
             do {
                 --fdbound_;
-            } while (fdbound_ > 0
-                     && !fds_[fdbound_ - 1].e[0]
-                     && !fds_[fdbound_ - 1].e[1]);
+            } while (fdbound_ > 0 && fds_[fdbound_ - 1].empty());
+        }
     }
 }
 
@@ -518,7 +517,7 @@ void driver_tamer::loop(loop_flags flags)
     if (nfds > 0) {
         for (unsigned fd = 0; fd < fdbound_; ++fd) {
             tamerpriv::driver_fd<fdp> &x = fds_[fd];
-            for (int action = 0; action < 2; ++action)
+            for (int action = 0; action < nfdactions; ++action)
                 if (fdnow.isset(action, fd))
                     x.e[action].trigger(0);
         }

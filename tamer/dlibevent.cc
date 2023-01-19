@@ -116,7 +116,7 @@ void driver_libevent::fd_disinterest(void* arg) {
 
 void driver_libevent::at_fd(int fd, int action, event<int> e) {
     assert(fd >= 0);
-    if (e && (action == 0 || action == 1)) {
+    if (e && (unsigned) action < nfdactions) {
         fds_.expand(this, fd);
         tamerpriv::driver_fd<fdp>& x = fds_[fd];
         x.e[action] += TAMER_MOVE(e);
@@ -130,7 +130,7 @@ void driver_libevent::at_fd(int fd, int action, event<int> e) {
 void driver_libevent::kill_fd(int fd) {
     if (fd >= 0 && fd < fds_.size()) {
         tamerpriv::driver_fd<fdp> &x = fds_[fd];
-        for (int action = 0; action < 2; ++action)
+        for (int action = 0; action < nfdactions; ++action)
             x.e[action].trigger(-ECANCELED);
         fds_.push_change(fd);
     }

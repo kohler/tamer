@@ -116,11 +116,11 @@ inline void break_loop() {
  *  closed.
  */
 inline void at_fd_read(int fd, event<> e) {
-    driver::main->at_fd_read(fd, e);
+    driver::main->at_fd(fd, fd_read, e);
 }
 
 inline void at_fd_read(int fd, event<int> e) {
-    driver::main->at_fd_read(fd, e);
+    driver::main->at_fd(fd, fd_read, e);
 }
 
 /** @brief  Register event for file descriptor writability.
@@ -131,11 +131,11 @@ inline void at_fd_read(int fd, event<int> e) {
  *  closed.
  */
 inline void at_fd_write(int fd, event<> e) {
-    driver::main->at_fd_write(fd, e);
+    driver::main->at_fd(fd, fd_write, e);
 }
 
 inline void at_fd_write(int fd, event<int> e) {
-    driver::main->at_fd_write(fd, e);
+    driver::main->at_fd(fd, fd_write, e);
 }
 
 /** @brief  Register event for a given time.

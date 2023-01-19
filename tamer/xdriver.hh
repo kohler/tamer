@@ -35,6 +35,12 @@ enum signal_flags {
     signal_background = 1
 };
 
+enum fd_actions {
+    fd_read = 0,
+    fd_write = 1, // order matters
+    nfdactions = 2
+};
+
 class driver : public tamerpriv::simple_driver {
   public:
     driver();
@@ -45,7 +51,6 @@ class driver : public tamerpriv::simple_driver {
     inline unsigned index() const;
 
     // basic functions
-    enum { fdread = 0, fdwrite = 1 }; // the order is important
     virtual void at_fd(int fd, int action, event<int> e) = 0;
     virtual void at_time(const timeval& expiry, event<> e, bool bg) = 0;
     virtual void at_asap(event<> e) = 0;
@@ -53,11 +58,6 @@ class driver : public tamerpriv::simple_driver {
     virtual void kill_fd(int fd) = 0;
 
     inline void at_fd(int fd, int action, event<> e);
-    inline void at_fd_read(int fd, event<int> e);
-    inline void at_fd_read(int fd, event<> e);
-    inline void at_fd_write(int fd, event<int> e);
-    inline void at_fd_write(int fd, event<> e);
-
     inline void at_time(const timeval& expiry, event<> e);
     inline void at_time(double expiry, event<> e, bool bg = false);
     inline void at_delay(timeval delay, event<> e, bool bg = false);
@@ -111,22 +111,6 @@ inline unsigned driver::index() const {
 
 inline void driver::at_fd(int fd, int action, event<> e) {
     at_fd(fd, action, event<int>(e, int_placeholder_));
-}
-
-inline void driver::at_fd_read(int fd, event<int> e) {
-    at_fd(fd, fdread, e);
-}
-
-inline void driver::at_fd_write(int fd, event<int> e) {
-    at_fd(fd, fdwrite, e);
-}
-
-inline void driver::at_fd_read(int fd, event<> e) {
-    at_fd(fd, fdread, e);
-}
-
-inline void driver::at_fd_write(int fd, event<> e) {
-    at_fd(fd, fdwrite, e);
 }
 
 inline void driver::at_time(const timeval& expiry, event<> e) {
