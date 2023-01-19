@@ -27,7 +27,7 @@ using tamer::channel;
 
 std::ostream& operator<<(std::ostream& str, timeval x) {
     char buf[40];
-    int len = sprintf(buf, "%ld.%06ld", (long) x.tv_sec, (long) x.tv_usec);
+    int len = snprintf(buf, sizeof(buf), "%ld.%06ld", (long) x.tv_sec, (long) x.tv_usec);
     str.write(buf, len);
     return str;
 }

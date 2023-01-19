@@ -85,7 +85,6 @@ private:
   ssize_t _max;
   uint8_t * _buf;
   _strlen_t _strlen;
-  bool _overflow;
 
   void expand() { if (_off > _fill) _fill = _off; }
 

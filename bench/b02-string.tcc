@@ -30,9 +30,7 @@ template <> struct make_random<int> {
 };
 template <> struct make_random<std::string> {
     std::string operator()() {
-        char buf[100];
-        sprintf(buf, "%d", (int) random());
-        return std::string(buf);
+        return std::to_string(random());
     }
 };
 

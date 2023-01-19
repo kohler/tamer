@@ -22,8 +22,13 @@
 using namespace tamer;
 
 tamed void child(struct sockaddr_in* saddr, socklen_t saddr_len) {
-    tvars { tamer::fd cfd; int ret; tamer::buffer buf; std::string str;
-        int n = 0; }
+    tamed {
+        tamer::fd cfd;
+        int ret;
+        tamer::buffer buf;
+        std::string str;
+        int n = 0;
+    }
     cfd = tamer::fd::socket(AF_INET, SOCK_STREAM, 0);
     twait { cfd.connect((struct sockaddr*) saddr, saddr_len, make_event(ret)); }
     while (cfd && n < 12) {
@@ -47,14 +52,21 @@ tamed void child(struct sockaddr_in* saddr, socklen_t saddr_len) {
 }
 
 tamed void parent(tamer::fd& listenfd) {
-    tvars { tamer::fd cfd; int ret; tamer::buffer buf; std::string str;
-        size_t nwritten; int write_rounds = 0; int wret = 0; }
+    tvars {
+        tamer::fd cfd;
+        int ret;
+        tamer::buffer buf;
+        std::string str;
+        size_t nwritten;
+        int write_rounds = 0;
+        int wret = 0;
+    }
     twait { listenfd.accept(make_event(cfd)); }
     while (cfd) {
         if (wret == 0) {
             {
                 char xbuf[100];
-                sprintf(xbuf, "Hello %d\n", write_rounds);
+                snprintf(xbuf, sizeof(xbuf), "Hello %d\n", write_rounds);
                 str = xbuf;
             }
             twait { cfd.write(str, nwritten, make_event(wret)); }

@@ -25,7 +25,7 @@ static inline std::string recentstr(timeval now = tamer::recent()) {
     timeval delta;
     timersub(&now, &start, &delta);
     char buf[200];
-    sprintf(buf, "%ld.%06d", (long) delta.tv_sec, (int) delta.tv_usec);
+    snprintf(buf, sizeof(buf), "%ld.%06d", (long) delta.tv_sec, (int) delta.tv_usec);
     return buf;
 }
 

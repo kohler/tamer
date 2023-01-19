@@ -25,9 +25,7 @@ using tamer::event;
 tamed void run() {
     tamed { std::string test[1024]; }
     for (int i = 0; i != 1024; ++i) {
-        char buf[5];
-        sprintf(buf, "%d", i);
-        test[i] = std::string(buf);
+        test[i] = std::to_string(i);
     }
     twait { tamer::at_delay(0.01, make_event()); }
     std::cout << test[1023] << std::endl;
@@ -41,9 +39,7 @@ tamed void run2(std::string x[4]) {
 tamed void run3() {
     tamed { std::string test[1024][1024]; }
     for (int i = 0; i != 1024; ++i) {
-        char buf[5];
-        sprintf(buf, "%d", i);
-        test[i][i] = std::string(buf);
+        test[i][i] = std::to_string(i);
     }
     twait { tamer::at_delay(0.03, make_event()); }
     std::cout << test[1023][1023] << std::endl;

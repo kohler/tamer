@@ -310,9 +310,9 @@ void driver_tamer::report_epoll_error(int fd, int old_events, int events) {
     ++epoll_errcount_;
     if (errh_) {
         char msg[1024];
-        sprintf(msg, "epoll_ctl(%d, %x->%x) failure, %s",
-                fd, old_events, events,
-                epoll_errcount_ < EPOLL_MAX_ERRCOUNT ? "retrying" : "giving up");
+        snprintf(msg, sizeof(msg), "epoll_ctl(%d, %x->%x) failure, %s",
+                 fd, old_events, events,
+                 epoll_errcount_ < EPOLL_MAX_ERRCOUNT ? "retrying" : "giving up");
         errh_(fd, ctl_errno, msg);
     }
     close(epollfd_);
