@@ -9,7 +9,7 @@ tamer: dropping last reference to active event
 
 %stderr -a
 tamer: dropping last reference to active event
-tamer:   t12.tcc:26: event was created here
+{{tamer:   .*t12\.tcc:26: event was created here}}
 
 %ignore
 {{^==\d+==.*}}

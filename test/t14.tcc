@@ -38,13 +38,17 @@ tamed void child(struct sockaddr_in* saddr, socklen_t saddr_len) {
             assert(ret == 0);
             str = "Ret " + str;
             if (n == 6) {
-                cfd.shutdown(SHUT_RD);
+                int r = cfd.shutdown(SHUT_RD);
+                assert(r == 0);
             }
         } else {
             twait { tamer::at_delay_msec(1, make_event()); }
             str = "Heh\n";
         }
         twait { cfd.write(str, make_event(ret)); }
+        if (ret != 0) {
+            printf("CW #%d error %s\n", n, strerror(-ret));
+        }
         assert(ret == 0);
     }
     cfd.shutdown(SHUT_WR);
@@ -74,18 +78,21 @@ tamed void parent(tamer::fd& listenfd) {
             if (wret == 0 && nwritten == str.length()) {
                 ++write_rounds;
                 if (write_rounds <= 6) {
-                    printf("W 0: %s", str.c_str());
+                    printf("W #%d 0: %s", write_rounds, str.c_str());
                 }
-            } else if (wret == 0) {
-                wret = -ECANCELED;
+            } else {
+                if (wret == 0) {
+                    wret = -ECANCELED;
+                }
+                printf("W #%d error %s\n", write_rounds, strerror(-wret));
             }
         }
         twait { buf.take_until(cfd, '\n', 1024, str, make_event(ret)); }
         if (ret != 0) {
-            printf("W error %s after %d\n", strerror(-wret), write_rounds);
+            printf("R #%d error %s\n", write_rounds, strerror(-ret));
             break;
         } else if (str.length()) {
-            printf("R %d: %s", ret, str.c_str());
+            printf("R #%d %d: %s", write_rounds, ret, str.c_str());
         } else {
             printf("EOF\n");
         }

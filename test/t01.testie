@@ -42,7 +42,7 @@ tamer: dropping last reference to active event
 @1005: distributed 2 {{[\d\s.]+}}
 @1005: distributed 3 {{[\d\s.]+}}
 tamer: dropping last reference to active event
-{{tamer:   t01.tcc:209: event was created here|}}
+{{tamer:   .*t01\.tcc:209: event was created here|}}
 DONE
 
 %ignore
