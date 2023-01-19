@@ -76,8 +76,9 @@ inline rendezvous<I>::rendezvous(rendezvous_flags flags)
 /** @brief  Destroy rendezvous. */
 template <typename I>
 inline rendezvous<I>::~rendezvous() {
-    if (waiting_ || ready_)
+    if (waiting_ || ready_) {
         clear();
+    }
 }
 
 /** @brief  Test if any events are ready.
@@ -116,8 +117,9 @@ inline bool rendezvous<I>::join(I& eid) {
         eid = TAMER_MOVE(*eidp);
         delete eidp;
         return true;
-    } else
+    } else {
         return false;
+    }
 }
 
 /** @brief  Remove all events from this rendezvous.
@@ -126,11 +128,13 @@ inline bool rendezvous<I>::join(I& eid) {
  *  has_events() will return false. */
 template <typename I>
 void rendezvous<I>::clear() {
-    for (tamerpriv::simple_event *e = waiting_; e; e = e->next())
+    for (tamerpriv::simple_event* e = waiting_; e; e = e->next()) {
         delete reinterpret_cast<I*>(e->rid());
+    }
     abstract_rendezvous::remove_waiting();
-    for (tamerpriv::simple_event *e = ready_; e; e = e->next())
+    for (tamerpriv::simple_event* e = ready_; e; e = e->next()) {
         delete reinterpret_cast<I*>(e->rid());
+    }
     explicit_rendezvous::remove_ready();
 }
 
@@ -182,8 +186,9 @@ inline simple_rendezvous<T>::simple_rendezvous(rendezvous_flags flags)
 
 template <typename T>
 inline simple_rendezvous<T>::~simple_rendezvous() {
-    if (waiting_ || ready_)
+    if (waiting_ || ready_) {
         clear();
+    }
 }
 
 template <typename T>
@@ -191,8 +196,9 @@ inline bool simple_rendezvous<T>::join(T& eid) {
     if (ready_) {
         eid = tamerpriv::rid_cast<T>::out(pop_ready());
         return true;
-    } else
+    } else {
         return false;
+    }
 }
 
 template <typename T>
@@ -248,8 +254,9 @@ class rendezvous<> : public tamerpriv::explicit_rendezvous,
         : explicit_rendezvous(flags) {
     }
     inline ~rendezvous() {
-        if (waiting_ || ready_)
+        if (waiting_ || ready_) {
             clear();
+        }
     }
 
     template <typename T0, typename T1, typename T2, typename T3>
@@ -281,8 +288,9 @@ class rendezvous<> : public tamerpriv::explicit_rendezvous,
         if (ready_) {
             (void) pop_ready();
             return true;
-        } else
+        } else {
             return false;
+        }
     }
     void clear();
 
@@ -297,8 +305,9 @@ class gather_rendezvous : public tamerpriv::blocking_rendezvous,
         : blocking_rendezvous(rnormal, tamerpriv::rgather) {
     }
     inline ~gather_rendezvous() {
-        if (waiting_)
+        if (waiting_) {
             clear();
+        }
     }
 
     template <typename T0, typename T1, typename T2, typename T3>
@@ -379,8 +388,9 @@ inline distribute_rendezvous<T0, T1, T2, T3>::distribute_rendezvous()
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline distribute_rendezvous<T0, T1, T2, T3>::~distribute_rendezvous() {
-    for (int i = 0; i != nes_; ++i)
+    for (int i = 0; i != nes_; ++i) {
         es_[i].~event();
+    }
     if (es_ != reinterpret_cast<event_type*>(local_es_)) {
         delete[] reinterpret_cast<event_space*>(es_);
     }
@@ -388,8 +398,9 @@ inline distribute_rendezvous<T0, T1, T2, T3>::~distribute_rendezvous() {
 
 template <typename T0, typename T1, typename T2, typename T3>
 void distribute_rendezvous<T0, T1, T2, T3>::add(event_type e) {
-    if (nes_ >= nlocal && (nes_ & (nes_ - 1)) == 0 && !grow())
+    if (nes_ >= nlocal && (nes_ & (nes_ - 1)) == 0 && !grow()) {
         return;
+    }
     new((void*) &es_[nes_]) event_type(TAMER_MOVE(e));
     if (es_[nes_].__get_simple()->shared()) {
         tamerpriv::simple_event::at_trigger(es_[nes_].__get_simple(), clear_hook, this);
@@ -401,22 +412,25 @@ void distribute_rendezvous<T0, T1, T2, T3>::add(event_type e) {
 template <typename T0, typename T1, typename T2, typename T3>
 inline void distribute_rendezvous<T0, T1, T2, T3>::make(event_type& a, event_type b) {
     if (!a || !b) {
-        if (!a && b)
+        if (!a && b) {
             a = TAMER_MOVE(b);
-    } else
+        }
+    } else {
         hard_make(a, TAMER_MOVE(b));
+    }
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 void distribute_rendezvous<T0, T1, T2, T3>::hard_make(event_type& a, event_type b) {
     simple_event* se = a.__get_simple();
-    if (se == b.__get_simple())
+    if (se == b.__get_simple()) {
         return;
+    }
     distribute_rendezvous<T0, T1, T2, T3>* r;
     if (!se->shared() && !se->has_at_trigger()
-        && se->rendezvous()->rtype() == tamerpriv::rdistribute)
+        && se->rendezvous()->rtype() == tamerpriv::rdistribute) {
         r = static_cast<distribute_rendezvous<T0, T1, T2, T3>*>(se->rendezvous());
-    else {
+    } else {
         r = new distribute_rendezvous<T0, T1, T2, T3>;
         r->add(TAMER_MOVE(a));
         a = r->make_event();
@@ -448,17 +462,21 @@ void distribute_rendezvous<T0, T1, T2, T3>::hook(functional_rendezvous* fr,
         static_cast<distribute_rendezvous<T0, T1, T2, T3>*>(fr);
     ++dr->outstanding_;         // keep memory around until we're done here
     if (values) {
-        for (int i = 0; i != dr->nes_; ++i)
+        for (int i = 0; i != dr->nes_; ++i) {
             dr->es_[i].tuple_trigger(dr->vs_);
+        }
     } else if (!x->unused()) {
-        for (int i = 0; i != dr->nes_; ++i)
+        for (int i = 0; i != dr->nes_; ++i) {
             dr->es_[i].unblock();
+        }
     } else {
-        for (int i = 0; i != dr->nes_; ++i)
+        for (int i = 0; i != dr->nes_; ++i) {
             tamerpriv::simple_event::unuse(dr->es_[i].__release_simple());
+        }
     }
-    if (--dr->outstanding_ == 0)
+    if (--dr->outstanding_ == 0) {
         delete dr;
+    }
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
@@ -466,9 +484,10 @@ void distribute_rendezvous<T0, T1, T2, T3>::clear_hook(void* arg) {
     distribute_rendezvous<T0, T1, T2, T3>* dr =
         static_cast<distribute_rendezvous<T0, T1, T2, T3>*>(arg);
     if (--dr->outstanding_ == 0) {
-        for (int i = 0; i != dr->nes_; ++i)
+        for (int i = 0; i != dr->nes_; ++i) {
             if (dr->es_[i])
                 return;
+        }
         dr->remove_waiting();
         delete dr;
     }
@@ -522,8 +541,9 @@ inline void closure::initialize_closure(closure_activator f, ...) {
 inline void closure::exit_at_destroy(tamed_class* k) {
     assert(!tamer_closures_pprev_);
     tamer_closures_pprev_ = &k->tamer_closures_;
-    if ((tamer_closures_next_ = k->tamer_closures_))
+    if ((tamer_closures_next_ = k->tamer_closures_)) {
         tamer_closures_next_->tamer_closures_pprev_ = &tamer_closures_next_;
+    }
     k->tamer_closures_ = this;
 }
 
@@ -547,23 +567,27 @@ class destroy_guard {
     };
     shiva_closure* shiva_;
 
-    destroy_guard(const destroy_guard&);
-    destroy_guard& operator=(const destroy_guard&);
+    destroy_guard(const destroy_guard&) = delete;
+    destroy_guard(destroy_guard&&) = delete;
+    destroy_guard& operator=(const destroy_guard&) = delete;
+    destroy_guard& operator=(destroy_guard&&) = delete;
     static void activator(tamerpriv::closure*);
     void birth_shiva(tamerpriv::closure& cl, tamed_class* k);
 };
 
 inline destroy_guard::destroy_guard(tamerpriv::closure& cl, tamed_class* k)
     : shiva_() {
-    if (!cl.tamer_closures_pprev_)
+    if (!cl.tamer_closures_pprev_) {
         cl.exit_at_destroy(k);
-    else
+    } else {
         birth_shiva(cl, k);
+    }
 }
 
 inline destroy_guard::~destroy_guard() {
-    if (shiva_)
+    if (shiva_) {
         delete shiva_;
+    }
 }
 
 } // namespace tamer

@@ -47,7 +47,7 @@ tamed void f2() {
     printf("B\n");
     assert(++x == 4);
     twait {
-	tamer::at_delay_msec(250, make_event());
+        tamer::at_delay_msec(250, make_event());
     }
     m.release_shared();
     printf("E\n");
@@ -59,18 +59,18 @@ tamed void f3() {
     twait { tamer::at_delay_msec(50, make_event()); }
     twait { m.acquire_shared(tamer::with_timeout_msec(10, make_event(), outcome)); }
     if (outcome < 0) {
-	printf("BX\n");
-	assert(++x == 2);
+        printf("BX\n");
+        assert(++x == 2);
     } else {
-	printf("B'\n");
-	x += 10;
-	twait { tamer::at_delay_msec(10, make_event()); }
-	printf("C\n");
-	x += 10;
-	m.release_shared();
-	printf("D\n");
-	x += 10;
-	assert(0);
+        printf("B'\n");
+        x += 10;
+        twait { tamer::at_delay_msec(10, make_event()); }
+        printf("C\n");
+        x += 10;
+        m.release_shared();
+        printf("D\n");
+        x += 10;
+        assert(0);
     }
 }
 
@@ -80,12 +80,12 @@ tamed void f4() {
     twait { m.acquire(tamer::with_timeout_msec(1000, make_event(), outcome)); }
     //twait { m.acquire(make_event()); }
     if (outcome < 0) {
-	printf("FX %d %s\n", outcome, strerror(-outcome));
-	x += 20;
-	assert(0);
+        printf("FX %d %s\n", outcome, strerror(-outcome));
+        x += 20;
+        assert(0);
     } else {
-	printf("F\n");
-	assert(++x == 6);
+        printf("F\n");
+        assert(++x == 6);
     }
     m.release();
 }

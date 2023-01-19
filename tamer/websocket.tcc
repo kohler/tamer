@@ -202,7 +202,7 @@ tamed void websocket_parser::receive(fd f, event<websocket_message> done) {
         websocket_message ctrl, data;
         int r;
     }
-    while (1) {
+    while (true) {
         twait { receive_any(f, ctrl, data, make_event(r)); }
         if (r < 0) {
             done(TAMER_MOVE(data.error(http_errno(-r))));

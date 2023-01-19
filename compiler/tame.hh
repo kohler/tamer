@@ -646,9 +646,6 @@ public:
   void new_nonblock (tame_nonblock_t *s);
   tame_nonblock_t *nonblock () { return _nonblock; }
 
-  void new_fork (tame_fork_t *f);
-  tame_fork_t *fork () { return _fork; }
-
   void output(outputter_t *o);
 
   void clear_sym_bit () { _sym_bit = false; }
@@ -664,7 +661,6 @@ protected:
   tame_fn_t *_fn;
   tame_block_t *_block;
   tame_nonblock_t *_nonblock;
-  tame_fork_t *_fork;
   bool _sym_bit;
 
   // lists of elements (to reflect nested structure)
@@ -744,22 +740,6 @@ protected:
   std::string description_;
 };
 
-
-class tame_fork_t : public tame_env_t {
-public:
-  tame_fork_t (tame_fn_t *f, expr_list_t *l) : _fn (f), _args (l) {}
-  bool is_jumpto () const { return false; }
-  void set_id (int i) { _id = i; }
-  int id () const { return _id; }
-  var_t join_group () const { return (*_args)[0]; }
-  var_t arg (unsigned i) const { return (*_args)[i+1]; }
-  size_t n_args () const 
-  { assert (_args->size () > 0); return _args->size () - 1; }
-protected:
-  tame_fn_t *_fn;
-  expr_list_t *_args;
-  int _id;
-};
 
 extern parse_state_t *state;
 extern str infile_name;

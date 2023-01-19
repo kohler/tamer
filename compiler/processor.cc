@@ -272,13 +272,6 @@ parse_state_t::new_block (tame_block_t *g)
 }
 
 void
-parse_state_t::new_fork (tame_fork_t *j)
-{
-  _fork = j;
-  push (j);
-}
-
-void
 parse_state_t::new_nonblock (tame_nonblock_t *b)
 {
   _nonblock = b;
@@ -325,10 +318,12 @@ tame_fn_t::add_env (tame_env_t *e)
 }
 
 void tame_fn_t::add_templates(strbuf& b, const char* sep) const {
-    if (!class_template_.empty())
+    if (!class_template_.empty()) {
         b << "template< " << class_template_ << " >";
-    if (!function_template_.empty())
+    }
+    if (!function_template_.empty()) {
         b << "template< " << function_template_ << " >";
+    }
     b << sep;
 }
 
@@ -863,14 +858,16 @@ tame_fn_t::output_closure(outputter_t *o)
 void var_t::reference_declaration(strbuf& b, const str& padding) const {
     if (!name().empty()) {
         b << padding << ref_decl(false) << " TAMER_CLOSUREVARATTR = ";
-        if (type().is_ref())
+        if (type().is_ref()) {
             b << "*";
+        }
         b << TAME_CLOSURE_NAME "." << name() << ";\n";
     }
 }
 void vartab_t::reference_declarations(strbuf& b, const str& padding) const {
-    for (unsigned i = 0; i != size(); ++i)
+    for (unsigned i = 0; i != size(); ++i) {
         _vars[i].reference_declaration(b, padding);
+    }
 }
 
 void
@@ -1044,15 +1041,14 @@ tame_block_ev_t::output(outputter_t *o)
   str tmp;
 
   b << "/*twait{*/ do { ";
-  if (_fn->any_volatile_envs())
-      b << TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ".set_volatile(" << _isvolatile << "); ";
   b << "do {\n";
-  if (tamer_debug)
+  if (tamer_debug) {
       b << "#define make_event(...) make_annotated_event(__FILE__, __LINE__, " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n"
         << "#define make_preevent(...) make_annotated_preevent(__FILE__, __LINE__, " TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n";
-  else
+  } else {
       b << "#define make_event(...) make_event(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n"
         << "#define make_preevent(...) make_preevent(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ", ## __VA_ARGS__)\n";
+  }
   b << "    tamer::tamerpriv::rendezvous_owner<tamer::gather_rendezvous> " TWAIT_BLOCK_RENDEZVOUS "_holder(" TAME_CLOSURE_NAME "." TWAIT_BLOCK_RENDEZVOUS ");\n";
   o->output_str(b.str());
 

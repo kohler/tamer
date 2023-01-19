@@ -66,16 +66,16 @@ class simple_event { public:
     inline ~simple_event() TAMER_NOEXCEPT;
 #endif
 
-    static inline void use(simple_event *e) TAMER_NOEXCEPT;
-    static inline void unuse(simple_event *e) TAMER_NOEXCEPT;
-    static inline void unuse_clean(simple_event *e) TAMER_NOEXCEPT;
+    static inline void use(simple_event* e) TAMER_NOEXCEPT;
+    static inline void unuse(simple_event* e) TAMER_NOEXCEPT;
+    static inline void unuse_clean(simple_event* e) TAMER_NOEXCEPT;
     inline bool unused() const;
 
     inline explicit operator bool() const;
     inline bool empty() const;
-    inline abstract_rendezvous *rendezvous() const;
+    inline abstract_rendezvous* rendezvous() const;
     inline uintptr_t rid() const;
-    inline simple_event *next() const;
+    inline simple_event* next() const;
     inline bool shared() const;
     inline bool has_at_trigger() const;
 
@@ -83,14 +83,14 @@ class simple_event { public:
     inline int line_annotation() const;
 
     inline void simple_trigger(bool values);
-    static void simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT;
+    static void simple_trigger(simple_event* x, bool values) TAMER_NOEXCEPT;
     void trigger_list_for_remove() TAMER_NOEXCEPT;
 
     static inline void at_trigger(simple_event* x, simple_event* at_trigger);
     static inline void at_trigger(simple_event* x, void (*f)(void*), void* arg);
 
   protected:
-    abstract_rendezvous *_r;
+    abstract_rendezvous* _r;
     uintptr_t _rid;
     simple_event* _r_next;
     simple_event** _r_pprev;
@@ -102,8 +102,10 @@ class simple_event { public:
     const char* file_annotation_;
 #endif
 
-    simple_event(const simple_event &);
-    simple_event &operator=(const simple_event &);
+    simple_event(const simple_event&) = delete;
+    simple_event(simple_event&&) = delete;
+    simple_event& operator=(const simple_event&) = delete;
+    simple_event& operator=(const simple_event&&) = delete;
 
     void unuse_trigger() TAMER_NOEXCEPT;
     static inline event<> at_trigger_event(void (*f)(void*), void* arg);
@@ -124,7 +126,7 @@ enum rendezvous_type {
 class abstract_rendezvous {
   public:
     abstract_rendezvous(rendezvous_flags flags, rendezvous_type rtype) TAMER_NOEXCEPT
-        : waiting_(0), rtype_(rtype), is_volatile_(flags == rvolatile) {
+        : rtype_(rtype), is_volatile_(flags == rvolatile) {
     }
 #if TAMER_DEBUG
     inline ~abstract_rendezvous() TAMER_NOEXCEPT;
@@ -142,15 +144,17 @@ class abstract_rendezvous {
     }
 
   protected:
-    simple_event *waiting_;
+    simple_event* waiting_ = nullptr;
     uint8_t rtype_;
     bool is_volatile_;
 
     inline void remove_waiting() TAMER_NOEXCEPT;
 
   private:
-    abstract_rendezvous(const abstract_rendezvous &);
-    abstract_rendezvous &operator=(const abstract_rendezvous &);
+    abstract_rendezvous(const abstract_rendezvous&) = delete;
+    abstract_rendezvous(abstract_rendezvous&&) = delete;
+    abstract_rendezvous& operator=(const abstract_rendezvous&) = delete;
+    abstract_rendezvous& operator=(abstract_rendezvous&&) = delete;
 
     friend class simple_event;
     friend class driver;
@@ -186,6 +190,11 @@ class simple_driver {
     mutable unsigned cunblocked_;
     unsigned cunblocked_tail_;
     cptr* cs_;
+
+    simple_driver(const simple_driver&) = delete;
+    simple_driver(simple_driver&&) = delete;
+    simple_driver& operator=(const simple_driver&) = delete;
+    simple_driver& operator=(simple_driver&&) = delete;
 
     void add(closure* c);
     void grow();
@@ -228,19 +237,20 @@ class explicit_rendezvous : public blocking_rendezvous {
 #endif
 
   protected:
-    simple_event *ready_;
-    simple_event **ready_ptail_;
+    simple_event* ready_;
+    simple_event** ready_ptail_;
 
     inline uintptr_t pop_ready() {
-        simple_event *e = ready_;
-        if (!(ready_ = e->_r_next))
+        simple_event* e = ready_;
+        if (!(ready_ = e->_r_next)) {
             ready_ptail_ = &ready_;
+        }
         uintptr_t x = e->rid();
         simple_event::unuse_clean(e);
         return x;
     }
     inline void remove_ready() {
-        while (simple_event *e = ready_) {
+        while (simple_event* e = ready_) {
             ready_ = e->_r_next;
             simple_event::unuse_clean(e);
         }
@@ -252,21 +262,21 @@ class explicit_rendezvous : public blocking_rendezvous {
 
 class functional_rendezvous : public abstract_rendezvous {
   public:
-    typedef void (*hook_type)(functional_rendezvous *fr,
-                              simple_event *e, bool values);
+    typedef void (*hook_type)(functional_rendezvous* fr,
+                              simple_event* e, bool values);
 
-    inline functional_rendezvous(void (*f)(functional_rendezvous *fr,
-                                           simple_event *e, bool values) TAMER_NOEXCEPT)
+    inline functional_rendezvous(void (*f)(functional_rendezvous* fr,
+                                           simple_event* e, bool values) TAMER_NOEXCEPT)
         : abstract_rendezvous(rnormal, rfunctional), f_(f) {
     }
     inline functional_rendezvous(rendezvous_type rtype,
-                                 void (*f)(functional_rendezvous *fr,
-                                           simple_event *e, bool values) TAMER_NOEXCEPT)
+                                 void (*f)(functional_rendezvous* fr,
+                                           simple_event* e, bool values) TAMER_NOEXCEPT)
         : abstract_rendezvous(rnormal, rtype), f_(f) {
     }
     inline functional_rendezvous(rendezvous_flags rflags, rendezvous_type rtype,
-                                 void (*f)(functional_rendezvous *fr,
-                                           simple_event *e, bool values) TAMER_NOEXCEPT)
+                                 void (*f)(functional_rendezvous* fr,
+                                           simple_event* e, bool values) TAMER_NOEXCEPT)
         : abstract_rendezvous(rflags, rtype), f_(f) {
     }
     inline ~functional_rendezvous() {
@@ -274,8 +284,8 @@ class functional_rendezvous : public abstract_rendezvous {
     }
 
   private:
-    void (*f_)(functional_rendezvous *r,
-               simple_event *e, bool values) TAMER_NOEXCEPT;
+    void (*f_)(functional_rendezvous* r,
+               simple_event* e, bool values) TAMER_NOEXCEPT;
 
     friend class simple_event;
 };
@@ -340,8 +350,9 @@ class rendezvous_owner {
         : r_(&r) {
     }
     inline ~rendezvous_owner() {
-        if (r_)
+        if (r_) {
             r_->clear();
+        }
     }
     inline void reset() {
         r_ = 0;
@@ -359,7 +370,7 @@ void event_prematurely_dereferenced(simple_event *e, abstract_rendezvous *r);
 inline void abstract_rendezvous::remove_waiting() TAMER_NOEXCEPT {
     if (waiting_) {
         waiting_->trigger_list_for_remove();
-        waiting_ = 0;
+        waiting_ = nullptr;
     }
 }
 
@@ -389,13 +400,15 @@ inline closure* simple_driver::pop_unblocked() {
         cs_[i].next = cfree_;
         cfree_ = i;
         return c;
-    } else
+    } else {
         return 0;
+    }
 }
 
 inline void simple_driver::run_unblocked() {
-    while (closure* c = pop_unblocked())
+    while (closure* c = pop_unblocked()) {
         c->tamer_activator_(c);
+    }
 }
 
 inline void simple_driver::add_blocked(closure* c) {
@@ -407,12 +420,14 @@ inline void simple_driver::add_blocked(closure* c) {
 }
 
 inline void simple_driver::make_unblocked(closure* c) {
-    if (!c->tamer_driver_index_)
+    if (!c->tamer_driver_index_) {
         add(c);
-    if (cunblocked_)
+    }
+    if (cunblocked_) {
         cs_[cunblocked_tail_].next = c->tamer_driver_index_;
-    else
+    } else {
         cunblocked_ = c->tamer_driver_index_;
+    }
     cunblocked_tail_ = c->tamer_driver_index_;
 }
 
@@ -432,8 +447,9 @@ inline blocking_rendezvous::blocking_rendezvous(rendezvous_flags flags,
 }
 
 inline blocking_rendezvous::~blocking_rendezvous() TAMER_NOEXCEPT {
-    if (blocked_closure_)
+    if (blocked_closure_) {
         hard_free();
+    }
 }
 
 inline bool blocking_rendezvous::blocked() const {
@@ -452,10 +468,11 @@ inline void blocking_rendezvous::block(simple_driver* driver, closure& c,
 inline void closure::unblock() {
     if (simple_driver* d = tamer_blocked_driver_) {
         tamer_blocked_driver_ = 0;
-        if (d != &simple_driver::immediate_driver)
+        if (d != &simple_driver::immediate_driver) {
             d->make_unblocked(this);
-        else
+        } else {
             tamer_activator_(this);
+        }
     }
 }
 
@@ -469,8 +486,9 @@ inline void blocking_rendezvous::unblock() {
 
 inline closure::~closure() {
     if (tamer_closures_pprev_
-        && (*tamer_closures_pprev_ = tamer_closures_next_))
+        && (*tamer_closures_pprev_ = tamer_closures_next_)) {
         tamer_closures_next_->tamer_closures_pprev_ = tamer_closures_pprev_;
+    }
     delete tamer_description_;
 }
 
@@ -490,10 +508,11 @@ inline void closure::set_location(const char* file, int line) {
 
 inline void closure::set_description(std::string description) {
 #if !TAMER_NOTRACE
-    if (tamer_description_)
+    if (tamer_description_) {
         *tamer_description_ = TAMER_MOVE(description);
-    else if (!description.empty())
+    } else if (!description.empty()) {
         tamer_description_ = new std::string(TAMER_MOVE(description));
+    }
 #else
     (void) description;
 #endif
@@ -509,8 +528,9 @@ inline int closure::location_line() const {
 
 inline std::string closure::description() const {
 #if !TAMER_NOTRACE
-    if (tamer_description_)
+    if (tamer_description_) {
         return *tamer_description_;
+    }
 #endif
     return std::string();
 }
@@ -525,15 +545,17 @@ inline simple_event::simple_event(abstract_rendezvous& r, uintptr_t rid,
     : _r(&r), _rid(rid), _r_next(r.waiting_), _r_pprev(&r.waiting_),
       at_trigger_f_(0), at_trigger_arg_(0), _refcount(1)
       TAMER_IFTRACE(, line_annotation_(line), file_annotation_(file)) {
-    if (r.waiting_)
+    if (r.waiting_) {
         r.waiting_->_r_pprev = &_r_next;
+    }
     r.waiting_ = this;
     TAMER_IFNOTRACE((void) file, (void) line);
 #if TAMER_DEBUG > 1
-    if (file && line)
+    if (file && line) {
         fprintf(stderr, "annotate simple_event(%p) %s:%d\n", this, file, line);
-    else if (file)
+    } else if (file) {
         fprintf(stderr, "annotate simple_event(%p) %s\n", this, file);
+    }
 #endif
 }
 
@@ -541,27 +563,31 @@ inline simple_event::simple_event(abstract_rendezvous& r, uintptr_t rid,
 inline simple_event::~simple_event() TAMER_NOEXCEPT {
     assert(!_r);
 # if TAMER_DEBUG > 1
-    if (file_annotation() && line_annotation())
+    if (file_annotation() && line_annotation()) {
         fprintf(stderr, "destroy simple_event(%p) %s:%d\n", this, file_annotation(), line_annotation());
-    else if (file_annotation())
+    } else if (file_annotation()) {
         fprintf(stderr, "destroy simple_event(%p) %s\n", this, file_annotation());
+    }
 # endif
 }
 #endif
 
-inline void simple_event::use(simple_event *e) TAMER_NOEXCEPT {
-    if (e)
+inline void simple_event::use(simple_event* e) TAMER_NOEXCEPT {
+    if (e) {
         ++e->_refcount;
+    }
 }
 
-inline void simple_event::unuse(simple_event *e) TAMER_NOEXCEPT {
-    if (e && --e->_refcount == 0)
+inline void simple_event::unuse(simple_event* e) TAMER_NOEXCEPT {
+    if (e && --e->_refcount == 0) {
         e->unuse_trigger();
+    }
 }
 
-inline void simple_event::unuse_clean(simple_event *e) TAMER_NOEXCEPT {
-    if (e && --e->_refcount == 0)
+inline void simple_event::unuse_clean(simple_event* e) TAMER_NOEXCEPT {
+    if (e && --e->_refcount == 0) {
         delete e;
+    }
 }
 
 inline bool simple_event::unused() const {
@@ -617,8 +643,9 @@ inline void simple_event::simple_trigger(bool values) {
 }
 
 inline void simple_event::at_trigger(simple_event* x, simple_event* at_e) {
-    if (at_e)
+    if (at_e) {
         at_trigger(x, trigger_hook, at_e);
+    }
 }
 
 inline void simple_event::at_trigger(simple_event* x, void (*f)(void*),
@@ -626,8 +653,9 @@ inline void simple_event::at_trigger(simple_event* x, void (*f)(void*),
     if (x && *x && !x->at_trigger_f_) {
         x->at_trigger_f_ = f;
         x->at_trigger_arg_ = arg;
-    } else
+    } else {
         hard_at_trigger(x, f, arg);
+    }
 }
 
 template <typename T> struct rid_cast {

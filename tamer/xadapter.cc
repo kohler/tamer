@@ -20,14 +20,14 @@ namespace tamerpriv {
 char placeholder_buffer[64];
 
 void with_helper_rendezvous::hook(functional_rendezvous *fr,
-				  simple_event *, bool) TAMER_NOEXCEPT {
+                                  simple_event *, bool) TAMER_NOEXCEPT {
     with_helper_rendezvous *self = static_cast<with_helper_rendezvous *>(fr);
     if (*self->e_) {
-	*self->s0_ = self->v0_;
-	tamerpriv::simple_event::use(self->e_);
-	self->e_->simple_trigger(false);
+        *self->s0_ = self->v0_;
+        tamerpriv::simple_event::use(self->e_);
+        self->e_->simple_trigger(false);
     } else
-	*self->s0_ = int();
+        *self->s0_ = int();
     delete self;
 }
 

@@ -73,10 +73,12 @@ extern "C" {
 void libevent_fdtrigger(int fd, short what, void *arg) {
     driver_libevent *d = static_cast<driver_libevent *>(arg);
     tamerpriv::driver_fd<driver_libevent::fdp> &x = d->fds_[fd];
-    if (what & EV_READ)
+    if (what & EV_READ) {
         x.e[0].trigger(0);
-    if (what & EV_WRITE)
+    }
+    if (what & EV_WRITE) {
         x.e[1].trigger(0);
+    }
     d->fds_.push_change(fd);
 }
 
@@ -130,8 +132,9 @@ void driver_libevent::at_fd(int fd, int action, event<int> e) {
 void driver_libevent::kill_fd(int fd) {
     if (fd >= 0 && fd < fds_.size()) {
         tamerpriv::driver_fd<fdp> &x = fds_[fd];
-        for (int action = 0; action < nfdactions; ++action)
+        for (int action = 0; action < nfdactions; ++action) {
             x.e[action].trigger(-ECANCELED);
+        }
         fds_.push_change(fd);
     }
 }
@@ -145,8 +148,9 @@ void driver_libevent::update_fds() {
             & (EV_READ | EV_WRITE);
         if (want_what != have_what) {
             fdactive_ += (want_what != 0) - (have_what != 0);
-            if (have_what != 0)
+            if (have_what != 0) {
                 ::event_del(&x.base);
+            }
             if (want_what != 0) {
                 ::event_set(&x.base, fd, want_what | EV_PERSIST,
                             libevent_fdtrigger, this);
@@ -157,18 +161,21 @@ void driver_libevent::update_fds() {
 }
 
 void driver_libevent::at_time(const timeval &expiry, event<> e, bool bg) {
-    if (e)
+    if (e) {
         timers_.push(expiry, e.__release_simple(), bg);
+    }
 }
 
 void driver_libevent::at_asap(event<> e) {
-    if (e)
+    if (e) {
         asap_.push(e.__release_simple());
+    }
 }
 
 void driver_libevent::at_preblock(event<> e) {
-    if (e)
+    if (e) {
         preblock_.push(e.__release_simple());
+    }
 }
 
 void driver_libevent::loop(loop_flags flags)
@@ -178,29 +185,32 @@ void driver_libevent::loop(loop_flags flags)
 
  again:
     // process preblock events
-    while (!preblock_.empty())
+    while (!preblock_.empty()) {
         preblock_.pop_trigger();
+    }
     run_unblocked();
 
     // fix file descriptors
-    if (fds_.has_change())
+    if (fds_.has_change()) {
         update_fds();
+    }
 
     int event_flags = EVLOOP_ONCE;
     timers_.cull();
     if (!asap_.empty()
         || (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >))
         || sig_any_active
-        || has_unblocked())
+        || has_unblocked()) {
         event_flags |= EVLOOP_NONBLOCK;
-    else if (!timers_.has_foreground()
-             && fdactive_ == 0
-             && sig_nforeground == 0)
+    } else if (!timers_.has_foreground()
+               && fdactive_ == 0
+               && sig_nforeground == 0) {
         // no foreground events!
         return;
-    else if (!timers_.empty()) {
-        if (!timer_set)
+    } else if (!timers_.empty()) {
+        if (!timer_set) {
             evtimer_set(&timerev, libevent_timertrigger, 0);
+        }
         timer_set = true;
         timeval timeout = timers_.expiry();
         timersub(&timeout, &recent(), &timeout);
@@ -208,8 +218,9 @@ void driver_libevent::loop(loop_flags flags)
     }
 
     // don't bother to run event loop if there is nothing it can do
-    if (!(event_flags & EVLOOP_NONBLOCK) || fdactive_ != 0 || sig_ntotal != 0)
+    if (!(event_flags & EVLOOP_NONBLOCK) || fdactive_ != 0 || sig_ntotal != 0) {
         ::event_loop(event_flags);
+    }
 
     // process fd events
     set_recent();
@@ -217,20 +228,24 @@ void driver_libevent::loop(loop_flags flags)
 
     // process timer events
     if (!timers_.empty()) {
-        if (!(event_flags & EVLOOP_NONBLOCK))
+        if (!(event_flags & EVLOOP_NONBLOCK)) {
             evtimer_del(&timerev);
-        while (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >))
+        }
+        while (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >)) {
             timers_.pop_trigger();
+        }
         run_unblocked();
     }
 
     // process asap events
-    while (!asap_.empty())
+    while (!asap_.empty()) {
         asap_.pop_trigger();
+    }
     run_unblocked();
 
-    if (flags == loop_forever)
+    if (flags == loop_forever) {
         goto again;
+    }
 }
 
 void driver_libevent::break_loop() {

@@ -27,20 +27,20 @@ void sigint(int) {
 tamed void run(tamer::fd fd, std::string s, double rate, unsigned long limit) {
     tvars { size_t w; char *xx = 0; int r; }
 
-    while (1) {
-	// Write a copy of `s` to `fd`
-	twait { fd.write(s, make_event(r)); }
-	// Just exit on error
-	if (r < 0)
-	    exit(0);
+    while (true) {
+        // Write a copy of `s` to `fd`
+        twait { fd.write(s, make_event(r)); }
+        // Just exit on error
+        if (r < 0)
+            exit(0);
 
-	++count;
-	if (limit != 0 && (unsigned long) count == limit)
-	    exit(0);
+        ++count;
+        if (limit != 0 && (unsigned long) count == limit)
+            exit(0);
 
-	// If we have a rate limit, obey it.
-	if (rate > 0)
-	    twait { tamer::at_delay(1 / rate, make_event()); }
+        // If we have a rate limit, obey it.
+        if (rate > 0)
+            twait { tamer::at_delay(1 / rate, make_event()); }
     }
 }
 
@@ -54,35 +54,35 @@ int main(int argc, char **argv) {
     double rate = 0;
     unsigned long limit = 0;
     while ((opt = getopt(argc, argv, "hnr:l:")) != -1) {
-	switch (opt) {
-	case 'h':
-	    usage();
-	    exit(0);
-	case 'n':
-	    newline = false;
-	    break;
-	case 'r':
-	    rate = strtod(optarg, 0);
-	    break;
-	case 'l':
-	    limit = strtoul(optarg, 0, 0);
-	    break;
-	case '?':
-	usage:
-	    usage();
-	    exit(1);
-	}
+        switch (opt) {
+        case 'h':
+            usage();
+            exit(0);
+        case 'n':
+            newline = false;
+            break;
+        case 'r':
+            rate = strtod(optarg, 0);
+            break;
+        case 'l':
+            limit = strtoul(optarg, 0, 0);
+            break;
+        case '?':
+        usage:
+            usage();
+            exit(1);
+        }
     }
 
     std::string s;
     if (optind < argc - 1)
-	goto usage;
+        goto usage;
     else if (optind == argc - 1)
-	s = argv[optind];
+        s = argv[optind];
     else
-	s = "y";
+        s = "y";
     if (newline)
-	s += '\n';
+        s += '\n';
 
     signal(SIGINT, sigint);
     tamer::initialize();

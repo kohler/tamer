@@ -18,28 +18,28 @@
 #include <tamer/fd.hh>
 namespace tamer {
 
-class buffer { public:
-
+class buffer {
+public:
     buffer(size_t initial_capacity = 1024);
     ~buffer();
 
-    void fill_until(fd f, char c, size_t max_size, size_t &out_size, event<int> done);
-    void take_until(fd f, char c, size_t max_size, std::string &str, event<int> done);
+    std::string str() const; // debugging
 
-  private:
+    void fill_until(fd f, char c, size_t max_size, size_t& out_size, event<int> done);
+    void take_until(fd f, char c, size_t max_size, std::string& str, event<int> done);
 
-    char *_buf;
-    size_t _size;
-    size_t _head;
-    size_t _tail;
+private:
+    char* buf_;
+    size_t size_;
+    size_t head_ = 0;
+    size_t tail_ = 0;
 
-    ssize_t fill_more(fd f, const event<int> &done);
+    ssize_t fill_more(fd f, const event<int>& done);
 
     class closure__fill_until__2fdckRkQi_;
-    void fill_until(closure__fill_until__2fdckRkQi_ &);
+    void fill_until(closure__fill_until__2fdckRkQi_&);
     class closure__take_until__2fdckRSsQi_;
-    void take_until(closure__take_until__2fdckRSsQi_ &);
-
+    void take_until(closure__take_until__2fdckRSsQi_&);
 };
 
 }

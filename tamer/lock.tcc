@@ -78,19 +78,19 @@ namespace tamer {
  *  </pre>
  */
 
-tamed void mutex::acquire(int shared, event<> done)
-{
+tamed void mutex::acquire(int shared, event<> done) {
     tvars {
-	rendezvous<> r;
-	wait w;
+        rendezvous<> r;
+        wait w;
     }
 
-    if (!done)
-	return;
+    if (!done) {
+        return;
+    }
     if (!wait_ && (shared > 0 ? locked_ != -1 : locked_ == 0)) {
-	locked_ += shared;
-	done.trigger();
-	return;
+        locked_ += shared;
+        done.trigger();
+        return;
     }
 
     done.at_trigger(make_event(r));
@@ -100,31 +100,34 @@ tamed void mutex::acquire(int shared, event<> done)
     wait_tailp_ = &w.next;
     w.next = 0;
 
-    while (1) {
-	twait(r);
-	if (!done) {
-	    // canceling an exclusive lock may let a shared lock through,
-	    // so always count canceled locks as shared
-	    shared = 1;
-	    break;
-	} else if (shared > 0 ? locked_ != -1 : locked_ == 0) {
-	    // obtained lock
-	    locked_ += shared;
-	    break;
-	} else
-	    // must try again
-	    w.e = make_event(r); // w is still on front
+    while (true) {
+        twait(r);
+        if (!done) {
+            // canceling an exclusive lock may let a shared lock through,
+            // so always count canceled locks as shared
+            shared = 1;
+            break;
+        } else if (shared > 0 ? locked_ != -1 : locked_ == 0) {
+            // obtained lock
+            locked_ += shared;
+            break;
+        } else {
+            // must try again
+            w.e = make_event(r); // w is still on front
+        }
     }
 
-    done.trigger();		// lock was obtained (or done is empty)
-    r.clear();			// not interested in r events, so clean up
-    *w.pprev = w.next;		// remove wait object from list
-    if (w.next)
-	w.next->pprev = w.pprev;
-    else
-	wait_tailp_ = w.pprev;
-    if (shared > 0)		// next waiter might also get a shared lock
-	wake();
+    done.trigger();             // lock was obtained (or done is empty)
+    r.clear();                  // not interested in r events, so clean up
+    *w.pprev = w.next;          // remove wait object from list
+    if (w.next) {
+        w.next->pprev = w.pprev;
+    } else {
+        wait_tailp_ = w.pprev;
+    }
+    if (shared > 0) {           // next waiter might also get a shared lock
+        wake();
+    }
 }
 
 } // namespace tamer

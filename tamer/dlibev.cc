@@ -84,14 +84,16 @@ public:
 
 
 extern "C" {
-void libev_io_trigger(struct ev_loop *, ev_io *ev, int revents)
+void libev_io_trigger(struct ev_loop*, ev_io* ev, int revents)
 {
-    driver_libev *d = static_cast<driver_libev *>(ev->data);
-    tamerpriv::driver_fd<driver_libev::fdp> &x = d->fds_[ev->fd];
-    if (revents & EV_READ)
+    driver_libev* d = static_cast<driver_libev*>(ev->data);
+    auto& x = d->fds_[ev->fd];
+    if (revents & EV_READ) {
         x.e[0].trigger(0);
-    if (revents & EV_WRITE)
+    }
+    if (revents & EV_WRITE) {
         x.e[1].trigger(0);
+    }
     d->fds_.push_change(ev->fd);
 }
 
@@ -119,8 +121,9 @@ driver_libev::driver_libev()
 driver_libev::~driver_libev() {
     // Stop the special signal FD pipe.
     ev_io_stop(eloop_, &sigwatcher_.io);
-    for (int fd = 0; fd < fds_.size(); ++fd)
+    for (int fd = 0; fd < fds_.size(); ++fd) {
         ev_io_stop(eloop_, &fds_[fd].base_.io);
+    }
 }
 
 void driver_libev::fd_disinterest(void* arg) {
@@ -144,8 +147,9 @@ void driver_libev::at_fd(int fd, int action, event<int> e) {
 void driver_libev::kill_fd(int fd) {
     if (fd >= 0 && fd < fds_.size()) {
         tamerpriv::driver_fd<fdp> &x = fds_[fd];
-        for (int action = 0; action < nfdactions; ++action)
+        for (int action = 0; action < nfdactions; ++action) {
             x.e[action].trigger(-ECANCELED);
+        }
         fds_.push_change(fd);
     }
 }
@@ -158,29 +162,35 @@ void driver_libev::update_fds() {
         unsigned have_what = (ev_is_active(&x.base_.w) ? x.base_.io.events : 0) & (EV_READ | EV_WRITE);
         if (want_what != have_what) {
             fdactive_ += (want_what != 0) - (have_what != 0);
-            if (have_what != 0)
+            if (have_what != 0) {
                 ev_io_stop(eloop_, &x.base_.io);
-            if (want_what && (x.base_.io.events & (EV_READ | EV_WRITE)) != want_what)
+            }
+            if (want_what && (x.base_.io.events & (EV_READ | EV_WRITE)) != want_what) {
                 ev_io_set(&x.base_.io, fd, want_what);
-            if (want_what != 0)
+            }
+            if (want_what != 0) {
                 ev_io_start(eloop_, &x.base_.io);
+            }
         }
     }
 }
 
 void driver_libev::at_time(const timeval &expiry, event<> e, bool bg) {
-    if (e)
+    if (e) {
         timers_.push(expiry, e.__release_simple(), bg);
+    }
 }
 
 void driver_libev::at_asap(event<> e) {
-    if (e)
+    if (e) {
         asap_.push(e.__release_simple());
+    }
 }
 
 void driver_libev::at_preblock(event<> e) {
-    if (e)
+    if (e) {
         preblock_.push(e.__release_simple());
+    }
 }
 
 void driver_libev::loop(loop_flags flags) {
@@ -192,27 +202,29 @@ void driver_libev::loop(loop_flags flags) {
 
  again:
     // process preblock events
-    while (!preblock_.empty())
+    while (!preblock_.empty()) {
         preblock_.pop_trigger();
+    }
     run_unblocked();
 
     // fix file descriptors
-    if (fds_.has_change())
+    if (fds_.has_change()) {
         update_fds();
+    }
 
     int event_flags = EVRUN_ONCE;
     timers_.cull();
     if (!asap_.empty()
         || (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >))
         || sig_any_active
-        || has_unblocked())
+        || has_unblocked()) {
         event_flags |= EVRUN_NOWAIT;
-    else if (!timers_.has_foreground()
-             && fdactive_ == 0
-             && sig_nforeground == 0)
+    } else if (!timers_.has_foreground()
+               && fdactive_ == 0
+               && sig_nforeground == 0) {
         // no foreground events!
         return;
-    else if (!timers_.empty()) {
+    } else if (!timers_.empty()) {
         if (!timer_set) {
             ev_init(&timerev.w, (ev_watcher_type) libev_timer_trigger);
             ev_periodic_set(&timerev.p, 0, 0, 0);
@@ -222,29 +234,34 @@ void driver_libev::loop(loop_flags flags) {
         timersub(&timers_.expiry(), &recent(), &to);
         timerev.p.offset = dtime(to);
         ev_periodic_again(eloop_, &timerev.p);
-    } else if (timer_set)
+    } else if (timer_set) {
         ev_periodic_stop(eloop_, &timerev.p);
+    }
 
     // run the event loop, unless there's nothing it can do
-    if (!(event_flags & EVRUN_NOWAIT) || fdactive_ != 0 || sig_ntotal != 0)
+    if (!(event_flags & EVRUN_NOWAIT) || fdactive_ != 0 || sig_ntotal != 0) {
         ::ev_run(eloop_, event_flags);
+    }
 
     // process fd events
     set_recent();
     run_unblocked();
 
     // process timer events
-    while (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >))
+    while (!timers_.empty() && !timercmp(&timers_.expiry(), &recent(), >)) {
         timers_.pop_trigger();
+    }
     run_unblocked();
 
     // process asap events
-    while (!asap_.empty())
+    while (!asap_.empty()) {
         asap_.pop_trigger();
+    }
     run_unblocked();
 
-    if (flags == loop_forever)
+    if (flags == loop_forever) {
         goto again;
+    }
 }
 
 void driver_libev::break_loop() {

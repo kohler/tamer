@@ -293,11 +293,12 @@ tamed void test_tamed_tvars() {
 }
 
 tamed void preblock_report() {
-    while (1) {
+    while (true) {
         twait volatile { tamer::at_preblock(make_event()); }
         timeval when = tamer::driver::main->next_wake();
-        if (when.tv_sec > 0)
+        if (when.tv_sec > 0) {
             fprintf(stderr, "... block until %s\n", recentstr(when).c_str());
+        }
     }
 }
 
@@ -344,4 +345,5 @@ int main(int, char **) {
 
     tamer::loop();
     tamer::cleanup();
+    fprintf(stderr, "DONE\n");
 }

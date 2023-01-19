@@ -46,8 +46,9 @@ void simple_driver::grow() {
 }
 
 void simple_driver::add(closure* c) {
-    if (!cfree_)
+    if (!cfree_) {
         grow();
+    }
     unsigned i = cfree_;
     cfree_ = cs_[i].next;
     cs_[i].c = c;
@@ -65,14 +66,15 @@ void blocking_rendezvous::hard_free() TAMER_NOEXCEPT {
 std::string closure::location() const {
 #if !TAMER_NOTRACE
     std::stringstream buf;
-    if (tamer_location_file_ && tamer_location_line_)
+    if (tamer_location_file_ && tamer_location_line_) {
         buf << tamer_location_file_ << ":" << tamer_location_line_;
-    else if (tamer_location_file_)
+    } else if (tamer_location_file_) {
         buf << tamer_location_file_;
-    else if (tamer_location_line_)
+    } else if (tamer_location_line_) {
         buf << tamer_location_line_;
-    else
+    } else {
         buf << "<unknown>";
+    }
     return buf.str();
 #else
     return std::string("<unknown>");
@@ -82,17 +84,19 @@ std::string closure::location() const {
 std::string closure::location_description() const {
 #if !TAMER_NOTRACE
     std::stringstream buf;
-    if (tamer_location_file_ && tamer_location_line_)
+    if (tamer_location_file_ && tamer_location_line_) {
         buf << tamer_location_file_ << ":" << tamer_location_line_;
-    else if (tamer_location_file_)
+    } else if (tamer_location_file_) {
         buf << tamer_location_file_;
-    else if (tamer_location_line_)
+    } else if (tamer_location_line_) {
         buf << tamer_location_line_;
-    else if (!has_description())
+    } else if (!has_description()) {
         buf << "<unknown>";
+    }
     if (has_description()) {
-        if (buf.tellp() != 0)
+        if (buf.tellp() != 0) {
             buf << " ";
+        }
         buf << *tamer_description_;
     }
     return buf.str();
@@ -102,28 +106,31 @@ std::string closure::location_description() const {
 }
 
 
-void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
-    if (!x)
+void simple_event::simple_trigger(simple_event* x, bool values) TAMER_NOEXCEPT {
+    if (!x) {
         return;
-    simple_event *to_delete = 0;
+    }
+    simple_event* to_delete = 0;
 
  retry:
-    abstract_rendezvous *r = x->_r;
+    abstract_rendezvous* r = x->_r;
     bool reduce_refcount = x->_refcount > 0;
 
     if (r) {
-        // See also trigger_list_for_remove(), trigger_for_unuse().
+        // See also trigger_list_for_remove()
         x->_r = 0;
         *x->_r_pprev = x->_r_next;
-        if (x->_r_next)
+        if (x->_r_next) {
             x->_r_next->_r_pprev = x->_r_pprev;
+        }
 
         if (r->rtype_ == rgather) {
-            gather_rendezvous *gr = static_cast<gather_rendezvous *>(r);
-            if (!gr->waiting_)
+            gather_rendezvous* gr = static_cast<gather_rendezvous *>(r);
+            if (!gr->waiting_) {
                 gr->unblock();
+            }
         } else if (r->rtype_ == rexplicit) {
-            explicit_rendezvous *er = static_cast<explicit_rendezvous *>(r);
+            explicit_rendezvous* er = static_cast<explicit_rendezvous *>(r);
             simple_event::use(x);
             *er->ready_ptail_ = x;
             er->ready_ptail_ = &x->_r_next;
@@ -131,7 +138,7 @@ void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
             er->unblock();
         } else {
             // rfunctional || rdistribute
-            functional_rendezvous *fr = static_cast<functional_rendezvous *>(r);
+            functional_rendezvous* fr = static_cast<functional_rendezvous *>(r);
             fr->f_(fr, x, values);
         }
     }
@@ -139,8 +146,9 @@ void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
     // Important to keep an event in memory until all its at_triggers are
     // triggered -- some functional rendezvous, like with_helper_rendezvous,
     // depend on this property -- so don't delete just yet.
-    if (reduce_refcount)
+    if (reduce_refcount) {
         --x->_refcount;
+    }
     if (x->_refcount == 0) {
         x->_r_next = to_delete;
         to_delete = x;
@@ -151,8 +159,9 @@ void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
             x = static_cast<simple_event*>(x->at_trigger_arg_);
             values = false;
             goto retry;
-        } else
+        } else {
             x->at_trigger_f_(x->at_trigger_arg_);
+        }
     }
 
     while ((x = to_delete)) {
@@ -164,12 +173,14 @@ void simple_event::simple_trigger(simple_event *x, bool values) TAMER_NOEXCEPT {
 void simple_event::trigger_list_for_remove() TAMER_NOEXCEPT {
     // first, remove all the events (in case an at_trigger() is also waiting
     // on this rendezvous)
-    for (simple_event *e = this; e; e = e->_r_next)
+    for (simple_event* e = this; e; e = e->_r_next) {
         e->_r = 0;
+    }
     // then call any left-behind at_triggers
-    for (simple_event *e = this; e; e = e->_r_next)
+    for (simple_event *e = this; e; e = e->_r_next) {
         if (e->at_trigger_f_)
             e->at_trigger_f_(e->at_trigger_arg_);
+    }
 }
 
 void simple_event::trigger_hook(void* arg) {
@@ -180,15 +191,17 @@ void simple_event::unuse_trigger() TAMER_NOEXCEPT {
     if (_r) {
         message::event_prematurely_dereferenced(this, _r);
         simple_trigger(false);
-    } else
+    } else {
         delete this;
+    }
 }
 
 inline event<> simple_event::at_trigger_event(void (*f)(void*), void* arg) {
-    if (f == trigger_hook)
+    if (f == trigger_hook) {
         return event<>::__make(static_cast<simple_event*>(arg));
-    else
+    } else {
         return tamer::fun_event(f, arg);
+    }
 }
 
 void simple_event::hard_at_trigger(simple_event* x, void (*f)(void*),
@@ -198,22 +211,22 @@ void simple_event::hard_at_trigger(simple_event* x, void (*f)(void*),
         t += at_trigger_event(f, arg);
         x->at_trigger_f_ = trigger_hook;
         x->at_trigger_arg_ = t.__release_simple();
-    } else
+    } else {
         f(arg);
+    }
 }
 
 
 namespace message {
 
 void event_prematurely_dereferenced(simple_event* se, abstract_rendezvous* r) {
-    if (r->is_volatile())
-        /* no error message */;
-    else {
+    if (!r->is_volatile()) {
         fprintf(stderr, "tamer: dropping last reference to active event\n");
-        if (se->file_annotation() && se->line_annotation())
+        if (se->file_annotation() && se->line_annotation()) {
             fprintf(stderr, "tamer:   %s:%d: event was created here\n", se->file_annotation(), se->line_annotation());
-        else if (se->file_annotation())
+        } else if (se->file_annotation()) {
             fprintf(stderr, "tamer:   %s: event was created here\n", se->file_annotation());
+        }
     }
 }
 

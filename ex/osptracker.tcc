@@ -769,7 +769,7 @@ tamed void accept_loop(int port) {
 	if (fcntl(lf.value(), F_SETFD, FD_CLOEXEC) < 0)
 		die("fcntl");
 
-	while (1) {
+	while (true) {
 		twait { lf.accept(0, 0, make_event(cf)); }
 		if (cf)
 			handle_connection(cf);

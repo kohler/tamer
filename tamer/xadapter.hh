@@ -62,9 +62,10 @@ template <size_t I, typename VI, typename... TS>
 void bind_rendezvous<I, VI, TS...>::hook(functional_rendezvous *fr, simple_event*, bool) TAMER_NOEXCEPT {
     bind_rendezvous<I, VI, TS...>* self = static_cast<bind_rendezvous<I, VI, TS...>*>(fr);
     self->e_.template set_result<I>(self->vi_);
-    if (simple_event* se = self->e_.__release_simple())
+    if (simple_event* se = self->e_.__release_simple()) {
         if (*se)
             se->simple_trigger(true);
+    }
     delete self;
 }
 
@@ -143,10 +144,11 @@ template <typename S0, typename T0, typename F>
 void map_rendezvous<S0, T0, F>::hook(functional_rendezvous *fr,
                                      simple_event *, bool values) TAMER_NOEXCEPT {
     map_rendezvous *self = static_cast<map_rendezvous *>(fr);
-    if (values)
+    if (values) {
         self->e_.trigger(self->f_(self->s0_));
-    else if (self->e_)
+    } else if (self->e_) {
         self->e_.unblocker().trigger();
+    }
     delete self;
 }
 
@@ -254,8 +256,9 @@ void push_back_rendezvous<C>::hook(functional_rendezvous* fr,
                                    bool values) TAMER_NOEXCEPT {
     push_back_rendezvous<C>* self = static_cast<push_back_rendezvous<C>*>(fr);
     self->remove_waiting();
-    if (values)
+    if (values) {
         self->c_.push_back(TAMER_MOVE(self->slot_));
+    }
     delete self;
 }
 

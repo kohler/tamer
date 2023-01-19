@@ -6,7 +6,7 @@ bin_PROGRAMS =
 lib_LTLIBRARIES = libtamer.la
 libtamer_la_SOURCES = \
 	adapter.hh \
-	bufferedio.hh bufferedio.tt \
+	bufferedio.hh bufferedio.tcc \
 	channel.hh \
 	driver.hh \
 	dinternal.hh dinternal.cc \
@@ -17,7 +17,7 @@ libtamer_la_SOURCES = \
 	event.hh \
 	fd.hh fd.tcc \
 	dns.hh dns.tt \
-	lock.hh lock.tt \
+	lock.hh lock.tcc \
 	ref.hh \
 	rendezvous.hh \
 	tamer.hh \
@@ -78,8 +78,8 @@ endif
 fd.cc: $(TAMER) fd.tcc
 fdh.cc: $(TAMER) fdh.tt
 dns.cc: $(TAMER) dns.tt
-lock.cc: $(TAMER) lock.tt
-bufferedio.cc: $(TAMER) bufferedio.tt
+lock.cc: $(TAMER) lock.tcc
+bufferedio.cc: $(TAMER) bufferedio.tcc
 http.cc: $(TAMER) http.tcc
 websocket.cc: $(TAMER) websocket.tcc
 

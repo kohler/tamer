@@ -5,52 +5,52 @@
 #define NUM_ITERS 50000000
 
 tamed void crunch2tamer(uint32_t x, uint32_t *r) {
-  *r = x * 2 - 1;
+    *r = x * 2 - 1;
 }
 
 tamed void crunch1tamer(uint32_t x, uint32_t *r) {
-  crunch2tamer(x, r);
-  *r *= -1;
+    crunch2tamer(x, r);
+    *r *= -1;
 }
 
 void crunch2inline(uint32_t x, uint32_t *r) {
-  *r = x * 2 - 1;
+    *r = x * 2 - 1;
 }
 
 void crunch1inline(uint32_t x, uint32_t *r) {
-  crunch2inline(x, r);
-  *r *= -1;
+    crunch2inline(x, r);
+    *r *= -1;
 }
 
 void crunch2outline(uint32_t, uint32_t *) __attribute__((noinline));
 void crunch2outline(uint32_t x, uint32_t *r) {
-  *r = x * 2 - 1;
+    *r = x * 2 - 1;
 }
 
 void crunch1outline(uint32_t, uint32_t *) __attribute__((noinline));
 void crunch1outline(uint32_t x, uint32_t *r) {
-  crunch2outline(x, r);
-  *r *= -1;
+    crunch2outline(x, r);
+    *r *= -1;
 }
 
 int main(int argc, char **argv) {
-  (void) argc, (void) argv;
-  int i;
+    (void) argc, (void) argv;
+    int i;
 
-  uint32_t r = 1;
+    uint32_t r = 1;
 
-  if (argc == 1 || (argc > 1 && strcmp(argv[1], "tamer") == 0)) {
-      for (i = 0; i < NUM_ITERS; i++)
-	  crunch1tamer(r, &r);
-  } else if (argc > 1 && strcmp(argv[1], "inline") == 0) {
-      for (i = 0; i < NUM_ITERS; i++)
-	  crunch1inline(r, &r);
-  } else if (argc > 1 && strcmp(argv[1], "outline") == 0) {
-      for (i = 0; i < NUM_ITERS; i++)
-	  crunch1outline(r, &r);
-  } else
-      std::cerr << "expected tamer, inline, or outline\n";
+    if (argc == 1 || (argc > 1 && strcmp(argv[1], "tamer") == 0)) {
+        for (i = 0; i < NUM_ITERS; i++)
+            crunch1tamer(r, &r);
+    } else if (argc > 1 && strcmp(argv[1], "inline") == 0) {
+        for (i = 0; i < NUM_ITERS; i++)
+            crunch1inline(r, &r);
+    } else if (argc > 1 && strcmp(argv[1], "outline") == 0) {
+        for (i = 0; i < NUM_ITERS; i++)
+            crunch1outline(r, &r);
+    } else
+        std::cerr << "expected tamer, inline, or outline\n";
 
-  std::cout << r << "\n";
-  return 0;
+    std::cout << r << "\n";
+    return 0;
 }

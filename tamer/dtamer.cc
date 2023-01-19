@@ -585,12 +585,13 @@ timeval driver_tamer::next_wake() const {
     struct timeval tv = { 0, 0 };
     if (!asap_.empty()
         || sig_any_active
-        || has_unblocked())
+        || has_unblocked()) {
         /* already zero */;
-    else if (timers_.empty())
+    } else if (timers_.empty()) {
         tv.tv_sec = -1;
-    else
+    } else {
         tv = timers_.expiry();
+    }
     return tv;
 }
 
