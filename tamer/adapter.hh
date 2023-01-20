@@ -115,10 +115,8 @@ distribute(event<T0, T1, T2, T3> e1, event<T0, T1, T2, T3> e2,
 template <size_t I = 0, typename VI = void, typename... TS>
 event<> bind(event<TS...> e, VI vi) {
     tamerpriv::bind_rendezvous<I, VI, TS...>* r =
-        new tamerpriv::bind_rendezvous<I, VI, TS...>(e, std::move(vi));
-    event<> bound = TAMER_MAKE_FN_ANNOTATED_EVENT(*r);
-    e.at_trigger(bound);
-    return bound;
+        new tamerpriv::bind_rendezvous<I, VI, TS...>(std::move(e), std::move(vi));
+    return r->make_bound();
 }
 
 #if TAMER_HAVE_PREEVENT

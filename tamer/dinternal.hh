@@ -14,6 +14,7 @@ struct driver_fd : public T {
 
     template <typename O> inline driver_fd(O owner, int fd);
     inline bool empty() const;
+    inline void clear();
 };
 
 template <typename T>
@@ -48,11 +49,12 @@ struct driver_fdset {
 };
 
 struct driver_asapset {
-    ~driver_asapset();
+    inline ~driver_asapset();
 
     inline bool empty() const;
     inline void push(simple_event* se);
     inline void pop_trigger();
+    void clear();
 
   private:
     simple_event** ses_ = nullptr;
@@ -64,7 +66,7 @@ struct driver_asapset {
 };
 
 struct driver_timerset {
-    ~driver_timerset();
+    inline ~driver_timerset();
 
     inline bool empty() const;
     inline bool has_foreground() const;
@@ -72,6 +74,7 @@ struct driver_timerset {
     inline void cull();
     void push(timeval when, simple_event* se, bool bg);
     inline void pop_trigger();
+    void clear();
 
     void check();
 
@@ -108,6 +111,12 @@ inline driver_fd<T>::driver_fd(O owner, int fd)
 template <typename T>
 inline bool driver_fd<T>::empty() const {
     return e[0].empty() && e[1].empty();
+}
+
+template <typename T>
+inline void driver_fd<T>::clear() {
+    e[0].trigger(outcome::destroy);
+    e[1].trigger(outcome::destroy);
 }
 
 template <typename T>
@@ -226,6 +235,11 @@ inline int fd_callback_fd(void* callback) {
     return x / driver::capacity;
 }
 
+inline driver_asapset::~driver_asapset() {
+    clear();
+    delete[] ses_;
+}
+
 inline bool driver_asapset::empty() const {
     return head_ == tail_;
 }
@@ -243,6 +257,11 @@ inline void driver_asapset::pop_trigger() {
     simple_event* se = ses_[head_ & capmask_];
     ++head_;
     se->simple_trigger(false);
+}
+
+inline driver_timerset::~driver_timerset() {
+    clear();
+    delete[] ts_;
 }
 
 inline bool driver_timerset::empty() const {

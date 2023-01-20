@@ -181,6 +181,7 @@ public:
     virtual void loop(loop_flags flags);
     virtual void break_loop();
     virtual timeval next_wake() const;
+    virtual void clear();
 
 private:
     tamerpriv::driver_fdset<fdp> fds_;
@@ -544,6 +545,17 @@ timeval driver_tamer::next_wake() const {
         tv = timers_.expiry();
     }
     return tv;
+}
+
+void driver_tamer::clear() {
+    auto pend = pfds_.end();
+    for (auto p = pfds_.begin(); p != pend; ++p) {
+        fds_[p->fd].clear();
+    }
+    asap_.clear();
+    preblock_.clear();
+    timers_.clear();
+    clear_unblocked();
 }
 
 } // namespace

@@ -76,6 +76,8 @@ class driver : public tamerpriv::simple_driver {
     virtual void break_loop() = 0;
     virtual timeval next_wake() const;
 
+    virtual void clear();
+
     void blocked_locations(std::vector<std::string>& x);
 
     static driver* make_tamer(int flags);

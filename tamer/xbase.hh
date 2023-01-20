@@ -179,6 +179,7 @@ class simple_driver {
   public:
     inline bool has_unblocked() const;
     inline void run_unblocked();
+    inline void clear_unblocked();
 
     static simple_driver immediate_driver;
 
@@ -401,6 +402,13 @@ inline closure* simple_driver::pop_unblocked() {
 
 inline void simple_driver::run_unblocked() {
     while (closure* c = pop_unblocked()) {
+        c->tamer_activator_(c);
+    }
+}
+
+inline void simple_driver::clear_unblocked() {
+    while (closure* c = pop_unblocked()) {
+        c->tamer_block_position_ = -1;
         c->tamer_activator_(c);
     }
 }

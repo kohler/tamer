@@ -96,11 +96,11 @@ bool initialize(int flags) {
 }
 
 void cleanup() {
-    while (driver::main->has_unblocked()) {
-        driver::main->run_unblocked();
+    if (driver::main) {
+        driver::main->clear();
+        delete driver::main;
+        assert(driver::main == nullptr);
     }
-    delete driver::main;
-    driver::main = 0;
 }
 
 void set_time_type(time_type_t tt) {
@@ -151,15 +151,20 @@ timeval driver::next_wake() const {
     return unknown;
 }
 
+void driver::clear() {
+    while (has_unblocked()) {
+        run_unblocked();
+    }
+}
+
 
 namespace tamerpriv {
 
-driver_asapset::~driver_asapset() {
+void driver_asapset::clear() {
     while (!empty()) {
         simple_event::unuse(ses_[head_ & capmask_]);
         ++head_;
     }
-    delete[] ses_;
 }
 
 void driver_asapset::expand() {
@@ -176,11 +181,11 @@ void driver_asapset::expand() {
     tail_ = i;
 }
 
-driver_timerset::~driver_timerset() {
+void driver_timerset::clear() {
     for (unsigned i = 0; i != nts_; ++i) {
         simple_event::unuse(ts_[i].se);
     }
-    delete[] ts_;
+    nts_ = nfg_ = 0;
 }
 
 void driver_timerset::check() {
