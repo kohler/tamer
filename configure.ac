@@ -479,12 +479,15 @@ fi
 AM_CONDITIONAL([TAMER_DEBUG], [test x$enable_debug = xyes])
 
 AC_ARG_ENABLE([sanitizers], [AS_HELP_STRING([--enable-sanitizers], [enable sanitizers in library and test])], [], [enable_sanitizers=no])
-AM_CONDITIONAL([TAMER_SANITIZERS], [test x$enable_sanitizers = xyes])
 SANITIZER_FLAGS=
 if test x"$enable_sanitizers" = xyes; then
     SANITIZER_FLAGS="-fsanitize=undefined -fsanitize=address"
+elif test -n "$enable_sanitizers" -a x"$enable_sanitizers" != xno; then
+    SANITIZER_FLAGS="$enable_sanitizers"
+    enable_sanitizers=yes
 fi
 AC_SUBST([SANITIZER_FLAGS])
+AM_CONDITIONAL([TAMER_SANITIZERS], [test x$enable_sanitizers = xyes])
 
 
 
