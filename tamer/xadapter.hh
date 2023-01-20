@@ -68,8 +68,7 @@ void bind_rendezvous<I, VI, TS...>::hook(functional_rendezvous* fr, simple_event
     bind_rendezvous<I, VI, TS...>* self = static_cast<bind_rendezvous<I, VI, TS...>*>(fr);
     self->e_.template set_result<I>(self->vi_);
     if (simple_event* se = self->e_.__release_simple()) {
-        if (*se)
-            se->simple_trigger(true);
+        se->simple_trigger(true);
     }
     delete self;
 }
