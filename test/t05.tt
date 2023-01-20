@@ -30,7 +30,7 @@ uint32_t xrandom() {
 tamed void test() {
     tvars {
         int j = 0;
-        tamer::rendezvous<std::string> r(tamer::rvolatile);
+        tamer::rendezvous<std::string> r;
         std::string s;
     }
     for (int i = 0; i < 5000; ++i) {
@@ -42,6 +42,7 @@ tamed void test() {
         fprintf(stdout, "%s\n", s.c_str());
         ++j;
     }
+    r.clear();
 }
 
 int main(int, char **) {

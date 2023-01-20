@@ -20,7 +20,7 @@
 
 tamed void run_signals() {
     tvars {
-        tamer::rendezvous<int> r(tamer::rvolatile);
+        tamer::rendezvous<int> r;
         int n = 0, what;
     }
     tamer::at_signal(SIGINT, make_event(r, 1));
@@ -37,6 +37,7 @@ tamed void run_signals() {
     }
     fprintf(stdout, "received %d SIGINT\n", n);
     fflush(stdout);
+    r.clear();
 }
 
 int main(int, char **) {

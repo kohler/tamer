@@ -29,13 +29,17 @@ tamed void asap(tamer::event<> e) {
     e.trigger();
 }
 
+tamed void delay_bounds() {
+    twait volatile {
+        tamer::at_delay_sec(1, make_event());
+        tamer::at_delay_sec(100, make_event());
+    }
+}
+
 tamed void asapt(tamer::event<> e) {
     tvars {
         int i;
-        tamer::rendezvous<> r(tamer::rvolatile);
     }
-    tamer::at_delay_sec(1, make_event(r));
-    tamer::at_delay_sec(100, make_event(r));
     for (i = 0; i < 1000000; ++i) {
         twait {
             for (int j = 0; j < 4; ++j) {
@@ -51,6 +55,7 @@ int main(int argc, char **argv) {
     tamer::rendezvous<> r;
     tamer::event<> e = make_event(r);
     if (argc == 2 && strcmp(argv[1], "-t") == 0) {
+        delay_bounds();
         asapt(e);
     } else if (argc == 1) {
         asap(e);

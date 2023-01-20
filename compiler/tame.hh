@@ -255,8 +255,7 @@ class tame_env_t : public element_list_t {
 public:
     virtual void output(outputter_t *o) { element_list_t::output(o); }
     virtual bool is_jumpto() const { return false; }
-    virtual bool is_volatile() const { return false; }
-    virtual void set_id (int) {}
+    virtual void allocate_id (unsigned&) {}
     virtual int id () const { return 0; }
     virtual bool needs_counter () const { return false; }
 };
@@ -487,10 +486,6 @@ class tame_fn_t : public element_list_t {
         _declaration_only = true;
     }
 
-    bool any_volatile_envs() const {
-        return _any_volatile_envs;
-    }
-
     void push_hook(tame_el_t *el) {
         if (el->goes_after_vars())
             _after_vars_el_encountered = true;
@@ -570,7 +565,6 @@ class tame_fn_t : public element_list_t {
     vartab_t *_args;
     vartab_t _stack_vars;
     std::vector<tame_env_t *> _envs;
-    bool _any_volatile_envs;
 
     void output_reenter(strbuf &b);
     void output_closure(outputter_t *o);
@@ -696,8 +690,11 @@ public:
 
     void output(outputter_t *o);
     bool is_jumpto() const { return true; }
-    bool is_volatile() const { return _isvolatile; }
-    void set_id(int i) { _id = i; }
+    void allocate_id(unsigned& ctr) {
+        ++ctr;
+        assert(ctr > 0 && ctr < 0x3FFFFFFE);
+        _id = ctr * 2 + _isvolatile;
+    }
     int id() const { return _id; }
     void add_class_var(const var_t &v) { _class_vars.add(v); }
     bool needs_counter() const { return true; }
@@ -724,7 +721,11 @@ public:
   tame_wait_t (tame_fn_t *f, expr_list_t *l, int ln)
       : _fn(f), _args(l), lineno_(ln) {}
   bool is_jumpto () const { return true; }
-  void set_id (int i) { _id = i; }
+  void allocate_id (unsigned& ctr) {
+      ++ctr;
+      assert(ctr > 0 && ctr < 0x3FFFFFFE);
+      _id = ctr * 2;
+  }
   int id () const { return _id; }
   void output(outputter_t *o);
   var_t join_group () const { return (*_args)[0]; }

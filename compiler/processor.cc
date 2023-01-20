@@ -288,7 +288,6 @@ tame_fn_t::tame_fn_t(const fn_specifier_t &fn, const str &r, declarator_t *d,
       _isconst(c),
       _declaration_only(false),
       _args(d->params()),
-      _any_volatile_envs(false),
       _opts(fn._opts),
       _lineno(l),
       _n_labels(1),             // 0 = begin, 1 = exit prematurely
@@ -311,10 +310,9 @@ void
 tame_fn_t::add_env (tame_env_t *e)
 {
     _envs.push_back(e);
-    if (e->is_jumpto())
-        e->set_id(++_n_labels);
-    if (e->is_volatile())
-        _any_volatile_envs = true;
+    if (e->is_jumpto()) {
+        e->allocate_id(_n_labels);
+    }
 }
 
 void tame_fn_t::add_templates(strbuf& b, const char* sep) const {

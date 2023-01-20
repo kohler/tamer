@@ -30,7 +30,7 @@ tamer \- C++ extensions for event-driven programming
 }
 .sp
 class rendezvous<I> { public:
-    rendezvous(rendezvous_flags \fIflags\fB = rnormal);
+    rendezvous();
     event<> make_event(const I& \fIeid\fB);
     event<T0> make_event(const I& \fIeid\fB, T0& \fIs0\fB);
     event<T0, T1> make_event(const I& \fIeid\fB, T0& \fIs0\fB, T1& \fIs1\fB);
@@ -45,7 +45,7 @@ class rendezvous<I> { public:
 }
 .sp
 class rendezvous<> { public:
-    rendezvous(rendezvous_flags \fIflags\fB = rnormal);
+    rendezvous();
     event<> make_event();
     event<T0> make_event(T0& \fIs0\fB);
     event<T0, T1> make_event(T0& \fIs0\fB, T1& \fIs1\fB);
@@ -327,13 +327,6 @@ at that wait point; it will unblock and recheck the rendezvous once someone
 triggers a corresponding event.  The top-level event loop cycles through
 unblocked functions, calling them in some order.
 .LP
-.I Volatile
-rendezvous do not generate \*(lqdropping last reference to active event\*(rq messages.
-Create a volatile rendezvous either by passing
-.B tamer::rvolatile
-to the rendezvous constructor, or with a \*(lq\fBtwait volatile {}\fR\*(rq
-block.
-.LP
 Multiple functions cannot simultaneously block on the same rendezvous.
 .SS "Safe Local Variables"
 .LP
@@ -454,13 +447,6 @@ objects must be copy-constructible and assignable.
 .fi
 .RS 5
 Creates a new rendezvous with no outstanding events.
-.RE
-.sp
-.nf
-.B rendezvous<I>::rendezvous(tamer::rvolatile)
-.fi
-.RS 5
-Creates a new volatile rendezvous with no outstanding events.
 .RE
 .sp
 .nf

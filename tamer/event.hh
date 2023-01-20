@@ -100,7 +100,6 @@ namespace tamer {
  *
  *  @code
  *     twait volatile { (void) make_event(); }
- *     tamer::rendezvous<> r(tamer::rvolatile);
  *  @endcode
  *
  *  Deleting the last reference to an empty event is not an error and does not

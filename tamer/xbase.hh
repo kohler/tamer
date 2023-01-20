@@ -43,11 +43,6 @@ struct no_result {
 };
 typedef no_result no_slot TAMER_DEPRECATEDATTR;
 
-enum rendezvous_flags {
-    rnormal,
-    rvolatile
-};
-
 namespace tamerpriv {
 
 class simple_event;
@@ -112,6 +107,7 @@ class simple_event { public:
     static void trigger_hook(void* arg);
     static void hard_at_trigger(simple_event* x, void (*f)(void*), void* arg);
 
+    friend class abstract_rendezvous;
     friend class explicit_rendezvous;
 };
 
@@ -125,8 +121,8 @@ enum rendezvous_type {
 
 class abstract_rendezvous {
   public:
-    abstract_rendezvous(rendezvous_flags flags, rendezvous_type rtype) TAMER_NOEXCEPT
-        : rtype_(rtype), is_volatile_(flags == rvolatile) {
+    explicit abstract_rendezvous(rendezvous_type rtype) TAMER_NOEXCEPT
+        : rtype_(rtype) {
     }
 #if TAMER_DEBUG
     inline ~abstract_rendezvous() TAMER_NOEXCEPT;
@@ -136,17 +132,11 @@ class abstract_rendezvous {
         return rendezvous_type(rtype_);
     }
 
-    inline bool is_volatile() const {
-        return is_volatile_;
-    }
-    inline void set_volatile(bool v) {
-        is_volatile_ = v;
-    }
+    bool is_volatile() const;
 
   protected:
     simple_event* waiting_ = nullptr;
     uint8_t rtype_;
-    bool is_volatile_;
 
     inline void remove_waiting() TAMER_NOEXCEPT;
 
@@ -155,6 +145,8 @@ class abstract_rendezvous {
     abstract_rendezvous(abstract_rendezvous&&) = delete;
     abstract_rendezvous& operator=(const abstract_rendezvous&) = delete;
     abstract_rendezvous& operator=(abstract_rendezvous&&) = delete;
+
+    void hard_remove_waiting() TAMER_NOEXCEPT;
 
     friend class simple_event;
     friend class driver;
@@ -205,10 +197,11 @@ class simple_driver {
 
 class blocking_rendezvous : public abstract_rendezvous {
   public:
-    inline blocking_rendezvous(rendezvous_flags flags, rendezvous_type rtype) TAMER_NOEXCEPT;
+    explicit inline blocking_rendezvous(rendezvous_type rtype) TAMER_NOEXCEPT;
     inline ~blocking_rendezvous() TAMER_NOEXCEPT;
 
     inline bool blocked() const;
+    inline bool volatile_blocked() const;
 
     inline void block(simple_driver* driver, closure& c, unsigned position);
     inline void block(closure& c, unsigned position);
@@ -226,8 +219,8 @@ class blocking_rendezvous : public abstract_rendezvous {
 
 class explicit_rendezvous : public blocking_rendezvous {
   public:
-    inline explicit_rendezvous(rendezvous_flags flags) TAMER_NOEXCEPT
-        : blocking_rendezvous(flags, rexplicit),
+    inline explicit_rendezvous() TAMER_NOEXCEPT
+        : blocking_rendezvous(rexplicit),
           ready_(), ready_ptail_(&ready_) {
     }
 #if TAMER_DEBUG
@@ -267,17 +260,12 @@ class functional_rendezvous : public abstract_rendezvous {
 
     inline functional_rendezvous(void (*f)(functional_rendezvous* fr,
                                            simple_event* e, bool values) TAMER_NOEXCEPT)
-        : abstract_rendezvous(rnormal, rfunctional), f_(f) {
+        : abstract_rendezvous(rfunctional), f_(f) {
     }
     inline functional_rendezvous(rendezvous_type rtype,
                                  void (*f)(functional_rendezvous* fr,
                                            simple_event* e, bool values) TAMER_NOEXCEPT)
-        : abstract_rendezvous(rnormal, rtype), f_(f) {
-    }
-    inline functional_rendezvous(rendezvous_flags rflags, rendezvous_type rtype,
-                                 void (*f)(functional_rendezvous* fr,
-                                           simple_event* e, bool values) TAMER_NOEXCEPT)
-        : abstract_rendezvous(rflags, rtype), f_(f) {
+        : abstract_rendezvous(rtype), f_(f) {
     }
     inline ~functional_rendezvous() {
         remove_waiting();
@@ -369,8 +357,7 @@ void event_prematurely_dereferenced(simple_event *e, abstract_rendezvous *r);
 
 inline void abstract_rendezvous::remove_waiting() TAMER_NOEXCEPT {
     if (waiting_) {
-        waiting_->trigger_list_for_remove();
-        waiting_ = nullptr;
+        hard_remove_waiting();
     }
 }
 
@@ -441,9 +428,8 @@ inline closure* simple_driver::closure_slot(unsigned i) const {
 }
 
 
-inline blocking_rendezvous::blocking_rendezvous(rendezvous_flags flags,
-                                                rendezvous_type rtype) TAMER_NOEXCEPT
-    : abstract_rendezvous(flags, rtype), blocked_closure_() {
+inline blocking_rendezvous::blocking_rendezvous(rendezvous_type rtype) TAMER_NOEXCEPT
+    : abstract_rendezvous(rtype), blocked_closure_() {
 }
 
 inline blocking_rendezvous::~blocking_rendezvous() TAMER_NOEXCEPT {
@@ -454,6 +440,12 @@ inline blocking_rendezvous::~blocking_rendezvous() TAMER_NOEXCEPT {
 
 inline bool blocking_rendezvous::blocked() const {
     return blocked_closure_ && blocked_closure_->tamer_blocked_driver_;
+}
+
+inline bool blocking_rendezvous::volatile_blocked() const {
+    return blocked_closure_
+        && blocked_closure_->tamer_blocked_driver_
+        && (blocked_closure_->tamer_block_position_ & 1) != 0;
 }
 
 inline void blocking_rendezvous::block(simple_driver* driver, closure& c,

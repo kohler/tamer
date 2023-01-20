@@ -117,7 +117,7 @@ void simple_event::simple_trigger(simple_event* x, bool values) TAMER_NOEXCEPT {
     bool reduce_refcount = x->_refcount > 0;
 
     if (r) {
-        // See also trigger_list_for_remove()
+        // See also abstract_rendezvous::remove_waiting()
         x->_r = 0;
         *x->_r_pprev = x->_r_next;
         if (x->_r_next) {
@@ -170,17 +170,18 @@ void simple_event::simple_trigger(simple_event* x, bool values) TAMER_NOEXCEPT {
     }
 }
 
-void simple_event::trigger_list_for_remove() TAMER_NOEXCEPT {
+void abstract_rendezvous::hard_remove_waiting() TAMER_NOEXCEPT {
     // first, remove all the events (in case an at_trigger() is also waiting
     // on this rendezvous)
-    for (simple_event* e = this; e; e = e->_r_next) {
+    for (simple_event* e = waiting_; e; e = e->_r_next) {
         e->_r = 0;
     }
     // then call any left-behind at_triggers
-    for (simple_event *e = this; e; e = e->_r_next) {
+    for (simple_event *e = waiting_; e; e = e->_r_next) {
         if (e->at_trigger_f_)
             e->at_trigger_f_(e->at_trigger_arg_);
     }
+    waiting_ = nullptr;
 }
 
 void simple_event::trigger_hook(void* arg) {
@@ -231,6 +232,13 @@ void event_prematurely_dereferenced(simple_event* se, abstract_rendezvous* r) {
 }
 
 } // namespace tamer::tamerpriv::message
+
+bool abstract_rendezvous::is_volatile() const {
+    return rtype_ == rdistribute
+        || ((rtype_ == rgather || rtype_ == rexplicit)
+            && static_cast<const blocking_rendezvous*>(this)->volatile_blocked());
+}
+
 } // namespace tamer::tamerpriv
 
 void rendezvous<>::clear() {

@@ -36,7 +36,6 @@ template <typename I>
 class rendezvous : public tamerpriv::explicit_rendezvous,
                    public one_argument_rendezvous_tag<rendezvous<I> > {
   public:
-    inline rendezvous(rendezvous_flags flags = rnormal);
     inline ~rendezvous();
 
     template <typename T0, typename T1, typename T2, typename T3>
@@ -61,17 +60,6 @@ class rendezvous : public tamerpriv::explicit_rendezvous,
     using tamerpriv::blocking_rendezvous::block;
 };
 
-
-/** @brief  Construct rendezvous.
- *  @param  flags  tamer::rnormal (default) or tamer::rvolatile
- *
- *  Pass tamer::rvolatile as the @a flags parameter to create a volatile
- *  rendezvous.  Volatile rendezvous do not generate error messages when
- *  their events are dereferenced before trigger. */
-template <typename I>
-inline rendezvous<I>::rendezvous(rendezvous_flags flags)
-    : explicit_rendezvous(flags) {
-}
 
 /** @brief  Destroy rendezvous. */
 template <typename I>
@@ -154,7 +142,6 @@ template <typename I>
 class simple_rendezvous : public tamerpriv::explicit_rendezvous,
                           public one_argument_rendezvous_tag<simple_rendezvous<I> > {
   public:
-    inline simple_rendezvous(rendezvous_flags flags = rnormal);
     inline ~simple_rendezvous();
 
     template <typename T0, typename T1, typename T2, typename T3>
@@ -178,11 +165,6 @@ class simple_rendezvous : public tamerpriv::explicit_rendezvous,
     inline uintptr_t make_rid(I eid) TAMER_NOEXCEPT;
     using tamerpriv::blocking_rendezvous::block;
 };
-
-template <typename T>
-inline simple_rendezvous<T>::simple_rendezvous(rendezvous_flags flags)
-    : explicit_rendezvous(flags) {
-}
 
 template <typename T>
 inline simple_rendezvous<T>::~simple_rendezvous() {
@@ -215,34 +197,18 @@ inline uintptr_t simple_rendezvous<T>::make_rid(T eid) TAMER_NOEXCEPT {
 
 template <>
 class rendezvous<uintptr_t> : public simple_rendezvous<uintptr_t> {
-  public:
-    inline rendezvous(rendezvous_flags flags = rnormal)
-        : simple_rendezvous<uintptr_t>(flags) {
-    }
 };
 
 template <typename T>
 class rendezvous<T*> : public simple_rendezvous<T*> {
-  public:
-    inline rendezvous(rendezvous_flags flags = rnormal)
-        : simple_rendezvous<T*>(flags) {
-    }
 };
 
 template <>
 class rendezvous<int> : public simple_rendezvous<int> {
-  public:
-    inline rendezvous(rendezvous_flags flags = rnormal)
-        : simple_rendezvous<int>(flags) {
-    }
 };
 
 template <>
 class rendezvous<bool> : public simple_rendezvous<bool> {
-  public:
-    inline rendezvous(rendezvous_flags flags = rnormal)
-        : simple_rendezvous<bool>(flags) {
-    }
 };
 
 
@@ -250,9 +216,6 @@ template <>
 class rendezvous<> : public tamerpriv::explicit_rendezvous,
                      public zero_argument_rendezvous_tag<rendezvous<> > {
   public:
-    inline rendezvous(rendezvous_flags flags = rnormal)
-        : explicit_rendezvous(flags) {
-    }
     inline ~rendezvous() {
         if (waiting_ || ready_) {
             clear();
@@ -302,7 +265,7 @@ class gather_rendezvous : public tamerpriv::blocking_rendezvous,
                           public zero_argument_rendezvous_tag<gather_rendezvous> {
   public:
     inline gather_rendezvous()
-        : blocking_rendezvous(rnormal, tamerpriv::rgather) {
+        : blocking_rendezvous(tamerpriv::rgather) {
     }
     inline ~gather_rendezvous() {
         if (waiting_) {
@@ -382,7 +345,7 @@ class distribute_rendezvous : public functional_rendezvous,
 
 template <typename T0, typename T1, typename T2, typename T3>
 inline distribute_rendezvous<T0, T1, T2, T3>::distribute_rendezvous()
-    : functional_rendezvous(rvolatile, rdistribute, hook),
+    : functional_rendezvous(rdistribute, hook),
       nes_(0), outstanding_(0), es_(reinterpret_cast<event_type*>(local_es_)) {
 }
 
