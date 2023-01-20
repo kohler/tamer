@@ -478,6 +478,15 @@ if test "$enable_debug" = yes; then
 fi
 AM_CONDITIONAL([TAMER_DEBUG], [test x$enable_debug = xyes])
 
+AC_ARG_ENABLE([sanitizers], [AS_HELP_STRING([--enable-sanitizers], [enable sanitizers in library and test])], [], [enable_sanitizers=no])
+AM_CONDITIONAL([TAMER_SANITIZERS], [test x$enable_sanitizers = xyes])
+SANITIZER_FLAGS=
+if test x"$enable_sanitizers" = xyes; then
+    SANITIZER_FLAGS="-fsanitize=undefined -fsanitize=address"
+fi
+AC_SUBST([SANITIZER_FLAGS])
+
+
 
 dnl
 dnl lex, yacc, libtool

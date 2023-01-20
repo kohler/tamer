@@ -9,6 +9,11 @@ LDADD = ../tamer/libtamer.la $(DRIVER_LIBS) $(MALLOC_LIBS)
 
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_builddir)
 
+if TAMER_SANITIZERS
+AM_CXXFLAGS = @SANITIZER_FLAGS@
+AM_LDFLAGS = @SANITIZER_FLAGS@
+endif
+
 TAMER = ../compiler/tamer
 .tcc.cc:
 	$(TAMER) -o $@ -c $<  || (rm $@ && false)

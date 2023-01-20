@@ -32,7 +32,9 @@ simple_driver::~simple_driver() {
 void simple_driver::grow() {
     unsigned new_ccap = ccap_ ? ccap_ * 2 : 64;
     cptr* new_cs = new cptr[new_ccap];
-    memcpy(new_cs, cs_, sizeof(cptr) * ccap_);
+    if (cs_) {
+        memcpy(new_cs, cs_, sizeof(cptr) * ccap_);
+    }
     for (unsigned i = ccap_; i != new_ccap - 1; ++i) {
         new_cs[i].c = 0;
         new_cs[i].next = i + 1;

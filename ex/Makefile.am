@@ -29,14 +29,19 @@ noinst_PROGRAMS += tamer-httpd
 AM_CPPFLAGS += -I$(top_srcdir)/http-parser
 endif
 
+if TAMER_SANITIZERS
+AM_CXXFLAGS = @SANITIZER_FLAGS@
+AM_LDFLAGS = @SANITIZER_FLAGS@
+endif
+
 if MBEDTLS
 noinst_PROGRAMS += tamer-wsecho
 endif
 
 TAMER = ../compiler/tamer
-.tt.cc: $(TAMER)
+.tt.cc:
 	$(TAMER) -g -o $@ -c $<  || (rm $@ && false)
-.tcc.cc: $(TAMER)
+.tcc.cc:
 	$(TAMER) -g -o $@ -c $<  || (rm $@ && false)
 
 ex6.cc: $(srcdir)/ex6.tt $(TAMER)

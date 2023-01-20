@@ -1,5 +1,10 @@
 noinst_PROGRAMS = knot.tamer
 
+if TAMER_SANITIZERS
+AM_CXXFLAGS = @SANITIZER_FLAGS@
+AM_LDFLAGS = @SANITIZER_FLAGS@
+endif
+
 knot_tamer_SOURCES = cache2.tt cache2.hh http.tt http.hh httphdrs.h \
 	input.tt input.hh knot.tt refptr.hh
 knot_tamer_LDADD = ../tamer/libtamer.la @DRIVER_LIBS@ @MALLOC_LIBS@

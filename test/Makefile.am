@@ -40,6 +40,11 @@ AM_LDFLAGS = -static
 AM_CPPFLAGS = -I$(top_srcdir) -I$(top_builddir)
 DEFS = -DTAMER_DEBUG
 
+if TAMER_SANITIZERS
+AM_CXXFLAGS = @SANITIZER_FLAGS@
+AM_LDFLAGS += @SANITIZER_FLAGS@
+endif
+
 TAMER = ../compiler/tamer
 .tt.cc:
 	$(TAMER) -g -o $@ -c $<  || (rm $@ && false)

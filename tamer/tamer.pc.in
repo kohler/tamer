@@ -7,5 +7,5 @@ Name: Tamer
 Description: Library and language processor for event-driven programming
 Version: @VERSION@
 URL: http://www.read.cs.ucla.edu/tamer/
-Libs: -L${libdir} -ltamer @DRIVER_LIBS@
-Cflags: -I${includedir}
+Libs: @SANITIZER_FLAGS@ -L${libdir} -ltamer @DRIVER_LIBS@
+Cflags: @SANITIZER_FLAGS@ -I${includedir}

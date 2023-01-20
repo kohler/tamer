@@ -61,6 +61,11 @@ AM_CPPFLAGS += -DHTTP_PARSER_STRICT=0
 endif
 endif
 
+if TAMER_SANITIZERS
+AM_CXXFLAGS = @SANITIZER_FLAGS@
+AM_LDFLAGS = @SANITIZER_FLAGS@
+endif
+
 if MBEDTLS
 libtamer_la_SOURCES += websocket.tcc websocket.hh
 endif
