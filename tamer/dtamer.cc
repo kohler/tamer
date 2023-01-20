@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <sstream>
 #if HAVE_SYS_EPOLL_H && !TAMER_NOEPOLL
 # define DTAMER_EPOLL 1
 # include <sys/epoll.h>

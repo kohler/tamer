@@ -14,8 +14,9 @@
  * legally binding.
  */
 #include <tamer/event.hh>
+#include <csignal>
+#include <ctime>
 #include <sys/time.h>
-#include <signal.h>
 #include <vector>
 #include <string>
 namespace tamer {

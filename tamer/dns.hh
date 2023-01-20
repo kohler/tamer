@@ -8,10 +8,10 @@
 #include <list>
 #include <set>
 #include <sstream>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <limits.h>
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
+#include <climits>
 
 
 #define DNS_REPARSE_TIME 60

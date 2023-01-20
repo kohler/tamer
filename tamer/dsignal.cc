@@ -13,9 +13,9 @@
  */
 #include "config.h"
 #include <tamer/tamer.hh>
-#include <signal.h>
-#include <errno.h>
-#include <stdio.h>
+#include <csignal>
+#include <cerrno>
+#include <cstdio>
 #include <fcntl.h>
 #include <unistd.h>
 namespace tamer {

@@ -15,8 +15,8 @@
  */
 #include <stdexcept>
 #include <string>
-#include <stdint.h>
-#include <assert.h>
+#include <cstdint>
+#include <cassert>
 #include <tamer/autoconf.h>
 namespace tamer {
 

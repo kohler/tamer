@@ -13,9 +13,9 @@
  */
 #include "config.h"
 #include "dinternal.hh"
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstring>
+#include <cstdlib>
+#include <cstdio>
 #include <sstream>
 
 namespace tamer {

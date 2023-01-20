@@ -11,11 +11,11 @@
  * notice is a summary of the Tamer LICENSE file; the license in that file is
  * legally binding.
  */
-#include <stdio.h>
+#include <cstdio>
+#include <csignal>
+#include <cstring>
 #include <unistd.h>
 #include <fcntl.h>
-#include <signal.h>
-#include <string.h>
 #include <tamer/tamer.hh>
 #include <tamer/fd.hh>
 #include <tamer/bufferedio.hh>
