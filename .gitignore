@@ -19,6 +19,7 @@ gmon.out
 /config.status
 /config.sub
 /configure
+/configure~
 /depcomp
 /install-sh
 /libtool
@@ -68,8 +69,8 @@ gmon.out
 
 /test/Makefile
 /test/Makefile.in
-/test/t[012][0-9]
-/test/t[012][0-9].cc
+/test/t[0123][0-9]
+/test/t[0123][0-9].cc
 
 /bench/Makefile
 /bench/Makefile.in
