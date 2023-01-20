@@ -9,7 +9,7 @@ namespace tamerpriv {
 
 template <typename T>
 struct driver_fd : public T {
-    event<int> e[2];
+    event<int> e[3];
     int next_changedfd1;
 
     template <typename O> inline driver_fd(O owner, int fd);
@@ -110,13 +110,14 @@ inline driver_fd<T>::driver_fd(O owner, int fd)
 
 template <typename T>
 inline bool driver_fd<T>::empty() const {
-    return e[0].empty() && e[1].empty();
+    return e[0].empty() && e[1].empty() && e[2].empty();
 }
 
 template <typename T>
 inline void driver_fd<T>::clear() {
     e[0].trigger(outcome::destroy);
     e[1].trigger(outcome::destroy);
+    e[2].trigger(outcome::destroy);
 }
 
 template <typename T>

@@ -39,7 +39,8 @@ enum signal_flags {
 enum fd_actions {
     fd_read = 0,
     fd_write = 1, // order matters
-    nfdactions = 2
+    fd_hangup = 2,
+    nfdactions = 3
 };
 
 class driver : public tamerpriv::simple_driver {

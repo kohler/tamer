@@ -138,6 +138,16 @@ inline void at_fd_write(int fd, event<int> e) {
     driver::main->at_fd(fd, fd_write, e);
 }
 
+/** @brief  Register event for file descriptor shutdown.
+ *  @param  fd  File descriptor.
+ *  @param  e   Event.
+ *
+ *  Triggers @a e when @a fd is shut down or closed.
+ */
+inline void at_fd_shutdown(int fd, event<> e) {
+    driver::main->at_fd(fd, fd_hangup, e);
+}
+
 /** @brief  Register event for a given time.
  *  @param  expiry  Time.
  *  @param  e       Event.

@@ -11,6 +11,9 @@
  * notice is a summary of the Tamer LICENSE file; the license in that file is
  * legally binding.
  */
+#ifndef _GNU_SOURCE
+# define _GNU_SOURCE
+#endif
 #include "config.h"
 #include <tamer/tamer.hh>
 #include "dinternal.hh"
@@ -270,14 +273,16 @@ void driver_tamer::kill_fd(int fd) {
 }
 
 static inline int poll_events(const tamerpriv::driver_fd<fdp>& x) {
-    return (x.e[0] ? int(POLLIN) : 0)
-        | (x.e[1] ? int(POLLOUT) : 0);
+    return (x.e[0] ? int(POLLIN | POLLRDHUP) : 0)
+        | (x.e[1] ? int(POLLOUT) : 0)
+        | (x.e[2] ? int(POLLRDHUP) : 0);
 }
 
 #if DTAMER_EPOLL
 static inline int epoll_events(const tamerpriv::driver_fd<fdp>& x) {
     return (x.e[0] ? int(EPOLLIN | EPOLLRDHUP) : 0)
-        | (x.e[1] ? int(EPOLLOUT) : 0);
+        | (x.e[1] ? int(EPOLLOUT) : 0)
+        | (x.e[2] ? int(EPOLLRDHUP) : 0);
 }
 
 void driver_tamer::report_epoll_error(int fd, bool waspresent, int events) {
@@ -370,8 +375,30 @@ void driver_tamer::at_preblock(event<> e) {
     }
 }
 
-void driver_tamer::loop(loop_flags flags)
-{
+static const struct { int bit; const char* name; } pollbits[] = {
+    { POLLIN, "IN" },
+    { POLLOUT, "OUT" },
+    { POLLPRI, "PRI" },
+    { POLLHUP, "HUP" },
+    { POLLRDHUP, "RDHUP" },
+    { POLLNVAL, "NVAL" }
+};
+
+[[maybe_unused]] static std::string unparse_poll_events(int e) {
+    std::ostringstream sb;
+    const char* sep = "";
+    sb << "[";
+    for (auto& x : pollbits) {
+        if (e & x.bit) {
+            sb << sep << x.name;
+            sep = ",";
+        }
+    }
+    sb << "]";
+    return sb.str();
+}
+
+void driver_tamer::loop(loop_flags flags) {
     if (flags == loop_forever) {
         loop_state_ = true;
     }
@@ -465,16 +492,14 @@ after_poll:
                 continue;
             }
             auto& x = fds_[e.data.fd];
-            if (e.events & (EPOLLERR | EPOLLHUP)) {
-                x.e[0].trigger(e.events & EPOLLERR ? -ECONNRESET : 0);
-                x.e[1].trigger(-ESHUTDOWN);
-            } else {
-                if (e.events & (EPOLLIN | EPOLLRDHUP)) {
-                    x.e[0].trigger(0);
-                }
-                if (e.events & EPOLLOUT) {
-                    x.e[1].trigger(0);
-                }
+            if (e.events & (EPOLLIN | EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
+                x.e[0].trigger(e.events & EPOLLIN ? 0 : outcome::closed);
+            }
+            if (e.events & (EPOLLOUT | EPOLLHUP | EPOLLERR)) {
+                x.e[1].trigger(e.events & EPOLLOUT ? 0 : outcome::closed);
+            }
+            if (e.events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
+                x.e[2].trigger(0);
             }
         }
         run_unblocked();
@@ -489,16 +514,15 @@ after_poll:
                 continue;
             }
             auto& x = fds_[p->fd];
-            if (p->revents & int(POLLNVAL | POLLERR | POLLHUP)) {
-                x.e[0].trigger(p->revents & int(POLLNVAL | POLLERR) ? -ECONNRESET : 0);
-                x.e[1].trigger(-ESHUTDOWN);
-            } else {
-                if (p->revents & int(POLLIN | POLLRDHUP)) {
-                    x.e[0].trigger(0);
-                }
-                if (p->revents & int(POLLOUT)) {
-                    x.e[1].trigger(0);
-                }
+            //fprintf(stderr, "%d: %s\n", p->fd, unparse_poll_events(p->revents).c_str());
+            if (p->revents & int(POLLIN | POLLRDHUP | POLLNVAL | POLLERR | POLLHUP)) {
+                x.e[0].trigger(p->revents & POLLIN ? 0 : outcome::closed);
+            }
+            if (p->revents & int(POLLOUT | POLLNVAL | POLLERR | POLLHUP)) {
+                x.e[1].trigger(p->revents & POLLOUT ? 0 : outcome::closed);
+            }
+            if (p->revents & int(POLLRDHUP | POLLNVAL | POLLERR | POLLHUP)) {
+                x.e[2].trigger(0);
             }
         }
         run_unblocked();

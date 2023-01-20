@@ -1,6 +1,6 @@
 noinst_PROGRAMS = t01 t02 t03 t04 t05 t06 t07 t08 t09 t10 \
 	t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 \
-	t21 t22 t23 t24 t25 t26 t27 t28 t29
+	t21 t22 t23 t24 t25 t26 t27 t28 t29 t30
 
 t01_SOURCES = t01.tcc
 t02_SOURCES = t02.tt
@@ -31,6 +31,7 @@ t26_SOURCES = t26.tcc
 t27_SOURCES = t27.tcc
 t28_SOURCES = t28.tcc
 t29_SOURCES = t29.tcc
+t30_SOURCES = t30.tcc
 
 DRIVER_LIBS = @DRIVER_LIBS@
 MALLOC_LIBS = @MALLOC_LIBS@
@@ -80,10 +81,11 @@ t26.cc: $(srcdir)/t26.tcc $(TAMER)
 t27.cc: $(srcdir)/t27.tcc $(TAMER)
 t28.cc: $(srcdir)/t28.tcc $(TAMER)
 t29.cc: $(srcdir)/t29.tcc $(TAMER)
+t30.cc: $(srcdir)/t30.tcc $(TAMER)
 
 TAMED_CXXFILES = t01.cc t02.cc t03.cc t04.cc t05.cc t06.cc t07.cc t08.cc \
 	t09.cc t10.cc t11.cc t12.cc t13.cc t14.cc t15.cc t16.cc t17.cc \
 	t18.cc t19.cc t20.cc t21.cc t22.cc t23.cc t24.cc t25.cc t26.cc \
-	t27.cc t28.cc t29.cc
+	t27.cc t28.cc t29.cc t30.cc
 CLEANFILES = $(TAMED_CXXFILES)
 .PRECIOUS: $(TAMED_CXXFILES)
