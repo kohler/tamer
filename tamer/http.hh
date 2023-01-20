@@ -15,7 +15,7 @@ struct http_header {
     std::string name;
     std::string value;
     inline http_header(std::string n, std::string v)
-        : name(TAMER_MOVE(n)), value(TAMER_MOVE(v)) {
+        : name(std::move(n)), value(std::move(v)) {
     }
     inline bool is(const char* s, size_t len) const {
         return name.length() == len && memcmp(name.data(), s, len) == 0;
@@ -359,7 +359,7 @@ inline http_message& http_message::status_code(unsigned code) {
 
 inline http_message& http_message::status_code(unsigned code, std::string message) {
     status_code_ = code;
-    status_message_ = TAMER_MOVE(message);
+    status_message_ = std::move(message);
     return *this;
 }
 
@@ -369,20 +369,20 @@ inline http_message& http_message::method(enum http_method method) {
 }
 
 inline http_message& http_message::url(std::string url) {
-    url_ = TAMER_MOVE(url);
+    url_ = std::move(url);
     kill_info(info_url | info_query);
     return *this;
 }
 
 inline http_message& http_message::header(std::string key, std::string value) {
-    add_header(TAMER_MOVE(key), TAMER_MOVE(value));
+    add_header(std::move(key), std::move(value));
     return *this;
 }
 
 inline http_message& http_message::header(std::string key, size_t value) {
     std::ostringstream buf;
     buf << value;
-    add_header(TAMER_MOVE(key), buf.str());
+    add_header(std::move(key), buf.str());
     return *this;
 }
 
@@ -390,12 +390,12 @@ inline http_message& http_message::date_header(std::string key, time_t value) {
     char buf[128];
     // XXX current locale
     strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", gmtime(&value));
-    add_header(TAMER_MOVE(key), std::string(buf));
+    add_header(std::move(key), std::string(buf));
     return *this;
 }
 
 inline http_message& http_message::body(std::string body) {
-    body_ = TAMER_MOVE(body);
+    body_ = std::move(body);
     return *this;
 }
 

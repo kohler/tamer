@@ -20,15 +20,6 @@ namespace tamer {
  *  @brief  Functions for adapting events.
  */
 
-namespace outcome {
-const int success = 0;
-const int cancel = -ECANCELED;
-const int timeout = -ETIMEDOUT;
-const int signal = -EINTR;
-const int overflow = -EOVERFLOW;
-const int closed = -EPIPE;
-}
-
 /** @brief  Create event that triggers @a e1 and @a e2 when triggered.
  *  @param  e1  First event.
  *  @param  e2  Second event.
@@ -41,18 +32,18 @@ const int closed = -EPIPE;
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> operator+(event<T0, T1, T2, T3> e1,
                                        event<T0, T1, T2, T3> e2) {
-    return e1 += TAMER_MOVE(e2);
+    return e1 += std::move(e2);
 }
 
 #if TAMER_HAVE_PREEVENT
 template <typename R, typename T0>
 inline event<T0> operator+(event<T0> e1, preevent<R, T0>&& e2) {
-    return e1 += TAMER_MOVE(e2);
+    return e1 += std::move(e2);
 }
 
 template <typename R, typename T0>
 inline event<T0> operator+(preevent<R, T0>&& e1, event<T0> e2) {
-    return e2 += TAMER_MOVE(e1);
+    return e2 += std::move(e1);
 }
 #endif
 
@@ -68,7 +59,7 @@ inline event<T0> operator+(preevent<R, T0>&& e1, event<T0> e2) {
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> all(event<T0, T1, T2, T3> e1,
                                  event<T0, T1, T2, T3> e2) {
-    return e1 += TAMER_MOVE(e2);
+    return e1 += std::move(e2);
 }
 
 /** @brief  Create event that triggers @a e1, @a e2, and @a e3 when triggered.
@@ -83,19 +74,19 @@ template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3> all(event<T0, T1, T2, T3> e1,
                                  event<T0, T1, T2, T3> e2,
                                  event<T0, T1, T2, T3> e3) {
-    e1 += TAMER_MOVE(e2);
-    return e1 += TAMER_MOVE(e3);
+    e1 += std::move(e2);
+    return e1 += std::move(e3);
 }
 
 #if TAMER_HAVE_PREEVENT
 template <typename R, typename T0>
 inline event<T0> all(event<T0> e1, preevent<R, T0>&& e2) {
-    return e1 += TAMER_MOVE(e2);
+    return e1 += std::move(e2);
 }
 
 template <typename R, typename T0>
 inline event<T0> all(preevent<R, T0>&& e1, event<T0> e2) {
-    return e2 += TAMER_MOVE(e1);
+    return e2 += std::move(e1);
 }
 #endif
 
@@ -153,7 +144,7 @@ inline event<TS...> rebind(event<> e) {
 
 template <typename T0>
 inline event<T0> rebind(event<> e, T0& s0) {
-    return event<T0>(TAMER_MOVE(e), s0);
+    return event<T0>(std::move(e), s0);
 }
 
 #if TAMER_HAVE_PREEVENT
@@ -164,7 +155,7 @@ inline event<T0> rebind(preevent<R>&& pe) {
 
 template <typename T0, typename R>
 inline event<T0> rebind(preevent<R>&& pe, T0& s0) {
-    return event<T0>(TAMER_MOVE(pe), s0);
+    return event<T0>(std::move(pe), s0);
 }
 #endif
 
@@ -182,7 +173,7 @@ inline event<T0> rebind(preevent<R>&& pe, T0& s0) {
 template <typename S0, typename T0, typename F>
 event<S0> map(event<T0> e, F f) {
     tamerpriv::map_rendezvous<S0, T0, F> *r =
-        new tamerpriv::map_rendezvous<S0, T0, F>(TAMER_MOVE(f), e);
+        new tamerpriv::map_rendezvous<S0, T0, F>(std::move(f), e);
     event<S0> mapped = TAMER_MAKE_FN_ANNOTATED_EVENT(*r, r->result0());
     e.at_trigger(mapped.unblocker());
     return mapped;
@@ -193,7 +184,7 @@ template <typename S0, typename R, typename T0, typename F>
 event<S0> map(preevent<R, T0>&& pe, F f) {
     event<T0> e(std::move(pe));
     tamerpriv::map_rendezvous<S0, T0, F> *r =
-        new tamerpriv::map_rendezvous<S0, T0, F>(TAMER_MOVE(f), e);
+        new tamerpriv::map_rendezvous<S0, T0, F>(std::move(f), e);
     event<S0> mapped = TAMER_MAKE_FN_ANNOTATED_EVENT(*r, r->result0());
     e.at_trigger(mapped.unblocker());
     return mapped;
@@ -217,47 +208,47 @@ event<S0> map(preevent<R, T0>&& pe, F f) {
  */
 template <size_t I = 0, typename V = void, typename... TS>
 inline event<TS...> add_timeout(const timeval& delay, event<TS...> e, V v) {
-    at_delay(delay, tamer::bind<I>(e, TAMER_MOVE(v)));
+    at_delay(delay, tamer::bind<I>(e, std::move(v)));
     return e;
 }
 
 template <size_t I = 0, typename V = void, typename... TS>
 inline event<TS...> add_timeout(double delay, event<TS...> e, V v) {
-    at_delay(delay, tamer::bind<I>(e, TAMER_MOVE(v)));
+    at_delay(delay, tamer::bind<I>(e, std::move(v)));
     return e;
 }
 
 template <size_t I = 0, typename V = void, typename... TS>
 inline event<TS...> add_timeout_sec(int delay, event<TS...> e, V v) {
-    at_delay_sec(delay, tamer::bind<I>(e, TAMER_MOVE(v)));
+    at_delay_sec(delay, tamer::bind<I>(e, std::move(v)));
     return e;
 }
 
 template <size_t I = 0, typename V = void, typename... TS>
 inline event<TS...> add_timeout_msec(int delay, event<TS...> e, V v) {
-    at_delay_msec(delay, tamer::bind<I>(e, TAMER_MOVE(v)));
+    at_delay_msec(delay, tamer::bind<I>(e, std::move(v)));
     return e;
 }
 
 #if TAMER_HAVE_PREEVENT
 template <typename R, typename T0>
 inline event<T0> add_timeout(const timeval& delay, preevent<R, T0>&& pe, T0 v) {
-    return add_timeout(delay, event<T0>(std::move(pe)), TAMER_MOVE(v));
+    return add_timeout(delay, event<T0>(std::move(pe)), std::move(v));
 }
 
 template <typename R, typename T0>
 inline event<T0> add_timeout(double delay, preevent<R, T0>&& pe, T0 v) {
-    return add_timeout(delay, event<T0>(std::move(pe)), TAMER_MOVE(v));
+    return add_timeout(delay, event<T0>(std::move(pe)), std::move(v));
 }
 
 template <typename R, typename T0>
 inline event<T0> add_timeout_sec(int delay, preevent<R, T0>&& pe, T0 v) {
-    return add_timeout_sec(delay, event<T0>(std::move(pe)), TAMER_MOVE(v));
+    return add_timeout_sec(delay, event<T0>(std::move(pe)), std::move(v));
 }
 
 template <typename R, typename T0>
 inline event<T0> add_timeout_msec(int delay, preevent<R, T0>&& pe, T0 v) {
-    return add_timeout_msec(delay, event<T0>(std::move(pe)), TAMER_MOVE(v));
+    return add_timeout_msec(delay, event<T0>(std::move(pe)), std::move(v));
 }
 #endif
 
@@ -332,14 +323,14 @@ inline event<T0> add_timeout_msec(int delay, preevent<R, T0>&& pe) {
  */
 template <typename T0>
 inline event<T0> add_signal(int signo, event<T0> e, T0 v) {
-    at_signal(signo, tamer::bind(e, TAMER_MOVE(v)));
+    at_signal(signo, tamer::bind(e, std::move(v)));
     return e;
 }
 
 #if TAMER_HAVE_PREEVENT
 template <typename R, typename T0>
 inline event<T0> add_signal(int signo, preevent<R, T0>&& pe, T0 v) {
-    return add_signal(signo, event<T0>(std::move(pe)), TAMER_MOVE(v));
+    return add_signal(signo, event<T0>(std::move(pe)), std::move(v));
 }
 #endif
 
@@ -356,16 +347,17 @@ inline event<T0> add_signal(int signo, preevent<R, T0>&& pe, T0 v) {
  */
 template <typename T0, typename SigInputIterator>
 inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, event<T0> e, T0 v) {
-    event<> x = tamer::bind(e, TAMER_MOVE(v));
-    for (; first != last; ++first)
+    event<> x = tamer::bind(e, std::move(v));
+    for (; first != last; ++first) {
         at_signal(*first, x);
+    }
     return e;
 }
 
 #if TAMER_HAVE_PREEVENT
 template <typename R, typename T0, typename SigInputIterator>
 inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, preevent<R, T0>&& pe, T0 v) {
-    return add_signal(first, last, event<T0>(std::move(pe)), TAMER_MOVE(v));
+    return add_signal(first, last, event<T0>(std::move(pe)), std::move(v));
 }
 #endif
 
@@ -402,8 +394,9 @@ inline event<T0> add_signal(int signo, preevent<R, T0>&& pe) {
  */
 template <typename T0, typename SigInputIterator>
 inline event<T0> add_signal(SigInputIterator first, SigInputIterator last, event<T0> e) {
-    for (; first != last; ++first)
+    for (; first != last; ++first) {
         at_signal(*first, e);
+    }
     return e;
 }
 
@@ -508,8 +501,9 @@ inline event<T0> with_signal(int signo, preevent<R, T0>&& pe) {
 template <typename T0, typename T1, typename T2, typename T3, typename SigInputIterator>
 inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e) {
     event<> x = e.unblocker();
-    for (; first != last; ++first)
+    for (; first != last; ++first) {
         at_signal(*first, x);
+    }
     return e;
 }
 
@@ -621,8 +615,9 @@ inline event<T0> with_signal(int signo, preevent<R, T0>&& pe, int& result) {
 template <typename T0, typename T1, typename T2, typename T3, typename SigInputIterator>
 inline event<T0, T1, T2, T3> with_signal(SigInputIterator first, SigInputIterator last, event<T0, T1, T2, T3> e, int &result) {
     event<> x = tamerpriv::with_helper(e, &result, outcome::signal);
-    for (; first != last; ++first)
+    for (; first != last; ++first) {
         at_signal(*first, x);
+    }
     return e;
 }
 
@@ -645,7 +640,7 @@ inline event<T0> with_signal(SigInputIterator first, SigInputIterator last, pree
 template <typename F>
 inline event<> fun_event(F f) {
     tamerpriv::function_rendezvous<F> *innerr =
-        new tamerpriv::function_rendezvous<F>(TAMER_MOVE(f));
+        new tamerpriv::function_rendezvous<F>(std::move(f));
     return tamer::make_event(*innerr);
 }
 
@@ -661,8 +656,8 @@ inline event<> fun_event(F f) {
 template <typename F, typename A>
 inline event<> fun_event(F f, A arg) {
     tamerpriv::function_rendezvous<F, A> *innerr =
-        new tamerpriv::function_rendezvous<F, A>(TAMER_MOVE(f),
-                                                 TAMER_MOVE(arg));
+        new tamerpriv::function_rendezvous<F, A>(std::move(f),
+                                                 std::move(arg));
     return TAMER_MAKE_FN_ANNOTATED_EVENT(*innerr);
 }
 
@@ -679,9 +674,9 @@ inline event<> fun_event(F f, A arg) {
 template <typename F, typename A1, typename A2>
 inline event<> fun_event(F f, A1 arg1, A2 arg2) {
     tamerpriv::function_rendezvous<F, A1, A2> *innerr =
-        new tamerpriv::function_rendezvous<F, A1, A2>(TAMER_MOVE(f),
-                                                      TAMER_MOVE(arg1),
-                                                      TAMER_MOVE(arg2));
+        new tamerpriv::function_rendezvous<F, A1, A2>(std::move(f),
+                                                      std::move(arg1),
+                                                      std::move(arg2));
     return TAMER_MAKE_FN_ANNOTATED_EVENT(*innerr);
 }
 

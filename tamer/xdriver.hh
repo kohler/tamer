@@ -90,7 +90,7 @@ class driver : public tamerpriv::simple_driver {
     static unsigned sig_ntotal;
     void dispatch_signals();
 
-  private:
+private:
     unsigned index_;
     std::tuple<int> int_placeholder_;
 

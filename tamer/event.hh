@@ -142,7 +142,6 @@ class event {
     inline void at_trigger(event<>&& e);
 
     inline event<> unblocker() const noexcept;
-    inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
     inline event<T0, T1, T2, T3>& operator=(const event<T0, T1, T2, T3>& x) noexcept;
     inline event<T0, T1, T2, T3>& operator=(event<T0, T1, T2, T3>&& x) noexcept;
@@ -152,7 +151,7 @@ class event {
     inline const char* file_annotation() const;
     inline int line_annotation() const;
 
-    inline event<T0, T1, T2, T3>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = 0, int line = 0);
+    inline event<T0, T1, T2, T3>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = nullptr, int line = 0);
     inline tamerpriv::simple_event* __get_simple() const;
     inline tamerpriv::simple_event* __release_simple();
 
@@ -190,7 +189,7 @@ class event<T0, T1, T2, void> { public:
 
     event(event<T0, T1, T2>&& x) noexcept
         : se_(x.se_), sv_(x.sv_) {
-        x.se_ = 0;
+        x.se_ = nullptr;
     }
 
     ~event() noexcept {
@@ -215,7 +214,6 @@ class event<T0, T1, T2, void> { public:
     inline void at_trigger(event<>&& e);
 
     inline event<> unblocker() const noexcept;
-    inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
     event<T0, T1, T2>& operator=(const event<T0, T1, T2>& x) noexcept {
         tamerpriv::simple_event::use(x.se_);
@@ -226,7 +224,7 @@ class event<T0, T1, T2, void> { public:
     }
 
     event<T0, T1, T2>& operator=(event<T0, T1, T2>&& x) noexcept {
-        tamerpriv::simple_event *se = se_;
+        tamerpriv::simple_event* se = se_;
         se_ = x.se_;
         sv_ = x.sv_;
         x.se_ = se;
@@ -238,7 +236,7 @@ class event<T0, T1, T2, void> { public:
     inline const char* file_annotation() const;
     inline int line_annotation() const;
 
-    event<T0, T1, T2>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = 0, int line = 0) {
+    event<T0, T1, T2>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = nullptr, int line = 0) {
         TAMER_DEBUG_ASSERT(!se_);
         se_ = new tamerpriv::simple_event(r, rid, file, line);
         return *this;
@@ -247,8 +245,8 @@ class event<T0, T1, T2, void> { public:
         return se_;
     }
     tamerpriv::simple_event* __release_simple() {
-        tamerpriv::simple_event *se = se_;
-        se_ = 0;
+        tamerpriv::simple_event* se = se_;
+        se_ = nullptr;
         return se;
     }
 
@@ -273,7 +271,7 @@ class event<T0, T1, void, void> { public:
 
     event(event<T0, T1>&& x) noexcept
         : se_(x.se_), sv_(x.sv_) {
-        x.se_ = 0;
+        x.se_ = nullptr;
     }
 
     ~event() noexcept {
@@ -298,7 +296,6 @@ class event<T0, T1, void, void> { public:
     inline void at_trigger(event<>&& e);
 
     inline event<> unblocker() const noexcept;
-    inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
     event<T0, T1>& operator=(const event<T0, T1>& x) noexcept {
         tamerpriv::simple_event::use(x.se_);
@@ -309,7 +306,7 @@ class event<T0, T1, void, void> { public:
     }
 
     event<T0, T1>& operator=(event<T0, T1>&& x) noexcept {
-        tamerpriv::simple_event *se = se_;
+        tamerpriv::simple_event* se = se_;
         se_ = x.se_;
         sv_ = x.sv_;
         x.se_ = se;
@@ -321,7 +318,7 @@ class event<T0, T1, void, void> { public:
     inline const char* file_annotation() const;
     inline int line_annotation() const;
 
-    event<T0, T1>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = 0, int line = 0) {
+    event<T0, T1>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = nullptr, int line = 0) {
         TAMER_DEBUG_ASSERT(!se_);
         se_ = new tamerpriv::simple_event(r, rid, file, line);
         return *this;
@@ -330,8 +327,8 @@ class event<T0, T1, void, void> { public:
         return se_;
     }
     tamerpriv::simple_event* __release_simple() {
-        tamerpriv::simple_event *se = se_;
-        se_ = 0;
+        tamerpriv::simple_event* se = se_;
+        se_ = nullptr;
         return se;
     }
 
@@ -356,7 +353,7 @@ class event<T0, void, void, void> { public:
 
     event(event<T0>&& x) noexcept
         : se_(x.se_), s0_(x.s0_) {
-        x.se_ = 0;
+        x.se_ = nullptr;
     }
 
 #if TAMER_HAVE_PREEVENT
@@ -391,7 +388,6 @@ class event<T0, void, void, void> { public:
     inline void at_trigger(event<>&& e);
 
     inline event<> unblocker() const noexcept;
-    inline event<> bind_all() const TAMER_DEPRECATEDATTR;
 
     event<T0>& operator=(const event<T0>& x) noexcept {
         tamerpriv::simple_event::use(x.se_);
@@ -402,7 +398,7 @@ class event<T0, void, void, void> { public:
     }
 
     event<T0>& operator=(event<T0>&& x) noexcept {
-        tamerpriv::simple_event *se = se_;
+        tamerpriv::simple_event* se = se_;
         se_ = x.se_;
         s0_ = x.s0_;
         x.se_ = se;
@@ -420,7 +416,7 @@ class event<T0, void, void, void> { public:
     inline const char* file_annotation() const;
     inline int line_annotation() const;
 
-    event<T0>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = 0, int line = 0) {
+    event<T0>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = nullptr, int line = 0) {
         TAMER_DEBUG_ASSERT(!se_);
         se_ = new tamerpriv::simple_event(r, rid, file, line);
         return *this;
@@ -429,8 +425,8 @@ class event<T0, void, void, void> { public:
         return se_;
     }
     tamerpriv::simple_event* __release_simple() {
-        tamerpriv::simple_event *se = se_;
-        se_ = 0;
+        tamerpriv::simple_event* se = se_;
+        se_ = nullptr;
         return se;
     }
 
@@ -443,7 +439,7 @@ class event<T0, void, void, void> { public:
     T0* s0_;
 
     struct take_marker { };
-    inline event(const take_marker &, tamerpriv::simple_event* se, T0* s0)
+    inline event(const take_marker&, tamerpriv::simple_event* se, T0* s0)
         : se_(se), s0_(s0) {
     }
 };
@@ -462,14 +458,9 @@ class event<void, void, void, void> { public:
         tamerpriv::simple_event::use(se_);
     }
 
-    event(event<>& x) noexcept
-        : se_(x.se_) {
-        tamerpriv::simple_event::use(se_);
-    }
-
     event(event<>&& x) noexcept
         : se_(x.se_) {
-        x.se_ = 0;
+        x.se_ = nullptr;
     }
 
 #if TAMER_HAVE_PREEVENT
@@ -508,9 +499,6 @@ class event<void, void, void, void> { public:
         return *this;
     }
 
-    event<>& bind_all() TAMER_DEPRECATEDATTR;
-    event<> bind_all() const TAMER_DEPRECATEDATTR;
-
     event<>& operator=(const event<>& x) noexcept {
         tamerpriv::simple_event::use(x.se_);
         tamerpriv::simple_event::unuse(se_);
@@ -519,7 +507,7 @@ class event<void, void, void, void> { public:
     }
 
     event<>& operator=(event<>&& x) noexcept {
-        tamerpriv::simple_event *se = se_;
+        tamerpriv::simple_event* se = se_;
         se_ = x.se_;
         x.se_ = se;
         return *this;
@@ -536,7 +524,7 @@ class event<void, void, void, void> { public:
     inline const char* file_annotation() const;
     inline int line_annotation() const;
 
-    event<>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = 0, int line = 0) {
+    event<>& __instantiate(tamerpriv::abstract_rendezvous& r, uintptr_t rid, const char* file = nullptr, int line = 0) {
         TAMER_DEBUG_ASSERT(!se_);
         se_ = new tamerpriv::simple_event(r, rid, file, line);
         return *this;
@@ -545,21 +533,20 @@ class event<void, void, void, void> { public:
         return se_;
     }
     tamerpriv::simple_event* __release_simple() {
-        tamerpriv::simple_event *se = se_;
-        se_ = 0;
+        tamerpriv::simple_event* se = se_;
+        se_ = nullptr;
         return se;
     }
 
-    static inline event<> __make(tamerpriv::simple_event *se) {
+    static inline event<> __make(tamerpriv::simple_event* se) {
         return event<>(take_marker(), se);
     }
 
   private:
-
     mutable tamerpriv::simple_event* se_;
 
     struct take_marker { };
-    inline event(const take_marker &, tamerpriv::simple_event *se)
+    inline event(const take_marker&, tamerpriv::simple_event* se)
         : se_(se) {
     }
 
@@ -574,7 +561,7 @@ class preevent {
   public:
     typedef std::tuple<T0> results_tuple_type;
 
-    inline constexpr preevent(R& r, T0& x0, const char* file = 0, int line = 0) noexcept;
+    inline constexpr preevent(R& r, T0& x0, const char* file = nullptr, int line = 0) noexcept;
     inline preevent(preevent<R, T0>&& x) noexcept;
 
     explicit operator bool() const {
@@ -587,7 +574,7 @@ class preevent {
     inline void operator()(T0 v0) {
         if (r_) {
             *s0_ = std::move(v0);
-            r_ = 0;
+            r_ = nullptr;
         }
     }
     inline void trigger(T0 v0) {
@@ -597,7 +584,7 @@ class preevent {
         operator()(std::get<0>(vs));
     }
     inline void unblock() noexcept {
-        r_ = 0;
+        r_ = nullptr;
     }
 
     inline T0& result() const noexcept {
@@ -627,7 +614,7 @@ class preevent<R, void> {
     typedef void result_type;
     typedef std::tuple<> results_tuple_type;
 
-    inline constexpr preevent(R& r, const char* file = 0, int line = 0) noexcept;
+    inline constexpr preevent(R& r, const char* file = nullptr, int line = 0) noexcept;
     inline preevent(preevent<R>&& x) noexcept;
 
     explicit operator bool() const {
@@ -638,7 +625,7 @@ class preevent<R, void> {
     }
 
     inline void operator()() {
-        r_ = 0;
+        r_ = nullptr;
     }
     inline void trigger() {
         operator()();
@@ -647,7 +634,7 @@ class preevent<R, void> {
         operator()();
     }
     inline void unblock() noexcept {
-        r_ = 0;
+        r_ = nullptr;
     }
 
   private:
@@ -669,7 +656,7 @@ class preevent<R, void> {
 /** @brief  Default constructor creates an empty event. */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3>::event() noexcept
-    : se_(0), sv_(nullptr, nullptr, nullptr, nullptr) {
+    : se_(nullptr), sv_(nullptr, nullptr, nullptr, nullptr) {
 }
 
 /** @brief  Construct an empty four-result event on rendezvous @a r.
@@ -680,7 +667,7 @@ inline event<T0, T1, T2, T3>::event() noexcept
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3>::event(T0& x0, T1& x1, T2& x2, T3& x3) noexcept
-    : se_(0), sv_(&x0, &x1, &x2, &x3) {
+    : se_(nullptr), sv_(&x0, &x1, &x2, &x3) {
 }
 
 /** @brief  Construct an empty four-result event on rendezvous @a r.
@@ -691,7 +678,7 @@ inline event<T0, T1, T2, T3>::event(T0& x0, T1& x1, T2& x2, T3& x3) noexcept
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3>::event(results_tuple_type& xs) noexcept
-    : se_(0), sv_(&std::get<0>(xs), &std::get<1>(xs), &std::get<2>(xs), &std::get<3>(xs)) {
+    : se_(nullptr), sv_(&std::get<0>(xs), &std::get<1>(xs), &std::get<2>(xs), &std::get<3>(xs)) {
 }
 
 /** @brief  Copy-construct event from @a x.
@@ -709,7 +696,7 @@ inline event<T0, T1, T2, T3>::event(const event<T0, T1, T2, T3>& x) noexcept
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3>::event(event<T0, T1, T2, T3>&& x) noexcept
     : se_(x.se_), sv_(x.sv_) {
-    x.se_ = 0;
+    x.se_ = nullptr;
 }
 
 /** @brief  Destroy the event instance.
@@ -751,7 +738,7 @@ inline void event<T0, T1, T2, T3>::operator()(T0 v0, T1 v1, T2 v2, T3 v3) {
         *std::get<2>(sv_) = std::move(v2);
         *std::get<3>(sv_) = std::move(v3);
         se_->simple_trigger(true);
-        se_ = 0;
+        se_ = nullptr;
     }
 }
 
@@ -791,14 +778,15 @@ inline void event<T0, T1, T2, T3>::tuple_trigger(const results_tuple_type& vs) {
 template <typename T0, typename T1, typename T2, typename T3>
 inline void event<T0, T1, T2, T3>::unblock() noexcept {
     tamerpriv::simple_event::simple_trigger(se_, false);
-    se_ = 0;
+    se_ = nullptr;
 }
 
 template <typename T0, typename T1, typename T2, typename T3>
 template <size_t I>
 inline void event<T0, T1, T2, T3>::set_result(typename std::tuple_element<I, results_tuple_type>::type vi) {
-    if (se_ && *se_)
+    if (se_ && *se_) {
         *std::get<I>(sv_) = std::move(vi);
+    }
 }
 
 /** @brief  Register a trigger notifier.
@@ -833,11 +821,6 @@ inline event<> event<T0, T1, T2, T3>::unblocker() const noexcept {
     return event<>::__make(se_);
 }
 
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<> event<T0, T1, T2, T3>::bind_all() const {
-    return unblocker();
-}
-
 /** @brief  Assign this event to @a x.
  *  @param  x  Source event.
  */
@@ -855,7 +838,7 @@ inline event<T0, T1, T2, T3>& event<T0, T1, T2, T3>::operator=(const event<T0, T
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3>& event<T0, T1, T2, T3>::operator=(event<T0, T1, T2, T3>&& x) noexcept {
-    tamerpriv::simple_event *se = se_;
+    tamerpriv::simple_event* se = se_;
     se_ = x.se_;
     sv_ = x.sv_;
     x.se_ = se;
@@ -888,8 +871,8 @@ inline tamerpriv::simple_event* event<T0, T1, T2, T3>::__get_simple() const {
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline tamerpriv::simple_event* event<T0, T1, T2, T3>::__release_simple() {
-    tamerpriv::simple_event *se = se_;
-    se_ = 0;
+    tamerpriv::simple_event* se = se_;
+    se_ = nullptr;
     return se;
 }
 
@@ -898,17 +881,17 @@ inline tamerpriv::simple_event* event<T0, T1, T2, T3>::__release_simple() {
 
 template <typename T0, typename T1, typename T2>
 inline event<T0, T1, T2>::event() noexcept
-    : se_(0), sv_(nullptr, nullptr, nullptr) {
+    : se_(nullptr), sv_(nullptr, nullptr, nullptr) {
 }
 
 template <typename T0, typename T1, typename T2>
 inline event<T0, T1, T2>::event(T0& x0, T1& x1, T2& x2) noexcept
-    : se_(0), sv_(&x0, &x1, &x2) {
+    : se_(nullptr), sv_(&x0, &x1, &x2) {
 }
 
 template <typename T0, typename T1, typename T2>
 inline event<T0, T1, T2>::event(results_tuple_type& xs) noexcept
-    : se_(0), sv_(&std::get<0>(xs), &std::get<1>(xs), &std::get<2>(xs)) {
+    : se_(nullptr), sv_(&std::get<0>(xs), &std::get<1>(xs), &std::get<2>(xs)) {
 }
 
 template <typename T0, typename T1, typename T2>
@@ -918,7 +901,7 @@ inline void event<T0, T1, T2>::operator()(T0 v0, T1 v1, T2 v2) {
         *std::get<1>(sv_) = std::move(v1);
         *std::get<2>(sv_) = std::move(v2);
         se_->simple_trigger(true);
-        se_ = 0;
+        se_ = nullptr;
     }
 }
 
@@ -935,30 +918,31 @@ inline void event<T0, T1, T2>::tuple_trigger(const results_tuple_type& vs) {
 template <typename T0, typename T1, typename T2>
 inline void event<T0, T1, T2>::unblock() noexcept {
     tamerpriv::simple_event::simple_trigger(se_, false);
-    se_ = 0;
+    se_ = nullptr;
 }
 
 template <typename T0, typename T1, typename T2>
 template <size_t I>
 inline void event<T0, T1, T2>::set_result(typename std::tuple_element<I, results_tuple_type>::type vi) {
-    if (se_ && *se_)
+    if (se_ && *se_) {
         *std::get<I>(sv_) = std::move(vi);
+    }
 }
 
 
 template <typename T0, typename T1>
 inline event<T0, T1>::event() noexcept
-    : se_(0), sv_(nullptr, nullptr) {
+    : se_(nullptr), sv_(nullptr, nullptr) {
 }
 
 template <typename T0, typename T1>
 inline event<T0, T1>::event(T0& x0, T1& x1) noexcept
-    : se_(0), sv_(&x0, &x1) {
+    : se_(nullptr), sv_(&x0, &x1) {
 }
 
 template <typename T0, typename T1>
 inline event<T0, T1>::event(results_tuple_type& xs) noexcept
-    : se_(0), sv_(&std::get<0>(xs), &std::get<1>(xs)) {
+    : se_(nullptr), sv_(&std::get<0>(xs), &std::get<1>(xs)) {
 }
 
 template <typename T0, typename T1>
@@ -967,7 +951,7 @@ inline void event<T0, T1>::operator()(T0 v0, T1 v1) {
         *std::get<0>(sv_) = std::move(v0);
         *std::get<1>(sv_) = std::move(v1);
         se_->simple_trigger(true);
-        se_ = 0;
+        se_ = nullptr;
     }
 }
 
@@ -984,30 +968,31 @@ inline void event<T0, T1>::tuple_trigger(const results_tuple_type& vs) {
 template <typename T0, typename T1>
 inline void event<T0, T1>::unblock() noexcept {
     tamerpriv::simple_event::simple_trigger(se_, false);
-    se_ = 0;
+    se_ = nullptr;
 }
 
 template <typename T0, typename T1>
 template <size_t I>
 inline void event<T0, T1>::set_result(typename std::tuple_element<I, results_tuple_type>::type vi) {
-    if (se_ && *se_)
+    if (se_ && *se_) {
         *std::get<I>(sv_) = std::move(vi);
+    }
 }
 
 
 template <typename T0>
 inline event<T0>::event() noexcept
-    : se_(0), s0_(0) {
+    : se_(nullptr), s0_(0) {
 }
 
 template <typename T0>
 inline event<T0>::event(T0& x0) noexcept
-    : se_(0), s0_(&x0) {
+    : se_(nullptr), s0_(&x0) {
 }
 
 template <typename T0>
 inline event<T0>::event(results_tuple_type& xs) noexcept
-    : se_(0), s0_(&std::get<0>(xs)) {
+    : se_(nullptr), s0_(&std::get<0>(xs)) {
 }
 
 template <typename T0>
@@ -1015,7 +1000,7 @@ inline void event<T0>::operator()(T0 v0) {
     if (se_ && *se_) {
         *s0_ = std::move(v0);
         se_->simple_trigger(true);
-        se_ = 0;
+        se_ = nullptr;
     }
 }
 
@@ -1032,28 +1017,29 @@ inline void event<T0>::tuple_trigger(const results_tuple_type& vs) {
 template <typename T0>
 inline void event<T0>::unblock() noexcept {
     tamerpriv::simple_event::simple_trigger(se_, false);
-    se_ = 0;
+    se_ = nullptr;
 }
 
 template <typename T0>
 template <size_t I>
 inline void event<T0>::set_result(typename std::tuple_element<I, results_tuple_type>::type vi) {
-    if (se_ && *se_)
+    if (se_ && *se_) {
         *s0_ = std::move(vi);
+    }
 }
 
 
 inline event<>::event() noexcept
-    : se_(0) {
+    : se_(nullptr) {
 }
 
 inline event<>::event(results_tuple_type&) noexcept
-    : se_(0) {
+    : se_(nullptr) {
 }
 
 inline void event<>::operator()() noexcept {
     tamerpriv::simple_event::simple_trigger(se_, false);
-    se_ = 0;
+    se_ = nullptr;
 }
 
 inline void event<>::trigger() noexcept {
@@ -1097,7 +1083,7 @@ inline constexpr preevent<R, T0>::preevent(R& r, T0& x0, const char* file, int l
 template <typename R, typename T0>
 inline preevent<R, T0>::preevent(preevent<R, T0>&& x) noexcept
     : r_(x.r_), s0_(x.s0_) TAMER_IFTRACE(, file_annotation_(x.file_annotation_), line_annotation_(x.line_annotation_)) {
-    x.r_ = 0;
+    x.r_ = nullptr;
 }
 
 template <typename R>
@@ -1108,7 +1094,7 @@ inline constexpr preevent<R>::preevent(R& r, const char* file, int line) noexcep
 template <typename R>
 inline preevent<R>::preevent(preevent<R>&& x) noexcept
     : r_(x.r_) TAMER_IFTRACE(, file_annotation_(x.file_annotation_), line_annotation_(x.line_annotation_)) {
-    x.r_ = 0;
+    x.r_ = nullptr;
 }
 
 # undef TAMER_PREEVENT_CTOR
@@ -1646,40 +1632,17 @@ inline event<> event<T0>::unblocker() const noexcept {
     return event<>::__make(se_);
 }
 
-template <typename T0, typename T1, typename T2>
-inline event<> event<T0, T1, T2>::bind_all() const {
-    return unblocker();
-}
-
-template <typename T0, typename T1>
-inline event<> event<T0, T1>::bind_all() const {
-    return unblocker();
-}
-
-template <typename T0>
-inline event<> event<T0>::bind_all() const {
-    return unblocker();
-}
-
-inline event<>& event<>::bind_all() {
-    return unblocker();
-}
-
-inline event<> event<>::bind_all() const {
-    return unblocker();
-}
-
 #if TAMER_HAVE_PREEVENT
 template <typename T0> template <typename R>
 inline event<T0>::event(preevent<R, T0>&& x)
     : se_(x.r_ ? new tamerpriv::simple_event(*x.r_, 0, TAMER_IFTRACE_ELSE(x.file_annotation_, 0), TAMER_IFTRACE_ELSE(x.line_annotation_, 0)) : 0), s0_(x.s0_) {
-    x.r_ = 0;
+    x.r_ = nullptr;
 }
 
 template <typename R>
 inline event<>::event(preevent<R>&& x)
     : se_(x.r_ ? new tamerpriv::simple_event(*x.r_, 0, TAMER_IFTRACE_ELSE(x.file_annotation_, 0), TAMER_IFTRACE_ELSE(x.line_annotation_, 0)) : 0) {
-    x.r_ = 0;
+    x.r_ = nullptr;
 }
 #endif
 
@@ -1697,34 +1660,34 @@ inline event<T0>::event(event<>&& x, results_tuple_type& vs) noexcept
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3>& event<T0, T1, T2, T3>::operator+=(event<T0, T1, T2, T3> x) {
     typedef tamerpriv::distribute_rendezvous<T0, T1, T2, T3> rendezvous_type;
-    rendezvous_type::make(*this, TAMER_MOVE(x));
+    rendezvous_type::make(*this, std::move(x));
     return *this;
 }
 
 template <typename T0, typename T1, typename T2>
 inline event<T0, T1, T2>& event<T0, T1, T2>::operator+=(event<T0, T1, T2> x) {
     typedef tamerpriv::distribute_rendezvous<T0, T1, T2> rendezvous_type;
-    rendezvous_type::make(*this, TAMER_MOVE(x));
+    rendezvous_type::make(*this, std::move(x));
     return *this;
 }
 
 template <typename T0, typename T1>
 inline event<T0, T1>& event<T0, T1>::operator+=(event<T0, T1> x) {
     typedef tamerpriv::distribute_rendezvous<T0, T1> rendezvous_type;
-    rendezvous_type::make(*this, TAMER_MOVE(x));
+    rendezvous_type::make(*this, std::move(x));
     return *this;
 }
 
 template <typename T0>
 inline event<T0>& event<T0>::operator+=(event<T0> x) {
     typedef tamerpriv::distribute_rendezvous<T0> rendezvous_type;
-    rendezvous_type::make(*this, TAMER_MOVE(x));
+    rendezvous_type::make(*this, std::move(x));
     return *this;
 }
 
 inline event<>& event<>::operator+=(event<> x) {
     typedef tamerpriv::distribute_rendezvous<> rendezvous_type;
-    rendezvous_type::make(*this, TAMER_MOVE(x));
+    rendezvous_type::make(*this, std::move(x));
     return *this;
 }
 

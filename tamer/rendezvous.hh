@@ -102,7 +102,7 @@ template <typename I>
 inline bool rendezvous<I>::join(I& eid) {
     if (ready_) {
         I* eidp = reinterpret_cast<I*>(pop_ready());
-        eid = TAMER_MOVE(*eidp);
+        eid = std::move(*eidp);
         delete eidp;
         return true;
     } else {
@@ -364,7 +364,7 @@ void distribute_rendezvous<T0, T1, T2, T3>::add(event_type e) {
     if (nes_ >= nlocal && (nes_ & (nes_ - 1)) == 0 && !grow()) {
         return;
     }
-    new((void*) &es_[nes_]) event_type(TAMER_MOVE(e));
+    new((void*) &es_[nes_]) event_type(std::move(e));
     if (es_[nes_].__get_simple()->shared()) {
         tamerpriv::simple_event::at_trigger(es_[nes_].__get_simple(), clear_hook, this);
         ++outstanding_;
@@ -376,10 +376,10 @@ template <typename T0, typename T1, typename T2, typename T3>
 inline void distribute_rendezvous<T0, T1, T2, T3>::make(event_type& a, event_type b) {
     if (!a || !b) {
         if (!a && b) {
-            a = TAMER_MOVE(b);
+            a = std::move(b);
         }
     } else {
-        hard_make(a, TAMER_MOVE(b));
+        hard_make(a, std::move(b));
     }
 }
 
@@ -395,10 +395,10 @@ void distribute_rendezvous<T0, T1, T2, T3>::hard_make(event_type& a, event_type 
         r = static_cast<distribute_rendezvous<T0, T1, T2, T3>*>(se->rendezvous());
     } else {
         r = new distribute_rendezvous<T0, T1, T2, T3>;
-        r->add(TAMER_MOVE(a));
+        r->add(std::move(a));
         a = r->make_event();
     }
-    r->add(TAMER_MOVE(b));
+    r->add(std::move(b));
 }
 
 template <typename T0, typename T1, typename T2, typename T3>

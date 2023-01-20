@@ -49,8 +49,13 @@ template <size_t I, typename VI, typename... TS>
 class bind_rendezvous : public functional_rendezvous,
                         public zero_argument_rendezvous_tag<bind_rendezvous<I, VI, TS...> > {
   public:
-    bind_rendezvous(const event<TS...>& e, VI vi)
-        : functional_rendezvous(hook), e_(e), vi_(TAMER_MOVE(vi)) {
+    bind_rendezvous(event<TS...>&& e, VI vi)
+        : functional_rendezvous(hook), e_(std::move(e)), vi_(std::move(vi)) {
+    }
+    event<> make_bound() {
+        event<> bound = TAMER_MAKE_FN_ANNOTATED_EVENT(*this);
+        e_.at_trigger(bound);
+        return bound;
     }
   private:
     event<TS...> e_;
@@ -59,7 +64,7 @@ class bind_rendezvous : public functional_rendezvous,
 };
 
 template <size_t I, typename VI, typename... TS>
-void bind_rendezvous<I, VI, TS...>::hook(functional_rendezvous *fr, simple_event*, bool) TAMER_NOEXCEPT {
+void bind_rendezvous<I, VI, TS...>::hook(functional_rendezvous* fr, simple_event*, bool) TAMER_NOEXCEPT {
     bind_rendezvous<I, VI, TS...>* self = static_cast<bind_rendezvous<I, VI, TS...>*>(fr);
     self->e_.template set_result<I>(self->vi_);
     if (simple_event* se = self->e_.__release_simple()) {
@@ -99,7 +104,7 @@ template <typename... TS> struct ignore_binder<false, TS...> {
     static event<TS...> make(event<> e) {
         results_tuple_type* vs = new results_tuple_type;
         simple_event::at_trigger(e.__get_simple(), deleter, vs);
-        return event<TS...>(TAMER_MOVE(e), *vs);
+        return event<TS...>(std::move(e), *vs);
     }
     static void deleter(void* x) {
         delete static_cast<results_tuple_type*>(x);
@@ -109,7 +114,7 @@ template <typename... TS> struct ignore_binder<false, TS...> {
 template <typename... TS> struct ignore_binder<true, TS...> {
     typedef typename ignore_analysis<TS...>::type results_tuple_type;
     static event<TS...> make(event<> e) {
-        return event<TS...>(TAMER_MOVE(e), *new(placeholder_buffer) results_tuple_type);
+        return event<TS...>(std::move(e), *new(placeholder_buffer) results_tuple_type);
     }
 };
 
@@ -161,8 +166,8 @@ class function_rendezvous : public functional_rendezvous,
                             public zero_argument_rendezvous_tag<function_rendezvous<F, A1, A2> > {
   public:
     function_rendezvous(F f, A1 arg1, A2 arg2)
-        : functional_rendezvous(hook), f_(TAMER_MOVE(f)),
-          arg1_(TAMER_MOVE(arg1)), arg2_(TAMER_MOVE(arg2)) {
+        : functional_rendezvous(hook), f_(std::move(f)),
+          arg1_(std::move(arg1)), arg2_(std::move(arg2)) {
     }
   private:
     F f_;
@@ -178,7 +183,7 @@ void function_rendezvous<F, A1, A2>::hook(functional_rendezvous* fr,
     function_rendezvous<F, A1, A2>* self = static_cast<function_rendezvous<F, A1, A2>*>(fr);
     // in case f_() refers to an event on this rendezvous:
     self->remove_waiting();
-    self->f_(TAMER_MOVE(self->arg1_), TAMER_MOVE(self->arg2_));
+    self->f_(std::move(self->arg1_), std::move(self->arg2_));
     delete self;
 }
 
@@ -188,8 +193,8 @@ class function_rendezvous<F, A> : public functional_rendezvous,
                                   public zero_argument_rendezvous_tag<function_rendezvous<F, A> > {
   public:
     function_rendezvous(F f, A arg)
-        : functional_rendezvous(hook), f_(TAMER_MOVE(f)),
-          arg_(TAMER_MOVE(arg)) {
+        : functional_rendezvous(hook), f_(std::move(f)),
+          arg_(std::move(arg)) {
     }
   private:
     F f_;
@@ -204,7 +209,7 @@ void function_rendezvous<F, A, void>::hook(functional_rendezvous* fr,
     function_rendezvous<F, A, void>* self = static_cast<function_rendezvous<F, A, void>*>(fr);
     // in case f_() refers to an event on this rendezvous:
     self->remove_waiting();
-    self->f_(TAMER_MOVE(self->arg_));
+    self->f_(std::move(self->arg_));
     delete self;
 }
 
@@ -214,7 +219,7 @@ class function_rendezvous<F> : public functional_rendezvous,
                                public zero_argument_rendezvous_tag<function_rendezvous<F> > {
   public:
     function_rendezvous(F f)
-        : functional_rendezvous(hook), f_(TAMER_MOVE(f)) {
+        : functional_rendezvous(hook), f_(std::move(f)) {
     }
   private:
     F f_;
@@ -257,7 +262,7 @@ void push_back_rendezvous<C>::hook(functional_rendezvous* fr,
     push_back_rendezvous<C>* self = static_cast<push_back_rendezvous<C>*>(fr);
     self->remove_waiting();
     if (values) {
-        self->c_.push_back(TAMER_MOVE(self->slot_));
+        self->c_.push_back(std::move(self->slot_));
     }
     delete self;
 }
@@ -287,7 +292,7 @@ void output_rendezvous<It>::hook(functional_rendezvous* fr,
     output_rendezvous<It>* self = static_cast<output_rendezvous<It>*>(fr);
     self->remove_waiting();
     if (values) {
-        *self->it_ = TAMER_MOVE(self->slot_);
+        *self->it_ = std::move(self->slot_);
         ++self->it_;
     }
     delete self;

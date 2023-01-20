@@ -402,10 +402,11 @@ inline int fd::recent_fdnum() const {
  *  close() or as a result of file descriptor references going out of scope).
  */
 inline void fd::at_close(event<> e) {
-    if (*this)
-        _p->_at_close += TAMER_MOVE(e);
-    else
+    if (*this) {
+        _p->_at_close += std::move(e);
+    } else {
         e();
+    }
 }
 
 /** @brief  Close file descriptor.
@@ -422,8 +423,9 @@ inline void fd::close(event<int> done)
  */
 inline void fd::close()
 {
-    if (_p)
+    if (_p) {
         _p->close();
+    }
 }
 
 /** @brief  Accept new connection on listening socket file descriptor.
@@ -854,7 +856,7 @@ inline void tcp_connect(int port, event<fd> result) {
 }
 
 inline fd unix_stream_listen(std::string path) {
-    return unix_stream_listen(TAMER_MOVE(path), fd::default_backlog);
+    return unix_stream_listen(std::move(path), fd::default_backlog);
 }
 
 inline exec_fd::exec_fd(int child_fd, fdtype type, fd f)

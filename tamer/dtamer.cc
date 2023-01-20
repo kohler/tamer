@@ -166,7 +166,7 @@ struct fdp {
 };
 
 class driver_tamer : public driver {
-  public:
+public:
     driver_tamer(int flags);
     ~driver_tamer();
 
@@ -182,7 +182,7 @@ class driver_tamer : public driver {
     virtual void break_loop();
     virtual timeval next_wake() const;
 
-  private:
+private:
     tamerpriv::driver_fdset<fdp> fds_;
     xpollfds pfds_;
 #if DTAMER_EPOLL
@@ -249,7 +249,7 @@ void driver_tamer::at_fd(int fd, int action, event<int> e) {
     if (e && (unsigned) action < nfdactions) {
         fds_.expand(this, fd);
         auto& x = fds_[fd];
-        x.e[action] += TAMER_MOVE(e);
+        x.e[action] += std::move(e);
         tamerpriv::simple_event::at_trigger(x.e[action].__get_simple(),
                                             fd_disinterest,
                                             make_fd_callback(this, fd));
@@ -548,7 +548,7 @@ timeval driver_tamer::next_wake() const {
 
 } // namespace
 
-driver *driver::make_tamer(int flags) {
+driver* driver::make_tamer(int flags) {
     return new driver_tamer(flags);
 }
 

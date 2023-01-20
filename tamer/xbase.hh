@@ -39,9 +39,21 @@ class tamer_error : public std::runtime_error { public:
     }
 };
 
+
 struct no_result {
 };
-typedef no_result no_slot TAMER_DEPRECATEDATTR;
+
+
+namespace outcome {
+const int success = 0;
+const int cancel = -ECANCELED;
+const int timeout = -ETIMEDOUT;
+const int signal = -EINTR;
+const int overflow = -EOVERFLOW;
+const int closed = -EPIPE;
+const int destroy = -ECANCELED;
+}
+
 
 namespace tamerpriv {
 
@@ -501,9 +513,9 @@ inline void closure::set_location(const char* file, int line) {
 inline void closure::set_description(std::string description) {
 #if !TAMER_NOTRACE
     if (tamer_description_) {
-        *tamer_description_ = TAMER_MOVE(description);
+        *tamer_description_ = std::move(description);
     } else if (!description.empty()) {
-        tamer_description_ = new std::string(TAMER_MOVE(description));
+        tamer_description_ = new std::string(std::move(description));
     }
 #else
     (void) description;
@@ -618,7 +630,7 @@ inline const char* simple_event::file_annotation() const {
 #if !TAMER_NOTRACE
     return file_annotation_;
 #else
-    return 0;
+    return nullptr;
 #endif
 }
 

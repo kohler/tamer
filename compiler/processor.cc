@@ -126,7 +126,7 @@ str var_t::param_decl(bool move, bool escape) const
 {
     strbuf b;
     if (move && _type.pointer().empty() && _arrays.empty() && !_name.empty())
-        b << "TAMER_MOVEARG(" << _type.to_str() << ") ";
+        b << _type.to_str() << "&& ";
     else
         b << _type.to_str() << " ";
     if (escape && !_name.empty())
@@ -139,7 +139,7 @@ str var_t::name(bool move, bool escape) const
 {
     if (move && _type.pointer().empty() && _arrays.empty()) {
         strbuf b;
-        b << "TAMER_MOVE(";
+        b << "std::move(";
         if (escape)
             b << "tamer__";
         b << _name << ")";

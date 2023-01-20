@@ -44,9 +44,9 @@ driver::driver() {
 }
 
 driver::~driver() {
-    indexed[index_] = 0;
+    indexed[index_] = nullptr;
     if (main == this) {
-        main = 0;
+        main = nullptr;
     }
 }
 

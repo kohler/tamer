@@ -136,7 +136,7 @@ void driver_libev::at_fd(int fd, int action, event<int> e) {
     if (e && (unsigned) action < nfdactions) {
         fds_.expand(this, fd);
         tamerpriv::driver_fd<fdp>& x = fds_[fd];
-        x.e[action] += TAMER_MOVE(e);
+        x.e[action] += std::move(e);
         tamerpriv::simple_event::at_trigger(x.e[action].__get_simple(),
                                             fd_disinterest,
                                             make_fd_callback(this, fd));

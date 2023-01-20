@@ -34,11 +34,13 @@ struct driver_fdset {
     enum { fdblksiz = 256 };
     driver_fd<T>** fdblk_;
     driver_fd<T>* fdblk0_;
-    unsigned nfds_;
-    unsigned fdcap_;
-    unsigned changedfd1_;
-    driver_fd<T> fdalign_[0];
-    char fdspace_[sizeof(driver_fd<T>) * fdblksiz];
+    unsigned nfds_ = 0;
+    unsigned fdcap_ = fdblksiz;
+    unsigned changedfd1_ = 0;
+    struct alignas(driver_fd<T>) dfdspace {
+        unsigned char padding[sizeof(driver_fd<T>)];
+    };
+    dfdspace fdspace_[fdblksiz];
 
     inline driver_fd<T>& at(unsigned fd);
     inline const driver_fd<T>& at(unsigned fd) const;
@@ -46,7 +48,6 @@ struct driver_fdset {
 };
 
 struct driver_asapset {
-    inline driver_asapset();
     ~driver_asapset();
 
     inline bool empty() const;
@@ -54,21 +55,20 @@ struct driver_asapset {
     inline void pop_trigger();
 
   private:
-    simple_event** ses_;
-    unsigned head_;
-    unsigned tail_;
-    unsigned capmask_;
+    simple_event** ses_ = nullptr;
+    unsigned head_ = 0;
+    unsigned tail_ = 0;
+    unsigned capmask_ = ~0U;
 
     void expand();
 };
 
 struct driver_timerset {
-    inline driver_timerset();
     ~driver_timerset();
 
     inline bool empty() const;
     inline bool has_foreground() const;
-    inline const timeval &expiry() const;
+    inline const timeval& expiry() const;
     inline void cull();
     void push(timeval when, simple_event* se, bool bg);
     inline void pop_trigger();
@@ -85,12 +85,12 @@ struct driver_timerset {
     };
 
     enum { arity = 4 };
-    trec *ts_;
-    mutable unsigned nts_;
-    mutable unsigned nfg_;
-    unsigned rand_;
-    unsigned tcap_;
-    unsigned order_;
+    trec* ts_ = nullptr;
+    mutable unsigned nts_ = 0;
+    mutable unsigned nfg_ = 0;
+    unsigned rand_ = 8173;
+    unsigned tcap_ = 0;
+    unsigned order_ = 0;
 
     static inline unsigned heap_parent(unsigned i);
     static inline unsigned heap_first_child(unsigned i);
@@ -122,24 +122,27 @@ inline const driver_fd<T>& driver_fdset<T>::at(unsigned fd) const {
 
 template <typename T>
 inline driver_fdset<T>::driver_fdset()
-    : fdblk_(&fdblk0_), fdblk0_(reinterpret_cast<driver_fd<T>*>(fdspace_)),
-      nfds_(0), fdcap_(fdblksiz), changedfd1_(0) {
+    : fdblk_(&fdblk0_), fdblk0_(reinterpret_cast<driver_fd<T>*>(fdspace_)) {
 }
 
 template <typename T>
 inline driver_fdset<T>::~driver_fdset() {
-    for (unsigned i = 0; i < nfds_; ++i)
+    for (unsigned i = 0; i < nfds_; ++i) {
         at(i).~driver_fd<T>();
-    for (unsigned i = 1; i < fdcap_ / fdblksiz; ++i)
-        delete[] reinterpret_cast<char*>(fdblk_[i]);
-    if (fdcap_ > fdblksiz)
+    }
+    for (unsigned i = 1; i < fdcap_ / fdblksiz; ++i) {
+        delete[] reinterpret_cast<dfdspace*>(fdblk_[i]);
+    }
+    if (fdcap_ > fdblksiz) {
         delete[] fdblk_;
+    }
 }
 
 template <typename T> template <typename O>
 void driver_fdset<T>::expand(O owner, int need_fd) {
-    if (need_fd >= (int) nfds_)
+    if (need_fd >= (int) nfds_) {
         hard_expand(owner, need_fd);
+    }
 }
 
 template <typename T> template <typename O>
@@ -147,19 +150,22 @@ void driver_fdset<T>::hard_expand(O owner, int need_fd) {
     if (need_fd >= (int) fdcap_) {
         unsigned newfdcap = (need_fd | (fdblksiz - 1)) + 1;
         driver_fd<T>** newfdblk = new driver_fd<T>*[newfdcap / fdblksiz];
-        for (unsigned i = 0; i < newfdcap / fdblksiz; ++i)
-            if (i < fdcap_ / fdblksiz)
+        for (unsigned i = 0; i < newfdcap / fdblksiz; ++i) {
+            if (i < fdcap_ / fdblksiz) {
                 newfdblk[i] = fdblk_[i];
-            else
-                newfdblk[i] = reinterpret_cast<driver_fd<T>*>(new char[sizeof(driver_fd<T>) * fdblksiz]);
-        if (fdcap_ > fdblksiz)
+            } else {
+                newfdblk[i] = reinterpret_cast<driver_fd<T>*>(new dfdspace[fdblksiz]);
+            }
+        }
+        if (fdcap_ > fdblksiz) {
             delete[] fdblk_;
+        }
         fdblk_ = newfdblk;
         fdcap_ = newfdcap;
     }
 
     while (need_fd >= (int) nfds_) {
-        new((void *) &at(nfds_)) driver_fd<T>(owner, nfds_);
+        new((void*) &at(nfds_)) driver_fd<T>(owner, nfds_);
         ++nfds_;
     }
 }
@@ -220,30 +226,23 @@ inline int fd_callback_fd(void* callback) {
     return x / driver::capacity;
 }
 
-inline driver_asapset::driver_asapset()
-    : ses_(), head_(0), tail_(0), capmask_(~0U) {
-}
-
 inline bool driver_asapset::empty() const {
     return head_ == tail_;
 }
 
 inline void driver_asapset::push(simple_event *se) {
-    if (tail_ - head_ == capmask_ + 1)
+    if (tail_ - head_ == capmask_ + 1) {
         expand();
+    }
     ses_[tail_ & capmask_] = se;
     ++tail_;
 }
 
 inline void driver_asapset::pop_trigger() {
     assert(head_ != tail_);
-    simple_event *se = ses_[head_ & capmask_];
+    simple_event* se = ses_[head_ & capmask_];
     ++head_;
     se->simple_trigger(false);
-}
-
-inline driver_timerset::driver_timerset()
-    : ts_(0), nts_(0), nfg_(0), rand_(8173), tcap_(0), order_(0) {
 }
 
 inline bool driver_timerset::empty() const {
@@ -260,8 +259,9 @@ inline const timeval &driver_timerset::expiry() const {
 }
 
 inline void driver_timerset::cull() {
-    while (nts_ != 0 && ts_[0].se->empty())
+    while (nts_ != 0 && ts_[0].se->empty()) {
         hard_cull(0);
+    }
 }
 
 inline bool driver_timerset::trec::operator<(const trec &x) const {
