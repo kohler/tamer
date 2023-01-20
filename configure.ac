@@ -473,21 +473,28 @@ if test "$enable_tracing" = no; then
 fi
 
 AC_ARG_ENABLE([debug], [AS_HELP_STRING([--enable-debug], [include more debugging assertions])])
-if test "$enable_debug" = yes; then
-    AC_DEFINE([TAMER_DEBUG], [1], [Define to include more debugging assertions.])
+tamer_debug_level=1
+if expr "$enable_debug" : '[[0-9]][[0-9]]*$' >/dev/null 2>&1; then
+   tamer_debug_level="$enable_debug"
+   if test "$enable_debug" -gt 0; then enable_debug=yes; fi
 fi
-AM_CONDITIONAL([TAMER_DEBUG], [test x$enable_debug = xyes])
+if test "$enable_debug" = yes; then
+    AC_DEFINE([TAMER_DEBUG], [1], [Define for debugging assertions.])
+fi
+AM_CONDITIONAL([TAMER_DEBUG], [test "$enable_debug" = yes])
+AC_DEFINE_UNQUOTED([TAMER_DEBUG_LEVEL], [$tamer_debug_level], [Debug level when TAMER_DEBUG is defined.])
 
 AC_ARG_ENABLE([sanitizers], [AS_HELP_STRING([--enable-sanitizers], [enable sanitizers in library and test])], [], [enable_sanitizers=no])
 SANITIZER_FLAGS=
 if test x"$enable_sanitizers" = xyes; then
     SANITIZER_FLAGS="-fsanitize=undefined -fsanitize=address"
+elif test x"$enable_sanitizers" = xall -o x"$enable_sanitizers" = xleak; then
+    SANITIZER_FLAGS="-fsanitize=undefined -fsanitize=address -fsanitize=leak"
 elif test -n "$enable_sanitizers" -a x"$enable_sanitizers" != xno; then
     SANITIZER_FLAGS="$enable_sanitizers"
-    enable_sanitizers=yes
 fi
 AC_SUBST([SANITIZER_FLAGS])
-AM_CONDITIONAL([TAMER_SANITIZERS], [test x$enable_sanitizers = xyes])
+AM_CONDITIONAL([TAMER_SANITIZERS], [test -n "$enable_sanitizers" -a x"$enable_sanitizers" != xno])
 
 
 

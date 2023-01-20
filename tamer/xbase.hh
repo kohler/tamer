@@ -69,13 +69,11 @@ class simple_event { public:
     inline simple_event() TAMER_NOEXCEPT;
     inline simple_event(abstract_rendezvous& r, uintptr_t rid,
                         const char* file, int line) TAMER_NOEXCEPT;
-#if TAMER_DEBUG
     inline ~simple_event() TAMER_NOEXCEPT;
-#endif
 
-    static inline void use(simple_event* e) TAMER_NOEXCEPT;
-    static inline void unuse(simple_event* e) TAMER_NOEXCEPT;
-    static inline void unuse_clean(simple_event* e) TAMER_NOEXCEPT;
+    static inline void use(simple_event* e, const char* file = __builtin_FILE(), int line = __builtin_LINE()) TAMER_NOEXCEPT;
+    static inline void unuse(simple_event* e, const char* file = __builtin_FILE(), int line = __builtin_LINE()) TAMER_NOEXCEPT;
+    static inline void unuse_clean(simple_event* e, const char* file = __builtin_FILE(), int line = __builtin_LINE()) TAMER_NOEXCEPT;
     inline bool unused() const;
 
     inline explicit operator bool() const;
@@ -119,6 +117,8 @@ class simple_event { public:
     static void trigger_hook(void* arg);
     static void hard_at_trigger(simple_event* x, void (*f)(void*), void* arg);
 
+    void print(const char* prefix, const char* filename = nullptr, int line = 0);
+
     friend class abstract_rendezvous;
     friend class explicit_rendezvous;
 };
@@ -136,15 +136,14 @@ class abstract_rendezvous {
     explicit abstract_rendezvous(rendezvous_type rtype) TAMER_NOEXCEPT
         : rtype_(rtype) {
     }
-#if TAMER_DEBUG
     inline ~abstract_rendezvous() TAMER_NOEXCEPT;
-#endif
 
     inline rendezvous_type rtype() const {
         return rendezvous_type(rtype_);
     }
 
     bool is_volatile() const;
+    const char* rtype_name() const;
 
   protected:
     simple_event* waiting_ = nullptr;
@@ -235,11 +234,9 @@ class explicit_rendezvous : public blocking_rendezvous {
         : blocking_rendezvous(rexplicit),
           ready_(), ready_ptail_(&ready_) {
     }
-#if TAMER_DEBUG
     inline ~explicit_rendezvous() {
         TAMER_DEBUG_ASSERT(!ready_);
     }
-#endif
 
   protected:
     simple_event* ready_;
@@ -373,11 +370,9 @@ inline void abstract_rendezvous::remove_waiting() TAMER_NOEXCEPT {
     }
 }
 
-#if TAMER_DEBUG
 inline abstract_rendezvous::~abstract_rendezvous() TAMER_NOEXCEPT {
     TAMER_DEBUG_ASSERT(!waiting_);
 }
-#endif
 
 
 inline bool simple_driver::has_unblocked() const {
@@ -542,6 +537,9 @@ inline std::string closure::description() const {
 
 inline simple_event::simple_event() TAMER_NOEXCEPT
     : _r(0), _refcount(1) TAMER_IFTRACE(, file_annotation_(0)) {
+#if TAMER_DEBUG && TAMER_DEBUG_LEVEL > 1
+    print("create");
+#endif
 }
 
 inline simple_event::simple_event(abstract_rendezvous& r, uintptr_t rid,
@@ -554,43 +552,39 @@ inline simple_event::simple_event(abstract_rendezvous& r, uintptr_t rid,
     }
     r.waiting_ = this;
     TAMER_IFNOTRACE((void) file, (void) line);
-#if TAMER_DEBUG > 1
-    if (file && line) {
-        fprintf(stderr, "annotate simple_event(%p) %s:%d\n", this, file, line);
-    } else if (file) {
-        fprintf(stderr, "annotate simple_event(%p) %s\n", this, file);
-    }
+#if TAMER_DEBUG && TAMER_DEBUG_LEVEL > 1
+    print("create", file, line);
 #endif
 }
 
-#if TAMER_DEBUG
 inline simple_event::~simple_event() TAMER_NOEXCEPT {
-    assert(!_r);
-# if TAMER_DEBUG > 1
-    if (file_annotation() && line_annotation()) {
-        fprintf(stderr, "destroy simple_event(%p) %s:%d\n", this, file_annotation(), line_annotation());
-    } else if (file_annotation()) {
-        fprintf(stderr, "destroy simple_event(%p) %s\n", this, file_annotation());
-    }
-# endif
-}
+    TAMER_DEBUG_ASSERT(!_r);
+#if TAMER_DEBUG && TAMER_DEBUG_LEVEL > 1
+    print("destroy");
 #endif
+}
 
-inline void simple_event::use(simple_event* e) TAMER_NOEXCEPT {
+inline void simple_event::use(simple_event* e, const char*, int) TAMER_NOEXCEPT {
     if (e) {
         ++e->_refcount;
     }
 }
 
-inline void simple_event::unuse(simple_event* e) TAMER_NOEXCEPT {
-    if (e && --e->_refcount == 0) {
-        e->unuse_trigger();
+inline void simple_event::unuse(simple_event* e, const char*, int) TAMER_NOEXCEPT {
+    if (e) {
+        --e->_refcount;
+        if (e->_refcount == 0) {
+            e->unuse_trigger();
+        }
     }
 }
 
-inline void simple_event::unuse_clean(simple_event* e) TAMER_NOEXCEPT {
-    if (e && --e->_refcount == 0) {
-        delete e;
+inline void simple_event::unuse_clean(simple_event* e, const char*, int) TAMER_NOEXCEPT {
+    if (e) {
+        --e->_refcount;
+        if (e->_refcount == 0) {
+            delete e;
+        }
     }
 }
 

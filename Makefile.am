@@ -13,7 +13,8 @@ test bench ex knot: compiler tamer
 check: ex test
 	$(srcdir)/test/testie $(srcdir)/test
 
-check-%: ex test
+check-%: compiler tamer
+	cd test && $(MAKE) $(AM_MAKEFLAGS) $*
 	$(srcdir)/test/testie $(srcdir)/test/$*.testie
 
 .PHONY: check compiler tamer test bench ex doc knot

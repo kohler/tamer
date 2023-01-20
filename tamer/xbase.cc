@@ -219,6 +219,30 @@ void simple_event::hard_at_trigger(simple_event* x, void (*f)(void*),
     }
 }
 
+void simple_event::print(const char* prefix, const char* file, int line) {
+#if !TAMER_NOTRACE
+    if (!file) {
+        file = file_annotation();
+    }
+    if (!line) {
+        line = line_annotation();
+    }
+#endif
+    char rbuf[128];
+    if (_r) {
+        snprintf(rbuf, sizeof(rbuf), " on %p:%s", _r, _r->rtype_name());
+    } else {
+        rbuf[0] = 0;
+    }
+    if (file && line) {
+        fprintf(stderr, "%s simple_event(%p)+%u %s:%d%s\n", prefix, this, _refcount, file, line, rbuf);
+    } else if (file) {
+        fprintf(stderr, "%s simple_event(%p)+%u %s%s\n", prefix, this, _refcount, file, rbuf);
+    } else {
+        fprintf(stderr, "%s simple_event(%p)+%u%s\n", prefix, this, _refcount, rbuf);
+    }
+}
+
 
 namespace message {
 
@@ -234,6 +258,20 @@ void event_prematurely_dereferenced(simple_event* se, abstract_rendezvous* r) {
 }
 
 } // namespace tamer::tamerpriv::message
+
+const char* abstract_rendezvous::rtype_name() const {
+    if (rtype_ == rgather) {
+        return "gather";
+    } else if (rtype_ == rexplicit) {
+        return "explicit";
+    } else if (rtype_ == rfunctional) {
+        return "functional";
+    } else if (rtype_ == rdistribute) {
+        return "distribute";
+    } else {
+        return "unknown";
+    }
+}
 
 bool abstract_rendezvous::is_volatile() const {
     return rtype_ == rdistribute
