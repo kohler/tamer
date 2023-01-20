@@ -92,10 +92,14 @@ int xpollfds::events(int fd) const {
     if ((unsigned) fd >= nfdmap_ || fdmap_[fd] == 0) {
         return 0;
     }
-    return pfds_[fdmap_[fd] - 1].events;
+    unsigned fdidx = fdmap_[fd] - 1;
+    pollfd& pfd = pfds_[fdidx];
+    TAMER_DEBUG_ASSERT(fdidx < npfds_ && pfd.fd == fd && pfd.events != 0);
+    return pfd.events;
 }
 
 void xpollfds::set_events(int fd, int events) {
+    TAMER_DEBUG_ASSERT(fd >= 0);
     if ((unsigned) fd >= nfdmap_ || fdmap_[fd] == 0) {
         if (events == 0) {
             return;
@@ -128,11 +132,13 @@ void xpollfds::set_events(int fd, int events) {
     }
     unsigned fdidx = fdmap_[fd] - 1;
     pollfd& pfd = pfds_[fdidx];
+    TAMER_DEBUG_ASSERT(fdidx < npfds_ && pfd.fd == fd && pfd.events != 0);
     if (events != 0) {
         pfd.events = events;
     } else {
         fdmap_[fd] = 0;
-        if (--npfds_ != 0) {
+        --npfds_;
+        if (fdidx != npfds_) {
             pfd = pfds_[npfds_];
             fdmap_[pfd.fd] = fdidx + 1;
         }
