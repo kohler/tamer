@@ -115,11 +115,6 @@ namespace tamer {
 template <typename T0, typename T1, typename T2, typename T3>
 class event {
   public:
-    typedef void result_type;
-    typedef T0 first_argument_type;
-    typedef T1 second_argument_type;
-    typedef T2 third_argument_type;
-    typedef T3 fourth_argument_type;
     typedef std::tuple<T0, T1, T2, T3> results_tuple_type;
 
     inline event() noexcept;
@@ -172,10 +167,6 @@ class event {
 
 template <typename T0, typename T1, typename T2>
 class event<T0, T1, T2, void> { public:
-    typedef void result_type;
-    typedef T0 first_argument_type;
-    typedef T1 second_argument_type;
-    typedef T2 third_argument_type;
     typedef std::tuple<T0, T1, T2> results_tuple_type;
 
     inline event() noexcept;
@@ -447,7 +438,6 @@ class event<T0, void, void, void> { public:
 
 template <>
 class event<void, void, void, void> { public:
-    typedef void result_type;
     typedef std::tuple<> results_tuple_type;
 
     inline event() noexcept;
@@ -611,7 +601,6 @@ class preevent {
 template <typename R>
 class preevent<R, void> {
   public:
-    typedef void result_type;
     typedef std::tuple<> results_tuple_type;
 
     inline constexpr preevent(R& r, const char* file = nullptr, int line = 0) noexcept;
@@ -671,10 +660,7 @@ inline event<T0, T1, T2, T3>::event(T0& x0, T1& x1, T2& x2, T3& x3) noexcept
 }
 
 /** @brief  Construct an empty four-result event on rendezvous @a r.
- *  @param  x0  First result.
- *  @param  x1  Second result.
- *  @param  x2  Third result.
- *  @param  x3  Fourth result.
+ *  @param  xs  Result tuple.
  */
 template <typename T0, typename T1, typename T2, typename T3>
 inline event<T0, T1, T2, T3>::event(results_tuple_type& xs) noexcept

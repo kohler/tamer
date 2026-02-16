@@ -90,27 +90,15 @@ inline event<T0> all(preevent<R, T0>&& e1, event<T0> e2) {
 }
 #endif
 
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> TAMER_DEPRECATEDATTR
-distribute(event<T0, T1, T2, T3> e1, event<T0, T1, T2, T3> e2) {
-    return all(e1, e2);
-}
-
-template <typename T0, typename T1, typename T2, typename T3>
-inline event<T0, T1, T2, T3> TAMER_DEPRECATEDATTR
-distribute(event<T0, T1, T2, T3> e1, event<T0, T1, T2, T3> e2,
-           event<T0, T1, T2, T3> e3) {
-    return all(e1, e2, e3);
-}
-
-/** @brief  Create bound event for @a e with @a v0.
+/** @brief  Create bound event for @a e with @a vi.
  *  @param  e   Event.
- *  @param  v0  Trigger value.
+ *  @param  vi  Trigger value.
  *  @return  Adapter event.
  *
  *  The result is bound to @a e: triggering either event automatically
  *  triggers the other. Triggering the result instantly triggers @a e with
- *  value @a v0; triggering @a e instantly triggers the result's unblocker.
+ *  value @a vi in its Ith slot; triggering @a e instantly triggers the
+ *  result's unblocker.
  */
 template <size_t I = 0, typename VI = void, typename... TS>
 event<> bind(event<TS...> e, VI vi) {

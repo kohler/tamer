@@ -151,8 +151,14 @@ inline void at_fd_shutdown(int fd, event<> e) {
 /** @brief  Register event for a given time.
  *  @param  expiry  Time.
  *  @param  e       Event.
+ *  @param  bg      Background status.
  *
  *  Triggers @a e at timestamp @a expiry, or soon afterwards.
+ *
+ *  Most timers use foreground events: a call to @c driver::loop() remains
+ *  alive as long as the timer is outstanding. Background events, requested by
+ *  @a bg true, correspond to background tasks that should be foregone once
+ *  all foreground events are done.
  */
 inline void at_time(const timeval &expiry, event<> e, bool bg = false) {
     driver::main->at_time(expiry, e, bg);
@@ -166,6 +172,7 @@ inline void at_time(double expiry, event<> e, bool bg = false) {
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time.
  *  @param  e      Event.
+ *  @param  bg     Background status.
  *
  *  Triggers @a e when @a delay seconds have elapsed since @c recent(), or
  *  soon afterwards.
@@ -177,6 +184,7 @@ inline void at_delay(const timeval &delay, event<> e, bool bg = false) {
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time.
  *  @param  e      Event.
+ *  @param  bg     Background status.
  *
  *  Triggers @a e when @a delay seconds have elapsed since @c recent(), or
  *  soon afterwards.
@@ -188,6 +196,7 @@ inline void at_delay(double delay, event<> e, bool bg = false) {
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time.
  *  @param  e      Event.
+ *  @param  bg     Background status.
  *
  *  Triggers @a e when @a delay seconds have elapsed since @c recent(), or
  *  soon afterwards.
@@ -199,6 +208,7 @@ inline void at_delay_sec(int delay, event<> e, bool bg = false) {
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time in milliseconds.
  *  @param  e      Event.
+ *  @param  bg     Background status.
  *
  *  Triggers @a e when @a delay milliseconds have elapsed since @c recent(),
  *  or soon afterwards.
@@ -210,6 +220,7 @@ inline void at_delay_msec(int delay, event<> e, bool bg = false) {
 /** @brief  Register event for a given delay.
  *  @param  delay  Delay time in microseconds.
  *  @param  e      Event.
+ *  @param  bg     Background status.
  *
  *  Triggers @a e when @a delay microseconds have elapsed since @c recent(),
  *  or soon afterwards.
