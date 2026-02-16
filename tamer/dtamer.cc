@@ -581,6 +581,9 @@ timeval driver_tamer::next_wake() const {
 void driver_tamer::clear() {
     auto pend = pfds_.end();
     for (auto p = pfds_.begin(); p != pend; ++p) {
+        if (p->fd == sig_pipe[0]) {
+            continue;
+        }
         fds_[p->fd].clear();
     }
     asap_.clear();
