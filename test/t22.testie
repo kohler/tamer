@@ -2,14 +2,10 @@
 Check tamer virtual time.
 
 %script
-fsleep () {
-    perl -e "select(undef,undef,undef,$1)"
-}
-
-x=`perl -e "print time"`
-(echo foo; fsleep 0.2; echo crap) |
-      (fsleep 0.1; $VALGRIND $rundir/test/t22)
-y=`perl -e "print time"`
+x=`date +%s`
+(echo foo; sleep 0.2; echo crap) |
+      (sleep 0.1; $VALGRIND $rundir/test/t22)
+y=`date +%s`
 echo delta $(($y - $x))
 
 %stdout
