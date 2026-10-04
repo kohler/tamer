@@ -224,14 +224,20 @@ dnl
 SAVE_CXX="$CXX"
 if test -n "$GCC"; then CXX="$CXX -Werror"; fi
 
-AC_CACHE_CHECK([whether the C++ compiler understands rvalue references], [ac_cv_cxx_rvalue_references], [
-    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int &) { return 1; } int f(int &&) { return 0; }]], [[return f(int());]])],
+AC_CACHE_CHECK([whether the C++ compiler understands C++17], [ac_cv_cxx_rvalue_references], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#if __cplusplus >= 201703L
+int f(int&&) { return 0; }
+#endif
+int f(int&) { return 1; }]], [[return f(int());]])],
         [ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])])
 if test "$ac_cv_cxx_rvalue_references" != yes; then
     SAVE_CXX="${SAVE_CXX} -std=gnu++17"
     CXX="${CXX} -std=gnu++17"
     AC_MSG_CHECKING([whether the C++ compiler with -std=gnu++17 understands rvalue refs])
-    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[int f(int &) { return 1; } int f(int &&) { return 0; }]], [[return f(int());]])],
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#if __cplusplus >= 201703L
+int f(int&&) { return 0; }
+#endif
+int f(int&) { return 1; }]], [[return f(int());]])],
         [ac_cv_cxx_rvalue_references=yes], [ac_cv_cxx_rvalue_references=no])
     AC_MSG_RESULT([$ac_cv_cxx_rvalue_references])
 fi
@@ -249,7 +255,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([#include <utility>
 template <typename... TS> struct foo { static constexpr size_t count = sizeof...(TS); };], [[long x = foo<>::count + foo<int, int, int, int, int>::count; (void) x;]])], [ac_cv_variadic_templates=yes], [ac_cv_variadic_templates=no])
 AC_MSG_RESULT([$ac_cv_variadic_templates])
 
-if test "$ac_cv_std_move" != yes -o "$ac_cv_variadic_templates" != yes; then
+if test "$ac_cv_cxx_rvalue_references" != yes -o "$ac_cv_std_move" != yes -o "$ac_cv_variadic_templates" != yes; then
     AC_MSG_ERROR([
 
 The C++ compiler does not appear to understand C++17.
