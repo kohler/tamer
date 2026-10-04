@@ -420,6 +420,10 @@ tamed void http_parser::receive(fd f, event<http_message> done) {
                     break;
                 }
             } else if (nread == 0) {
+                // EOF completes a body delimited by connection close
+                hp_.data = &md;
+                http_parser_execute(&hp_, &settings, nullptr, 0);
+                copy_parser_status(md);
                 break;
             } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 /* fall through to blocking */
