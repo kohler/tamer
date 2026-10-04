@@ -112,17 +112,9 @@ class http_message {
     static const char* default_status_message(unsigned code);
 
   private:
-    enum {
-        info_url = 1, info_query = 2
-    };
-
     struct info_type {
-        unsigned flags;
         struct http_parser_url urlp;
         std::vector<http_header> raw_query;
-        inline info_type()
-            : flags(0) {
-        }
     };
 
     unsigned short major_;
@@ -139,9 +131,8 @@ class http_message {
 
     mutable std::shared_ptr<info_type> info_;
 
-    inline void kill_info(unsigned f) const;
-    inline info_type& info(unsigned f) const;
-    void make_info(unsigned f) const;
+    inline info_type& info() const;
+    void make_info() const;
     inline bool has_url_field(int field) const;
     inline std::string url_field(int field) const;
     void do_clear();
@@ -211,11 +202,6 @@ class http_parser : public tamed_class {
 inline http_message::http_message()
     : major_(1), minor_(1), status_code_(200), method_(HTTP_GET),
       error_(HPE_OK), upgrade_(0) {
-}
-
-inline void http_message::kill_info(unsigned f) const {
-    if (info_)
-        info_->flags &= ~f;
 }
 
 inline unsigned http_message::http_major() const {
@@ -299,11 +285,11 @@ inline const std::string& http_message::body() const {
 }
 
 inline bool http_message::has_url_field(int field) const {
-    return info(info_url).urlp.field_set & (1 << field);
+    return info().urlp.field_set & (1 << field);
 }
 
 inline std::string http_message::url_field(int field) const {
-    const info_type& i = info(info_url);
+    const info_type& i = info();
     if (i.urlp.field_set & (1 << field))
         return url_.substr(i.urlp.field_data[field].off,
                            i.urlp.field_data[field].len);
@@ -370,7 +356,7 @@ inline http_message& http_message::method(enum http_method method) {
 
 inline http_message& http_message::url(std::string url) {
     url_ = std::move(url);
-    kill_info(info_url | info_query);
+    info_.reset();
     return *this;
 }
 
@@ -404,9 +390,9 @@ inline http_message& http_message::append_body(const std::string& x) {
     return *this;
 }
 
-inline http_message::info_type& http_message::info(unsigned f) const {
-    if (!info_ || !info_.unique() || (info_->flags & f) != f)
-        make_info(f);
+inline http_message::info_type& http_message::info() const {
+    if (!info_)
+        make_info();
     return *info_.get();
 }
 
@@ -419,11 +405,11 @@ inline http_message::header_iterator http_message::header_end() const {
 }
 
 inline http_message::header_iterator http_message::query_begin() const {
-    return info(info_query).raw_query.begin();
+    return info().raw_query.begin();
 }
 
 inline http_message::header_iterator http_message::query_end() const {
-    return info(info_query).raw_query.end();
+    return info().raw_query.end();
 }
 
 inline bool http_parser::ok() const {

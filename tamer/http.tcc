@@ -165,9 +165,7 @@ void http_message::do_clear() {
     upgrade_ = 0;
     url_ = status_message_ = body_ = std::string();
     raw_headers_.clear();
-    if (info_) {
-        info_->flags = 0;
-    }
+    info_.reset();
 }
 
 void http_message::add_header(std::string key, std::string value) {
@@ -184,81 +182,73 @@ inline int xvalue(unsigned char ch) {
     }
 }
 
-void http_message::make_info(unsigned f) const {
-    if (!info_ || !info_.unique()) {
-        info_ = std::make_shared<info_type>();
-    }
+void http_message::make_info() const {
+    info_ = std::make_shared<info_type>();
     info_type& i = *info_;
 
-    if (!(i.flags & info_url) && (f & (info_url | info_query))) {
-        int r = http_parser_parse_url(url_.data(), url_.length(), method_ == HTTP_CONNECT, &i.urlp);
-        if (r) {
-            i.urlp.field_set = 0;
-        }
-        i.flags |= info_url;
+    int r = http_parser_parse_url(url_.data(), url_.length(), method_ == HTTP_CONNECT, &i.urlp);
+    if (r) {
+        i.urlp.field_set = 0;
     }
 
-    if (!(i.flags & info_query) && (f & info_query)) {
-        i.raw_query.clear();
-        if (i.urlp.field_set & (1 << UF_QUERY)) {
-            const char* s = url_.data() + i.urlp.field_data[UF_QUERY].off;
-            const char* ends = s + i.urlp.field_data[UF_QUERY].len;
-            int state = 0;
-            const char* last = s;
-            std::string name, buf;
-            while (s != ends) {
-                if (state == 0) {
-                    if (*s == '&' || *s == ';' || *s == '=') {
-                        last = s = s + 1;
-                        continue;
-                    }
-                    state = 1;
-                    last = s;
+    i.raw_query.clear();
+    if (i.urlp.field_set & (1 << UF_QUERY)) {
+        const char* s = url_.data() + i.urlp.field_data[UF_QUERY].off;
+        const char* ends = s + i.urlp.field_data[UF_QUERY].len;
+        int state = 0;
+        const char* last = s;
+        std::string name, buf;
+        while (s != ends) {
+            if (state == 0) {
+                if (*s == '&' || *s == ';' || *s == '=') {
+                    last = s = s + 1;
+                    continue;
                 }
+                state = 1;
+                last = s;
+            }
 
-                if (*s == '%' && s + 1 != ends && s + 2 != ends
-                    && isxdigit((unsigned char) s[1])
-                    && isxdigit((unsigned char) s[2])) {
-                    buf.append(last, s - last);
-                    char ch = xvalue(s[1]) * 16 + xvalue(s[2]);
-                    buf.append(&ch, 1);
-                    last = s = s + 3;
-                } else if (*s == '+') {
-                    buf.append(last, s - last);
-                    buf.append(" ", 1);
-                    last = s = s + 1;
-                } else if (state == 1 && *s == '=') {
-                    buf.append(last, s - last);
-                    name = buf;
-                    buf = std::string();
-                    last = s = s + 1;
-                    state = 2;
-                } else if (*s == '&' || *s == ';') {
-                add_last:
-                    buf.append(last, s - last);
-                    if (name.empty()) {
-                        std::swap(name, buf);
-                    }
-                    i.raw_query.emplace_back(std::move(name), std::move(buf));
-                    name = buf = std::string();
-                    if (s != ends) {
-                        ++s;
-                    }
-                    last = s;
-                    state = 0;
-                } else {
+            if (*s == '%' && s + 1 != ends && s + 2 != ends
+                && isxdigit((unsigned char) s[1])
+                && isxdigit((unsigned char) s[2])) {
+                buf.append(last, s - last);
+                char ch = xvalue(s[1]) * 16 + xvalue(s[2]);
+                buf.append(&ch, 1);
+                last = s = s + 3;
+            } else if (*s == '+') {
+                buf.append(last, s - last);
+                buf.append(" ", 1);
+                last = s = s + 1;
+            } else if (state == 1 && *s == '=') {
+                buf.append(last, s - last);
+                name = buf;
+                buf = std::string();
+                last = s = s + 1;
+                state = 2;
+            } else if (*s == '&' || *s == ';') {
+            add_last:
+                buf.append(last, s - last);
+                if (name.empty()) {
+                    std::swap(name, buf);
+                }
+                i.raw_query.emplace_back(std::move(name), std::move(buf));
+                name = buf = std::string();
+                if (s != ends) {
                     ++s;
                 }
+                last = s;
+                state = 0;
+            } else {
+                ++s;
             }
-            if (last != s)
-                goto add_last;
         }
-        i.flags |= info_query;
+        if (last != s)
+            goto add_last;
     }
 }
 
 std::string http_message::host() const {
-    info_type& i = info(info_url);
+    info_type& i = info();
     if (i.urlp.field_set & (1 << UF_HOST)) {
         return url_.substr(i.urlp.field_data[UF_HOST].off,
                            i.urlp.field_data[UF_HOST].len);
@@ -271,7 +261,7 @@ std::string http_message::host() const {
 }
 
 std::string http_message::url_host_port() const {
-    info_type& i = info(info_url);
+    info_type& i = info();
     std::string host;
     if (i.urlp.field_set & (1 << UF_HOST)) {
         host = url_.substr(i.urlp.field_data[UF_HOST].off,
@@ -286,7 +276,7 @@ std::string http_message::url_host_port() const {
 }
 
 uint16_t http_message::url_port() const {
-    info_type& i = info(info_url);
+    info_type& i = info();
     if (i.urlp.field_set & (1 << UF_PORT)) {
         return i.urlp.port;
     } else {
@@ -295,7 +285,7 @@ uint16_t http_message::url_port() const {
 }
 
 bool http_message::has_query(const std::string& name) const {
-    const info_type& i = info(info_query);
+    const info_type& i = info();
     for (auto it = i.raw_query.begin(); it != i.raw_query.end(); ++it) {
         if (it->is(name))
             return true;
@@ -304,7 +294,7 @@ bool http_message::has_query(const std::string& name) const {
 }
 
 std::string http_message::query(const std::string& name) const {
-    const info_type& i = info(info_query);
+    const info_type& i = info();
     for (auto it = i.raw_query.begin(); it != i.raw_query.end(); ++it) {
         if (it->is(name))
             return it->value;
